@@ -1,0 +1,6 @@
+getfile	NZLOCALDB	kLoc_Full_Name,klfn		kNZ_Postcode,knzp	kPBT_Area,kpbt \
+			NZ_Postcode,nzpc		PBT_Pricing,pbtp	Zone_Island,nzis \
+			TOLL_IPEC_MATRIX,timx		TOLL_IPEC_RATES,tipr	TOLL_IPEC_RATES,tipc \
+			CourierPostAccount,cpac		Express_Cour,expc	Main_Freight_Zone,mnfz \
+			NZC_Branches,nzbr		NZC_Products,nzcp	NZC_Stationery,nzcs
+

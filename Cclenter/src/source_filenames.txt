@@ -1,0 +1,1659 @@
+
+'<command line>'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+'<command line>'
+'<built-in>'
+'abi-note.S'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/abi-tag.h'
+'abi-note.S'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+'abi-note.S'
+'<command line>'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+'<command line>'
+'<built-in>'
+'abi-note.S'
+'init.c'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crti.S'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/defs.h'
+'initfini.c'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crti.S'
+'<command line>'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+'<command line>'
+'<built-in>'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crti.S'
+'crtstuff.c'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crtn.S'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/defs.h'
+'initfini.c'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crtn.S'
+'<command line>'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+'<command line>'
+'<built-in>'
+'/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crtn.S'
+
+'clenter.c'
+	main                                   .text  0804C83C 000009BE . . . . B T .
+	mexit                                  .text  0804D1FA 00000029 . . . . B T .
+
+'clsemctl.c'
+	dberror                                .text  0804D223 0000019A R . . . B T .
+	cdberror                               .text  0804D3BD 00000037 R . . . B T .
+
+'pblock.c'
+	clgetlic                               .text  0804D3F8 0000000A R . . . B T .
+	pblock                                 .text  0804D404 000006C6 R . . . B T .
+
+'abcd.c'
+	hasass .text 0804DACC 00000048 R . . . B T .
+	abcd   .text 0804DB14 00000B89 R . . . B T .
+
+'ploop.c'
+	tojoin .text 0804E6A4 0000012F R . . . B T .
+	_ploop .text 0804E7D3 000010F7 R . . . B T .
+	ploop  .text 0804F8CA 000000BB R . . . B T .
+
+'pedit.c'
+	sploop    .text 0804F985 000000EB R . . . B T .
+	setclvars .text 0804FA70 00000041 R . . . B T .
+	pexcept   .text 0804FAB1 0000006B R . . . B T .
+	getkerr   .text 0804FB1C 0000015B R . . . B T .
+	eaddkey   .text 0804FC77 00000146 R . . . B T .
+	egetkey   .text 0804FDBD 00000790 R . . . B T .
+	pedit     .text 0805054D 00000228 R . . . B T .
+
+'evaliex.c'
+	evaliex                                .text  08050778 0000085E R . . . B T .
+
+'prfield.c'
+	prfield                                .text  08050FD8 00000C52 R . . . B T .
+	_prfield                               .text  08051C2A 00000460 R . . . B T .
+
+'delhier.c'
+	delset                                 .text  0805208C 000001EF R . . . B T .
+	delhier                                .text  0805227B 00000140 R . . . B T .
+
+'dscreen.c'
+	dscreen  .text 080523BC 00000091 R . . . B T .
+	_dscreen .text 0805244D 00000512 R . . . B T .
+	gtd      .text 0805295F 00000035 R . . . B T .
+	dhdtxt   .text 08052994 000001FA R . . . B T .
+
+'eafr.c'
+	eafr      
+	_getfnum  
+	_ugetfnum 
+
+'disprec.c'
+	disprec
+	_disprec
+
+'modfld.c'
+	fcheck  
+	dstrip  
+	dispatt 
+	modfld  
+
+'echknum.c'
+	echknum                                .text  08054950 00000143 R . . . B T .
+
+'jcheck.c'
+	dispjoin                               .text  08054A94 00000202 R . . . B T .
+	jcheck                                 .text  08054C96 00000766 R . . . B T .
+
+'calculate.c'
+	clatof    .text 080553FC 00000051 R . . . B T .
+	calculate .text 0805544D 000009E9 R . . . B T .
+	evalnum   .text 08055E36 000007A8 R . . . B T .
+	evalint   .text 080565DE 0000061C R . . . B T .
+	evalstr   .text 08056BFA 0000129A R . . . B T .
+	substr    .text 08057E94 00000092 R . . . B T .
+	repstr    .text 08057F26 000000C2 R . . . B T .
+	concat    .text 08057FE8 000000AC R . . . B T .
+	stroper   .text 08058094 000003D9 R . . . B T .
+	datearr   .text 0805846D 00000061 R . . . B T .
+	arrdate   .text 080584CE 000000A9 R . . . B T .
+
+'dispfld.c'
+	dispfld			
+
+'ppause.c'
+	ppause                                 .text  08058788 000001F9 R . . . B T .
+
+'pcreate.c'
+	_tdopen                                .text  08058984 00000395 R . . . B T .
+	pcreate                                .text  08058D19 0000027F R . . . B T .
+
+'prerr.c'
+	prerr                                  .text  08058F98 0000015C R . . . B T .
+	prmsg                                  .text  080590F4 000000C3 R . . . B T .
+
+'rcheck.c'
+	putmesg .text 080591B8 00000087 R . . . B T .
+	rcheck  .text 0805923F 00000850 R . . . B T .
+
+'reffile.c'
+	reffile                                .text  08059A90 00000870 R . . . B T .
+
+'reply.c'
+	reply                                  .text  0805A300 00000536 R . . . B T .
+	mreply                                 .text  0805A836 00000048 R . . . B T .
+
+'pfork.c'
+	pfork                                  .text  0805A880 0000044D R . . . B T .
+
+'chklt.c'
+	chklt                                  .text  0805ACD0 000001F7 R . . . B T .
+
+'pfile.c'
+	pfile                                  .text  0805AEC8 0000013F R . . . B T .
+	_popen                                 .text  0805B007 0000040F R . . . B T .
+	_pclose                                .text  0805B416 00000101 R . . . B T .
+	_fopen                                 .text  0805B517 00000271 R . . . B T .
+	_fclose                                .text  0805B788 000000A4 R . . . B T .
+	_read                                  .text  0805B82C 000001C5 R . . . B T .
+	_write                                 .text  0805B9F1 000000C0 R . . . B T .
+	getfp                                  .text  0805BAB1 000000CC R . . . B T .
+	_closefp                               .text  0805BB7D 0000006F R . . . B T .
+	closefp                                .text  0805BBEC 0000003A R . . . B T .
+	getresf                                .text  0805BC26 00000092 R . . . B T .
+	newfile                                .text  0805BCB8 00000066 R . . . B T .
+	getClIOstream                          .text  0805BD1E 00000066 R . . . B T .
+
+'pset.c'
+	pset                                   .text  0805BD84 000003AB R . . . B T .
+
+'getftf.c'
+	getftf                                 .text  0805C130 00000306 R . . . B T .
+
+'getresv.c'
+	getresv                                .text  0805C438 00000281 R . . . B T .
+	getnresv                               .text  0805C6B9 000000A3 R . . . B T .
+
+'gettdfno.c'
+	gettdfno                               .text  0805C75C 000002AB R . . . B T .
+
+'getwid.c'
+	getwid                                 .text  0805CA08 0000008F R . . . B T .
+
+'getyx.c'
+	clgetyx                                .text  0805CA98 000000F7 R . . . B T .
+
+'getexpr.c'
+	getlit                                 .text  0805CB90 00000365 R . . . B T .
+	getexpr                                .text  0805CEF5 00000218 R . . . B T .
+
+'buftott.c'
+	buftott                                .text  0805D110 0000025E R . . . B T .
+
+'prdebug.c'
+	opendebug                              .text  0805D370 000000E6 R . . . B T .
+	lockdebug                              .text  0805D456 0000008A R . . . B T .
+	prdebass                               .text  0805D4E0 00000648 R . . . B T .
+	prdebcon                               .text  0805DB28 0000028D R . . . B T .
+
+'chkesc.c'
+	chkesc                                 .text  0805DDB8 000000B8 R . . . B T .
+	_chkesc                                .text  0805DE70 000000BC R . . . B T .
+	_disp_esc                              .text  0805DF2C 00000313 R . . . B T .
+
+'toscreen.c'
+	toscreen                               .text  0805E240 00000453 R . . . B T .
+	scat                                   .text  0805E693 00000171 R . . . B T .
+	chg_attr                               .text  0805E804 00000041 R . . . B T .
+
+'exptobuf.c'
+	exptobuf                               .text  0805E848 0000036C R . . . B T .
+
+'getetype.c'
+	getetype                               .text  0805EBB4 000002ED R . . . B T .
+
+'setvar.c'
+	setvar                                 .text  0805EEA4 00000050 R . . . B T .
+	incvar                                 .text  0805EEF4 00000074 R . . . B T .
+	setcvar                                .text  0805EF68 00000077 R . . . B T .
+	setavar                                .text  0805EFDF 0000005F R . . . B T .
+
+'pfresh.c'
+	pfresh                                 .text  0805F040 0000013A R . . . B T .
+	pscreen                                .text  0805F17A 000001C9 R . . . B T .
+
+'getattr.c'
+	getattr                                .text  0805F344 0000007D R . . . B T .
+	getnats                                .text  0805F3C1 00000093 R . . . B T .
+
+'flagcdb.c'
+	flagcdb                                .text  0805F454 00000079 R . . . B T .
+
+'pcount.c'
+	pcount                                 .text  0805F4D0 00000046 R . . . B T .
+	chkeop                                 .text  0805F516 0000009A R . . . B T .
+
+'psleep.c'
+	psleep                                 .text  0805F5B0 00000074 R . . . B T .
+
+'psrand.c'
+	psrand                                 .text  0805F624 00000074 R . . . B T .
+
+'newstab.c'
+	newstab                                .text  0805F698 0000007F R . . . B T .
+
+'argenv.c'
+	getarg                                 .text  0805F718 00000032 R . . . B T .
+	clgetenv                               .text  0805F74A 0000003A R . . . B T .
+	dosrch                                 .text  0805F784 0000008A R . . . B T .
+
+'pattern.c'
+	smatch                                 .text  0805F810 00000093 R . . . B T .
+	trysmatch                              .text  0805F8A3 0000011D R . . . B T .
+	setmatch                               .text  0805F9C0 0000008F R . . . B T .
+	pmatch                                 .text  0805FA4F 0000018F R . . . B T .
+
+'oformat.c'
+	nfmt                                   .text  0805FBE0 0000026F R . . . B T .
+	issign                                 .text  0805FE4F 000000DC R . . . B T .
+	getdlen                                .text  0805FF2B 0000005F R . . . B T .
+	getdp                                  .text  0805FF8A 000000AA R . . . B T .
+	form                                   .text  08060034 000002A5 R . . . B T .
+
+'coord.c'
+	coord                                  .text  080602DC 00000083 R . . . B T .
+'redisp.c'
+	redisp                                 .text  08060360 00000238 R . . . B T .
+
+'cnvstr.c'
+	base64de                               .text  08060598 00000231 R . . . B T .
+	base64en                               .text  080607C9 000001FD R . . . B T .
+	squeeze                                .text  080609C6 00000018 R . . . B T .
+	ignCmp                                 .text  080609DE 0000002D R . . . B . .
+	ignDel                                 .text  08060A0B 00000026 R . . . B T .
+	soundex                                .text  08060A31 00000231 R . . . B . .
+	soundexIgn                             .text  08060C62 000000E6 R . . . B . .
+	tabsub                                 .text  08060D48 000001DB R . . . B T .
+	cnvstr                                 .text  08060F23 00000806 R . . . B T .
+
+'encrypt.c'
+	shsInit                                .text  0806172C 00000038 R . . . B . .
+	shsTransform                           .text  08061764 00001C1C R . . . B . .
+	byteReverse                            .text  08063380 0000003E R . . . B . .
+	shsUpdate                              .text  080633BE 000000A9 R . . . B T .
+	shsFinal                               .text  08063467 000000F2 R . . . B . .
+	sha0_encrypt                           .text  08063559 00000093 R . . . B T .
+
+'loadenc.c'
+	checkdbrename                          .text  080635EC 000000C6 R . . . B T .
+	compile                                .text  080636B2 0000043D R . . . B T .
+	getonesc                               .text  08063AEF 00000071 R . . . B T .
+	loadoe                                 .text  08063B60 00000039 R . . . B T .
+	getscr                                 .text  08063B99 00000068 R . . . B T .
+	loadscr                                .text  08063C01 00000039 R . . . B T .
+	getcount                               .text  08063C3A 00000065 R . . . B T .
+	getucount                              .text  08063C9F 00000065 R . . . B T .
+	getarrcount                            .text  08063D04 00000071 R . . . B T .
+	gettable                               .text  08063D75 00000063 R . . . B T .
+	getarrtds                              .text  08063DD8 00000074 R . . . B T .
+	getbool                                .text  08063E4C 00000063 R . . . B T .
+	getbits                                .text  08063EAF 00000065 R . . . B T .
+	getlong                                .text  08063F14 00000063 R . . . B T .
+	getdouble                              .text  08063F77 0000009F R . . . B T .
+	getfloat                               .text  08064016 0000006F R . . . B T .
+	getstrarr                              .text  08064085 00000062 R . . . B T .
+	gettext                                .text  080640E7 00000045 R . . . B T .
+	getxtabs                               .text  0806412C 00000152 R . . . B T .
+	getrtabs                               .text  0806427E 000000B9 R . . . B T .
+	getratabs                              .text  08064337 0000009B R . . . B T .
+	getxftabs                              .text  080643D2 00000081 R . . . B T .
+	getsftabs                              .text  08064453 00000095 R . . . B T .
+	getprtabs                              .text  080644E8 000000A2 R . . . B T .
+	getrdtabs                              .text  0806458A 0000009A R . . . B T .
+	getkxtabs                              .text  08064624 000000E9 R . . . B T .
+	getptabs                               .text  0806470D 00000095 R . . . B T .
+	gettabs                                .text  080647A2 00000101 R . . . B T .
+	getbtabs                               .text  080648A3 00000104 R . . . B T .
+	getftabs                               .text  080649A7 000000A0 R . . . B T .
+	getbuf                                 .text  08064A47 00000076 R . . . B T .
+	loadenc                                .text  08064ABD 00000B94 R . . . B T .
+
+'getpt.c'
+	getptabp                               .text  08065654 000000AC R . . . B T .
+	getvarname                             .text  08065700 00000064 R . . . B T .
+	getvars                                .text  08065764 0000003A R . . . B T .
+	getvarmem                              .text  0806579E 0000009F R . . . B T .
+	getenmem                               .text  08065840 000000A2 R . . . B T .
+	getxtmem                               .text  080658E2 000000A6 R . . . B T .
+	getptmem                               .text  08065988 0000009C R . . . B T .
+	getrtmem                               .text  08065A24 000000A0 R . . . B . .
+	getramem                               .text  08065AC4 0000008B R . . . B . .
+	getprmem                               .text  08065B4F 0000009E R . . . B . .
+	getrdmem                               .text  08065BED 000000A0 R . . . B . .
+	getxfmem                               .text  08065C8D 0000009A R . . . B . .
+	getsfmem                               .text  08065D27 0000009A R . . . B . .
+	getkxmem                               .text  08065DC1 0000009A R . . . B . .
+	getstrmem                              .text  08065E5B 000000B9 R . . . B T .
+	_PTARR                                 .text  08065F14 0000002B R . . . B T .
+	allenpt                                .text  08065F3F 00000096 R . . . B T .
+	moveenptrs                             .text  08065FD5 00000041 R . . . B . .
+	dallenpt                               .text  08066016 00000031 R . . . B . .
+	allxtpt                                .text  08066047 00000099 R . . . B . .
+	movextptrs                             .text  080660E0 00000041 R . . . B T .
+	dallxtpt                               .text  08066121 00000031 R . . . B . .
+	allptpt                                .text  08066152 00000091 R . . . B . .
+	moveptptrs                             .text  080661E3 00000041 R . . . B T .
+	dallptpt                               .text  08066224 00000031 R . . . B . .
+	allxfpt                                .text  08066255 00000091 R . . . B . .
+	movexfptrs                             .text  080662E6 00000041 R . . . B . .
+	dallxfpt                               .text  08066327 00000031 R . . . B . .
+	allkxpt                                .text  08066358 0000008F R . . . B . .
+	movekxptrs                             .text  080663E7 00000041 R . . . B . .
+	dallkxpt                               .text  08066428 00000031 R . . . B . .
+	allrtpt                                .text  08066459 00000096 R . . . B . .
+	movertptrs                             .text  080664EF 00000041 R . . . B . .
+	dallrtpt                               .text  08066530 00000031 R . . . B . .
+	allprpt                                .text  08066561 00000092 R . . . B . .
+	moveprptrs                             .text  080665F3 00000041 R . . . B . .
+	dallprpt                               .text  08066634 00000031 R . . . B . .
+	allrdpt                                .text  08066665 00000096 R . . . B . .
+	moverdptrs                             .text  080666FB 00000041 R . . . B . .
+	dallrdpt                               .text  0806673C 00000031 R . . . B . .
+	allsfpt                                .text  0806676D 00000091 R . . . B . .
+	movesfptrs                             .text  080667FE 00000041 R . . . B . .
+	dallsfpt                               .text  0806683F 00000031 R . . . B . .
+
+'getmem.c'
+	?????   May contain defs for structures above?
+
+'newdtab.c'
+	newdtab                                .text  08066870 00000081 R . . . B T .
+
+'blowfish.c'
+	encodeblock                            .text  080668F4 000000A2 R . . . B T .
+	decodeblock                            .text  08066996 0000003E R . . . B T .
+	dev                                    .text  080669D4 0000004A R . . . B T .
+	F                                      .text  08066A1E 00000049 R . . . B . .
+	Blowfish_Encrypt                       .text  08066A67 00000064 R . . . B . .
+	Blowfish_Decrypt                       .text  08066ACB 00000063 R . . . B . .
+	Blowfish_Init                          .text  08066B2E 0000020B R . . . B . .
+	Blowfish_StrDecrypt                    .text  08066D39 00000447 R . . . B T .
+	Blowfish_StrEncrypt                    .text  08067180 00000414 R . . . B T .
+	Blowfish_Test                          .text  08067594 00000097 R . . . B . .
+
+'cgi.c'
+	_cgiGetCookies                         .text  0806762C 000000E5 R . . . B T .
+	_cgiGetInfo                            .text  08067711 00000097 R . . . B T .
+	soapFault                              .text  080677A8 000000FF . . . . B T .
+	xmlRpcFault                            .text  080678A7 000000B9 . . . . B T .
+	_cgiGetFormData                        .text  08067960 0000097E R . . . B T .
+	_cgiCleanSSI                           .text  080682DE 0000004F R . . . B T .
+	_cgiNextCookieValue                    .text  0806832D 000000A8 R . . . B . .
+	_cgiNextNameValue                      .text  080683D5 000000AD R . . . B . .
+	_cgiGetPartValue                       .text  08068482 00000107 R . . . B T .
+	_cgiGetMultiValue                      .text  08068589 000000D6 R . . . B T .
+	_cgiGetValue                           .text  0806865F 00000051 R . . . B T .
+	_cgiGetCookieValue                     .text  080686B0 00000051 R . . . B T .
+	dd2c                                   .text  08068701 0000003B R . . . B . .
+	_cgiGetDataFromString                  .text  0806873C 000002AC R . . . B . .
+	_cgiGetDataFromStream                  .text  080689E8 00000343 R . . . B T .
+	getbuf_0                               .text  08068D2B 0000005F R . . . B . .
+	_cgiGetMultipartDataFromStream         .text  08068D8A 000008D8 R . . . B . .
+	cgiGetValue                            .text  08069662 000000C7 R . . . B T .
+	cgiGetEname                            .text  08069729 0000026F R . . . B T .
+
+'findtd.c'
+	findtd                                 .text  08069998 0000011A R . . . B T .
+
+'getfile.c'
+	tgetfile                               .text  08069AB4 000000D5 R . . . B T .
+	tdopen                                 .text  08069B89 00000411 R . . . B T .
+	rtdget                                 .text  08069F9A 000000FD R . . . B T .
+	getfile                                .text  0806A097 000001E9 R . . . B T .
+	rdbget                                 .text  0806A280 00000177 R . . . B T .
+
+'guname.c'
+	guname                                 .text  0806A3F8 00000059 R . . . B T .
+	gelogin                                .text  0806A451 0000004F R . . . B T .
+	glogin                                 .text  0806A4A0 00000058 R . . . B T .
+	guserdir                               .text  0806A4F8 00000035 R . . . B T .
+
+'gettype.c'
+	gettype                                .text  0806A530 00000105 R . . . B T .
+
+'isnumber.c'
+	clisnumber                             .text  0806A638 000000CE R . . . B T .
+
+'linput.c'
+	isDoubleWidth                          .text  0806A708 00000039 R . . . B T .
+	curChineseChar                         .text  0806A741 00000073 R . . . B T .
+	isChinese                              .text  0806A7B4 00000048 R . . . B T .
+	linputChinese                          .text  0806A7FC 00001817 R . . . B T .
+	thaiStrOffPaperLen                     .text  0806C013 0000011E R . . . B T .
+	thaiStrOnPaperLen                      .text  0806C131 0000008B R . . . B . .
+	dumpThaiChars                          .text  0806C1BC 00000005 R . . . B . .
+	validateThaiChar                       .text  0806C1C1 00000188 R . . . B . .
+	linputThai                             .text  0806C349 00001D1F R . . . B T .
+	gchar                                  .text  0806E068 00000047 R . . . B T .
+	linput                                 .text  0806E0AF 00000077 R . . . B T .
+	strOffPaperLen                         .text  0806E126 0000004F R . . . B T .
+	strOnPaperLen                          .text  0806E175 00000055 R . . . B T .
+
+'linpesc.c'
+	isesc                                  .text  0806E1CC 0000002F R . . . B T .
+	linpesc                                .text  0806E1FB 0000004F R . . . B T .
+
+'power.c'
+	power                                  .text  0806E24C 0000002D R . . . B T .
+
+'rdnxt.c'
+	fix_buf                                .text  0806E27C 000000A3 R . . . B T .
+	rdnxt                                  .text  0806E31F 00000229 R . . . B T .
+
+'rdprev.c'
+	rdprev                                 .text  0806E548 00000229 R . . . B T .
+
+'rdrec.c'
+	rdrec                                  .text  0806E774 00000220 R . . . B T .
+
+'repkey.c'
+	cmprec                                 .text  0806E994 00000113 R . . . B T .
+	repkey                                 .text  0806EAA7 000001EA R . . . B T .
+
+'rdkey.c'
+	diffKey                                .text  0806EC94 000000B5 R . . . B T .
+	rdkey                                  .text  0806ED49 00000242 R . . . B T .
+
+'reprec.c'
+	reprec                                 .text  0806EF8C 00000158 R . . . B T .
+
+'rfree.c'
+	rfree                                  .text  0806F0E4 000000A5 R . . . B T .
+	rkfree                                 .text  0806F189 0000007F R . . . B T .
+	rdfree                                 .text  0806F208 0000007F R . . . B T .
+	ravail                                 .text  0806F287 0000004F R . . . B T .
+	tfree                                  .text  0806F2D6 00000065 R . . . B T .
+
+'termcap.c'
+	screen_change                          .text  0806F33C 00000075 R . . . B T .
+	termcap                                .text  0806F3B1 0000024B R . . . B T .
+	gettcent                               .text  0806F5FC 00000095 R . . . B T .
+	gettccl                                .text  0806F691 000001BA R . . . B T .
+	getclatt                               .text  0806F84B 00000301 R . . . B T .
+	tcerror                                .text  0806FB4C 00000065 . . . . B T .
+	whereat                                .text  0806FBB1 00000145 R . . . B T .
+	outc                                   .text  0806FCF6 00000032 R . . . B T .
+	at                                     .text  0806FD28 00000061 R . . . B T .
+	qat                                    .text  0806FD89 00000055 R . . . B T .
+	erase_page                             .text  0806FDDE 000000B1 R . . . B T .
+	erase_line                             .text  0806FE8F 000000A6 R . . . B T .
+	clstandout                             .text  0806FF35 00000045 R . . . B T .
+	underline                              .text  0806FF7A 00000045 R . . . B T .
+	feint                                  .text  0806FFBF 00000045 R . . . B T .
+	reverse                                .text  08070004 00000045 R . . . B T .
+	blink                                  .text  08070049 00000045 R . . . B T .
+	bold                                   .text  0807008E 00000045 R . . . B T .
+	clrefresh                              .text  080700D3 000001E2 R . . . B T .
+	qosat                                  .text  080702B5 00000042 R . . . B T .
+	qatt                                   .text  080702F7 0000010E R . . . B T .
+
+'tdclose.c'
+	tdclose                                .text  08070408 00000166 R . . . B T .
+
+'rectott.c'
+	rectott                                .text  08070570 0000018A R . . . B T .
+
+'dates.c'
+	_check_YD                              .text  080706FC 00000144 R . . . B T .
+	loadMonthArrays                        .text  08070840 0000024A R . . . B T .
+	unloadMonthArrays                      .text  08070A8A 0000008F R . . . B T .
+	dateCheck                              .text  08070B19 000000E1 R . . . B T .
+	sysdate                                .text  08070BFA 000000CD R . . . B T .
+	gmtdate                                .text  08070CC7 00000079 R . . . B T .
+	clgetdate                              .text  08070D40 00000928 R . . . B T .
+	makedate                               .text  08071668 000001FD R . . . B T .
+	convdate                               .text  08071865 00000118 R . . . B T .
+	daysarr                                .text  0807197D 000001B5 R . . . B T .
+	arrdays                                .text  08071B32 00000276 R . . . B T .
+	dfmt                                   .text  08071DA8 00000523 R . . . B T .
+
+'openscr.c'
+	bp_intr                                .text  080722CC 0000003D R . . . B T .
+	fatal                                  .text  08072309 000000E5 . . . . B T .
+	cle_intr                               .text  080723EE 00000242 R . . . B T .
+	openscr                                .text  08072630 00000348 R . . . B T .
+	closescr                               .text  08072978 00000184 R . . . B T .
+
+'times.c'
+	systime                                .text  08072AFC 00000066 R . . . B T .
+	gmttime                                .text  08072B62 00000073 R . . . B T .
+	getmsecs                               .text  08072BD5 00000046 R . . . B T .
+	gettime                                .text  08072C1B 000002DA R . . . B T .
+	convtime                               .text  08072EF5 00000117 R . . . B T .
+	maketime                               .text  0807300C 00000078 R . . . B T .
+	maketimehms                            .text  08073084 00000086 R . . . B T .
+	tfmt                                   .text  0807310A 0000053E R . . . B T .
+
+'round.c'
+	clround                                .text  08073648 00000149 R . . . B T .
+
+'compare.c'
+	numsize                                .text  08073794 00000045 R . . . B T .
+	compare                                .text  080737D9 0000022B R . . . B T .
+
+'tttorec.c'
+	tttorec                                .text  08073A04 000001F7 R . . . B T .
+
+'typedp.c'
+	typedp                                 .text  08073BFC 0000006A R . . . B T .
+
+'zap.c'
+	zap                                    .text  08073C68 00000035 R . . . B T .
+	fillbuf                                .text  08073C9D 00000035 R . . . B T .
+
+'getflags.c'
+	_index                                 .text  08073CD4 000000D1 R . . . B T .
+	arg                                    .text  08073DA5 0000003C R . . . B T .
+	getflags                               .text  08073DE1 000001F9 R . . . B T .
+
+'closedb.c'
+	closedb                                .text  08073FDC 0000011F R . . . B T .
+
+'ulckrec.c'
+	_ulckrec                               .text  080740FC 000000A4 R . . . B T .
+	ulckrec                                .text  080741A0 0000006B R . . . B T .
+
+'cmpbuf.c'
+	cmpbuf                                 .text  0807420C 00000029 R . . . B T .
+
+'tdtotd.c'
+	tdtotd                                 .text  08074238 000001DE R . . . B T .
+
+'getdwid.c'
+	getdwid                                .text  08074418 00000081 R . . . B T .
+
+'prscreen.c'
+	tbline                                 .text  0807449C 000000DE R . . . B T .
+	prscreen                               .text  0807457A 000001C8 R . . . B T .
+
+'isfname.c'
+	isfname                                .text  08074744 00000048 R . . . B T .
+
+'bldexpr.c'
+	bldexpr                                .text  0807478C 00000377 R . . . B T .
+
+'fldtobuf.c'
+	fldtobuf                               .text  08074B04 00000241 R . . . B T .
+	getshvar                               .text  08074D45 00000097 R . . . B T .
+
+'getclver.c'
+	getclver                               .text  08074DDC 0000008A R . . . B T .
+
+'getosbuf.c'
+	getosbuf                               .text  08074E68 00000050 R . . . B T .
+
+'clintr.c'
+	cl_intr                                .text  08074EB8 00000061 R . . . B T .
+
+'trim.c'
+	trim                                   .text  08074F1C 0000007C R . . . B T .
+	ftrim                                  .text  08074F98 0000004B R . . . B T .
+	remove_xml_filename                    .text  08074FE4 00000035 R . . . B T .
+
+'clhintr.c'
+	clh_intr                               .text  08075019 00000115 R . . . B T .
+
+'isalist.c'
+	isalist                                .text  08075130 00000044 R . . . B T .
+
+'chkpath.c'
+	chkpath                                .text  08075174 000002A0 R . . . B T .
+	chkperm                                .text  08075414 000000BF R . . . B T .
+	canopen                                .text  080754D3 000000BB R . . . B T .
+	rmdots                                 .text  0807558E 0000013D R . . . B T .
+
+'cllock.c'
+	cllock                                 .text  080756CC 00000098 R . . . B T .
+	clunlock                               .text  08075764 0000003E R . . . B T .
+
+'recomp.c'
+	recomp                                 .text  080757A4 00000588 R . . . B T .
+	__size                                 .text  08075D2C 00000020 R . . . B T .
+	__rpop                                 .text  08075D4C 0000002D R . . . B T .
+	__rpush                                .text  08075D79 00000040 R . . . B T .
+
+'reexec.c'
+	reexec                                 .text  08075DBC 000000EB R . . . B T .
+	__execute                              .text  08075EA7 00000128 R . . . B T .
+	__advance                              .text  08075FCF 0000049E R . . . B T .
+	__cclass                               .text  0807646D 00000074 R . . . B T .
+	__xpush                                .text  080764E1 00000081 R . . . B T .
+	__xpop                                 .text  08076562 0000005A R . . . B T .
+	__getrnge                              .text  080765BC 0000002F R . . . B T .
+'crc.c'
+	acrc                                   .text  080765EC 00000047 R . . . B T .
+	pcrc                                   .text  08076633 000000AC R . . . B T .
+
+'cldelput.c'
+	setNoLogging                           .text  080766E0 0000001A R . . . B T .
+	cldelr                                 .text  080766FA 00000056 R . . . B T .
+	clputr                                 .text  08076750 00000055 R . . . B T .
+	clclrtbl                               .text  080767A5 00000059 R . . . B T .
+	noLogging                              .text  080767FE 000001F9 R . . . B T .
+	clcdb                                  .text  080769F7 000001C2 R . . . B T .
+	rdLogHeader                            .text  08076BB9 0000009D R . . . B T .
+	opentlog                               .text  08076C56 00000249 R . . . B T .
+	startplog                              .text  08076E9F 00000184 R . . . B T .
+	closetlog                              .text  08077023 000000BE R . . . B T .
+	locklog                                .text  080770E1 0000008A R . . . B T .
+	fmtlog                                 .text  0807716B 00000084 R . . . B T .
+	wrlog                                  .text  080771EF 000002B0 R . . . B T .
+	startran                               .text  0807749F 0000009E R . . . B T .
+	endtran                                .text  0807753D 000000A4 R . . . B T .
+
+'cllogerr.c'
+	cllogerr                               .text  080775E4 000002B6 R . . . B T .
+
+'getevar.c'
+	getevar                                .text  0807789C 0000017C R . . . B T .
+	setupEnv                               .text  08077A18 000000C1 R . . . B T .
+
+'convstr.c'
+	convstr                                .text  08077ADC 00000237 R . . . B T .
+
+'getfmode.c'
+	procstat                               .text  08077D14 0000006D R . . . B T .
+	getfmode                               .text  08077D81 0000004E R . . . B T .
+	clgetmode                              .text  08077DCF 0000004E R . . . B T .
+
+'checkdemo.c'
+	checkForDemo                           .text  08077E20 0000009A R . . . B T .
+
+'newttab.c'
+	newttab                                .text  08077EBC 00000082 R . . . B T .
+
+'keydebug.c'
+	cleanup                                .text  08077F40 00000024 . . . . B T .
+	Key_Debugem                            .text  08077F6B 000000AE . . . . B T .
+
+'key.c'
+	key_node                               .text  08078024 0000002B R . . . B T .
+	Key_Print                              .text  0807804F 0000011A R . . . B T .
+	keys_lgetchar                          .text  08078169 00000068 R . . . B T .
+	keys_getchar                           .text  080781D1 00000066 R . . . B T .
+	Key_GetChar                            .text  08078237 00000029 R . . . B T .
+	Key_Ready                              .text  08078260 00000029 R . . . B T .
+	Key_Construct                          .text  08078289 000001A8 R . . . B T .
+	dumpNodes                              .text  08078431 00000083 R . . . B T .
+	key_trav_keys                          .text  080784B4 000000CC R . . . B T .
+	Key_Destruct                           .text  08078580 000000CE R . . . B T .
+	Key_Lookup                             .text  0807864E 0000005C R . . . B T .
+	KeyF_Construct                         .text  080786AA 000000AF R . . . B T .
+	KeyF_ReadFile                          .text  08078759 000000B7 R . . . B T .
+	KeyF_GetChar                           .text  08078810 00000079 R . . . B T .
+	KeyF_Ready                             .text  08078889 0000000D R . . . B T .
+
+'keyname.c'
+	KeyToNumber                            .text  08078898 00000052 R . . . B T .
+	KeyToName                              .text  080788EA 0000005A R . . . B T .
+	Key_GetEscMacroName                    .text  08078944 00000040 R . . . B T .
+
+'process.c'
+	DoActions                              .text  08078984 0000007F R . . . B T .
+	process                                .text  08078A03 00000158 R . . . B T .
+	ReadKeyList                            .text  08078B5B 000001F5 R . . . B T .
+
+'tty.c'
+	Tty_Construct                          .text  08078D50 00000115 R . . . B T .
+	setblock                               .text  08078E65 000000B0 R . . . B T .
+	Tty_Destruct                           .text  08078F15 00000065 R . . . B T .
+	Tty_ResetToFd                          .text  08078F7A 00000058 R . . . B T .
+	readcond                               .text  08078FD2 0000006D R . . . B T .
+	Tty_CharReady                          .text  0807903F 0000006F R . . . B T .
+	Tty_CharGet                            .text  080790AE 00000081 R . . . B T .
+	Tty_KeyIsReady                         .text  0807912F 0000008F R . . . B T .
+
+'bind.c'
+	Function_Bind                          .text  080791C0 0000004B R . . . B T .
+
+'funs.c'
+	Arg_List                               .text  0807920B 0000009F R . . . B T .
+	Arg_Action                             .text  080792AA 0000007C R . . . B T .
+	Arg_String                             .text  08079326 00000076 R . . . B T .
+	Arg_Digit                              .text  0807939C 00000076 R . . . B T .
+	Exit                                   .text  08079414 0000000A R . . . B T .
+	Display                                .text  0807941E 00000037 R . . . B T .
+	DisplayMe                              .text  08079455 00000051 R . . . B T .
+	DoFClear                               .text  080794A6 0000001F R . . . B T .
+	DoFDup                                 .text  080794C5 00000088 R . . . B T .
+	DoFExch                                .text  0807954D 000000A4 R . . . B T .
+	DoFPush                                .text  080795F1 00000077 R . . . B T .
+	DoFPop                                 .text  08079668 00000060 R . . . B T .
+	DoFAdd                                 .text  080796C8 000000AD R . . . B T .
+	DoFDiv                                 .text  08079775 000000B4 R . . . B T .
+	DoFMul                                 .text  08079829 000000AE R . . . B T .
+	DoFSub                                 .text  080798D7 000000AD R . . . B T .
+	DoFPushK                               .text  08079984 00000083 R . . . B T .
+	DoSDisplayf                            .text  08079A07 000000DF R . . . B T .
+	DoFPstack                              .text  08079AE6 0000009B R . . . B T .
+	DoSUngetkey                            .text  08079B81 000000D3 R . . . B T .
+	DoStoN                                 .text  08079C54 0000008F R . . . B T .
+	DoSetRetVal                            .text  08079CE3 000000A4 R . . . B T .
+	GetStackDigit                          .text  08079D87 00000097 R . . . B T .
+	GetStackString                         .text  08079E1E 00000073 R . . . B T .
+	DoPushKeyName                          .text  08079E91 000000BA R . . . B T .
+	DoMacro                                .text  08079F4B 00000062 R . . . B T .
+	DoMacroAdd                             .text  08079FAD 0000004E R . . . B T .
+	DoMacroStr                             .text  08079FFB 00000059 R . . . B T .
+
+'lex.c'
+	Lex                                    .text  0807A054 00000565 R . . . B T .
+	Lex_GetChar                            .text  0807A5B9 000001BA R . . . B T .
+	Lex_GetSChar                           .text  0807A773 00000305 R . . . B T .
+
+'basename.c'
+	clbasename                             .text  0807AA78 0000004B R . . . B T .
+	rmexten                                .text  0807AAC3 00000071 R . . . B T .
+
+'cafuncs.c'
+	camake                                 .text  0807AB34 000000A0 R . . . B T .
+	cafree                                 .text  0807ABD4 00000054 R . . . B T .
+
+'elist.c'
+	elist_Create                           .text  0807AC28 00000036 R . . . B T .
+	elist_Add                              .text  0807AC5E 00000072 R . . . B T .
+	elist_Delete                           .text  0807ACD0 0000005B R . . . B T .
+	elist_Next                             .text  0807AD2B 0000001F R . . . B T .
+	elist_Prev                             .text  0807AD4A 0000001F R . . . B T .
+	elist_Traverse                         .text  0807AD69 0000003C R . . . B T .
+	elist_Destruct                         .text  0807ADA5 00000047 R . . . B T .
+
+'extstr.c'
+	extstr                                 .text  0807ADEC 00000117 R . . . B T .
+
+'getdirname.c'
+	getdirname                             .text  0807AF04 00000141 R . . . B T .
+
+'gnname.c'
+	getnodename                            .text  0807B048 00000070 R . . . B T .
+
+'mstrings.c'
+	mfree_0                                .text  0807B0B8 0000002F R . . . B T .
+	mmalloc                                .text  0807B0E7 00000081 R . . . B T .
+	mrealloc                               .text  0807B168 00000071 R . . . B T .
+	mmalloc_init                           .text  0807B1D9 0000002D R . . . B . .
+	mstrcpy                                .text  0807B206 000000C1 R . . . B T .
+	mstrncpy                               .text  0807B2C7 0000004B R . . . B T .
+	mstrcat                                .text  0807B312 000000AD R . . . B T .
+
+'error.c'
+	tstamp                                 .text  0807B3C0 00000043 R . . . B T .
+	gsyserr                                .text  0807B403 0000002A R . . . B . .
+	syserror                               .text  0807B42D 00000080 R . . . B T .
+	error_0                                .text  0807B4AD 00000069 R . . . B T .
+	xwarn                                  .text  0807B516 00000069 R . . . B T .
+
+'print.c'
+	cgiprint                               .text  0807B580 00000194 R . . . B T .
+	eprint                                 .text  0807B714 0000005C R . . . B T .
+	print                                  .text  0807B770 00000049 R . . . B T .
+	oprint                                 .text  0807B7B9 00000034 R . . . B T .	
+	dprint                                 .text  0807B7ED 000000A2 R . . . B T .
+
+'sutimes.c'
+	sutimes                                .text  0807B890 000001B2 R . . . B T .
+
+'tree.c'
+	tree_init                              .text  0807BA44 0000000E R . . . B T .
+	tree_srch                              .text  0807BA52 0000007E R . . . B . .
+	tree_add                               .text  0807BAD0 00000038 R . . . B . .
+	tree_delete                            .text  0807BB08 00000046 R . . . B . .
+	tree_trav                              .text  0807BB4E 0000007E R . . . B . .
+	tree_mung                              .text  0807BBCC 0000006F R . . . B . .
+	sprout                                 .text  0807BC3B 0000027F R . . . B . .
+	delete                                 .text  0807BEBA 00000176 R . . . B . .
+	del                                    .text  0807C030 00000092 R . . . B . .
+	bal_L                                  .text  0807C0C2 000000EE R . . . B . .
+	bal_R                                  .text  0807C1B0 000000F1 R . . . B . .
+
+// Following four files are part of the expat xml library package
+'xml.c'
+'xmlparse.c'
+'xmlrole.c'
+'xmltok.c'
+	_xmlInsertDummyTage                    .text  0807C2A4 00000125 R . . . B T .
+	_xmlNextElement                        .text  0807C3C9 0000013D R . . . B T .
+	_xmlNextAttribute                      .text  0807C506 00000055 R . . . B T .
+	_xmlNextAttributeValue                 .text  0807C55B 00000019 R . . . B T .
+	_xmlElementText                        .text  0807C574 00000019 R . . . B T .
+	_xmlPartElementText                    .text  0807C58D 000000F1 R . . . B T .
+	_xmlIsCdata                            .text  0807C67E 00000029 R . . . B T .
+	_xmlIsLong                             .text  0807C6A7 00000029 R . . . B T .
+	_xmlTextLength                         .text  0807C6D0 0000009D R . . . B T .
+	xmlCdataStart                          .text  0807C76D 0000001A R . . . B T .
+	xmlCdataEnd                            .text  0807C787 0000001A R . . . B T .
+	xmlCommentHandler                      .text  0807C7A1 0000011B R . . . B T .
+	xmlStartElement                        .text  0807C8BC 0000012A R . . . B T .
+	xmlTextHandler                         .text  0807C9E6 0000027C R . . . B T .
+	xmlEndElement                          .text  0807CC62 0000009C R . . . B T .
+	xmlInit                                .text  0807CCFE 00000236 R . . . B T .
+	xmlGetElem                             .text  0807CF34 00000055 R . . . B T .
+	xmlGetValue                            .text  0807CF89 0000019C R . . . B T .
+	xmlPreEncFile                          .text  0807D125 00000019 R . . . B T .
+	XML_ParserCreate                       .text  0807D140 000002FD R . . . B T .
+	XML_ParserCreateNS                     .text  0807D43D 00000099 R . . . B T .
+	XML_SetEncoding                        .text  0807D4D6 0000004E R . . . B . .
+	XML_ExternalEntityParserCreate         .text  0807D524 000001B0 R . . . B . .
+	destroyBindings                        .text  0807D6D4 0000003D R . . . B T .
+	XML_ParserFree                         .text  0807D711 0000011B R . . . B T .
+	XML_UseParserAsHandlerArg              .text  0807D82C 0000000B R . . . B . .
+	XML_SetUserData                        .text  0807D837 0000001B R . . . B T .
+	XML_SetBase                            .text  0807D852 0000004E R . . . B . .
+	XML_GetBase                            .text  0807D8A0 0000000E R . . . B . .
+	XML_GetSpecifiedAttributeCount         .text  0807D8AE 0000000E R . . . B . .
+	XML_GetIdAttributeIndex                .text  0807D8BC 0000000E R . . . B . .
+	XML_SetElementHandler                  .text  0807D8CA 00000014 R . . . B . .
+	XML_SetCharacterDataHandler            .text  0807D8DE 0000000E R . . . B . .
+	XML_SetProcessingInstructionHandler    .text  0807D8EC 0000000E R . . . B . .
+	XML_SetCommentHandler                  .text  0807D8FA 0000000E R . . . B . .
+	XML_SetCdataSectionHandler             .text  0807D908 00000014 R . . . B . .
+	XML_SetDefaultHandler                  .text  0807D91C 00000018 R . . . B . .
+	XML_SetDefaultHandlerExpand            .text  0807D934 00000018 R . . . B . .
+	XML_SetDoctypeDeclHandler              .text  0807D94C 00000014 R . . . B . .
+	XML_SetUnparsedEntityDeclHandler       .text  0807D960 0000000E R . . . B . .
+	XML_SetExternalParsedEntityDeclHandler .text  0807D96E 0000000E R . . . B . .
+	XML_SetInternalParsedEntityDeclHandler .text  0807D97C 0000000E R . . . B . .
+	XML_SetNotationDeclHandler             .text  0807D98A 0000000E R . . . B . .
+	XML_SetNamespaceDeclHandler            .text  0807D998 00000014 R . . . B . .
+	XML_SetNotStandaloneHandler            .text  0807D9AC 0000000E R . . . B . .
+	XML_SetExternalEntityRefHandler        .text  0807D9BA 0000000E R . . . B . .
+	XML_SetExternalEntityRefHandlerArg     .text  0807D9C8 00000013 R . . . B . .
+	XML_SetUnknownEncodingHandler          .text  0807D9DB 00000017 R . . . B . .
+	XML_SetParamEntityParsing              .text  0807D9F2 0000000F R . . . B . .
+	XML_Parse                              .text  0807DA01 000001F6 R . . . B T .
+	XML_ParseBuffer                        .text  0807DBF7 000000BD R . . . B . .
+	XML_GetBuffer                          .text  0807DCB4 000000FB R . . . B . .
+	XML_GetErrorCode                       .text  0807DDAF 0000000E R . . . B . .
+	XML_GetCurrentByteIndex                .text  0807DDBD 00000028 R . . . B . .
+	XML_GetCurrentByteCount                .text  0807DDE5 0000002D R . . . B . .
+	XML_GetCurrentLineNumber               .text  0807DE12 00000056 R . . . B . .
+	XML_GetCurrentColumnNumber             .text  0807DE68 00000055 R . . . B . .
+	XML_DefaultCurrent                     .text  0807DEBD 0000005A R . . . B . .
+	XML_ErrorString                        .text  0807DF17 0000002B R . . . B T .
+	contentProcessor                       .text  0807DF42 00000039 R . . . B . .
+	externalEntityInitProcessor            .text  0807DF7B 0000005F R . . . B . .
+	externalEntityInitProcessor2           .text  0807DFDA 000000BB R . . . B . .
+	externalEntityInitProcessor3           .text  0807E095 000000F9 R . . . B . .
+	externalEntityContentProcessor         .text  0807E18E 00000039 R . . . B . .
+	doContent                              .text  0807E1C7 00000CA0 R . . . B . .
+	storeAtts                              .text  0807EE67 000007C0 R . . . B . .
+	addBinding                             .text  0807F627 00000177 R . . . B T .
+	cdataSectionProcessor                  .text  0807F79E 0000007A R . . . B . .
+	doCdataSection                         .text  0807F818 000001FD R . . . B . .
+	initializeEncoding                     .text  0807FA15 0000005F R . . . B . .
+	processXmlDecl                         .text  0807FA74 00000169 R . . . B . .
+	handleUnknownEncoding                  .text  0807FBDD 00000104 R . . . B . .
+	prologInitProcessor                    .text  0807FCE1 0000005F R . . . B . .
+	prologProcessor                        .text  0807FD40 00000062 R . . . B . .
+	doProlog                               .text  0807FDA2 00000C03 R . . . B . .
+	epilogProcessor                        .text  080809A5 00000161 R . . . B . .
+	errorProcessor                         .text  08080B06 0000000E R . . . B . .
+	storeAttributeValue                    .text  08080B14 00000089 R . . . B . .
+	appendAttributeValue                   .text  08080B9D 00000369 R . . . B . .
+	storeEntityValue                       .text  08080F06 000001A8 R . . . B . .
+	normalizeLines                         .text  080810AE 00000038 R . . . B . .
+	reportProcessingInstruction            .text  080810E6 00000110 R . . . B . .
+	reportComment                          .text  080811F6 0000009F R . . . B . .
+	reportDefault                          .text  08081295 000000B1 R . . . B . .
+	defineAttribute                        .text  08081346 000000E0 R . . . B . .
+	setElementTypePrefix                   .text  08081426 00000118 R . . . B . .
+	getAttributeId                         .text  0808153E 00000244 R . . . B . .
+	getContext                             .text  08081782 00000335 R . . . B . .
+	setContext                             .text  08081AB7 00000296 R . . . B . .
+	normalizePublicId                      .text  08081D4D 00000053 R . . . B . .
+	dtdInit                                .text  08081DA0 00000068 R . . . B . .
+	dtdDestroy                             .text  08081E08 00000087 R . . . B T .
+	dtdCopy                                .text  08081E8F 0000039F R . . . B . .
+	copyEntityTable                        .text  0808222E 0000014B R . . . B . .
+	keyeq                                  .text  08082379 0000002C R . . . B . .
+	hash                                   .text  080823A5 00000027 R . . . B . .
+	lookup                                 .text  080823CC 00000206 R . . . B T .
+	hashTableDestroy                       .text  080825D2 0000004F R . . . B . .
+	hashTableInit                          .text  08082621 00000023 R . . . B . .
+	hashTableIterInit                      .text  08082644 00000018 R . . . B . .
+	hashTableIterNext                      .text  0808265C 0000002C R . . . B . .
+	poolInit                               .text  08082688 0000002A R . . . B . .
+	poolClear                              .text  080826B2 00000048 R . . . B . .
+	poolDestroy                            .text  080826FA 0000006E R . . . B . .
+	poolAppend                             .text  08082768 0000006B R . . . B . .
+	poolCopyString                         .text  080827D3 0000004E R . . . B . .
+	poolCopyStringN                        .text  08082821 00000071 R . . . B . .
+	poolStoreString                        .text  08082892 00000060 R . . . B . .
+	poolGrow                               .text  080828F2 00000180 R . . . B . .
+	prolog0                                .text  08082A74 000000AE R . . . B . .
+	prolog1                                .text  08082B22 00000097 R . . . B . .
+	prolog2                                .text  08082BB9 00000065 R . . . B . .
+	doctype0                               .text  08082C1E 00000057 R . . . B . .
+	doctype1                               .text  08082C75 000000DB R . . . B . .
+	doctype2                               .text  08082D50 0000004B R . . . B . .
+	doctype3                               .text  08082D9B 0000004B R . . . B . .
+	doctype4                               .text  08082DE6 00000066 R . . . B . .
+	doctype5                               .text  08082E4C 0000004B R . . . B . .
+	internalSubset                         .text  08082E97 0000012B R . . . B . .
+	entity0                                .text  08082FC2 00000066 R . . . B . .
+	entity1                                .text  08083028 0000004B R . . . B . .
+	entity2                                .text  08083073 000000CD R . . . B . .
+	entity3                                .text  08083140 0000004B R . . . B . .
+	entity4                                .text  0808318B 0000004B R . . . B . .
+	entity5                                .text  080831D6 00000099 R . . . B . .
+	entity6                                .text  0808326F 0000004B R . . . B . .
+	entity7                                .text  080832BA 000000CD R . . . B . .
+	entity8                                .text  08083387 0000004B R . . . B . .
+	entity9                                .text  080833D2 0000004B R . . . B . .
+	notation0                              .text  0808341D 0000004B R . . . B . .
+	notation1                              .text  08083468 000000A9 R . . . B . .
+	notation2                              .text  08083511 0000004B R . . . B . .
+	notation3                              .text  0808355C 0000004B R . . . B . .
+	notation4                              .text  080835A7 00000066 R . . . B . .
+	attlist0                               .text  0808360D 00000057 R . . . B . .
+	attlist1                               .text  08083664 0000006D R . . . B . .
+	attlist2                               .text  080836D1 000000D3 R . . . B . .
+	attlist3                               .text  080837A4 00000057 R . . . B . .
+	attlist4                               .text  080837FB 0000005F R . . . B . .
+	attlist5                               .text  0808385A 0000004B R . . . B . .
+	attlist6                               .text  080838A5 0000004B R . . . B . .
+	attlist7                               .text  080838F0 0000005F R . . . B . .
+	attlist8                               .text  0808394F 00000121 R . . . B . .
+	attlist9                               .text  08083A70 0000004B R . . . B . .
+	element0                               .text  08083ABB 00000057 R . . . B . .
+	element1                               .text  08083B12 000000E4 R . . . B . .
+	element2                               .text  08083BF6 000000E5 R . . . B . .
+	element3                               .text  08083CDB 0000006B R . . . B . .
+	element4                               .text  08083D46 00000057 R . . . B . .
+	element5                               .text  08083D9D 00000066 R . . . B . .
+	element6                               .text  08083E03 00000095 R . . . B . .
+	element7                               .text  08083E98 000000D4 R . . . B . .
+	declClose                              .text  08083F6C 0000004B R . . . B . .
+	error                                  .text  08083FB7 0000000A R . . . B . .
+	common                                 .text  08083FC1 00000020 R . . . B . .
+	XmlPrologStateInit                     .text  08083FE1 0000001B R . . . B . .
+	isNever                                .text  08083FFC 0000000A R . . . B . .
+	utf8_isName2                           .text  08084006 00000063 R . . . B . .
+	utf8_isName3                           .text  08084069 00000076 R . . . B . .
+	utf8_isNmstrt2                         .text  080840DF 00000063 R . . . B . .
+	utf8_isNmstrt3                         .text  08084142 00000076 R . . . B . .
+	utf8_isInvalid3                        .text  080841B8 0000003B R . . . B . .
+	utf8_isInvalid4                        .text  080841F3 00000022 R . . . B . .
+	normal_scanComment                     .text  08084215 00000144 R . . . B . .
+	normal_scanDecl                        .text  08084359 0000010B R . . . B . .
+	normal_checkPiTarget                   .text  08084464 0000009B R . . . B . .
+	normal_scanPi                          .text  080844FF 000002ED R . . . B . .
+	normal_scanCdataSection                .text  080847EC 00000055 R . . . B . .
+	normal_cdataSectionTok                 .text  08084841 000001F7 R . . . B . .
+	normal_scanEndTag                      .text  08084A38 000001F0 R . . . B . .
+	normal_scanHexCharRef                  .text  08084C28 00000069 R . . . B . .
+	normal_scanCharRef                     .text  08084C91 00000086 R . . . B . .
+	normal_scanRef                         .text  08084D17 000001E8 R . . . B . .
+	normal_scanAtts                        .text  08084EFF 000003A2 R . . . B . .
+	normal_scanLt                          .text  080852A1 000003A3 R . . . B . .
+	normal_contentTok                      .text  08085644 0000026E R . . . B T .
+	normal_scanPercent                     .text  080858B2 000001CC R . . . B . .
+	normal_scanPoundName                   .text  08085A7E 000001B2 R . . . B . .
+	normal_scanLit                         .text  08085C30 0000011B R . . . B . .
+	normal_prologTok                       .text  08085D4B 00000516 R . . . B . .
+	normal_attributeValueTok               .text  08086261 00000116 R . . . B . .
+	normal_entityValueTok                  .text  08086377 00000108 R . . . B . .
+	normal_isPublicId                      .text  0808647F 00000071 R . . . B . .
+	normal_getAtts                         .text  080864F0 0000004D R . . . B . .
+	normal_charRefNumber                   .text  08086745 000000A3 R . . . B . .
+	normal_predefinedEntityName            .text  080867E8 000000A0 R . . . B . .
+	normal_sameName                        .text  08086888 000000D1 R . . . B . .
+	normal_nameMatchesAscii                .text  08086959 0000003B R . . . B . .
+	normal_nameLength                      .text  08086994 00000051 R . . . B . .
+	normal_skipS                           .text  080869E5 00000027 R . . . B . .
+	normal_updatePosition                  .text  08086A0C 00000083 R . . . B . .
+	utf8_toUtf8                            .text  08086A8F 00000064 R . . . B . .
+	utf8_toUtf16                           .text  08086AF3 00000119 R . . . B . .
+	latin1_toUtf8                          .text  08086C0C 00000063 R . . . B . .
+	latin1_toUtf16                         .text  08086C6F 0000003C R . . . B . .
+	ascii_toUtf8                           .text  08086CAB 0000003B R . . . B . .
+	unicode_byte_type                      .text  08086CE6 00000059 R . . . B . .
+	little2_toUtf8                         .text  08086D3F 000001A1 R . . . B . .
+	little2_toUtf16                        .text  08086EE0 0000006F R . . . B . .
+	big2_toUtf8                            .text  08086F4F 000001A1 R . . . B . .
+	big2_toUtf16                           .text  080870F0 0000006F R . . . B . .
+	little2_scanComment                    .text  0808715F 00000128 R . . . B . .
+	little2_scanDecl                       .text  08087287 00000173 R . . . B . .
+	little2_checkPiTarget                  .text  080873FA 000000CA R . . . B . .
+	little2_scanPi                         .text  080874C4 000002B7 R . . . B . .
+	little2_scanCdataSection               .text  0808777B 0000005B R . . . B . .
+	little2_cdataSectionTok                .text  080877D6 00000210 R . . . B . .
+	little2_scanEndTag                     .text  080879E6 00000207 R . . . B . .
+	little2_scanHexCharRef                 .text  08087BED 000000B3 R . . . B . .
+	little2_scanCharRef                    .text  08087CA0 000000D5 R . . . B . .
+	little2_scanRef                        .text  08087D75 000001B9 R . . . B . .
+	little2_scanAtts                       .text  08087F2E 00000391 R . . . B . .
+	little2_scanLt                         .text  080882BF 00000376 R . . . B . .
+	little2_contentTok                     .text  08088635 00000283 R . . . B . .
+	little2_scanPercent                    .text  080888B8 000001A4 R . . . B . .
+	little2_scanPoundName                  .text  08088A5C 00000186 R . . . B . .
+	little2_scanLit                        .text  08088BE2 00000123 R . . . B . .
+	little2_prologTok                      .text  08088D05 00000563 R . . . B . .
+	little2_attributeValueTok              .text  08089268 00000167 R . . . B . .
+	little2_entityValueTok                 .text  080893CF 00000161 R . . . B . .
+	little2_isPublicId                     .text  08089530 000000C5 R . . . B . .
+	little2_getAtts                        .text  080895F5 0000006A R . . . B . .
+	little2_charRefNumber                  .text  0808985A 000000D9 R . . . B . .
+	little2_predefinedEntityName           .text  08089933 00000147 R . . . B . .
+	little2_sameName                       .text  08089A7A 00000116 R . . . B . .
+	little2_nameMatchesAscii               .text  08089B90 00000043 R . . . B . .
+	little2_nameLength                     .text  08089BD3 00000074 R . . . B . .
+	little2_skipS                          .text  08089C47 0000004E R . . . B . .
+	little2_updatePosition                 .text  08089C95 000000CD R . . . B . .
+	big2_scanComment                       .text  08089D62 00000128 R . . . B . .
+	big2_scanDecl                          .text  08089E8A 00000173 R . . . B . .
+	big2_checkPiTarget                     .text  08089FFD 000000CA R . . . B . .
+	big2_scanPi                            .text  0808A0C7 000002B9 R . . . B . .
+	big2_scanCdataSection                  .text  0808A380 0000005B R . . . B . .
+	big2_cdataSectionTok                   .text  0808A3DB 00000210 R . . . B . .
+	big2_scanEndTag                        .text  0808A5EB 00000209 R . . . B . .
+	big2_scanHexCharRef                    .text  0808A7F4 000000B3 R . . . B . .
+	big2_scanCharRef                       .text  0808A8A7 000000D5 R . . . B . .
+	big2_scanRef                           .text  0808A97C 000001BB R . . . B . .
+	big2_scanAtts                          .text  0808AB37 00000391 R . . . B . .
+	big2_scanLt                            .text  0808AEC8 00000379 R . . . B . .
+	big2_contentTok                        .text  0808B241 00000283 R . . . B . .
+	big2_scanPercent                       .text  0808B4C4 000001A6 R . . . B . .
+	big2_scanPoundName                     .text  0808B66A 00000188 R . . . B . .
+	big2_scanLit                           .text  0808B7F2 00000123 R . . . B . .
+	big2_prologTok                         .text  0808B915 00000566 R . . . B . .
+	big2_attributeValueTok                 .text  0808BE7B 00000167 R . . . B . .
+	big2_entityValueTok                    .text  0808BFE2 00000161 R . . . B . .
+	big2_isPublicId                        .text  0808C143 000000C5 R . . . B . .
+	big2_getAtts                           .text  0808C208 0000006A R . . . B . .
+	big2_charRefNumber                     .text  0808C46D 000000D9 R . . . B . .
+	big2_predefinedEntityName              .text  0808C546 00000147 R . . . B . .
+	big2_sameName                          .text  0808C68D 00000116 R . . . B . .
+	big2_nameMatchesAscii                  .text  0808C7A3 00000043 R . . . B . .
+	big2_nameLength                        .text  0808C7E6 00000074 R . . . B . .
+	big2_skipS                             .text  0808C85A 0000004E R . . . B . .
+	big2_updatePosition                    .text  0808C8A8 000000CD R . . . B . .
+	streqci                                .text  0808C975 00000043 R . . . B . .
+	initUpdatePosition                     .text  0808C9B8 0000003E R . . . B . .
+	toAscii                                .text  0808C9F6 00000046 R . . . B . .
+	isSpace                                .text  0808CA3C 0000002D R . . . B . .
+	parsePseudoAttribute                   .text  0808CA69 000001AA R . . . B . .
+	doParseXmlDecl                         .text  0808CC13 000002B3 R . . . B . .
+	checkCharRefNumber                     .text  0808CEC6 00000061 R . . . B . .
+	XmlUtf8Encode                          .text  0808CF27 000000B3 R . . . B . .
+	XmlUtf16Encode                         .text  0808CFDA 0000005B R . . . B . .
+	XmlSizeOfUnknownEncoding               .text  0808D035 0000000A R . . . B . .
+	unknown_isName                         .text  0808D03F 0000006A R . . . B . .
+	unknown_isNmstrt                       .text  0808D0A9 0000006A R . . . B . .
+	unknown_isInvalid                      .text  0808D113 00000048 R . . . B . .
+	unknown_toUtf8                         .text  0808D15B 000000BD R . . . B . .
+	unknown_toUtf16                        .text  0808D218 0000007F R . . . B . .
+	XmlInitUnknownEncoding                 .text  0808D297 0000028F R . . . B . .
+	getEncodingIndex                       .text  0808D526 00000053 R . . . B . .
+	initScan                               .text  0808D579 000001DF R . . . B . .
+	XmlGetUtf8InternalEncoding             .text  0808D758 00000016 R . . . B . .
+	XmlGetUtf16InternalEncoding            .text  0808D76E 0000002F R . . . B . .
+	initScanProlog                         .text  0808D79D 0000004D R . . . B . .
+	initScanContent                        .text  0808D7EA 0000004D R . . . B . .
+	XmlInitEncoding                        .text  0808D837 0000006B R . . . B . .
+	findEncoding                           .text  0808D8A2 000000BA R . . . B T .
+	XmlParseXmlDecl                        .text  0808D95C 00000068 R . . . B . .
+
+'dbopen.c'
+	cldbopen                               .text  0808D9C4 00000049 R . . . B T .
+	cldbopenv                              .text  0808DA0D 000001F4 R . . . B T .
+
+'shutdb.c'
+	_shutdb                                .text  0808DC04 0000003A R . . . B T .
+	_setshut                               .text  0808DC3E 00000038 R . . . B T .
+
+'dbclos.c'
+	cldbclose                              .text  0808DC78 00000030 R . . . B T .
+	_cldbclose                             .text  0808DCA8 000000CF R . . . B T .
+	cldbcloseall                           .text  0808DD77 0000003C R . . . B . .
+
+'dbspac.c'
+	nextra                                 .text  0808DDB4 0000003D R . . . B T .
+	dbspace                                .text  0808DDF1 00000071 R . . . B T .
+	tblspace                               .text  0808DE62 00000042 R . . . B . .
+	_tblspace                              .text  0808DEA4 00000091 R . . . B T .
+
+
+'dbsize.c'
+	dbsize                                 .text  0808DF38 00000034 R . . . B T .
+	dbpgsize                               .text  0808DF6C 0000005D R . . . B T .
+
+'usage.c'
+	_usage                                 .text  0808DFCC 000001CB R . . . B T .
+
+'delr.c'
+	_delr                                  .text  0808E198 000000AA R . . . B T .
+	delr                                   .text  0808E242 0000003F R . . . B T .
+	delete_0                               .text  0808E281 00000040 R . . . B . .
+
+'putr.c'
+	_putr                                  .text  0808E2C4 000000E6 R . . . B T .
+	putr                                   .text  0808E3AA 0000004F R . . . B T .
+	lputr                                  .text  0808E3F9 0000004F R . . . B T .
+	newr                                   .text  0808E448 0000004F R . . . B . .
+	lnewr                                  .text  0808E497 0000004F R . . . B . .
+	lmodr                                  .text  0808E4E6 0000004F R . . . B . .
+	modr                                   .text  0808E535 0000004F R . . . B . .
+	replace                                .text  0808E584 00000050 R . . . B . .
+
+'ulockr.c'
+	_ulockr                                .text  0808E5D4 00000074 R . . . B T .
+	ulockr                                 .text  0808E648 0000003F R . . . B T .
+
+'compos.c'
+	compose                                .text  0808E688 0000005D R . . . B T .
+	reorder                                .text  0808E6E5 0000005D R . . . B T .
+	_build                                 .text  0808E742 00000119 R . . . B T .
+
+'identi.c'
+	identify                               .text  0808E85C 0000003F R . . . B T .
+	lidentify                              .text  0808E89B 0000003F R . . . B T .
+	_identify                              .text  0808E8DA 0000019C R . . . B T .
+
+'tblglo.c'
+	_chktd                                 .text  0808EA78 0000005D R . . . B T .
+	_nxttd                                 .text  0808EAD5 0000003F R . . . B T .
+	_rmtd                                  .text  0808EB14 0000003A R . . . B T .
+	tblrow                                 .text  0808EB4E 0000002F R . . . B T .
+	_chkname                               .text  0808EB7D 000000A9 R . . . B T .
+	_shuttd                                .text  0808EC26 0000004F R . . . B T .
+	nr2td                                  .text  0808EC75 0000002E R . . . B T .
+
+'releas.c'
+	release                                .text  0808ECA4 00000038 R . . . B T .
+	_release                               .text  0808ECDC 000000B3 R . . . B T .
+	sfree                                  .text  0808ED8F 00000051 R . . . B T .
+	mfree                                  .text  0808EDE0 00000081 R . . . B T .
+
+'join.c'
+	join                                   .text  0808EE64 000002BC R . . . B T .
+
+'loadr.c'
+	loadr                                  .text  0808F120 0000003F R . . . B T .
+	addrun                                 .text  0808F15F 000000BF R . . . B T .
+	_loadr                                 .text  0808F21E 000003BB R . . . B T .
+
+'ltrans.c'
+	_ltransfer                             .text  0808F5DC 00000146 R . . . B T .
+	ltransfer                              .text  0808F722 00000038 R . . . B T .
+	clfork                                 .text  0808F75A 00000054 R . . . B T .
+
+'mktabl.c'
+	mktable                                .text  0808F7B0 0000004D R . . . B T .
+	_mktable                               .text  0808F7FD 0000015F R . . . B T .
+	newfdf                                 .text  0808F95C 0000025B R . . . B T .
+	newdesc                                .text  0808FBB7 00000175 R . . . B T .
+	scntbl                                 .text  0808FD2C 00000067 R . . . B T .
+
+'rdhdr.c'
+	_rdhdr                                 .text  0808FD94 00000105 R . . . B T .
+
+'getatt.c'
+	_getattrib                             .text  0808FE9C 0000009C R . . . B T .
+
+'getsha.c'
+	_getshape                              .text  0808FF38 0000004A R . . . B T .
+	ldshape                                .text  0808FF82 000001C2 R . . . B T .
+	map41type                              .text  08090144 00000018 R . . . B T .
+	maptype                                .text  0809015C 00000037 R . . . B T .
+
+'chkind.c'
+	_chkindex                              .text  08090194 00000098 R . . . B T .
+
+'salloc.c'
+	_salloc                                .text  0809022C 00000074 R . . . B T .
+
+'sameke.c'
+	samekey                                .text  080902A0 00000140 R . . . B T .
+
+'testr.c'
+	testr                                  .text  080903E0 0000008F R . . . B T .
+
+'relsha.c'
+	_relshare                              .text  08090470 00000005 R . . . B T .
+	
+'oshare.c'
+	_oshare                                .text  08090478 0000003D R . . . B T .
+
+'commit.c'
+	commit                                 .text  080904B8 00000039 R . . . B . .
+	_commit                                .text  080904F1 0000016C R . . . B T .
+
+'dbglob.c'
+	_chkdb                                 .text  08090660 00000027 R . . . B T .
+	_nxtdb                                 .text  08090687 0000003F R . . . B T .
+	_rmdb                                  .text  080906C6 0000003B R . . . B T .
+	_chkdbname                             .text  08090701 00000058 R . . . B T .
+	_dbname                                .text  08090759 00000037 R . . . B T .
+	fdf2db                                 .text  08090790 0000002E R . . . B T .
+
+'fldxfe.c'
+	fldxfer                                .text  080907C0 000001A0 R . . . B T .
+
+'getr.c'
+	_getr                                  .text  08090960 00000132 R . . . B T .
+	getr                                   .text  08090A92 0000004B R . . . B T .
+	lgetr                                  .text  08090ADD 00000030 R . . . B T .
+	retrieve                               .text  08090B0D 0000004F R . . . B . .
+	lretrieve                              .text  08090B5C 0000004F R . . . B . .
+
+'keysiz.c'
+	_keysize                               .text  08090BAC 00000030 R . . . B T .
+	_keymin                                .text  08090BDC 00000041 R . . . B T .
+
+'lockr.c'
+	_lockr                                 .text  08090C20 00000116 R . . . B T .
+
+'update.c'
+	_update                                .text  08090D38 00000343 R . . . B T .
+
+'ulock.c'
+	_ulock                                 .text  0809107C 000000EB R . . . B T .
+	ulockall                               .text  08091167 00000049 R . . . B T .
+
+'uptupl.c'
+	_uptuple                               .text  080911B0 00000133 R . . . B T .
+	inlist                                 .text  080912E3 0000002C R . . . B T .
+
+'newexp.c'
+	newexpr                                .text  08091310 00000085 R . . . B T .
+
+'newjun.c'
+	newjunc                                .text  08091398 00000060 R . . . B T .
+
+'nextr.c'
+	_nxtr                                  .text  080913F8 000001DE R . . . B T .
+	nextr                                  .text  080915D6 0000005D R . . . B . .
+	nxtr                                   .text  08091633 0000005D R . . . B T .
+	getnxt                                 .text  08091690 0000005E R . . . B T .
+	nextset                                .text  080916EE 0000005C R . . . B . .
+
+'prevr.c'
+	_prevr                                 .text  0809174C 000001DA R . . . B T .
+	prevr                                  .text  08091926 0000004D R . . . B . .
+	getprev                                .text  08091973 0000004E R . . . B T .
+	prevset                                .text  080919C1 0000004C R . . . B . .
+
+'seq.c'
+	newseq                                 .text  08091A10 00000048 R . . . B T .
+	relseq                                 .text  08091A58 0000005D R . . . B T .
+
+'picknx.c'
+	_picknxt                               .text  08091AB8 0000017B R . . . B T .
+
+'pickpr.c'
+	_pickprev                              .text  08091C34 00000193 R . . . B T .
+
+'restri.c'
+	cdbrestrict                            .text  08091DC8 00000038 R . . . B T .
+	_restrict                              .text  08091E00 000000D9 R . . . B T .
+	getwpos                                .text  08091ED9 0000003F R . . . B T .
+	xkey                                   .text  08091F18 000000EA R . . . B T .
+
+'rlist.c'
+	_rlist                                 .text  08092004 0000007F R . . . B T .
+
+'recsiz.c'
+	recsize                                .text  08092084 00000029 R . . . B T .
+	keysize                                .text  080920AD 00000029 R . . . B T .
+
+'rowsiz.c'
+	_rowsize                               .text  080920D8 00000024 R . . . B T .
+	_rowmin                                .text  080920FC 0000002D R . . . B T .
+
+'rtokey.c'
+	rtokey                                 .text  0809212C 0000014A R . . . B T .
+
+'rtotup.c'
+	rtotup                                 .text  08092278 000000DE R . . . B T .
+
+'sflush.c'
+	_sflush                                .text  08092358 000001E1 R . . . B T .
+	count                                  .text  08092539 00000023 R . . . B T .
+	extract                                .text  0809255C 00000090 R . . . B T .
+
+'imerge.c'
+	_imerge                                .text  080925EC 00000079 R . . . B T .
+
+'dmerge.c'
+	_dmerge                                .text  08092668 00000079 R . . . B T .
+
+'stepba.c'
+	findprev                               .text  080926E4 0000010F R . . . B T .
+	_stepbak                               .text  080927F3 000000DB R . . . B T .
+
+'stepfw.c'
+	findnxt                                .text  080928D0 00000117 R . . . B T .
+	_stepfwd                               .text  080929E7 000000E7 R . . . B T .
+
+'getpat.c'
+	_getpath                               .text  08092AD0 000000B0 R . . . B T .
+
+'tuptor.c'
+	tuptor                                 .text  08092B80 000000E0 R . . . B T .
+
+'domtox.c'
+	domtox                                 .text  08092C60 00000204 R . . . B T .
+
+'mstoxl.c'
+	mstoxl                                 .text  08092E64 00000098 R . . . B . .
+
+'mstod.c'
+	mstod                                  .text  08092EFC 000000C9 R . . . B . .
+
+'xtodom.c'
+	xtodom                                 .text  08092FC8 00000255 R . . . B T .
+
+'sync.c'
+	emark                                  .text  08093220 00000060 R . . . B T .
+	ewait                                  .text  08093280 00000005 R . . . B T .
+	ewake                                  .text  08093285 00000036 R . . . B T .
+
+'balanc.c'
+	_balance                               .text  080932BC 00000371 R . . . B T .
+	length                                 .text  0809362D 0000001C R . . . B T .
+	putchange                              .text  08093649 0000009E R . . . B T .
+	undo                                   .text  080936E7 000000AA R . . . B T .
+
+'beyond.c'
+	_beyond                                .text  08093794 000001CC R . . . B T .
+
+'bound.c'
+	_bound                                 .text  08093960 00000153 R . . . B T .
+
+'cpyseq.c'
+	cpyseq                                 .text  08093AB4 00000037 R . . . B T .
+
+'cpytuc.c'
+	cpytuc                                 .text  08093AEC 0000003A R . . . B T .
+
+'fclear.c'
+	cdbfclear                              .text  08093B28 0000003A R . . . B T .
+
+'fretre.c'
+	fretre                                 .text  08093B64 0000006F R . . . B T .
+
+'hflush.c'
+	_hflush                                .text  08093BD4 000000A1 R . . . B T .
+
+'ltoms.c'
+	ltoms                                  .text  08093C78 0000004E R . . . B T .
+
+'match.c'
+	isregexp                               .text  08093CC8 0000003E R . . . B T .
+	Star                                   .text  08093D06 0000003E R . . . B T .
+	wildmat                                .text  08093D44 000001A1 R . . . B T .
+	_match                                 .text  08093EE5 00000223 R . . . B T .
+
+'merge.c'
+	_merge                                 .text  08094108 0000026D R . . . B T .
+
+'mstol.c'
+	mstol                                  .text  08094378 00000026 R . . . B T .
+
+'mstoxi.c'
+	mstoxi                                 .text  080943A0 0000001D R . . . B . .
+
+'mvheap.c'
+	_mvheap                                .text  080943C0 00000078 R . . . B . .
+
+'negate.c'
+	negate                                 .text  08094438 00000037 R . . . B T .
+'pflush.c'
+	_pflush                                .text  08094470 000000A5 R . . . B T .
+
+'rindex.c'
+	cdbrindex                              .text  08094518 0000002F R . . . B T .
+
+'rmlock.c'
+	_rmlock                                .text  08094548 00000045 R . . . B T .
+
+'scanpg.c'
+	_cmp                                   .text  08094590 00000190 R . . . B T .
+	_scanpg                                .text  08094720 000000FA R . . . B T .
+
+'sift.c'
+	swapref                                .text  0809481C 00000041 R . . . B T .
+	_siftdown                              .text  0809485D 000000B1 R . . . B T .
+	_siftup                                .text  0809490E 00000093 R . . . B T .
+
+'split.c'
+	_split                                 .text  080949A4 000001D4 R . . . B T .
+
+'spread.c'
+	_spread                                .text  08094B78 0000038E R . . . B T .
+	adopt                                  .text  08094F06 000000C9 R . . . B T .
+
+'xitoms.c'
+	xitoms                                 .text  08094FD0 00000048 R . . . B . .
+'dtoms.c'
+	dtoms                                  .text  08095018 0000015D R . . . B T .
+'xltoms.c'
+	xltoms                                 .text  08095178 00000101 R . . . B T .
+
+'addpag.c'
+	addpage                                .text  0809527C 0000008B R . . . B T .
+
+'append.c'
+	_append                                .text  08095308 00000300 R . . . B T .
+
+'clrtab.c'
+	clrtable                               .text  08095608 00000031 R . . . B T .
+	_clrtable                              .text  08095639 000000CD R . . . B T .
+	_sparetree                             .text  08095706 000000FF R . . . B T .
+
+'cmpkey.c'
+	_cmpkey                                .text  08095808 000000A8 R . . . B T .
+
+'freshn.c'
+	freshnode                              .text  080958B0 00000170 R . . . B T .
+
+'ifetch.c'
+	_ifetch                                .text  08095A20 0000013F R . . . B T .
+
+'dfetch.c'
+	_dfetch                                .text  08095B60 00000133 R . . . B T .
+
+'dpos.c'
+	_dpos                                  .text  08095C94 00000084 R . . . B T .
+
+'ipos.c'
+	_ipos                                  .text  08095D18 0000007F R . . . B T .
+
+'mkfree.c'
+	_mkfree                                .text  08095D98 00000262 R . . . B T .
+	mkspace                                .text  08095FFA 0000005E R . . . B T .
+
+'modpag.c'
+	modpage                                .text  08096058 0000003F R . . . B T .
+
+'msquee.c'
+	_msqueeze                              .text  08096098 0000009C R . . . B T .
+	suck                                   .text  08096134 00000031 R . . . B T .
+
+'mvref.c'
+	_mvref                                 .text  08096168 00000017 R . . . B T .
+
+'promot.c'
+	_promote                               .text  08096180 000000D0 R . . . B T .
+
+'redist.c'
+	_redistrib                             .text  08096250 000000BA R . . . B T .
+
+'relnod.c'
+	relnode                                .text  0809630C 0000005E R . . . B T .
+
+'repos.c'
+	_addlist                               .text  0809636C 0000002D R . . . B T .
+	_repos                                 .text  08096399 0000009F R . . . B T .
+
+'rhead.c'
+	_rhead                                 .text  08096438 000000F9 R . . . B T .
+
+'shape.c'
+	???? presumably has shapetable defs here ??
+
+'whead.c'
+	_whead                                 .text  08096534 000000CF R . . . B T .
+
+'xenter.c'
+	enter                                  .text  08096604 00000092 R . . . B . .
+	leave                                  .text  08096696 0000005F . . . . B T .	
+	xenter                                 .text  080966F5 000000B9 R . . . B T .
+
+'addtup.c'
+	sum                                    .text  080967B0 0000004E R . . . B T .
+	_addtuple                              .text  080967FE 000000A3 R . . . B T .
+
+'captur.c'
+	findspace                              .text  080968A4 000000A1 R . . . B T .
+	getspare                               .text  08096945 00000336 R . . . B T .
+	_capture                               .text  08096C7B 00000043 R . . . B T .
+
+'chkite.c'
+	_chkitems                              .text  08096CC0 000000EE R . . . B T .
+	
+'cmpatt.c'
+	_cmpattrib                             .text  08096DB0 00000229 R . . . B T .
+
+'custom.c'
+	?????
+
+'delpag.c'
+	delpage                                .text  08096FDC 00000072 R . . . B T .
+
+'diffke.c'
+	_diffkey                               .text  08097050 0000012A R . . . B T .
+
+'fwidth.c'
+	_fwidth                                .text  0809717C 0000004B R . . . B T .
+
+'getnod.c'
+	getnode                                .text  080971C8 00000272 R . . . B T .
+
+'movele.c'
+	moveleft                               .text  0809743C 00000129 R . . . B T .
+
+'moveri.c'
+	moveright                              .text  08097568 0000012C R . . . B T .
+
+'numsz.c'
+	numsz                                  .text  08097694 00000035 R . . . B T .
+
+'putnod.c'
+	putnode                                .text  080976CC 000001B6 R . . . B T .
+	rdata                                  .text  08097882 0000005C R . . . B T .
+	roffset                                .text  080978DE 00000069 R . . . B T .
+	sdata                                  .text  08097947 00000055 R . . . B T .
+	soffset                                .text  0809799C 0000005E R . . . B T .
+	vectoms                                .text  080979FA 0000004E R . . . B T .
+
+'writep.c'
+	_writepg                               .text  08097A48 000000D9 R . . . B T .
+
+'lock.c'
+	_lock                                  .text  08097B24 000000B1 R . . . B T .
+	_lockmap                               .text  08097BD5 00000036 R . . . B T .
+	_lockpg                                .text  08097C0B 0000000A R . . . B T .
+	_locktbl                               .text  08097C15 0000000A R . . . B T .
+
+'diffat.c'
+	_diffattrib                            .text  08097C20 00000079 R . . . B T .
+
+'datapg.c'
+	_datapg                                .text  08097C9C 00000148 R . . . B T .
+
+'readpg.c'
+	_readpg                                .text  08097DE4 000000B6 R . . . B T .
+
+'chkpag.c'
+	_chkpage                               .text  08097E9C 000000B7 R . . . B T .
+
+'indexp.c'
+	_indexpg                               .text  08097F54 00000162 R . . . B T .
+
+'getpg.c'
+	_getpg                                 .text  080980B8 00000074 R . . . B T .
+	cdbfreepg                              .text  0809812C 0000004E R . . . B T .
+
+'itoptr.c'
+	_itoptr                                .text  0809817C 0000003D R . . . B T .
+
+'itosz.c'
+	_itosz                                 .text  080981BC 00000043 R . . . B T .
+
+'itoms.c'
+	itoms                                  .text  08098200 00000014 R . . . B T .
+
+'ealloc.c'
+	ealloc                                 .text  08098214 0000005F R . . . B T .
+
+'mktmp.c'
+	_mktmp                                 .text  08098274 000000BD R . . . B T .
+
+'bias.c'
+	????????
+
+'derror.c'
+	_derror                                .text  08098334 0000005A . . . . B T .
+	derror                                 .text  0809838E 0000006D . . . . B T .
+
+'addexp.c'
+	_addexp                                .text  08098408 00000061 R . . . B T .
+
+'frelst.c'
+	frelst                                 .text  0809846C 00000042 R . . . B T .
+
+'alloc.c'
+	alloc                                  .text  080984B0 000000B0 R . . . B T .
+	nalloc                                 .text  08098560 0000008C R . . . B . .
+	nfree                                  .text  080985EC 0000002D R . . . B T .
+
+'cpybuf.c'
+	cpybuf                                 .text  0809861C 00000024 R . . . B T .
+
+'cpystr.c'
+	cdbcpystr                              .text  08098640 00000037 R . . . B T .
+
+'fill.c'
+	fill                                   .text  08098678 0000001F R . . . B T .
+
+'itob.c'
+	itob                                   .text  08098698 000000A2 R . . . B T .
+
+'readf.c'
+	readfull                               .text  0809873C 00000062 R . . . B T .
+
+'scnbuf.c'
+	scnbuf                                 .text  080987A0 00000021 R . . . B T .
+
+'onexit.c'
+	cdbonexit                              .text  080987C4 00000008 R . . . B T .
+
+'error.c'
+	errexit                                .text  080987CC 00000076 . . . . B T .
+
+'putstr.c'
+	putstr                                 .text  08098844 0000004E R . . . B T .
+
+'lenstr.c'
+	lenstr                                 .text  08098894 00000017 R . . . B T .
+
+'cmpstr.c'
+	cmpstr                                 .text  080988AC 00000035 R . . . B T .
+
+'owildm.c'
+	Star_0                                 .text  080988E4 0000004D R . . . B T .
+	owildmat                               .text  08098931 00000135 R . . . B T .
+
+'bupsem.c'
+	cdbftok
+	check_bup_sem

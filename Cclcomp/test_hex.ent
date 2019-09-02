@@ -1,0 +1,22 @@
+
+##################
+{ Main
+##################
+
+define C30,c30
+
+define HEXVAL,X         # Hexadecimal value
+
+set tab
+
+openin dsk V1
+if not ERROR
+	read dsk HEXVAL
+	while not ERROR
+		print chr(HEXVAL)
+		read dsk HEXVAL
+	wend
+	close dsk
+endif
+
+}

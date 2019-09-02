@@ -1,0 +1,816 @@
+#
+# TNT NZ - csv file , reader program
+# LA - Feb09 - Added Handler for TNT files (Beta)
+# LA - Jul09 - Tweak to look in T3 for old records, due to TNT billing delays....
+# LA - Aug09 - Now add GSt to the $12.67 export fee!!
+# LA - Jan10 - Add support for customer ref going to details field 2
+# LA - Sep10 - Expand to be able to deal with downloadable CSV files
+# LA - Oct10 - TNT change their csv format without warning...khuntz!
+# LA - Dec10 - New ESS surcharge. Not in any specific column in the bill!!!!
+# LA - Jun11 - Ditto the NEI charge
+# LA - Jul12 - Store Fuel charges in Main job record, not msc anymore
+
+###################
+{ main
+###################
+
+set fnum,off
+
+getfile	COURDB1		Custfile,cst 		Services,s \
+			Service_Times,st	Cntrlfl,cnt \
+			Ratefile,rf		Box_Rates,box \
+			Custrates,csr		Cust_IA_Special,cias \
+			Cust_Pb_Exceptions,pbx	Channel_Split,csp \
+			
+
+getfile DRIVDB		Drivfile,drv 		Drivlog,dl
+
+getfile COUNTRY		Country1,cntry		# Lookup table for abbreviated country codes.
+
+getfile	MISCDB	Literals,lit
+
+include 'sel_ia.eni'            # Includes for International Air tables. No longer in COURDB6 (Jun10 - Fedex)
+include 'sel_fr.eni'            # Includes for Domestic Air Freight tables. No longer in COURDB6 (Jun10 - AAE)
+
+include 'sel_t2.eni'
+include 'sys_vars.eni'
+include 'branch_var.eni'
+SCREEN_MODE = ZERO
+
+define			log_dir,c40 		cmd,c120		count,i \
+			inf_name,c70		f_name2,c70		recno,n	\
+			begin,c1		msg_count,i		msg_count_text,c40 \
+			msg_ix,b		msg_text,c60		msg_time,t \
+			today_date,d		curr_time,t 		log_file,c45 \
+			jbdate,d		date_array[10],n \
+			yes=1			no=0			custref,c25
+
+define			line[80],c30	PDDATEidx,i	PDTIMEidx,i	PDSIGidx,i \
+			PDDATE,d	PDTIME,t	PDSIG,c25 \
+			AMTFRT,i	AMTVAT,i	AMTESS,i	AMTED,i \
+			AMTFSI,i	AMTOOA,i	AMTPR,i		AMTNEI,i \
+			AMTMKUP,i	AMTINS,i
+
+define			f19,c30		disp_str,c90
+
+#PDxxx values are used below to calculate the column numbers of POD Date/Time/Signature values
+		
+
+include 'jobvar.eni'
+#-------------------
+
+head	0    2   1	'pname'
+head	0    $   1	'date'
+head	0  c,u   2	'Job Extraction from TNT-NZ csv files'
+
+head	SCOLS+-2	2	6	'-'
+head	SCOLS+-2	2	SLINES+-2	'-'
+
+log_dir = ''
+lit.Lit_Key_1 = 'SYSTEM'
+lit.Lit_Key_2 = 'SYSTEM'
+get lit
+if not ERROR
+	log_dir = lit.Lit_Data[5]
+endif
+
+# Get cnt values for GST ajustments in CC60_round...
+cnt.Cntrl_Key = 1
+get cnt
+if ERROR
+	cnt.Vehicle_Code = ''
+endif
+
+if not begin
+	begin = 'y'
+endif
+begin	+	3	4	25	4	'Hit <Enter> to begin:'
+
+today_date = 't'
+curr_time = 'n'
+
+#open log file
+if log_dir
+	log_file = log_dir + '/TNT.' + today_date + '.txt'
+else
+	log_file = 'TNT.' + today_date + '.txt'
+endif
+log_file = log_file - ' '
+
+openapp dlog log_file
+msg_ix = 6
+
+set tab
+#get list of csv files dumped in dhl_dump
+openin ilist 'fllist.lst'
+if not ERROR
+	close ilist
+	fork 'rm -f fllist.lst 2> /dev/null'
+endif
+
+fork 'ls /u2/dhl_dump/*csv > fllist.lst 2> /dev/null'
+openin ilist 'fllist.lst'
+read ilist inf_name
+while not ERROR
+	f_name2 = (inf_name - ' ')
+	if  f_name2 <> inf_name 
+		f_name2 = '/u2/dhl_dump/' + f_name2
+		#fork 'mv -f /u2/dhl_dump/' + inf_name + ' 2> /dev/null'
+	endif
+	#inf_name =  '/u2/dhl_dump/' + inf_name
+	openin inf inf_name
+	if not ERROR
+		if msg_ix >= (SLINES - 3)
+			msg_ix = 6
+		endif
+
+		msg_count = 0
+		msg_time = 'n'
+		msg_ix += 1
+		msg_text = 'Reading File : ' + inf_name		#+ ' ' +msg_time
+		text	0	2f	msg_ix	msg_text
+
+		write dlog 'Reading File : ' + inf_name	nl
+		write dlog nl
+
+		do process_tnt
+		text	20	65f	msg_ix	' '
+		msg_count_text = 'Entries Processed : ' + msg_count
+		text	0	65f	msg_ix	msg_count_text
+		close inf
+	endif
+	curr_time = 'n'
+
+	cmd = 'mv -f "' + inf_name + '" /u2/dhl_dump/old/tnt_nz/'
+	#pause cmd
+	fork cmd
+	set tab
+	read ilist inf_name
+wend
+close ilist
+close dlog
+
+cmd = 'cat ' + log_file + '|mail -s "TNT-NZ invoice LOG - ' + today_date + '" leslie@apollo' # tonyz@apollo '                                                                       
+fork cmd
+
+break
+
+REPLY = 'E'
+
+}
+#######################
+{ process_tnt
+#######################
+
+ldefine date_test,n  date_temp,c10	 acctstrip,c4
+
+#Potential for zero array subscript here WOHNUNG!!
+PDDATEidx	= ZERO
+PDTIMEidx	= ZERO
+PDSIGidx	= ZERO
+AMTFRT		= ZERO
+AMTVAT		= ZERO
+AMTESS		= ZERO
+AMTED		= ZERO
+AMTFSI		= ZERO
+AMTOOA		= ZERO
+AMTPR		= ZERO
+AMTMKUP		= ZERO
+
+# TNT csv format:
+
+#*** Date field is arse-about
+
+#  f1	    f2      f3      f4      f5           f6           f7        f8       f9    f10      f11        f12
+#YYYYWW,CONNUMBER,SHIPPER REF,DIV,INV NO  ,ACCOUNT NUMBER,ACCOUNT NAME, PROD ,NO. PIECES,DIR,ORIGIN CNTRY,ORIGIN TWN,
+#200907,255383852,   9106,     G, 00100344,  319436,   Escort Data    , 15N  , 1         ,I ,Thailand,    Yan Nawa,
+
+#   f13       f14       f15      f16      f17     f18          f19      f20        f21      f22        f23        f24          f25
+#DEST REG,DEST CNTRY,DEST DEP,SHIP DATE,FR REV,FR ADD ON REV,INS REV,NON FR REV,TOT REV,PAY WEIGHT,REAL WEIGHT,CUBIC WEIGHT,STATUS/POD
+#SASIA,New Zealand,New Lynn,2009/02/11,50.83,0.00,0.00,0.00,50.83,1.50,0.98,0.009,Delivered 13th Feb signed for by Elena
+
+# "inf" file open when this sub-routine called
+#set debug , on
+set tab,,
+read inf line[1]  line[2]  line[3]  line[4]  line[5]  line[6]  line[7]  line[8]  line[9]  line[10] \
+	 line[11] line[12] line[13] line[14] line[15] line[16] line[17] line[18] line[19] line[20] \
+	 line[21] line[22] line[23] line[24] line[25] line[26] line[27] line[28] line[29] line[30] \
+	 line[31] line[32] line[33] line[34] line[35] line[36] line[37] line[38] line[39] line[40] \
+	 line[41] line[42] line[43] line[44] line[45] line[46] line[47] line[48] line[49] line[50] \
+	 line[51] line[52] line[53] line[54] line[55] line[56] line[57] line[58] line[59] line[60] \
+	 line[61] line[62] line[63] line[64] line[65] line[66] line[67] line[68] line[69] line[70] \
+	 line[71] line[72] line[73] line[74] line[75] line[76] line[77] line[78] line[79] line[80]
+
+# Go looking for column numbers, thanks to TNT variable bullshit format
+if not ERROR
+	count = 1
+	while count < 70
+		if line[count] = 'POD Date'
+			PDDATEidx = count		
+		elsif line[count] = 'POD Time'
+			PDTIMEidx = count
+		elsif line[count] = 'POD Signed'
+			PDSIGidx = count
+		elsif line[count] = 'Net Amount (FRT)'		# Freight Charge
+			AMTFRT = count
+		elsif line[count] = 'Net Amount (VAT)'		# Tax
+			AMTVAT = count
+		elsif line[count] = 'Net Amount (ESS)'		# Extended Security
+			AMTESS = count
+		elsif line[count] = 'Net Amount (ED)'		# Export Duty
+			AMTED = count
+		elsif line[count] = 'Net Amount (FSI)'		# Fuel Surcharge
+			AMTFSI = count
+		elsif line[count] = 'Net Amount (OOA)'		# Out of Area
+			AMTOOA = count
+		elsif line[count] = 'Net Amount (PRI)'		# Priority service
+			AMTPR = count
+		elsif line[count] = 'Net Amount (INS)'		# Insurance
+			AMTINS = count
+		elsif line[count] = 'Net Amount (NEI)'		# NEI surcharge. ?!?!?!
+			AMTNEI = count
+		elsif line[count] = 'MARKUP'			# Local field I insert to override markup %
+			AMTMKUP = count
+		endif
+		count += 1
+	wend
+endif
+
+# Safe to fall through the loop the first time, will ignore the header line anyway.
+while not ERROR
+	if line[1] <> 'YYYYWW' and line[1] <> 'Account Number' # Header Line
+		# 319436 = crisisair, 320753 = iLogistics
+		if line[1] = '000319436' or line[1] = '319436' or line[1] = '000320753' or line[1] = '320753'	#retarded Excel trimming....
+			# csv format when downloading from TNT web-site
+			jbdate = line[4]
+			acctstrip = line[6] / 104
+			cst.Account = acctstrip	
+			custref = line[6] / 625
+			# Look for any POD info
+			PDDATE = ZERO
+			PDTIME = ZERO
+			PDSIG  = ''
+			if line[PDDATEidx]
+				# Date in YYYYMMDD format
+				date_temp = line[PDDATEidx] / 702 + '-' + line[PDDATEidx] / 502 + '-'  + line[PDDATEidx] / 104
+				PDDATE = date_temp
+				# Time in HHMM or HMM format
+				if slen(line[PDTIMEidx]) = 3	# HMM
+					date_temp = line[PDTIMEidx] / 101 + ':' + line[PDTIMEidx] / 202
+				else
+					date_temp = line[PDTIMEidx] / 102 + ':' + line[PDTIMEidx] / 302
+				endif
+				PDTIME = date_temp
+				PDSIG = line[PDSIGidx]
+			endif
+			get cst
+			if not ERROR
+				do create_job2
+			endif
+		else
+			# Original hand-produced format (cringe)
+			jbdate = line[16]	# DON'T assume that Date format has been corrected in XLS file!!!!
+			date_test = jbdate
+			if date_test = ZERO	#Was date in YYYY/MM/DD format? try other way
+				date_temp = line[16] / 902 + line[16] / 504 + line[16] / 104
+				jbdate = date_temp
+			endif
+			#set debug , on
+			acctstrip = line[3] / 104
+			cst.Account = acctstrip	
+			custref = line[3] / 625
+			#set debug , off
+			#cst.Account = f3
+			get cst
+			if not ERROR
+				do create_job
+			endif
+		endif
+	endif
+	write dlog recno jbdate line[2] line[5] cst.Account cst.Name nl
+	write dlog nl
+	
+	read inf line[1]  line[2]  line[3]  line[4]  line[5]  line[6]  line[7]  line[8]  line[9]  line[10] \
+		 line[11] line[12] line[13] line[14] line[15] line[16] line[17] line[18] line[19] line[20] \
+		 line[21] line[22] line[23] line[24] line[25] line[26] line[27] line[28] line[29] line[30] \
+		 line[31] line[32] line[33] line[34] line[35] line[36] line[37] line[38] line[39] line[40] \
+		 line[41] line[42] line[43] line[44] line[45] line[46] line[47] line[48] line[49] line[50] \
+		 line[51] line[52] line[53] line[54] line[55] line[56] line[57] line[58] line[59] line[60] \
+		 line[61] line[62] line[63] line[64] line[65] line[66] line[67] line[68] line[69] line[70] \
+		 line[71] line[72] line[73] line[74] line[75] line[76] line[77] line[78] line[79] line[80]
+wend
+close inf
+set tab
+#set debug , off
+}
+
+# TNT Format CSV files from their e-invoicing web-site:
+
+#1		2		3		4		5			6			
+#Account Number	Invoice Date	Invoice Number	Pick Up Date	Consignment Number	Customer Reference	
+#319436		11/09/2010	122710		6/09/2010	115761505		9104			
+
+#7		8		9		10		11		12	13			
+#Company Name	Contact 1	Address 1	Address 2	Address 3	Country	Delivery Company Name	
+#KIWI PLAZA LTD	DAVID CHIU	17 PEARN PLACE	NORTHCOTE	AUCKLAND	NZ	H.K.S.K.H LI KA SHING CARE & ATTN H	
+
+#14			15			16			17			18			19	
+#Delivery Contact 1	Delivery Address 1	Delivery Address 2	Delivery Address 3	Delivery Country	Division and Product codes	
+#KUMI NG		NO 338 NAM CHEONG STREET			SHEK KIP MEI		HK			G  48N	
+
+#20				21		22 (28)		23 (29)			24 (30)		25 (31)	
+#Product Description		Total Pieces	Actual Weight	Volumetric Weight	Billed Weight	Consignment Net Value (excl. VAT)	
+#ECONOMY EXPRESS (NON DOCS)	2		47.95		47.95			47.95		215.32	
+
+#26 (32)		27 (33)			28 (34)		29 (35)			30 (36)		31 (37)		32 (38)
+#Net Amount (FRT)	Net Amount (VAT)	Net Amount	Payment Due Date	POD Date	POD Time	POD Signed
+#202.65			1.58			12.67		25/09/2010		20100909	810		SIGN
+
+
+# Oct 2010 - Extra fields inserted at 22 -> 27
+# Variable number of "Net Amount" columns after field 27 (33) ******!!!!!
+
+#	22			23			24			25		26		27
+#Contractual Length	Contractual Width	Contractual Height	Actual Length	Actual Width	Actual Height	
+#	0			0			0								
+
+# Actual Weight now at 28 etc.
+
+#######################
+{ create_job
+#######################
+
+ldefine Markup,4 PercentMk,4  tempG,g tempcube,3 realwgt,1 temp4,4
+Markup = 1
+
+do CC00_get_job_number
+
+clear t2
+t2.Rec_No = recno
+t2.Branch = 'Z'		#Force New Zealand
+t2.Rec_Status = 'U'
+t2.Cust_Stmnt_Flag = 'N'
+t2.Driv_Stmnt_Flag = 'N'
+
+t2.Account = cst.Account  #already open from main
+wk_date = jbdate
+do get_freight_rate_record	# in getrates.eni, Now date specific rates (LA - Aug06)
+
+t2.Date = jbdate	#Corrected date from process_dhl
+t2.Time_Received = curr_time
+t2.Time_Received_Rev = '24:00' - curr_time
+t2.Time_Despatched = curr_time
+t2.Time_Despatched_Rev  = '24:00' - curr_time
+t2.Time_Ready_By = curr_time
+t2.Details = line[2]		#Airway bill no.
+t2.Received_By = 'TNT-NZ'
+t2.Service_Code = 'IA'
+t2.Service_Qual = line[8]		# Trap TNT service code for later use. Not a prob as jobs are never re-calc'ed.
+
+t2.Received_Mode = 'N'
+t2.Vehicle = 'NB'
+t2.Cash_Code = 'N'
+
+t2.Pickup = line[11]			#Origin Country
+t2.Pickup_Det2 = line[12]		#Origin twn
+t2.Pickup_PCode = '9999'
+t2.Delivery = line[14]			#Destination Country
+t2.Delivery_Det2 = line[15]		#destination twn		***** THIS WILL CHANGE ****
+t2.Delivery_PCode = '9999'
+
+t2.Parcels = line[9]		#pieces
+t2.Weight = line[22]		# pay weight
+realwgt = line[23]		# REAL Weight
+tempcube = line[24]		# CUBIC dims in m3
+
+if line[10] = 'E'
+	t2.Reference = 'Export'
+elsif line[10] = 'I'
+	t2.Reference = 'Import'
+endif
+
+# Go looking for an override rate for this Service type!
+temp4 = line[17]	#4 dec places as percentages now down to .01%
+
+getprev cias where cias.Account = cst.Account and cias.Date_Effective <= jbdate and \
+		   cias.Service_Code = line[8] and cias.Direction = line[10]
+if not ERROR
+	if AMTMKUP
+		Markup = line[AMTMKUP]
+		if not Markup
+			Markup = cias.Percentage
+		endif
+	else
+		Markup = cias.Percentage
+	endif
+	t2.Basic_Chg	= temp4					# FR_REV from TNT
+	t2.Total_Chg	= temp4 * Markup			# cost * override markup
+else
+	#Use default rate key percentage markup
+	#t2.Cubic_Metres = cubic
+	if AMTMKUP
+		Markup = line[AMTMKUP]
+		if not Markup
+			Markup = iark.Percentage
+		endif
+	else
+		Markup = iark.Percentage
+	endif
+	t2.Basic_Chg	= temp4					# FR_REV from TNT
+	t2.Total_Chg	= temp4 * Markup			# cost * rate key
+endif
+
+t2.GST_Amt	= ZERO	#?? * iark.Percentage		# tax * rate key
+
+# following fields set by a separate record in csv file!
+#Fuel_Charge
+#Fuel_Chg_Percent
+#Fuel_GST
+
+t2.Channel_No = 31
+t2.Channel_No_Key = 31
+put t2
+
+# Check for Any Misc charges we need to add
+#**** TO DO ****  =   f19/f20 ??????
+
+tempG = line[18]
+if tempG <> ZERO
+	clear t2msc		# Misc charge record
+	t2msc.Rec_No		= recno
+	t2msc.Date		= jbdate
+	t2msc.Date_Received	= 't'
+	t2msc.Time_Received	= 'n'
+	if tempG = 12.67
+		t2msc.Details	= 'CUSTOMS EXPORT FEE'
+		t2msc.GST_Amt	= 1.90		# Oct10 - changed due to GST % increase #1.58		#AUG09 - Add GST since TNT do!!
+	elsif tempG = 40.00
+		t2msc.Details	= 'PRIORITY SERVICE FEE'
+	endif
+	t2msc.Basic_Chg		= tempG
+	#t2msc.GST_Amt		= ZERO						
+	write dlog 'Customs Export Entry Fee : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+	put t2msc
+endif
+
+# Some extra info in a t2rb
+t2rb.Rec_No		= recno
+t2rb.Date		= 't'
+t2rb.Ring_Back_Time	= ''
+t2rb.Login_Name		= 'system'
+t2rb.Ring_Back_Type	= 'Info'
+PercentMk = ((Markup - 1) * 100)
+t2rb.Comment_60[1]	= 'Cost = $' + t2.Basic_Chg + ' , Markup = ' + PercentMk + '%'
+put t2rb
+
+# Record any CUBIC variations (mainly for TRIODENT)
+if t2.Weight > realwgt
+	t2rb.Rec_No		= recno
+	t2rb.Date		= 't'
+	t2rb.Ring_Back_Time	= 'n'
+	t2rb.Login_Name		= 'system'
+	t2rb.Ring_Back_Type	= 'CUBIC'
+	t2rb.Comment_60[1]	= 'CUBIC = ' + tempcube + 'm3 , (Dead Weight = ' + realwgt + 'Kg)'
+	put t2rb
+endif
+
+# Also Create a t2dx:
+t2dx.Rec_No	= recno
+t2dx.Driver	= 600
+t2dx.Date	= jbdate
+t2dx.Amount	= ZERO
+t2dx.Cash_Code	= 'N'
+put t2dx
+}
+
+#######################
+{ create_job2
+#######################
+
+# TNT e-invoicing format
+
+ldefine Markup,4 PercentMk,g  tempG,g tempcube,3 realwgt,1 direction,c1	rb_time,t temp4,4
+Markup = 1
+
+do CC00_get_job_number
+
+clear t2
+t2.Rec_No = recno
+t2.Branch = 'Z'		#Force New Zealand
+t2.Rec_Status = 'U'
+t2.Cust_Stmnt_Flag = 'N'
+t2.Driv_Stmnt_Flag = 'N'
+
+t2.Account = cst.Account  #already open from main
+wk_date = jbdate
+do get_freight_rate_record	# in getrates.eni, Now date specific rates (LA - Aug06)
+
+t2.Date = jbdate	#Corrected date from process_dhl
+t2.Time_Received = curr_time
+t2.Time_Received_Rev = '24:00' - curr_time
+t2.Time_Despatched = curr_time
+t2.Time_Despatched_Rev  = '24:00' - curr_time
+t2.Time_Ready_By = curr_time
+t2.Time_Dropped = PDTIME
+if PDDATE
+	t2.Pod_Name = PDDATE + ' : ' + PDSIG
+endif
+t2.Details = line[5]			# Consignment Number
+t2.Received_By = 'TNT-NZ'
+t2.Service_Code = 'IA'
+f19 = line[19] / 400			# Strip "division"
+t2.Service_Qual = f19		# trap TNT service code for later use. Not a prob as jobs are never re-calc'ed.
+
+t2.Received_Mode = 'N'
+t2.Vehicle = 'NB'
+t2.Cash_Code = 'N'
+
+cntry.Country_Code = line[12]
+get cntry
+if not ERROR
+	t2.Pickup = cntry.Country		#Origin Country
+else
+	t2.Pickup = line[12]			#Origin Country
+endif
+t2.Pickup_Det1 = line[7]		#Company Name
+t2.Pickup_Det2 = line[9]		#Street Address
+t2.Pickup_Det3 = line[10]		#Suburb Name
+t2.Pickup_Det4 = line[11]		# City?
+t2.Pickup_PCode = '9999'
+
+cntry.Country_Code = line[18]
+get cntry
+if not ERROR
+	t2.Delivery = cntry.Country	#Destination Country
+else
+	t2.Delivery = line[18]		#Destination Country
+endif
+t2.Delivery_Det1 = line[13]		#Company Name
+t2.Delivery_Det2 = line[15]		#Street Address
+t2.Delivery_Det3 = line[16]		#Suburb Name
+t2.Delivery_Det4 = line[17]		# City?
+
+t2.Delivery_PCode = '9999'
+
+t2.Parcels = line[21]		# pieces
+realwgt = line[22]		# REAL Weight
+tempcube = line[23]		# CUBIC Weight
+t2.Weight = line[24]		# pay weight
+
+if line[12] = 'NZ' and line[18] <> 'NZ'
+	t2.Reference = '[EXP] ' + custref
+	direction = 'E'
+elsif line[12] <> 'NZ' and line[18] = 'NZ'
+	t2.Reference = '[IMP] ' + custref
+	direction = 'I'
+else
+	t2.Reference = '[DOM] ' + custref
+endif
+
+# Go looking for an override rate for this Service type!
+temp4 = line[AMTFRT]
+
+# Since we do a getprev, if a record exists for a given date with a direction set, it
+# will take precedence over a record with direction = <blank>.
+
+getprev cias where cias.Account = cst.Account and cias.Date_Effective <= jbdate and \
+		   cias.Service_Code = f19 and ( cias.Direction = direction or cias.Direction = "")
+if not ERROR
+	if AMTMKUP
+		Markup = line[AMTMKUP]
+		if not Markup
+			Markup = cias.Percentage
+		endif
+	else
+		Markup = cias.Percentage
+	endif
+	t2.Basic_Chg	= temp4					# Net Amount (FRT)
+	t2.Total_Chg	= temp4 * Markup			# cost * override markup
+else
+	#Use default rate key percentage markup
+	#t2.Cubic_Metres = cubic
+	if AMTMKUP
+		Markup = line[AMTMKUP]
+		if not Markup
+			Markup = iark.Percentage
+		endif
+	else
+		Markup = iark.Percentage
+	endif
+	t2.Basic_Chg	= temp4					# FR_REV from TNT
+	t2.Total_Chg	= temp4 * Markup			# cost * rate key
+endif
+t2.GST_Amt	= ZERO	#?? * iark.Percentage		# tax * rate key
+
+t2.Channel_No	  = 31
+t2.Channel_No_Key = 31
+
+# LA - JUL12 - Keep fuel in main record.
+if AMTFSI
+	temp4 = line[AMTFSI]
+	tempG = temp4 * Markup		# LA - APR11 - Markup fuel surcharge
+	t2.Fuel_Charge = tempG
+endif
+
+put t2
+
+rb_time = 'n'
+
+# Avoid potential ZERO subscript error
+if AMTESS
+	tempG = line[AMTESS]
+	if tempG <> ZERO
+		clear t2msc		# Misc charge record
+		t2msc.Rec_No		= recno
+		t2msc.Date		= jbdate
+		t2msc.Date_Received	= 't'
+		t2msc.Time_Received	= rb_time
+		t2msc.Basic_Chg		= tempG
+		t2msc.Details	= 'ENHANCED SECURITY FEE'
+		write dlog 'Enhanced Security Fee : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+		put t2msc
+	endif
+endif
+rb_time += '00:00:01'	# Ensure Misc records don't clobber each other
+
+if AMTINS
+	temp4 = line[AMTINS]
+	tempG = temp4 * Markup		# Markup Insurance
+	if tempG <> ZERO
+		clear t2msc		# Misc charge record
+		t2msc.Rec_No		= recno
+		t2msc.Date		= jbdate
+		t2msc.Date_Received	= 't'
+		t2msc.Time_Received	= rb_time
+		t2msc.Basic_Chg		= tempG
+		t2msc.Details	= 'INSURANCE'
+		write dlog 'Insurance : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+		put t2msc
+	endif
+endif
+rb_time += '00:00:01'
+
+if AMTOOA
+	tempG = line[AMTOOA]
+	if tempG <> ZERO
+		clear t2msc		# Misc charge record
+		t2msc.Rec_No		= recno
+		t2msc.Date		= jbdate
+		t2msc.Date_Received	= 't'
+		t2msc.Time_Received	= rb_time
+		t2msc.Basic_Chg		= tempG
+		t2msc.Details	= 'OUT OF AREA FEE'
+		write dlog 'Out of Area Fee : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+		put t2msc
+	endif
+endif
+rb_time += '00:00:01'
+
+if AMTPR
+	tempG = line[AMTPR]
+	if tempG <> ZERO
+		clear t2msc		# Misc charge record
+		t2msc.Rec_No		= recno
+		t2msc.Date		= jbdate
+		t2msc.Date_Received	= 't'
+		t2msc.Time_Received	= rb_time
+		t2msc.Basic_Chg		= tempG
+		t2msc.Details	= 'PRIORITY SERVICE FEE'
+		write dlog 'Priority Service Fee : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+		put t2msc
+	endif
+endif
+rb_time += '00:00:01'
+
+if AMTNEI
+	tempG = line[AMTNEI]
+	if tempG <> ZERO
+		clear t2msc		# Misc charge record
+		t2msc.Rec_No		= recno
+		t2msc.Date		= jbdate
+		t2msc.Date_Received	= 't'
+		t2msc.Time_Received	= rb_time
+		t2msc.Basic_Chg		= tempG
+		t2msc.Details	= 'NEI Surcharge'
+		write dlog 'NEI Surcharge : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+		put t2msc
+	endif
+endif
+rb_time += '00:00:01'
+
+# Avoid potential ZERO subscript error
+if AMTED
+	tempG = line[AMTED]
+	if tempG <> ZERO
+		clear t2msc		# Misc charge record	
+		t2msc.Rec_No		= recno
+		t2msc.Date		= jbdate
+		t2msc.Date_Received	= 't'
+		t2msc.Time_Received	= rb_time
+		t2msc.Basic_Chg		= tempG
+		if tempG = 12.67
+			t2msc.Details	= 'CUSTOMS EXPORT FEE'
+			t2msc.GST_Amt	= line[AMTVAT]		#AUG09 - Add GST since TNT do!!
+			write dlog 'Customs Export Entry Fee : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+			put t2msc
+		elsif tempG = 40.00
+			t2msc.Details	= 'PRIORITY SERVICE FEE'
+			write dlog 'Customs Export Entry Fee : ' recno t2msc.Basic_Chg t2msc.GST_Amt nl
+			put t2msc
+		endif
+	endif
+endif
+
+clear t2rb
+# Some extra info in a t2rb
+t2rb.Rec_No		= recno
+t2rb.Date		= 't'
+t2rb.Ring_Back_Time	= ''
+t2rb.Login_Name		= 'system'
+t2rb.Ring_Back_Type	= 'Info'
+PercentMk = ((Markup - 1) * 100)
+t2rb.Comment_60[1]	= 'Cost = $' + t2.Basic_Chg + ' , Markup = ' + PercentMk + '%'
+put t2rb
+
+rb_time = 'n'
+# Record any CUBIC variations (mainly for TRIODENT)
+if t2.Weight > realwgt
+	t2rb.Rec_No		= recno
+	t2rb.Date		= 't'
+	t2rb.Ring_Back_Time	= rb_time
+	t2rb.Login_Name		= 'system'
+	t2rb.Ring_Back_Type	= 'CUBIC'
+	t2rb.Comment_60[1]	= 'CUBIC Weight = ' + tempcube + 'Kg , (Dead Weight = ' + realwgt + 'Kg)'
+	put t2rb
+endif
+
+## Save any DIM info found
+#if DIMSC[1] or DIMSC[2] or DIMSC[3]
+#	rb_time += '00:01'
+#	t2rb.Rec_No		= recno
+#	t2rb.Date		= 't'
+#	t2rb.Ring_Back_Time	= rb_time
+#	t2rb.Login_Name		= 'system'
+#	t2rb.Ring_Back_Type	= 'CUBIC'
+#	t2rb.Comment_60[1]	= 'CONTRACT DIMS = ' + DIMSC[1] + 'L, ' + DIMSC[2] + 'W, ' + DIMSC[3] + 'H'
+#	t2rb.Comment_60[2]	= 'ACTUAL DIMS   = ' + DIMSA[1] + 'L, ' + DIMSA[2] + 'W, ' + DIMSA[3] + 'H'
+#	put t2rb
+#endif
+
+# Also Create a t2dx:
+t2dx.Rec_No	= recno
+t2dx.Driver	= 600		# Apr09 , 500->600 billable # Default non-billable driver
+t2dx.Date	= jbdate
+t2dx.Amount	= ZERO
+t2dx.Cash_Code	= 'N'
+put t2dx
+}
+
+#include 'getrates.eni'
+include 'getfrrates.eni'
+include 'jobno.eni'
+# Bypass the normal rate calcs for the moment
+#include 't2jobcalc.eni'
+#include 'jobcalc.eni'
+
+# Relevant fields for Freight jobs when created:		    From CSV
+#[ 1]  *N   Rec_No            = from recno
+#[ 2]   C   Rec_Status = 'U'
+#[ 3]   C   Branch = 'Z'     
+#[ 4]   C   Cust_Stmnt_Flag = 'N'
+#[ 5]   C   Driv_Stmnt_Flag = 'N'
+#[ 6]   C   Account		= Extract from csv			*
+#[ 7]   D   Date		= Date job done				*	
+#[ 8]   T   Time_Received	= Current time
+#[10]   T   Time_Despatched	= Current time
+#[11]   T   Time_Despatched_Re	= '24:00' - Current time
+#[12]   T   Time_Ready_By       = '0.00'
+#[16]   B   Channel_No        = 31
+#[17]   B   Channel_No_Key    = 31
+#[18]   C   Received_By [10]  = 'DHL'
+#[19]   C   Received_Mode [1] = P/Q/N/X   Phone,44q,Net,HUBxchg
+#[22]   C   Vehicle = 'NB'
+#[23]   C   Details = airway bill no.					*
+#[26]   C   Service_Code = 'IA'
+#[28]   C   Cash_Code = 'N'
+#[29]   C   Pickup [20]		= From csv file				*
+#[30]   C   Pickup_PCode [4]	= 9999
+#[31]   C   Delivery [20]	= From csv file				*
+#[32]   C   Delivery_PCode [4]	= 9999
+#[35]   I   Parcels							*
+#[36]   1   Weight							*
+#[38]   R   Cubic_Metres         ?????
+#[43]   G   Basic_Chg            = cost of job from DHL			*
+#[44]   G   Total_Chg            = cost * rate key
+#[45]   G   Fuel_Charge          = fuel cost * rate key			*
+#[46]   G   Fuel_Chg_Percent     = ?????
+#[47]   G   Fuel_GST             = fuel gst * rate key			*
+#[48]   G   GST_Amt              = gst cost * rate key
+#[50]   G   Quote                = 0.00
+
+# Also Create a t2dx:
+#[ 1]  *N   Rec_No        = recno
+#[ 2]  *I   Driver        = 500
+#[ 3]  *D   Date          =  Date job done (t2.Date)
+#[ 4]   G   Amount        = 0.00
+#[ 5]   C   Cash_Code [1] = 'N'

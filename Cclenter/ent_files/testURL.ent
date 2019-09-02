@@ -1,0 +1,33 @@
+
+##################
+{ Main
+##################
+
+set tab
+
+define a,i	tess,c5		href,c200
+
+define linkDesc = 'weather'
+define linkUrl = 'http://www.BoM.GOV.AU/weather/nsw/forecasts.html'
+
+href = '?E=hslink' + '&url=' + linkUrl + '&urd=' + linkDesc
+print 'orig href = ' href nl
+
+href = sconv("url", "en", href)
+print 'conv href = ' href nl
+
+href = sconv("url", "de", href)
+print 're-decode = ' href nl
+
+href -= '?'
+
+href = sconv("base64", "en", href)
+print 'B64 conv href = ' href nl
+
+href = sconv("base64", "de", href)
+print 'B64 re-decode = ' href nl
+
+
+
+}
+

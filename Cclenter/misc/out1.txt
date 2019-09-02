@@ -1,0 +1,3 @@
+orig href = ?E=hslink&url=http://www.BoM.GOV.AU/weather/nsw/forecasts.html&urd=weather
+bfk_1 = 0
+conv href = ?kWQ9RT1oc2xpbmsmdXJsPWh0dHA6Ly93d3cuQm9NLkdPVi5BVS93ZWF0aGVyL25zdy9mb3JlY2FzdHMuaHRtbCZ1cmQ9d2VhdGhlciAg

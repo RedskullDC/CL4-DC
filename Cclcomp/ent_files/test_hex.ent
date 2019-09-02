@@ -1,0 +1,62 @@
+# test the string functions.
+
+##################
+{ Main
+##################
+
+define tess,c120	testd,d
+
+define str100,c100	str26,c38	str27,c38	divisor,c4	divisorI,i
+
+define C30,c30
+define HEXVAL,X
+define POINTER,P
+define num,n
+
+define	libhandle,p	funchandle,p	# void* for return handles
+define	returnvar,c80
+
+#openlib(libhandle, '/home/leslie/libcl4/cl4303/lib/libcl4.so')
+
+if V1
+	openlib(libhandle, V1)
+else
+	openlib(libhandle, '/home/leslie/libcl4/cl4303/lib/libcl4.so')
+endif
+
+libcall(returnvar, libhandle, funchandle, 'CLversion', void)
+
+print libhandle funchandle nl
+
+print returnvar nl
+
+set trim, off
+num = 9876
+
+str27 = num
+str27 = NULL
+
+pause slen(str27)
+pause str27
+pause 10 - slen(str27)
+
+str100 = scat('123456','VC' * (10 - slen(str27)),str27,str27,C30,HEXVAL)
+
+print str100 nl
+
+str100 = lcase('lcase val')
+pause str100
+
+print nl,6
+
+HEXVAL = 0x1Fe0
+
+HEXVAL += 0x27
+print HEXVAL nl
+
+C30 = HEXVAL
+print C30 nl
+
+break
+}
+

@@ -1,0 +1,109 @@
+6 Bits available for function defs:
+
+1111 11-- ---- ----
+
+2^6 == 64 possible functions
+
+
+---- --1- ---- ----	( 0x0200 set ) 
+signifies that we want integer calculations only?
+
+---- ---1 ---- ----	( 0x0100 set )
+signifies that we are looking for a reserved value
+
+
+-----
+
+OpCode = x0400, NumArgs = 1	not()
+OpCode = x0800, NumArgs = 1	sqrt()
+OpCode = x0C00, NumArgs = 1	log()
+OpCode = x1000, NumArgs = 1	sin()
+OpCode = x1400, NumArgs = 1	cos()
+OpCode = x1800, NumArgs = 1	tan()
+OpCode = x1C00, NumArgs = 1	ucase()
+OpCode = x2000, NumArgs = 1	lcase()
+OpCode = x2400, NumArgs = 1	slen()
+OpCode = x2800, NumArgs = 1	day()
+OpCode = x2C00, NumArgs = 1	getarg()
+OpCode = x3000, NumArgs = 1	asize()
+OpCode = x3400, NumArgs = 1	asc()
+OpCode = x3800, NumArgs = 1	chr()
+OpCode = x3C00, NumArgs = 1	srand()
+OpCode = x4000, NumArgs = 1	getenv()
+OpCode = x4400, NumArgs = 1	log10()
+OpCode = x4800, NumArgs = 1	asin()
+OpCode = x4C00, NumArgs = 1	acos()
+OpCode = x5000, NumArgs = 1	atan()
+
+
+OpCode = x5400, NumArgs = 2	+	add
+OpCode = x5800, NumArgs = 2	-	subtract   -(multiple meanings for string functions)
+OpCode = x5C00, NumArgs = 2	**	EXP        -power()
+OpCode = x6000, NumArgs = 2	*	multiply
+OpCode = x6400, NumArgs = 2	/	divide
+OpCode = x6800, NumArgs = 2	%	MOD
+OpCode = x6C00, NumArgs = 2	match()
+OpCode = x7000, NumArgs = 2			*** free?
+OpCode = x7400, NumArgs = 2	sdel()
+OpCode = x7800, NumArgs = 2	smult()
+OpCode = x7C00, NumArgs = 2	sword()
+OpCode = x8000, NumArgs = 2	setenv()
+OpCode = x8400, NumArgs = 2	skey()
+OpCode = x8800, NumArgs = 2	sfmt()
+
+
+OpCode = x8C00, NumArgs = 1	getxml()
+OpCode = x9000, NumArgs = 1	degrees()
+OpCode = x9400, NumArgs = 1	radians()
+OpCode = x9800, NumArgs = 1	exp()
+OpCode = x9C00, NumArgs = 1	trim()
+OpCode = xA000, NumArgs = 1	getcgi()
+
+
+OpCode = xA400, NumArgs = 0	name()				# test for valid CL4 name
+OpCode = xA800, NumArgs = 0	'='				assignment?
+OpCode = xAC00, NumArgs = 0	'['				array subscript operation
+OpCode = xB000, NumArgs = 0			*** free?
+OpCode = xB400, NumArgs = 0			*** free?
+OpCode = xB800, NumArgs = 0	random()
+OpCode = xBC00, NumArgs = 0	keyready()
+OpCode = xC000, NumArgs = 0			*** free?
+OpCode = xC400, NumArgs = 0			*** free?
+OpCode = xC800, NumArgs = 0			*** free?
+
+OpCode = xCC00, NumArgs = 3	substr()
+OpCode = xD000, NumArgs = 3	srep()
+OpCode = xD400, NumArgs = 3	sconv()
+
+OpCode = xD800, NumArgs = 0	'+='
+OpCode = xDC00, NumArgs = 0	'-='
+OpCode = xE000, NumArgs = 0	'*='
+OpCode = xE400, NumArgs = 0	'/='
+OpCode = xE800, NumArgs = 0	'%='
+OpCode = xEC00, NumArgs = 0	'**='
+OpCode = xF000, NumArgs = 0			*** free?
+OpCode = xF400, NumArgs = -1	scat()				Unlimited number of params!
+OpCode = xF800, NumArgs = -1			*** free?
+OpCode = xFC00, NumArgs = 0			*** free?
+
+
+-------------------------------------------
+
+Reserved value bitmasks:
+
+"path",		0x0001
+"version"	0x0002
+		0x0004	- unallocated?
+"date"		0x0008
+"time"		0x0010
+"pname"		0x0020
+"uname"		0x0040
+"pid"		0x0080
+"uid"		0x0100
+"login"		0x0200
+"tty"		0x0400
+"nname"		0x0800
+		0x1000	- unallocated?
+"pwd"		0x2000
+"licensee"	0x4000	- in old versions, no longer supported
+		0x8000	- unallocated?

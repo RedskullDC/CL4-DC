@@ -1,0 +1,149 @@
+#ifndef PSET_GET_C
+#define PSET_GET_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "lvarnames.h"
+#include "DBdefs.h"
+#include "cl4.h"
+
+void pset(PTAB *ptab)
+{
+    bool ON_OFF;
+	char Src[2];
+	
+    ON_OFF = ptab->Operand == 1;                // default to 1 == ON
+    switch ( ptab->OpCode )
+    {
+        case 670:
+            clabort = ptab->Operand;
+            setvar(v_ABORT, ON_OFF);			// "ABORT"
+            break;
+        case 684:
+            align = ptab->Operand;
+            setvar(v_ALIGN, align);				// "ALIGN"
+            break;
+        case 630:
+            csv = ON_OFF;
+            setvar(v_CSV, ON_OFF);				// "CSV"
+            break;
+        case 640:
+            dos = ON_OFF;
+            setvar(v_DOS, ON_OFF);				// "DOS"
+            break;
+        case 673:
+            _DF = ptab->Operand;
+            setvar(v_DATEFORM, _DF);			// "DATEFORM"
+            break;
+        case 665:
+            bige = ptab->Operand;
+            setvar(v_BIGE, ON_OFF);				// "BIGE"
+            break;
+        case 674:
+            fld_nbrs = ptab->Operand;
+            setvar(v_FNUM, ON_OFF);				// "FNUM"
+            break;
+        case 682:
+            goback = ptab->Operand;
+            break;
+        case 659:
+            null_exit = ptab->Operand;
+            setvar(v_NEXIT, ON_OFF);			// "NEXIT"
+            break;
+        case 667:
+            pr_out = ptab->Operand;				// console(1) or stdout(2) 
+            setvar(v_OUTPUT, pr_out);			// "OUTPUT"
+            break;
+        case 669:
+            skipping = ptab->Operand;
+			setvar(v_SKIP, ON_OFF);				// "SKIP"
+            break;
+        case 681:
+            hangup = ptab->Operand;				
+            setvar(v_HANGUP, ON_OFF);			// "HANGUP"
+            clh_intr(0);
+            return;
+        case 680:
+            trim_it = ptab->Operand;
+            setvar(v_TRIM, ON_OFF);				// "TRIM"
+            break;
+        case 672:
+            debug = ON_OFF;
+            setvar(v_DEBUG, ON_OFF);			// "DEBUG"
+            break;
+        case 686:
+            convert = ON_OFF;
+            setvar(v_CONVERT, ON_OFF);			// "CONVERT"
+            break;
+        case 666:
+            justify = ON_OFF;
+            setvar(v_JUSTIFY, ON_OFF);			// "JUSTIFY"
+            break;
+        case 676:
+            _YA = ON_OFF;
+            setvar(v_AAUTO, ON_OFF);			// "AAUTO"
+            break;
+        case 687:
+            rawdisplay = ON_OFF;
+            setvar(v_RAWDISPLAY, ON_OFF);		// "RAWDISPLAY"
+            break;
+        case 688:
+            rawprint = ON_OFF;
+            setvar(v_RAWPRINT, ON_OFF);			// "RAWPRINT"
+            break;
+        case 690:
+            timing = ON_OFF;
+            sutimes("", true);					// "TIMING"   *error*   Always turns timing on regardless!!
+            return;
+        case 678:
+            _YR = ON_OFF;
+            setvar(v_RAUTO, ON_OFF);			// "RAUTO"
+            break;
+        case 679:
+            repeat = ON_OFF;
+            setvar(v_REPEAT, ON_OFF);			// "REPEAT"
+            break;
+        case 656:
+            _Ya = ptab->Operand;				// "ACCEPT"
+            break;
+        case 660:
+            _Ye = ptab->Operand;				// "ERROR"
+            break;
+        case 662:
+            _Yh = ptab->Operand;				// "HEAD"
+            break;
+        case 650:
+            _Ym = ptab->Operand;				// "MESSAGE"
+            break;
+        case 658:
+            _Yp = ptab->Operand;				// "PROMPT"
+            break;
+        case 664:
+			_Yt = ptab->Operand;				// "TEXT"
+            break;
+        case 668:
+            _Yo = ptab->Operand;				// "PRINT"
+            break;
+        case 654:
+            *_Yf = (char)(ptab->Operand & 0x00FF);
+            Src[0] = (char)(ptab->Operand & 0x00FF);
+            Src[1] = 0;
+            setcvar(v_FILL, Src);				// "FILL"
+            break;
+        case 652:
+            TAB = (char)(ptab->Operand & 0x00FF);
+            Src[0] = TAB;
+            Src[1] = 0;
+            setcvar(v_TAB, Src);				// "TAB"
+            break;
+        case 651:
+            xml = ON_OFF;
+            setvar(v_XML, ON_OFF);				// "XML"
+            break;
+        default:
+			// do nothing
+            return;
+    }
+}
+
+#endif

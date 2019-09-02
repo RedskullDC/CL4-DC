@@ -1,0 +1,20 @@
+# test CL4 handlind of smult() in evaliex()
+
+##################
+{ Main
+##################
+
+define tess,t		tessd,d		dta[10],n	pad,c2
+
+ldefine hubdate,c12	hbdate,c8	hbtime,c5	woy,i	longstr,c200
+
+set debug , on
+longstr = smult("abc",3)
+
+if 'abcabc' = smult('abc',2)
+	pause 'true'
+endif
+
+set debug , off
+
+}

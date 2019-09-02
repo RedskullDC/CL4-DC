@@ -1,0 +1,77 @@
+clcdb	: [277]    v6 = a1(TDno, WorkArea1, pos);	// Call the passed in function   **** NOT RIGHT FOR putr ****
+
+
+
+_diffkey() should return short, not int
+
+maptype() is incorrect [not called in cl4)
+
+evalnum :	FLDdesc v31; // [sp+2050h] [bp-428h]@120	//** doesn't look right **
+		case 0x6800:	// % MOD operator
+
+LEX_elem *lxelem; // esi@2    Same as KEY_Elem??
+
+DoActions: ((int (*)(KEY_Elist*))KeyPtr->u_Ptr.Func)(KeyEL);			///  **** need to check this ***
+
+DoMacroStr(KEY_Elist *KL) in funs.c	// not yet implemented
+
+void openscr()
+
+if ( !_issetbuf )
+//    setbuf(stdout, _obuf);	// careful, easily overrun!!!
+// while debugging, use line buffering:
+	setvbuf(stdout, _obuf, _IOLBF, 8192);	***********
+	pr_out = 1;	// this means we save screen output in a buffer for use 'screen'/'refresh' commands
+
+main: 	//Key_Destruct();
+	see KEYS.c
+
+pfile:		support for pipes
+_popen:		need to fix camake() call
+
+abcd:		check field1 should be an array of chars?
+
+chkpath:	check file_0[] array usage
+
+gettccl:	fix the call to clgetmode()
+
+match:		regex routines currently broken
+
+pedit:		fix logic layout
+
+jcheck:		fix rtab lookup code
+
+FIXXED:
+=======
+
+_pclose:	check the byte1() macro code... fixed, unsure of return macro however
+
+
+
+==================================================================
+
+REAL CL4 bugs to fix:
+
+bldexpr():
+
+Don't allow search backwards for numeric values:
+
+if ( Fld->FLDtype == 'C' )
+	WildChar = SrchMode;
+else if ( SrchMode )	// Numeric type
+	WildChar = '+';		// Only allow >= searches for numeric types??
+
+
+
+
+///===============================================================
+
+Bugs (apparently) fixed:
+
+slen:		print slen("blah") nl doesn't return value expected
+evalint:	fix asize() opcode "3000"
+
+clround()	Can't handle '7' or '8' variable types correctly ?!?
+		Problem was due to an issue in fldtobuf() 
+		
+main:		enable the closefp() function in exit area

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!--
+<!DOCTYPE moreovernews SYSTEM "http://www.moreover.com/xml/moreovernews.dtd">
+-->
+<!DOCTYPE abc [ <!ENTITY nbsp "&#160;"> ]>
+<moreovernews>
+  <abc>&lt;x&nbsp;x&gt;</abc>
+  <!--
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 1
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 2
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 3
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 4
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 5
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 6
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 7
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 8
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 9
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 10
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 11
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 12
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 13
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 14
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 15
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 16
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 17
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 18
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 19
+  abcdefghijklmnopqrstivwzyz0123456789 this is a comment 20
+  -->
+  <article id="_5308837">
+	 &lt;x&nbsp;x&gt;
+	 first tag a
+	 first tag b
+	 first tag c
+	 <url>http://d.moreover.com/click/here.pl?x5308836</url>
+	 second tag
+	 <headline_text>Fears grow for Owen as injury strikes again</headline_text>
+	 third tag
+	 <source> The Electronic Telegraph </source>
+	 fourth tag
+	 <media_type>text</media_type>
+	 fifth tag
+	 <cluster><![CDATA[start of cluster ]]> <xxx>xxx <b>abc </b> </xxx><![CDATA[Sports: soccer news ]]></cluster>
+	 <buster><![CDATA[start of buster]]> middle of buster <![CDATA[end of buster]]></buster>
+	 sixth tag
+	 <tagline> </tagline>
+	 <td colspan="3">
+	 <:set name="config" value="cmntmbask" />
+	 </td>
+	 seventh tag
+	 <document_url>http://www.telegraph.co.uk/et?ac=000446462942768&amp;rtmo=qMXKMRM9&amp;atmo=99999999&amp;pg=/ixfooty.html</document_url>
+	 eight tag
+	 <harvest_time>Jan 23 2000  1:15AM</harvest_time>
+	 ninth tag
+	 <access_registration>http://www.telegraph.co.uk/et_reg_page.html</access_registration>
+	 tenth tag
+	 <access_status> </access_status>
+	 no more tags
+ </article>
+</moreovernews>

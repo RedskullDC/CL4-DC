@@ -1,0 +1,218 @@
+#ifndef OPENSCREEN_C
+#define OPENSCREEN_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include <termio.h>		// for ioctl etc.
+#include <unistd.h>		// for isatty(fileno(stdout))
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void fatal(int arg)
+{
+    dprint("fatal: sig=%d\n", arg);
+    
+	if ( isatty(0) )
+        ioctl(0, 0x5407u, &TTY_sv);
+    
+	if ( isatty(2) )
+    {
+        if ( *_vs )
+            fputs(_vs, stderr);
+        if ( *_ve )
+            fputs(_ve, stderr);
+        if ( *_te )
+            fputs(_te, stderr);
+        fflush(stderr);
+    }
+    abort();
+}
+
+void bp_intr(int sig)			// Broken Pipe interrupt handler
+{
+    signal(SIGPIPE, bp_intr);
+    bp_flag = true;
+}
+
+void cle_intr(int sig)
+{
+    char	*v2;
+    int		v3;
+    char	s[256];
+
+    signal(sig, SIG_IGN );	// stop multiple signals of same type arriving
+    if ( sig != 14 || hangup != 2 )
+    {
+        if ( !inhere_10 )
+        {
+            inhere_10 = 1;
+            signal(SIGHUP, SIG_IGN);
+            signal(SIGINT, SIG_IGN);
+            signal(SIGQUIT, SIG_IGN);
+            signal(SIGALRM, SIG_IGN);
+            signal(SIGTERM, SIG_IGN);
+            signal(SIGFPE, fatal);
+            signal(SIGABRT, fatal);
+            signal(SIGBUS, fatal);
+            signal(SIGSEGV, fatal);
+            switch ( sig )
+            {
+                case SIGHUP:
+                    v2 = sighup_0;
+                    break;
+                case SIGQUIT:
+                    v2 = sigquit_1;
+                    break;
+                case SIGFPE:
+                    v2 = sigfpe_2;
+                    break;
+                case SIGABRT:
+                    v2 = sigabrt_3;
+                    break;
+                case SIGBUS:
+                    v2 = sigbus_4;
+                    break;
+                case SIGSEGV:
+                    v2 = sigsegv_5;
+                    break;
+                case SIGALRM:
+                    if ( _isterm )
+                        v2 = sigt_o_6;		// "timeout exceeded"
+                    else
+                        v2 = sigeof_7;		// "unexpected end of input"
+                    break;
+                case SIGTERM:
+                    v2 = sigterm_8;
+                    break;
+                default:
+                    v2 = s;
+                    sprintf(s, "%s %d", sigukn_9, sig);	// "unknown signal"
+                    break;
+            }
+            v3 = fileno(op);
+            
+			if ( !isatty(v3) )
+                oprint(op, "** %s **\n", v2);
+            
+			if ( isatty(fileno(stderr)) )
+                eprint("** %s **\n", v2);
+            
+			ioctl(0, 0x540Bu, 0);	// TCFLSH
+            
+			if ( sig == SIGSEGV )
+            {
+                signal(SIGABRT, SIG_DFL);
+                abort();
+            }
+            longjmp(sjbuf, -sig);
+        }
+    }
+}
+
+void openscr()
+{
+    if ( signal(SIGINT, SIG_IGN) != SIG_IGN )
+    {
+        signal(SIGINT, cl_intr);
+        signal(SIGQUIT, cle_intr);
+    }
+    
+	if ( signal(SIGHUP, SIG_IGN) != SIG_IGN )
+        signal(SIGHUP, clh_intr);
+    
+	if ( signal(SIGTERM, SIG_IGN) != SIG_IGN )
+        signal(SIGTERM, clh_intr);
+    
+	signal(SIGFPE, cle_intr);
+    signal(SIGABRT, cle_intr);
+    signal(SIGSEGV, cle_intr);
+    signal(SIGALRM, cle_intr);
+    signal(SIGBUS, cle_intr);
+    signal(SIGPIPE, bp_intr);
+    signal(SIGUSR1, SIG_IGN);
+    signal(SIGUSR2, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGCONT, SIG_IGN);
+    
+	_started = true;
+
+// check for re-directs on default streams
+    _isterm = isatty(fileno(stdin));
+    if ( _isterm )
+    {
+        setbuf(stdin, 0);
+        if ( first_time )
+        {
+			ioctl(0, 0x5405u, &TTY_sv);		// TCGETA
+            ioctl(0, 0x5405u, &TTY);		// TCGETA
+            //ospeed = TTY.c_cflag & 0x100F;
+            TTY.c_iflag &= 0xFFDB;
+            TTY.c_lflag = 1;
+            TTY.c_oflag = (TTY.c_oflag | 1) & 0xE7FF;
+            TTY.c_cc[6] = 1;
+            TTY.c_cc[5] = 1;
+            _tty_bc		= TTY.c_cc[2];
+            first_time = 0;
+        }
+        ioctl(0, 0x5407u, &TTY);			// TCSETAW	
+    }
+    if ( isatty(fileno(stdout)) )
+    {
+        if ( !_issetbuf )
+        //    setbuf(stdout, _obuf);	// careful, easily overrun!!!
+		// while debugging, use line buffering:
+			setvbuf(stdout, _obuf, _IOLBF, 8192); 
+        pr_out = 1;	// this means we save screen output in a buffer for use 'screen'/'refresh' commands
+    }
+    if ( !_issetbuf )
+    {
+        setbuf(stderr, _ebuf);			// overrides default linux unbuffered stderr functionality!!!
+        _issetbuf = true;
+    }
+
+	if ( isatty(fileno(stderr)) )
+    {
+        if ( *_ti )
+            fputs(_ti, stderr);
+        if ( *_vi )
+            fputs(_vi, stderr);
+    }
+}
+
+void closescr()
+{
+    if ( _started )
+    {
+        if ( signal(SIGINT, SIG_IGN) != SIG_IGN )
+        {
+            signal(SIGINT, SIG_DFL);
+            signal(SIGQUIT, SIG_DFL);
+        }
+        
+		if ( signal(SIGHUP, SIG_IGN) != SIG_IGN )
+            signal(SIGHUP, SIG_DFL);
+        
+		if ( signal(SIGTERM, SIG_IGN) != SIG_IGN )
+            signal(SIGTERM, SIG_DFL);
+        
+		if ( isatty(0) )
+            ioctl(0, 0x5407u, &TTY_sv);	// TCSETAW	(restore stdin settings)
+        
+		if ( isatty(2) )
+        {
+            if ( *_vs )
+                fputs(_vs, stderr);
+            if ( *_ve )
+                fputs(_ve, stderr);
+            if ( *_te )
+                fputs(_te, stderr);
+            fflush(stderr);
+        }
+        _started = false;
+    }
+}
+
+#endif

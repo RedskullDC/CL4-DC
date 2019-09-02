@@ -1,0 +1,75 @@
+530,replace
+580,clear
+570,delete
+520,getnext
+515,getprev
+510,get
+530,put
+560,select
+720,do
+880,sleep
+882,exit_block
+884,exit_do
+886,exit_process
+888,restart_block
+910,unlock
+950,break
+999,end
+900,print
+760,srandom
+730,redisplay
+750,fork
+800,copy
+850,popenin, popenio, popenout
+860,openapp, openin, openout, close, read, write
+400,no-op
+320,continue
+330,end_loop
+300,if
+310,while
+265,no_form
+140,clear_eos
+130,clear_eol
+200,= (assign)
+250,refresh
+260,screen
+600,format
+700,goto
+450,create
+1,accept
+3,head
+4,text
+870,pause
+270,message
+673,set dateform
+652,set tab
+654,set fill
+650,set message
+656,set accept
+658,set prompt
+660,set error
+662,set head
+664,set text
+668,set print
+670,set abort
+684,set align
+665,set E
+630,set csv
+640,set dos
+682,set goback
+680,set trim
+676,set aauto
+678,set rauto
+679,set repeat
+666,set justify
+681,set hangup
+686,set convert
+687,set rawdisplay
+688,set rawprint
+659,set null_exit
+672,set debug
+674,set fnum
+651,set xml
+669,set skip
+667,set output
+

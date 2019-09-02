@@ -1,0 +1,77 @@
+KeyElist (Elist) created in ===   KeyF_Construct()  ===
+
+UserData == KEY_Elem structures.
+
+KEY_Elem = 20 bytes.     (Same at LEX structure?)
+
+int field_0;
+int field_4;	lx_CRstart
+int field_8;	lx_CRend
+Elist *field_C;	lx_elist
+int field_10;}
+
+elist_Add(KeyElist, 0, KeyElem);
+v6 = 0;
+if ( FileName )
+	v6 = KeyF_ReadFile(KeyElist, FileName, KeyFns);
+
+KEY_Elist = 20 bytes
+
+key_list->field_0 = v6;			** Not sure that v6 is actually an Elist ???
+key_list->field_8 = KeyElist;		Initialised by KeyF_ReadFile() above.
+key_list->field_4 = elist_Create();
+key_list->FileName = FileName;		Filename that keys/macros were read from.
+key_list->RdFunc = ReadFunction;	keys_lgetchar() for kt_keys, keys_getchar() for kt_macros 
+
+
+kt_macros
+kt_keys
+both set to KEY_Elist structures.
+
+
+kt_keys	  referenced in Key_Construct(), keys_getchar()					[ and Key_Destruct and program end]
+
+kt_macros referenced in Key_Construct(), Key_GetChar(), Key_Ready(), Key_Lookup()	[ and Key_Destruct and program end]
+
+
+
+gchar() calls through Key_GetChar()
+
+--------------------------
+
+<r>epeat <e>nd  e
+Program received signal SIGSEGV, Segmentation fault.
+0x080775fc in linputChinese (Buffer=0xffffce4a "e", MaxLen=1, onesc=0x0) at src/INPUT.c:1476
+1476                            if ( iscntrl(Key))
+Missing separate debuginfos, use: debuginfo-install glibc-2.12-1.132.el6.i686 ncurses-libs-5.7-3.20090208.el6.i686
+(gdb)
+
+result = KeyElist	->field_C	->field_4	->field_C	->field_8	->field_4	->Size;
+         Elist		Elist_Elem	KEY_Elem*	Elist		Elist_Elem	KEYPTR*		 ????
+result = KeyElist	->Next		->UserData	->lx_elist	->Prev		->UserData	->field_0;
+
+
+KeyF_ReadFile : returned from ReadKeyList() 
+
+DumpBlock(KeyElist, sizeof(Elist));
+09C274A0 = 01 00 00 00 E8 74 C2 09 E8 74 C2 09 E8 74 C2 09  .....t...t...t..
+
+DumpBlock(KeyElist->Next, sizeof(Elist_Elem));
+09C274E8 = 00 00 00 00 B8 74 C2 09 A0 74 C2 09 A0 74 C2 09  .....t...t...t..
+
+DumpBlock(KeyElist->Next->UserData, sizeof(KEY_Elem));
+09C274B8 = 00 00 00 00 FF 00 00 00 FF 00 00 00 D0 74 C2 09 00 00 00 00 .............t......
+
+DumpBlock(((KEY_Elem*)KeyElist->Next->UserData)->field_C, sizeof(Elist));
+09C274D0 = 01 00 00 00 C0 DF C2 09 C0 DF C2 09 C0 DF C2 09  ................
+
+DumpBlock((((KEY_Elem*)KeyElist->Next->UserData)->field_C)->Prev, sizeof(Elist_Elem));
+09C2DFC0 = 00 00 00 00 18 75 C2 09 D0 74 C2 09 D0 74 C2 09  .....u...t...t..
+
+DumpBlock( (KEYPTR*)(((KEY_Elem*)KeyElist->Next->UserData)->field_C)->Prev->UserData, sizeof(KEYPTR));
+09C27518 = 00 75 C2 09 03 00 00 00  .u......			<- This is an Elist type!
+
+DumpBlock( ((KEYPTR*)(((KEY_Elem*)KeyElist->Next->UserData)->field_C)->Prev->UserData)->u_Ptr.List, sizeof(Elist));
+09C27500 = 02 00 00 00 58 DF C2 09 58 DF C2 09 58 75 C2 09  ....X...X...Xu..
+
+

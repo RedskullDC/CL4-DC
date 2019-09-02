@@ -1,0 +1,117 @@
+{						; case:2, Adding a new sub-list
+	'\e' {					; case:4 new element, 2: new sub-list
+		'\e'	< Escape
+		'\t'	< S_Tab
+		'1'	< Insert
+		'O'	{
+			'A' < CursorUp
+			'B' < CursorDown
+			'C' < CursorRight
+			'D' < CursorLeft
+			'P' < Fk1
+			'Q' < Fk2
+			'R' < Fk3
+			'S' < Fk4
+			'T' < Fk5
+			'U' < Fk6
+			'V' < Fk7
+			'W' < Fk8
+			'X' < Fk9
+			'Y' < Fk10
+			'Z' < Fk11
+			'A' < Fk12
+
+			'p' < Insert
+			'n' < Delete
+			'q' < End
+			'r' < CursorDown
+			's' < PageDown
+			't' < CursorLeft
+			'u' < Key5
+			'v' < CursorRight
+			'w' < Home
+			'x' < CursorUp
+			'y' < PageUp
+			'M' < Enter
+
+			'l' < @','
+			'm' < @'-'
+
+			'*' < Null
+			} <
+		'\[' {
+			'M' < Esc_a 
+			'N' < Esc_b
+			'O' < Esc_c
+			'P' < Esc_d
+			'Q' < Esc_e
+			'R' < Esc_f
+			'S' < Esc_g
+			'T' < Esc_h
+			'U' < Esc_i
+			'V' < Esc_j
+			'W' < Esc_k
+			'X' < Esc_l
+			'Y' < Esc_m
+			'Z' < Esc_n
+			'a' < Esc_o
+			'b' < Esc_p
+			'c' < Esc_q
+			'd' < Esc_r
+			'e' < Esc_s
+			'f' < Esc_t
+			'g' < Esc_u
+			'h' < Esc_v
+			'i' < Esc_w
+			'j' < Esc_x
+
+			'A' < CursorUp
+			'B' < CursorDown
+			'C' < CursorRight
+			'D' < CursorLeft
+			'K' < End
+			'H' < Home
+			'Z' < S_Tab
+			'1' {
+				'~' < Home
+				'7' { '~' < Fk6 } <
+				'8' { '~' < Fk7 } <
+				'9' { '~' < Fk8 } <
+				} <
+			'2' {
+				'~' < Insert
+				'0' { '~' < Fk9 } <
+				'1' { '~' < Fk10 } <
+
+				'3' { '~' Push @'\e' SetRetVal < } <
+				'3' { '~' < @'\e' } <
+
+				'4' { '~' < BackSpace } <
+				'5' {
+					';' { '1' { 'H' < End } < } <
+					'~' < Enter
+					} <
+				'6' { '~' < Home } <
+				'8' { '~' < Help } <
+				'9' { '~' < Enter } <
+				} <
+			'3' {
+				'~' < Delete
+				'1' { '~' < S_Fk1 } <
+				'2' { '~' < S_Fk2 } <
+				'3' { '~' < S_Fk3 } <
+				'4' { '~' < S_Fk4 } <
+				} <
+			'4' { '~' < End } <
+			'5' { '~' < PageUp } <
+			'6' { '~' < PageDown } <
+			} <
+		'D' < PageDown
+		'M' < PageUp
+		'[a-z]' PushK Push @'\e' MacroAdd MacroAdd <
+		'[A-Z]' PushK Push @'\e' MacroAdd MacroAdd <
+		'\s'    PushK Push @'\e' MacroAdd MacroAdd <
+		'*' < Null
+		} <
+	'*' PushK SetRetVal <
+}

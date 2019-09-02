@@ -1,0 +1,88 @@
+# cl4 test suite .
+
+##################
+{ Main
+##################
+
+
+#getfile TESTDB Tranfl1,t1 Tran1rra,t1a 
+
+define ad,c10 MyInt,b	MyChar,c1 count,n	MyArray[20],c16	teststring,c10
+
+define testint,n	resultint,n	test2,2	str40,c4	test4,4
+
+define dp1,1	dp2,2	dp3,3	dp4,4	dp5,5	dp6,6	dp7,7	dp8,8	dp9,9
+
+set fnum, off
+
+set tab,
+
+testint = 50
+
+MyInt = testint * 6
+print MyInt nl
+
+MyInt = testint % 6
+print MyInt nl
+
+MyInt = testint / 6
+print MyInt nl
+
+MyInt = testint - 6
+print MyInt nl
+
+test4 = 144
+
+print sqrt(test4) nl
+
+print 5.6 + 7.8 nl
+
+print 5.6 * 7.8 nl
+
+print sin(36.5) nl
+
+print 'This is a longish string' / 1204 nl
+
+print 'This is a longish string' % 4 nl		# 'longish'
+
+print slen("Blah Blah Blah") nl
+
+print asize(MyArray) nl
+
+dp1 = 12.123456789 * 13.456789012
+print 'dp1 = ' dp1 nl
+
+dp2 = 12.123456789 * 13.456789012
+print 'dp2 = ' dp2 nl
+
+dp3 = 12.123456789 * 13.456789012
+print 'dp3 = ' dp3 nl
+
+dp4 = 12.123456789 * 13.456789012
+print 'dp4 = ' dp4 nl
+
+dp5 = 12.123456789 * 13.456789012		# 5 places and up are rounding incorrectly
+print 'dp5 = ' dp5 nl
+
+dp6 = 12.123456789 * 13.456789012
+print 'dp6 = ' dp6 nl
+
+dp7 = 12.123456789 * 13.456789012
+print 'dp7 = ' dp7 nl
+
+dp8 = 12.123456789 * 13.456789012
+print 'dp8 = ' dp8 nl
+
+dp9 = 12.123456789 * 13.456789012
+print 'dp9 = ' dp9 nl
+
+
+#set tab,,
+print sword('This,,,,,,,is a longish string even more words here to be seen', 11) nl
+
+openout dsk 'stdout'
+if not ERROR
+	write dsk 'This is a simple line' nl
+	close dsk
+endif
+}

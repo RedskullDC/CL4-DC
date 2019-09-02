@@ -1,0 +1,363 @@
+Notes on hash based symmetric encryption and signatures
+	by Michael Graffam (mgraffam@mhv.net)
+
+
+The theory of a hash based cipher is a simple one: grab a key from
+the user and use this as the initial input to the hash algorithm,
+the output values are treated as random numbers to be xor'd with
+the plaintext. 
+
+Just what we do when we run out of pseudo-random bits is the interesting
+part. The simplest solution, of course is to simply roll back to the
+beginning of the hash and keep encrypting.. this method yields a
+glorified and still completely insecure Vigenere cipher.
+
+A more cryptographically sound method is to simply throw the hash values
+that we had been using back into the one-way function and get some
+new bits. While this method is safe against ciphertext-only attacks
+(unlike the previous method), it is still vulnerable to a known
+plaintext attack. If the attacker knows N bits of plaintext (where
+N is the length of the digest), then he easily compute what hash
+was used. While he cannot use this hash to get previous bits of
+plaintext, all plaintext from that section onward can be read, and
+perhaps more importantly, the attacker can change the plaintext
+such that upon decryption the message is different (and still
+meaningful). 
+
+Obtaining new random bits by hashing the original key and the old
+hash solves the problem of a known plaintext attack, but there is
+still one cryptanalytic attack to be overcome.
+
+Hashing a key, and then hashing the hash+key will always generate
+the same random number stream regardless of the plaintext being
+encrypted. From a cryptanalytic point of view we can treat an
+encryption system based on this stream like a one-time pad that
+has been used twice.
+
+What we need is a random number stream that is affected by the
+plaintext values so that even if the same user key is used 
+on two different messages the random bits used to encrypt the
+messages will be different. Therefore, we use the following
+algorithm:
+
+	HASH(User_key) -> H
+     +->H xor Plaintext_block -> Ciphertext_block
+     |  HASH(User_key + Plaintext_block + H) -> H
+     |  Get new Plaintext_block
+     |  |
+     +--+
+
+If the attacker knows the very first plaintext block, he can 
+calculate the hash that it was xor'd against. But he cannot use
+this information to get the user's key (because it is a one-way
+function) and he cannot get subsequent plaintexts because he would
+need the user's key to calculate the next hash value, therefore
+the system is secure.
+
+All that having been said, if you need to keep something private,
+and you want to use a symmetric key cipher, use IDEA or Blowfish.
+Hash functions are not really meant to be used in this fashion,
+and will be slower than an algorithm like IDEA. There is also
+the problem that hash functions are generally not designed to
+be used as a source of random numbers, they are designed to give
+a digest of an arbitrary length input. It could very well be that
+a hash function used in the manner described above might expose
+characteristics to cryptanalytic attack that would not ordinarily
+be a problem when used in the manner it was designed for.. this is
+unlikely to be a problem, in my opinion, but it is something to
+think about.
+
+Not to mention. It's slow ;) 
+
+So why did I take the time to write up a cipher based on this? Well,
+I was bored, and I wanted to learn about SHA so I started playing
+with the source and started reading the relevant portions in Handbook
+of Applied Cryptography. But there are some very practical purposes
+for designing such ciphers and exploring their properties.
+
+One, unfortunately very real, use is in the area of export regulations.
+It is not illegal to export a hash function but it is illegal to
+export a cipher in some countries (you get three guesses to name a
+country, the first 2 don't count). By making ciphers based on hash
+functions source code could be split into two parts, a random number
+generation part and code to XOR bytes together. Both of these packages
+should then be able to be exported and simply compiled together with
+no legal troubles.
+
+Another, more practical area of use would be in low memory situations
+where both hashing and crypto are required. It could be overly expensive
+to have two algorithms sitting around; use of one algorithm for both
+applications might be needed. 
+
+Symmetric signatures are another matter entirely. It works like this:
+to sign a document one simply prepends a secret key and hashes the
+new document. This message digest is your signature for the original
+message. For someone to verify that you signed the document he checks
+like we would in real life: he asks you to sign it and compares the
+signatures.
+
+Of course, you can repudiate your signature at any time. If someone
+wants you to sign the document, and you don't want them to know
+that you signed it you simply don't use the correct key. Such a
+system is useful in an environment where you would like to prove
+to Winston that you signed a document, and are thus his ally, but
+don't want to be held accountable for that signature when you
+go over to the Ministry of Love to have tea and talk over your
+political views.
+
+
+/* ----------------------------- SHS Driver code --------------------------- */  
+/* 
+    Much of this SHS driver code was written by Peter Gutmann 
+    (pgut1@cs.aukuni.ac.nz), namely the printing, file, string 
+    and test code. I (Michael Graffam <mgraffam@mhv.net) added 
+    the code to do symmetric signatures and the block encryption 
+    code. Mr. Gutmann also wrote the main SHS routines. 
+     
+    Peter's code as well as my own are placed in the public 
+    domain. 
+ 
+*/  
+#include <stdio.h>  
+#include <stdlib.h>  
+#include <string.h>  
+#include <time.h>  
+#include "shs.h"  
+  
+/* Prototypes of the local functions */  
+local void shsPrint OF((SHS_INFO *shsInfo));  
+local void shsTimeTrial OF((void));  
+local void shsString OF((char *inString));  
+local void shsFile OF((char *filename));  
+local void shsFilter OF((void));  
+local void shsTestSuite OF((void));  
+local void shsSign OF((char *inString));  
+local void shsCrypt OF((char *Key, int decrypt));  
+local char *strXor OF((char *str1, char *str2, int bytes, char *str3));  
+void main OF((int argc, char **argv));  
+  
+/* 
+ * Prints message digest buffer in shsInfo as 40 hexadecimal digits. Order is 
+ * from low-order byte to high-order byte of digest. Each byte is printed 
+ * with high-order hexadecimal digit first. 
+ */  
+local void shsPrint (shsInfo)  
+    SHS_INFO *shsInfo;  
+{  
+    int i;  
+  
+    for (i = 0; i < 5; i++)  
+        printf ("%08lx", shsInfo->digest [i]);  
+}  
+  
+/* size of test block */  
+#define TEST_BLOCK_SIZE 1000  
+  
+/* number of blocks to process */  
+#define TEST_BLOCKS 10000  
+  
+/* number of test bytes = TEST_BLOCK_SIZE * TEST_BLOCKS */  
+local long TEST_BYTES = (long) TEST_BLOCK_SIZE * (long) TEST_BLOCKS;  
+  
+/* 
+ * A time trial routine, to measure the speed of SHA. 
+ * 
+ * Measures wall time required to digest TEST_BLOCKS * TEST_BLOCK_SIZE 
+ * characters. 
+ */  
+local void shsTimeTrial ()  
+{  
+    SHS_INFO shsInfo;  
+    time_t endTime, startTime;  
+    local unsigned char data [TEST_BLOCK_SIZE];  
+    unsigned int i;  
+  
+    /* initialize test data */  
+    for (i = 0; i < TEST_BLOCK_SIZE; i++)  
+        data [i] = (unsigned char) (i & 0xFF);  
+  
+    /* start timer */  
+    printf ("SHA time trial. Processing %ld characters...\n", TEST_BYTES);  
+    time (&startTime);  
+  
+    /* digest data in TEST_BLOCK_SIZE byte blocks */  
+    shsInit (&shsInfo);  
+    for (i = TEST_BLOCKS; i > 0; i--)  
+        shsUpdate (&shsInfo, data, TEST_BLOCK_SIZE);  
+    shsFinal (&shsInfo);  
+  
+    /* stop timer, get time difference */  
+    time (&endTime);  
+    shsPrint (&shsInfo);  
+    printf (" is digest of test input.\nSeconds to process test input: %ld\n",  
+        (long) (endTime - startTime));  
+    printf ("Characters processed per second: %ld\n",  
+        TEST_BYTES / (endTime - startTime));  
+}  
+  
+/* 
+ * Computes the message digest for string inString. Prints out message 
+ * digest, a space, the string (in quotes) and a carriage return. 
+ */  
+local void shsString (inString)  
+    char *inString;  
+{  
+    SHS_INFO shsInfo;  
+    unsigned int len = strlen (inString);  
+  
+    shsInit (&shsInfo);  
+    shsUpdate (&shsInfo, (unsigned char *) inString, len);  
+    shsFinal (&shsInfo);  
+    shsPrint (&shsInfo);  
+    printf (" \"%s\"\n", inString);  
+}  
+  
+/* 
+ * Computes the message digest for a specified file. Prints out message 
+ * digest, a space, the file name, and a carriage return. 
+ */  
+local void shsFile (filename)  
+    char *filename;  
+{  
+    FILE *inFile = fopen (filename, "rb");  
+    SHS_INFO shsInfo;  
+    int bytes;  
+    local unsigned char data [1024];  
+  
+    if (inFile == NULL) {  
+        printf ("%s can't be opened.\n", filename);  
+        return;  
+    }  
+    shsInit (&shsInfo);  
+    while ((bytes = fread (data, 1, 1024, inFile)) != 0)  
+        shsUpdate (&shsInfo, data, bytes);  
+    shsFinal (&shsInfo);  
+    shsPrint (&shsInfo);  
+    printf (" %s\n", filename);  
+    fclose (inFile);  
+}  
+  
+/* 
+ * Writes the message digest of the data from stdin onto stdout, 
+ * followed by a carriage return. 
+ */  
+local void shsFilter ()  
+{  
+    SHS_INFO shsInfo;  
+    int bytes;  
+    local unsigned char data [SHS_BLOCKSIZE];  
+  
+    shsInit (&shsInfo);  
+    while ((bytes = fread (data, 1, SHS_BLOCKSIZE, stdin)) != 0)  
+        shsUpdate (&shsInfo, data, bytes);  
+    shsFinal (&shsInfo);  
+    shsPrint (&shsInfo);  
+    printf ("\n");  
+}  
+  
+/* 
+ * Runs a standard suite of test data. 
+ */  
+local void shsTestSuite ()  
+{  
+    printf ("SHA test suite results:\n");  
+    shsString ("");  
+    shsString ("a");  
+    shsString ("abc");  
+    shsString ("message digest");  
+    shsString ("abcdefghijklmnopqrstuvwxyz");  
+    shsString ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");  
+    shsString ("1234567890123456789012345678901234567890\  
+1234567890123456789012345678901234567890");  
+    /* Contents of file foo are "abc" */  
+    shsFile ("foo");  
+}  
+local char *strXor (char *str1, char *str2, int len, char *str3)  
+{  
+    int i;  
+    for (i=0; i<=len; i++)  
+        str3[i]=str1[i]^str2[i];  
+    return str3;  
+}  
+local void shsCrypt (char *Key, int decrypt)  
+{  
+    int bytes;  
+    int i;  
+    SHS_INFO shsInfo;  
+    unsigned int len = strlen(Key);  
+    local unsigned char data [SHS_DIGESTSIZE];  
+    char xor_output[SHS_DIGESTSIZE];  
+  
+    shsInit (&shsInfo);  
+    shsUpdate(&shsInfo, (unsigned char *)Key, strlen(Key));  
+    shsFinal (&shsInfo);  
+    while ( (bytes=fread(data,1,SHS_DIGESTSIZE,stdin)) != 0 )  
+    {  
+        data[bytes]=0;  
+        strXor( (char *)&shsInfo, data,bytes-1,xor_output);  
+        for (i=0; i<=bytes-1; i++)  
+            putc(xor_output[i],stdout);  
+        shsUpdate(&shsInfo, (unsigned char *)&shsInfo, SHS_DIGESTSIZE);  
+        shsUpdate(&shsInfo, (unsigned char *)Key, strlen(Key));  
+        if (decrypt)  
+            shsUpdate(&shsInfo, xor_output, bytes);  
+        else  
+            shsUpdate(&shsInfo, data, bytes);  
+        shsFinal(&shsInfo);  
+    }  
+      
+}  
+local void shsSign (char *Key)  
+{  
+        int bytes;  
+    SHS_INFO shsInfo;  
+        local unsigned char data [SHS_DIGESTSIZE];  
+  
+    shsInit (&shsInfo);  
+    shsUpdate (&shsInfo, (unsigned char *) Key, strlen(Key));  
+    shsFinal (&shsInfo);  
+        while ((bytes = fread (data, 1, SHS_DIGESTSIZE, stdin)) != 0)  
+                shsUpdate (&shsInfo, data, bytes);  
+        shsFinal (&shsInfo);  
+        shsPrint (&shsInfo);  
+        printf ("\n");    
+}  
+void main (argc, argv)  
+    int argc;  
+    char **argv;  
+{  
+    int i;  
+  
+    /* For each command line argument in turn: 
+    ** filename      -- prints message digest and name of file 
+    ** -sString      -- prints message digest and contents of string 
+    ** -t            -- prints time trial statistics for 10M 
+    **          characters 
+    ** -SKey         -- 'signs' document with a given key 
+    **              (arbitrary length) 
+    ** -eKey         -- uses SHA to encrypt as a cipher with key  
+    **              (arbitrary length) 
+    ** -dKey         -- uses SHA to decrypt as a cipher with key  
+    **              (arbitrary length) 
+    ** -x            -- execute a standard suite of test data 
+    ** (no args)         -- writes messages digest of stdin onto stdout 
+    */  
+    if (argc == 1)  
+        shsFilter ();  
+    else  
+        for (i = 1; i < argc; i++)  
+            if (argv [i] [0] == '-' && argv [i] [1] == 's')  
+                shsString (argv [i] + 2);  
+            else if (strcmp (argv [i], "-t") == 0)  
+                shsTimeTrial ();  
+            else if (strcmp (argv [i], "-x") == 0)  
+                shsTestSuite ();  
+            else if (argv [i] [0] == '-' && argv [i] [1] == 'S')  
+                shsSign (argv[i]+2);  
+            else if (argv [i] [0] == '-' && argv [i] [1] == 'e' )  
+                shsCrypt(argv[i]+2,0);  
+            else if (argv [i] [0] == '-' && argv [i] [1] == 'd' )  
+                shsCrypt(argv[i]+2,1);  
+            else  
+                shsFile (argv [i]);  
+}  

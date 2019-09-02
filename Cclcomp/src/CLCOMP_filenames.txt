@@ -1,0 +1,836 @@
+Format      : ELF for Intel 386 (Executable)
+Imagebase   : 8048000
+Interpreter '/lib/ld-linux.so.2'
+Needed Library 'libncurses.so.5'
+Needed Library 'libm.so.6'
+Needed Library 'libc.so.6'
+
+Source File : '<command line>'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+Source File : '<command line>'
+Source File : '<built-in>'
+Source File : 'abi-note.S'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/abi-tag.h'
+Source File : 'abi-note.S'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+Source File : 'abi-note.S'
+Source File : '<command line>'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+Source File : '<command line>'
+Source File : '<built-in>'
+Source File : 'abi-note.S'
+Source File : 'init.c'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crti.S'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/defs.h'
+Source File : 'initfini.c'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crti.S'
+Source File : '<command line>'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+Source File : '<command line>'
+Source File : '<built-in>'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crti.S'
+Source File : 'crtstuff.c'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crtn.S'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/defs.h'
+Source File : 'initfini.c'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crtn.S'
+Source File : '<command line>'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/config.h'
+Source File : '<command line>'
+Source File : '<built-in>'
+Source File : '/tmp/glibc-2.3.5/build-glibc-2.3.5/csu/crtn.S'
+
+Source File : 'clcomp.c'
+				main
+				tdlocks
+				chknode
+Source File : 'loadent.c'
+				chkoelist
+				loadent
+Source File : 'dumpenc.c'
+				dumpenc
+				dumpoe
+				dumpscr
+				puttext
+				putcount
+				putarrcount
+				putarrtds
+				puttable
+				putucount
+				putbits
+				putLong
+				putbool
+				putdouble
+				putfloat
+				putftabs
+				putptabs
+				putenodes
+				putxtabs
+				putrtabs
+				putratabs
+				putxftabs
+				putsftabs
+				putprtabs
+				putrdtabs
+				putkxtabs
+				putbtabs
+				putbuf
+Source File : 'leblock.c'
+				leblock
+Source File : 'legetf.c'
+				checkdbrename
+				legetf
+				tdopen
+Source File : 'lemaint.c'
+				lemaint
+Source File : 'leformat.c'
+				leformat
+Source File : 'loadstate.c'
+				loadstate
+Source File : 'leaccept.c'
+				leaccept
+Source File : 'lecopy.c'
+				lecopy
+Source File : 'lecreate.c'
+				lecreate
+				_tdopen
+Source File : 'ledefine.c'
+				ledefine
+Source File : 'lehdtxt.c'
+				lehdtxt
+Source File : 'leif.c'
+				leif
+Source File : 'leincl.c'
+				leincl
+Source File : 'lejoin.c'
+				lejoin
+Source File : 'leopen.c'
+				newfile
+				leopen
+Source File : 'leread.c'
+				leread
+Source File : 'leredisp.c'
+				leredisp
+Source File : 'leprint.c'
+				leprint
+Source File : 'lerange.c'
+				numrange
+				lerange
+Source File : 'lerfile.c'
+				aliasexp
+				lerfile
+Source File : 'leselect.c'
+				leselect
+Source File : 'leset.c'
+				leset
+Source File : 'lewhile.c'
+				lewhile
+Source File : 'getadwid.c'
+				getadwid
+Source File : 'getcol.c'
+				getcol
+Source File : 'getprmpt.c'
+				getprmpt
+Source File : 'getrow.c'
+				getrow
+Source File : 'loadexp.c'
+				loadexp
+				//exptype
+				isnumop
+				warncexp
+				//scancexp
+				getorexp
+				getandexp
+				getrelexp
+				getaddexp
+				getmultexp
+				chkexptype
+				funcnargs
+				funcargetype
+				getfuncargtype
+				getargs
+				getidconst
+				getparexp
+Source File : 'gettfexp.c'
+				gettfexp
+Source File : 'prdebug.c'
+				prtfid
+				prstr
+				prresv
+				prxt
+				prcolrow
+				prcalc
+				prrt
+				prpf
+				prrd
+				prvars
+				prtree
+				prset
+				prtds
+				prkx
+				prdatefield
+Source File : 'getpt.c'
+				getptabp
+				getvarname
+				getvars
+				getvarmem
+Source File : 'putconst.c'
+				putconst
+Source File : 'loaderr.c'
+				loaderr
+Source File : 'getsym.c'
+				getch
+				//getlnfilename
+				getsym
+				getnch
+				nxtch
+				gotonl
+Source File : 'loadsym.c'
+				loadsym
+Source File : 'loadvars.c'
+				loadvars
+Source File : 'gettf.c'
+				gettf
+				gettfs
+Source File : 'intexp.c'
+				intexp
+Source File : 'getkflds.c'
+				getkflds
+Source File : 'getxflds.c'
+				getxflds
+Source File : 'getident.c'
+				getident
+Source File : 'lefork.c'
+				lefork
+Source File : 'getmem.c'
+				getenmem
+				getxtmem
+				getptmem
+				getrtmem
+				getramem
+				getprmem
+				getrdmem
+				getxfmem
+				getsfmem
+				getkxmem
+				getstrmem
+				_PTARR		// *********************
+				allenpt
+				moveenptrs
+				dallenpt
+				allxtpt
+				movextptrs
+				dallxtpt
+				allptpt
+				moveptptrs
+				dallptpt
+				allxfpt
+				movexfptrs
+				dallxfpt
+				allkxpt
+				movekxptrs
+				dallkxpt
+				allrtpt
+				movertptrs
+				dallrtpt
+				allprpt
+				moveprptrs
+				dallprpt
+				allrdpt
+				moverdptrs
+				dallrdpt
+				allsfpt
+				movesfptrs
+				dallsfpt
+Source File : 'gettnode.c'
+				alllower
+				alltoupper
+				gettnode
+				mktree
+				dogettnode
+Source File : 'lepause.c'
+				lepause
+Source File : 'leeop.c'
+				leeop
+Source File : 'leescape.c'
+				leescape
+Source File : 'loadresv.c'
+				loadresv
+Source File : 'leulck.c'
+				leulck
+Source File : 'dpexp.c'
+				dpexp
+Source File : 'lefresh.c'
+				lefresh
+				lescreen
+Source File : 'prpipe.c'
+				prpipe
+Source File : 'fixbname.c'
+				fixbname
+Source File : 'lemsg.c'
+				lemsg
+Source File : 'lesleep.c'
+				lesleep
+Source File : 'lesrand.c'
+				lesrand
+Source File : 'newdtab.c'
+				newdtab
+Source File : 'newbtab.c'
+				newbtab
+Source File : 'newitab.c'
+				newitab
+Source File : 'newltab.c'
+				newltab
+Source File : 'newttab.c'
+				newttab
+Source File : 'isdef.c'
+				lutree
+				_define
+				isdef
+Source File : 'findfno.c'
+				findfno
+Source File : 'findtd.c'
+				findtd
+Source File : 'fixstr.c'
+				fixstr
+Source File : 'gettype.c'
+				gettype
+Source File : 'termcap.c'
+				screen_change
+				termcap
+				gettcent
+				gettccl
+				getclatt
+				tcerror
+				whereat
+				outc
+				at
+				qat
+				erase_page
+				erase_line
+				clstandout
+				underline
+				feint
+				reverse
+				blink
+				bold
+				clrefresh
+				qosat
+				qatt
+Source File : 'findcore.c'
+				findcore		*******
+				getmem			*******
+Source File : 'dates.c'
+				_check_YD
+				loadMonthArrays
+				unloadMonthArrays
+				dateCheck
+				sysdate
+				gmtdate
+				clgetdate
+				makedate
+				convdate
+				daysarr
+				arrdays
+				dfmt
+Source File : 'times.c'
+				systime
+				gmttime
+				getmsecs
+				gettime
+				convtime
+				maketime
+				maketimehms
+				tfmt
+Source File : 'round.c'
+				clround
+				numsize
+Source File : 'compare.c'
+				compare
+Source File : 'typedp.c'
+				typedp
+Source File : 'zap.c'
+				zap
+				fillbuf
+Source File : 'getflags.c'
+				_index
+				arg
+				getflags
+Source File : 'closedb.c'
+				closedb
+Source File : 'cmpbuf.c'
+				cmpbuf
+Source File : 'getdwid.c'
+				getdwid
+Source File : 'getclver.c'
+				getclver
+Source File : 'getosbuf.c'
+				getosbuf
+Source File : 'trim.c'
+				trim
+				ftrim
+Source File : 'chkpath.c'
+				chkpath
+				chkperm
+				canopen
+				rmdots
+Source File : 'crc.c'
+				acrc
+				pcrc
+
+Source File : 'cllogerr.c'
+				cllogerr
+Source File : 'getevar.c'
+				getevar
+				setupEnv
+Source File : 'getfmode.c'
+				procstat
+				getfmode
+				clgetmode
+Source File : 'checkdemo.c'
+				checkForDemo
+Source File : 'getfile.c'
+				tgetfile
+				tdopen_0
+				rtdget
+				getfile
+				rdbget
+Source File : 'setvar.c'
+				setvar
+				incvar
+				setcvar
+				setavar
+Source File : 'keyname.c'
+				KeyToNumber
+				KeyToName
+Source File : 'key.c'
+				Key_GetEscMacroName
+				key_node
+				Key_Print
+				keys_lgetchar
+				keys_getchar
+				Key_GetChar
+				Key_Ready
+				Key_Construct
+				dumpNodes
+				key_trav_keys
+				Key_Destruct
+				Key_Lookup
+				KeyF_Construct
+				KeyF_ReadFile
+				KeyF_GetChar
+				KeyF_Ready
+Source File : 'process.c'
+				DoActions
+				process
+Source File : 'bind.c'
+				ReadKeyList
+				Function_Bind
+Source File : 'funs.c'
+				Arg_List
+				Arg_Action
+				Arg_String
+				Arg_Digit
+				Exit
+				Display
+				DisplayMe
+				DoFClear
+				DoFDup
+				DoFExch
+				DoFPush
+				DoFPop
+				DoFAdd
+				DoFDiv
+				DoFMul
+				DoFSub
+				DoFPushK
+				DoSDisplayf
+				DoFPstack
+				DoSUngetkey
+				DoStoN
+				DoSetRetVal
+				GetStackDigit
+				GetStackString
+				DoPushKeyName
+				DoMacro
+				DoMacroAdd
+				DoMacroStr
+Source File : 'lex.c'
+				Lex
+				Lex_GetChar
+				Lex_GetSChar
+Source File : 'basename.c'
+				clbasename
+				rmexten
+Source File : 'cafuncs.c'
+				camake
+				cafree
+Source File : 'elist.c'
+				elist_Create
+				elist_Add
+				elist_Delete
+				elist_Next
+				elist_Prev
+				elist_Traverse
+				elist_Destruct
+Source File : 'extstr.c'
+				extstr
+Source File : 'getdirname.c'
+				getdirname
+Source File : 'guname.c'
+				guname
+				gelogin
+				glogin
+Source File : 'mstrings.c'
+				mfree_0
+				mmalloc
+				mrealloc
+				mmalloc_init
+				mstrcpy
+				mstrncpy
+				mstrcat
+Source File : 'error.c'
+				tstamp
+				gsyserr
+				syserror
+				error
+				xwarn
+Source File : 'print.c'
+				cgiprint
+				eprint
+				print
+				oprint
+				dprint
+Source File : 'dbopen.c'
+				cldbopen
+				cldbopenv
+Source File : 'shutdb.c'
+				_shutdb
+				_setshut
+Source File : 'dbclos.c'
+				cldbclose
+				_cldbclose
+				cldbcloseall
+Source File : 'dbspac.c'
+				nextra
+				dbspace
+				tblspace
+				_tblspace
+Source File : 'dbsize.c'
+				dbsize
+				dbpgsize
+Source File : 'usage.c'
+				_usage
+
+Source File : 'identi.c'
+				identify
+				lidentify
+				_identify
+Source File : 'tblglo.c'
+				_chktd
+				_nxttd
+				_rmtd
+				tblrow
+				_chkname
+				_shuttd
+				nr2td
+Source File : 'releas.c'
+				release
+				_release
+				sfree
+				mfree
+Source File : 'mktabl.c'
+				mktable
+				_mktable
+				newfdf
+				newdesc
+				scntbl
+Source File : 'rdhdr.c'
+				_rdhdr
+Source File : 'getatt.c'
+				_getattrib
+Source File : 'getsha.c'
+				_getshape
+				ldshape
+				map41type
+				maptype
+Source File : 'chkind.c'
+				_chkindex
+Source File : 'relsha.c'
+				_relshare
+Source File : 'oshare.c'
+				_oshare
+Source File : 'dbglob.c'
+				_chkdb
+				_nxtdb
+				_rmdb
+				_chkdbname
+				_dbname
+				fdf2db
+Source File : 'getr.c'
+				_getr
+				getr
+				lgetr
+				retrieve
+				lretrieve
+Source File : 'keysiz.c'
+				_keysize
+				_keymin
+Source File : 'lockr.c'
+				_lockr
+Source File : 'update.c'
+				_update
+Source File : 'ulock.c'
+				_ulock
+				ulockall
+Source File : 'uptupl.c'
+				_uptuple
+Source File : 'newexp.c'
+				inlist
+				newexpr
+Source File : 'nextr.c'
+				_nxtr
+				nextr
+				nxtr
+				getnxt
+				nextset
+Source File : 'seq.c'
+				newseq
+				relseq
+Source File : 'picknx.c'
+				_picknxt
+Source File : 'restri.c'
+				cdbrestrict
+				_restrict
+				getwpos
+				xkey
+Source File : 'rowsiz.c'
+				_rowsize
+				_rowmin
+Source File : 'rtokey.c'
+				rtokey
+Source File : 'rtotup.c'
+				rtotup
+Source File : 'imerge.c'
+				_imerge
+
+Source File : 'stepfw.c'
+				findnxt
+				_stepfwd
+Source File : 'getpat.c'
+				_getpath
+Source File : 'tuptor.c'
+				tuptor
+Source File : 'domtox.c'
+				domtox
+Source File : 'mstoxl.c'
+				mstoxl
+Source File : 'mstod.c'
+				mstod
+Source File : 'xtodom.c'
+				xtodom
+Source File : 'sync.c'
+				emark
+				ewait
+				ewake
+Source File : 'balanc.c'
+				_balance
+Source File : 'beyond.c'
+				length
+				putchange
+				undo
+				_beyond
+Source File : 'bound.c'
+				_bound
+Source File : 'cpyseq.c'
+				cpyseq
+Source File : 'cpytuc.c'
+				cpytuc
+Source File : 'fclear.c'
+				cdbfclear
+Source File : 'fretre.c'
+				fretre
+Source File : 'ltoms.c'
+				ltoms
+Source File : 'match.c'
+				isregexp
+				Star
+				wildmat
+				_match
+Source File : 'mstol.c'
+				mstol
+Source File : 'mstoxi.c'
+				mstoxi
+Source File : 'negate.c'
+				negate
+Source File : 'rindex.c'
+				cdbrindex
+Source File : 'rmlock.c'
+				_rmlock
+Source File : 'scanpg.c'
+				_cmp
+				_scanpg
+Source File : 'split.c'
+				_split
+Source File : 'spread.c'
+				_spread
+				adopt
+Source File : 'xitoms.c'
+				xitoms
+Source File : 'dtoms.c'
+				dtoms
+Source File : 'xltoms.c'
+				xltoms
+Source File : 'addpag.c'
+				addpage
+Source File : 'clrtab.c'
+				clrtable
+				_clrtable
+				_sparetree
+Source File : 'cmpkey.c'
+				_cmpkey
+Source File : 'freshn.c'
+				freshnode
+Source File : 'ifetch.c'
+				_ifetch
+Source File : 'ipos.c'
+				_ipos
+Source File : 'mkfree.c'
+				_mkfree
+				mkspace
+Source File : 'modpag.c'
+				modpage
+Source File : 'promot.c'
+				_promote
+Source File : 'redist.c'
+				_redistrib
+Source File : 'relnod.c'	
+				relnode
+Source File : 'repos.c'
+				_addlist
+				_repos
+Source File : 'rhead.c'
+				_rhead
+Source File : 'shape.c'		// May be just variable defs
+Source File : 'whead.c'
+				_whead
+Source File : 'xenter.c'
+				enter
+				leave
+				xenter
+Source File : 'addtup.c'
+				sum
+				_addtuple
+Source File : 'captur.c'
+				findspace
+				getspare
+				_capture
+Source File : 'chkite.c'
+				_chkitems
+Source File : 'cmpatt.c'
+				_cmpattrib
+Source File : 'custom.c'	// ?????????????
+Source File : 'delpag.c'
+				delpage
+Source File : 'diffke.c'
+				_diffkey
+Source File : 'fwidth.c'
+				_fwidth
+Source File : 'getnod.c'
+				getnode
+Source File : 'movele.c'
+				moveleft
+Source File : 'moveri.c'
+				moveright
+Source File : 'numsz.c'
+				numsz
+Source File : 'putnod.c'
+				putnode
+Source File : 'writep.c'
+				rdata
+				roffset
+				sdata
+				soffset
+				vectoms
+				_writepg
+Source File : 'lock.c'
+				_lock
+				_lockmap
+				_lockpg
+				_locktbl
+Source File : 'diffat.c'
+				_diffattrib
+Source File : 'datapg.c'
+				_datapg
+Source File : 'readpg.c'
+				_readpg
+Source File : 'chkpag.c'
+				_chkpage
+Source File : 'indexp.c'
+				_indexpg
+Source File : 'getpg.c'
+				_getpg
+				cdbfreepg
+Source File : 'itoptr.c'
+				_itoptr
+Source File : 'itosz.c'
+				_itosz
+Source File : 'itoms.c'
+				itoms
+Source File : 'ealloc.c'
+				ealloc
+Source File : 'mktmp.c'
+				_mktmp
+Source File : 'bias.c'		// ??????????
+Source File : 'derror.c'
+				_derror
+				derror
+Source File : 'addexp.c'
+				_addexp
+Source File : 'frelst.c'
+				frelst
+Source File : 'alloc.c'
+				alloc
+				nalloc
+				nfree
+Source File : 'cpybuf.c'
+				cpybuf
+Source File : 'cpystr.c'
+				cdbcpystr
+Source File : 'fill.c'
+				fill
+Source File : 'itob.c'
+				itob
+Source File : 'readf.c'
+				readfull
+Source File : 'scnbuf.c'
+				scnbuf
+Source File : 'onexit.c'
+				cdbonexit
+Source File : 'error.c'
+				errexit
+Source File : 'putstr.c'
+				putstr
+Source File : 'lenstr.c'
+				lenstr
+Source File : 'cmpstr.c'
+				cmpstr
+Source File : 'owildm.c'
+				Star_0
+				owildmat
+Source File : 'bupsem.c'
+				cdbftok
+				check_bup_sem
+
+Orphan fns():
+
+mexit
+dberror
+cdberror
+
+
+
+
+
+
+

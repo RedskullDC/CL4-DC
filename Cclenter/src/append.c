@@ -1,0 +1,124 @@
+#ifndef APPEND_C
+#define APPEND_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void _append(REFR *a1, NODE **NodeArray, REFR *a3, TDinfo *TDptr)
+{
+    NODE	**v4;
+	NODE	*nodep;
+	DBinfo	*DBptr;
+	REFR	**v9;
+	REFR	*v12;
+
+	REFR	v14;
+	int		PageNo;
+	int		v11;
+	short	MaxLen;
+	
+    v4	= NodeArray;
+    v12 = 0;
+    //MaxLen = (signed short)(*(_WORD *)(*((_DWORD *)a3->Data - 1) + 4) - LOWORD(a3->Offset));
+	MaxLen = (short)((*(a3->Data - 1))->Offset - a3->Offset);
+	/*
+	mov     edx, [ebp+a3]			; a3			--> edx
+	mov     eax, [edx]				; a3->Data		--> eax
+	mov     eax, [eax-4]			; a3->Data[-1]	--> eax
+	movzx   eax, word ptr [eax+4]
+	movzx   edx, word ptr [edx+4]
+	sub     eax, edx
+	cwde
+	mov     [ebp+MaxLen], eax
+	*/
+    nodep = *NodeArray;
+    if ( !*NodeArray )
+    {
+        nodep = freshnode(TDptr, 0);
+        *NodeArray = nodep;
+LABEL_8:
+        for ( DBptr = TDptr->TDDBinfo; DBptr->DBpgsize < (unsigned int)(MaxLen + nodep->DataEnd + nodep->field_16); DBptr = TDptr->TDDBinfo )
+        {
+            PageNo = _capture(DBptr);
+            nodep->field_C = PageNo;
+            if ( !PageNo )
+                derror(42, 0, TDptr);
+
+			putnode(TDptr, nodep);
+            v11 = nodep->PageNo;
+            nodep->field_8	= v11;					// some previous/next page magic going on here
+            nodep->PageNo	= nodep->field_C;
+            nodep->field_C	= 0;
+            nodep->DataEnd	= nodep->field_16 + MaxLen + 2;
+
+			if ( nodep->PageType & 2 )
+            {
+                nodep->DataEnd = 8;
+            }
+            else
+            {
+                //if ( SLOBYTE(TDptr->TDFlags) >= 0 )// comparing against 0x0008 here
+                if (!(TDptr->TDFlags & 0x0008))
+                    MaxLen = TDptr->TDKeySize;
+                else
+                    MaxLen = _diffkey(v12->Offset, a3->Offset, TDptr->TableDefs);
+            }
+
+			if ( !(nodep->PageType & 1))
+                nodep->DataEnd += 2;
+
+			_msqueeze(a1[1].Data, a1->Data, (REFR *)nodep->NODE1ptr, (REFR *)&nodep->NODE1ptr[nodep->NumEntries]);// 
+
+			if ( nodep->PageType & 2 )
+            {
+                nodep->NumEntries = 0;
+            }
+            else
+            {
+                nodep->NumEntries = 1;
+                _mvref((REFR *)nodep->NODE1ptr, a3);
+                _mvref(&v14, a1);
+                a1->Offset += cpybuf(v14.Offset, a3->Offset, MaxLen);
+                v9 = a1->Data;
+                --a1->Data;
+                *(v9 - 1) = a1;
+                a3 = &v14;
+            }
+
+			++v4;
+            if ( !*v4 )
+                *v4 = freshnode(TDptr, 2);
+			
+			nodep = *v4;
+            nodep->NODE2ptr[nodep->NumEntries].PageNo = v11;
+        }
+        if ( nodep->RecsInPage <= nodep->NumEntries )
+            derror(16, 0, TDptr);
+		
+		nodep->DataEnd += MaxLen + nodep->field_16;
+        //v10 = nodep->NumEntries;
+        //nodep->NumEntries = v10 + 1;
+        //_mvref((REFR *)&nodep->NODE1ptr[v10], a3);
+        _mvref((REFR *)&nodep->NODE1ptr[nodep->NumEntries++], a3);
+
+        nodep->PageType |= 0x0008u;
+        return;
+    }
+	
+	v12 = (REFR *)&nodep->NODE1ptr[nodep->NumEntries - 1];
+	
+	if ( TDptr->TDFlags & tdp_REORDER || (unsigned short)_cmpkey(v12->Offset, a3->Offset, TDptr->TableDefs) ) // tdp_REORDER == 0x0400 reorder() == duplicates allowed, on-time pass
+        goto LABEL_8;
+	
+	if (!(TDptr->TDFlags & tdp_UNIQUE))		// tdp_UNIQUE == 0x0800 compose() == create unique
+        _addtuple(v12->Offset, a3->Offset, TDptr->TableDefs);
+	
+	_msqueeze(a1[1].Data, a1->Data, a3, a3 + 1);
+}
+
+#endif

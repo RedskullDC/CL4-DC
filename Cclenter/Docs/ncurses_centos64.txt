@@ -1,0 +1,26 @@
+ncurses-libs-5.7-3.20090208.el6.i686
+ncurses-libs-5.7-3.20090208.el6.x86_64
+
+ncurses-5.7-3.20090208.el6.x86_64
+
+ncurses-devel-5.7-3.20090208.el6.i686
+ncurses-devel-5.7-3.20090208.el6.x86_64
+
+ncurses-static-5.7-3.20090208.el6.x86_64
+
+ncurses-libs-5.7-3.20090208.el6.i686
+
+----
+
+
+ncurses-5.7-3.20090208.el6.x86_64 : Ncurses support utilities
+Repo        : installed
+
+ncurses-libs-5.7-3.20090208.el6.i686 : Ncurses libraries
+Repo        : installed
+
+ncurses-libs-5.7-3.20090208.el6.x86_64 : Ncurses libraries
+Repo        : installed
+
+ncurses-devel-5.7-3.20090208.el6.x86_64 : Development files for the ncurses library
+Repo        : installed

@@ -1,0 +1,55 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+
+getfile TESTDB Tranfl1,t1 Tran1rra,t1a 
+
+define ad,c10 MyInt,b	MyChar,c1 count,n	MyArray[20],c16	teststring,c10
+
+define testint,n	resultint,n	test2,2	str40,c4
+
+set fnum, off
+
+testint = 50
+
+MyInt = testint % 6
+print MyInt nl
+
+MyInt = testint / 6
+print MyInt nl
+
+MyInt = testint - 6
+print MyInt nl
+
+resultint = 3 ** 3
+print resultint nl
+
+print slen("simple string to test") nl
+
+MyInt = slen("simple string to test")
+print MyInt nl
+
+test2 = 6.33
+test2 *= 5
+print test2 nl
+
+print sqrt(100) nl
+print log(100) nl
+
+str40 = sqrt(100)
+print str40 nl
+
+
+MyInt = asize(MyArray)
+print MyInt nl
+print srep("A big string","big","small") nl
+
+print sconv("url","en","http://www.crisis.com.au") nl
+
+print nl,3
+
+
+}

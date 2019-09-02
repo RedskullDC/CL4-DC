@@ -1,0 +1,16 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+
+define testn,n	testn2,n
+
+testn = 56756767
+
+testn2 = testn % 1000000
+
+print testn2 nl
+
+}

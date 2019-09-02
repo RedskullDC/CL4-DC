@@ -1,0 +1,83 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+define tess,t		tessd,d		account,c6	days,n		str30,c30 test6,6 \
+		tdate,d		myerror,b	count,n		dubval,6
+
+define date_array[10],n	days_last_job,i	non_wk_days,i hol_date,d tot_days,i
+
+define doub = 5.44
+
+getfile '~/Cclcomp/TESTDB'	Tranfl1,t1	Tran1rra,t1a	Tranfl1,t12
+
+define test = 'simple string'
+
+print 'login' nl
+
+#fork 'ls -al'
+
+hol_date = 't'
+print hol_date nl
+
+print 'Length of test = ' + slen(test) nl
+
+pause test
+
+pause 'test <CR>'
+
+
+str30 = 'string 1 '
+str30 += 'another'
+print str30 nl
+
+if str30 = '345'
+
+endif
+
+message 'test13' 'ynq'
+dubval = 5.44
+
+test6	+	5b	6	25	7	'test'
+range dubval 100 '43.5 to 100 ONLY!'
+
+str30 = scat('one','two','three','four')
+
+print str30,2 nl
+
+
+print 'Acct   Name                                  Avg/Mth Last Job' nl
+
+count = 5 * 2
+
+print count nl
+print doub nl
+
+select t1 where t1.Rec_No > 456
+getnext t1
+#print t1.Rec_No nl
+print t1 nl	# entire record
+
+
+t1.Rec_No = 4567
+delete t1
+
+account = '4564'
+
+goto ENDPROG:
+
+format Block2
+
+ENDPROG:
+
+escape Fk12 Block2
+
+}
+
+{ Block2
+
+ print 'Hello'
+
+}

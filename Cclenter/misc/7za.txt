@@ -1,0 +1,4 @@
+7za a -l ccl.7z *
+
+a  = add files
+-l = don't store symbolic link (CAUTION : the scanning stage can never end because of recursive symlinks)

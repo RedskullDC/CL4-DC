@@ -1,0 +1,44 @@
+# test the date array .
+
+##################
+{ Main
+##################
+
+ define tess,t		tessd,d		dta[10],n	pad,c2		test2,2   test4,2	result,2
+
+ldefine hubdate,c12	hbdate,c8	hbtime,c5	woy,i
+
+# find the week of the year, pad with leading 0's if necessary.
+
+dta = '5'
+
+tessd = '01-01-07' 
+print tessd nl,2
+
+tessd = 'y'
+print tessd nl,2
+
+tessd = '22'
+print tessd nl,2
+
+tessd = '230416'
+print tessd nl,2
+
+tessd = 'gmt'
+print tessd nl,2
+
+test2 = 6.3
+test4 = 2.0
+
+test2 %= test4
+
+print test2 nl
+
+test4 = test4 / 0.0
+
+print test4 nl	# " /= 0.00 " produces '-nan' on real clenter, nonsense on cle '-9224294374058461184.00' 
+
+print dta nl
+
+
+}

@@ -1,0 +1,46 @@
+# test the DC extensions/ Library call functions.
+
+##################
+{ Main
+##################
+
+
+define C30,c30
+
+define HEXVAL,X         # Hexadecimal value
+
+define  libhandle,p     funchandle,p    bookhandle,p	workbook,p	loadhandle,p savehandle,p # pointers for return handles
+define  intrtn,N
+
+define filename,c80
+
+filename = 'crisis_test3.xls'
+
+openlib(libhandle, 'libNumberDuck.so')
+
+# NumberDuck::Workbook* NumberDuck::Workbook::Workbook(NumberDuck::Workbook **this, const char *RegKey)
+libcall( void, libhandle, funchandle, '_ZN10NumberDuck8WorkbookC2EPKc', &workbook, '')             
+
+# bool __cdecl NumberDuck::Workbook::Load(NumberDuck::Workbook **this, const char *filename)
+libcall( intrtn, libhandle, loadhandle, '_ZN10NumberDuck8Workbook4LoadEPKc', &workbook, 'template.xls')             
+
+print libhandle funchandle bookhandle workbook intrtn nl
+
+if intrtn	# template loaded ok
+	# bool __cdecl NumberDuck::Workbook::Save(NumberDuck::Workbook **this, const char *a2)
+	libcall( intrtn, libhandle, savehandle, '_ZN10NumberDuck8Workbook4SaveEPKc', &workbook, 'crisis_test.xls')             
+	print 'save = ' intrtn nl
+	libcall( intrtn, libhandle, savehandle, '_ZN10NumberDuck8Workbook4SaveEPKc', &workbook, 'crisis_test2.xls')             
+	print 'save2 = ' intrtn nl
+endif
+#=====================
+
+HEXVAL = 0x1Fe0
+
+HEXVAL += 0x27
+print HEXVAL nl
+
+C30 = HEXVAL
+print C30 nl
+
+}

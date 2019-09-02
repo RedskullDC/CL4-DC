@@ -1,0 +1,5 @@
+Fix putfloat()
+* only an issue for portable file format
+
+loadent()	- chkoelist call is incorrect
+

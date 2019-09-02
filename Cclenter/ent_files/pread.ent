@@ -1,0 +1,20 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+define tess,c50
+
+popenin inp_pipe 'fgrep -l define *.ent'
+if not ERROR
+	read inp_pipe tess
+	while not ERROR
+		print tess nl
+		read inp_pipe tess
+	wend
+	close inp_pipe
+endif
+
+
+}

@@ -1,0 +1,49 @@
+
+##################
+{ Main
+##################
+
+set tab,,
+
+define a,i	tess,c5
+
+a = 65
+
+if 'login' like 'les??e'
+	print 'login' nl
+endif
+
+tess = srep('one two three four','three','nine')
+print tess nl
+
+tess = skey('three','one two three four')
+print tess nl
+
+tess = 'one' * 4
+print tess nl
+
+tess = 'g' + 'name'	#group name
+
+print sconv('stat','mtime','testrsv.enc') nl
+print sconv('stat','mode','testrsv.enc') nl
+print sconv('stat','size','testrsv.enc') nl
+print sconv('stat','inode','testrsv.enc') nl
+print sconv('stat','nlink','testrsv.enc') nl
+print sconv('stat',tess,'testrsv.enc') nl
+
+print sconv('crc','','testrsv.enc') nl
+
+print sconv('xml','en','testrsv&.enc') nl
+
+print sconv('sha0','','testrsv&.enc') nl
+
+while not SCONVERR
+	print sconv('tabsub','15','this is, a, simple test') nl
+wend
+
+print LSCONV nl
+
+print getxml('test') nl
+
+}
+

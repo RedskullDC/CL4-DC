@@ -1,0 +1,6 @@
+clc : clc.o
+	gcc -pthread -o clc clc.o -lm
+clc.o : clc.c src/*
+	gcc -pthread -g -c clc.c
+clean :
+	rm clc *.o

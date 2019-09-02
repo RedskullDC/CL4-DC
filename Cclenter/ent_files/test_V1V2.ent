@@ -1,0 +1,20 @@
+# test V1 V2 interaction with regular vars.
+
+##################
+{ Main
+##################
+
+set output, stdout
+ define tess,t		tessd,d		count,i		teststr,c50
+
+#tessd = 't' + V1  #bombs!!
+pause V1
+teststr = getarg('myname')
+pause teststr
+count = V1
+pause count
+tessd = 't'
+tessd += count
+pause tessd
+
+}

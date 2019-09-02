@@ -1,0 +1,39 @@
+
+##################
+{ Main
+##################
+
+getfile '~/Cclenter/TESTDB' Tranfl1,t1
+
+define array[10],c20	tess,c50	intval,n
+
+#define mask = '%08x'
+
+array = 'all values'
+
+print array[4] nl
+
+array[3] = 'login'
+
+print array[3] nl
+
+getnext t1 all
+
+if not ERROR
+	print t1 nl
+endif
+
+intval = 65535
+
+tess = fmt(intval, '0x%04X')
+
+print tess nl
+
+print '----' nl
+
+print intval,'%04X' nl
+
+print intval,'%n' nl
+
+}
+

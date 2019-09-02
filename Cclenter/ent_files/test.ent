@@ -1,0 +1,67 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+
+getfile TESTDB Tranfl1,t1 Tran1rra,t1a 
+
+define ad,c10 MyInt,b	MyChar,c1 count,i	MyArray[20],c16	teststring,c10
+
+set fnum, off
+
+
+
+
+MyArray = 'Simple String'
+MyArray[1] = 'String #1'
+
+teststring	+	5	5	5	5	''
+
+print teststring nl
+
+print MyArray[3] nl
+print MyArray[1] nl
+
+select t1 where t1.Rec_No > 95100
+getnext t1 lock
+while not ERROR
+	print t1.Rec_No nl
+	getnext t1 lock
+wend
+
+t1.Rec_No = 95130
+get t1 lockr
+if not ERROR
+	unlock t1
+endif
+t1.Rec_No = 95130
+print t1.Rec_No nl
+get t1
+if not ERROR
+	print 'found' t1.Rec_No nl
+	t1.Rec_No = 1123
+	put t1
+endif
+
+t1.Rec_No = 95130
+print t1.Rec_No nl
+get t1 lock	# lock record created is never deleted!!
+
+print 'Error = ' ERROR nl
+if not ERROR
+	pause
+	unlock t1
+endif
+
+MyChar = chr(65)
+head 0 5 10 'test'
+head 0 5 11 'test22'
+# simple comment
+ad = 'f'
+print MyChar ad nl
+print V1 V2 V3 V4 nl
+
+break
+}

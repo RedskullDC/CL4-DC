@@ -1,0 +1,2 @@
+loadexp() appears incorrect.
+_tdopen() elementrec needs to be larger to allow for full page load

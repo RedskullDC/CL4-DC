@@ -1,0 +1,190 @@
+typedef struct 
+ EMSG            struc ; (sizeof=0x8)
+00000000 ShowArg         		dd ?
+00000004 ErrorMsg        		dd ?                    ; offset
+00000008 EMSG            ends
+
+
+
+	dd 0                    ; DATA XREF: .got:emsgs_ptro
+0	dd 807124Bh
+	dd 1
+1	dd offset aInvalidInBlock ; "invalid in block construct"
+	dd 0
+2	dd offset aMissingBlockNa ; "missing block name"
+	dd 1
+3	dd offset aInvali	ddate  ; "invalid date"
+	dd 1
+4	dd offset aInvali	ddataTyp ; "invalid data type"
+	dd 1
+5	dd offset aEndifWithoutIf ; "endif without if"
+	dd 0
+6	dd offset aUnexpectedEn_0 ; "unexpected end of file"
+	dd 0
+7	dd offset aUnexpectedEn_1 ; "unexpected end of line"
+	dd 1
+8	dd offset aInvalidFieldNa ; "invalid field name or number"
+	dd 1
+9	dd offset aUnexpectedElsi ; "unexpected elsif"
+	dd 1
+10	dd offset aInvalidInIfOrW ; "invalid in 'if' or 'while' construct"
+	dd 1
+11	dd offset aLabelNotFound ; "label not found"
+	dd 1
+12	dd offset aTooManyLabels ; "too many labels"
+	dd 1
+13	dd offset aTooManyNestedI ; "too many nested if/whiles"
+	dd 1
+14	dd offset aTableNotOpen ; "table not open"
+	dd 1
+15	dd offset aInvalidOperato ; "invalid operator"
+	dd 1
+16	dd offset aDuplicateLabel ; "duplicate label"
+	dd 1
+17	dd offset aVariableRedefi ; "variable redefined"
+	dd 1
+18	dd offset aCannotJoinAndR ; "cannot join and range check"
+	dd 1
+	dd offset aSelectError  ; "select error"
+	dd 1
+20	dd offset aPreviousFieldN ; "previous field not accept field"
+	dd 1
+	dd offset aTooManyVariabl ; "too many variables defined"
+	dd 1
+	dd offset aWendEndifMisma ; "wend / endif mismatch"
+	dd 1
+23	dd offset aWendWithoutWhi ; "wend without while"
+	dd 1
+24	dd offset aInvalidOperati ; "invalid operation on 'set' or 'key' field"
+	dd 1
+25	dd offset aInvalidTime  ; "invalid time"
+	dd 1
+26	dd offset aExpectedAOr  ; "expected a '(' or ')'"
+	dd 1
+27	dd offset aNotValidInAssi ; "not valid in assignment expression"
+	dd 1
+28	dd offset aNotValidInCond ; "not valid in conditional expression"
+	dd 1
+29	dd offset aInvalidSetStat ; "invalid set statement"
+	dd 1
+30	dd offset aUndefinedVaria ; "undefined variable"
+	dd 1
+31	dd offset aArraySubscript ; "array subscript must be +ve integer"
+	dd 1
+32	dd offset aConstantDefini ; "constant definition"
+	dd 1
+33	dd offset aUnexpectedSymb ; "unexpected symbol"
+	dd 1
+34	dd offset aInvalidColumnS ; "invalid column specification"
+	dd 1
+35	dd offset aInvalidRowSpec ; "invalid row specification"
+	dd 1
+36	dd offset aInvalidScreenA ; "invalid screen attribute"
+	dd 1
+37	dd offset aInvalidFieldWi ; "invalid field width"
+	dd 1
+38	dd offset aExpectedFrom ; "expected 'from'"
+	dd 1
+39	dd offset aInvalidTableAl ; "invalid table/alias"
+	dd 0
+40	dd offset aMissingTableAl ; "missing table/alias"
+	dd 1
+	dd offset aInvalidLabelMu ; "invalid label (must end with ':')"
+	dd 1
+	dd offset aInvalidMaintai ; "invalid maintain mode"
+	dd 1
+43	dd offset aMustHaveCharac ; "must have character expression"
+	dd 1
+44	dd offset aInvalidLabel ; "invalid label"
+	dd 1
+45	dd offset aCanTCreateTabl ; "can't create table"
+	dd 1
+46	dd offset aTableAliasRede ; "table/alias redefined"
+	dd 1
+47	dd offset aNoKeyFieldsDef ; "no key fields defined"
+	dd 1
+48	dd offset aKeyLengthTooBi ; "key length too big"
+	dd 1
+49	dd offset aRecordLengthTo ; "record length too big"
+	dd 0
+50	dd offset aMissingFilePip ; "missing file/pipe name"
+	dd 1
+51	dd offset aInvalidFilePip ; "invalid file/pipe name"
+	dd 1
+	dd offset aFilePipeNameRe ; "file/pipe name redefined"
+	dd 1
+	dd offset aTooManyFilePip ; "too many file/pipes open"
+	dd 0
+	dd offset aMissingFileNam ; "missing file name / pipe command"
+	dd 1
+55	dd offset aFileNamePipeCo ; "file name / pipe command must be charac"...
+	dd 1
+56	dd offset aInvalidInReadS ; "invalid in read statement"
+	dd 1
+	dd offset aFilePipeNotO_0 ; "file/pipe not open for reading"
+	dd 1
+	dd offset aFilePipeNotO_1 ; "file/pipe not open for writing"
+	dd 1
+	dd offset aPreviouslyDefi ; "previously defined as a file"
+	dd 1
+60	dd offset aPreviouslyDe_0 ; "previously defined as a pipe"
+	dd 1
+	dd offset aFilePipeNotOpe ; "file/pipe not open"
+	dd 1
+	dd offset aPcloseRequired ; "pclose required for pipes"
+	dd 1
+	dd offset aFilePipeNotOpe ; "file/pipe not open"
+	dd 1
+64	dd offset aForkCommandMus ; "'fork' command must be character"
+	dd 1
+65	dd offset aMustBeCreateUn ; "must be 'create unique' to be empty"
+	dd 1
+66	dd offset aOnlyValidWithG ; "only valid with 'get' and 'getnext' statements"
+	dd 0
+	dd offset aFirstAcceptFie ; "first accept field can't be 'required'"
+	dd 1
+68	dd offset aDoFormatBlockN ; "'do/format' block name not found"
+	dd 1
+69	dd offset aNotAnArray   ; "not an array"
+	dd 1
+70	dd offset aPausePromptMus ; "'pause' prompt must be character"
+	dd 1
+71	dd offset aInvalidInclude ; "invalid 'include' filename"
+	dd 1
+72	dd offset aCanTOpenInclud ; "can't open include file"
+	dd 1
+73	dd offset aInvalidEscapeC ; "invalid 'escape' character"
+	dd 1
+74	dd offset aEscapeBlockNam ; "'escape' block name not found"
+	dd 1
+75	dd offset aOn_deleteBlock ; "'on_delete' block name not found"
+	dd 1
+76	dd offset aExpectedBefore ; "expected ',' before next argument"
+	dd 1
+77	dd offset aMustHaveIntege ; "must have integer expression"
+	dd 0
+78	dd offset aContinueEndloo ; "'continue/endloop' must be inside 'whil"...
+	dd 1
+79	dd offset aOn_exitBlockNa ; "'on_exit' block name not found"
+	dd 1
+80	dd offset aOn_exceptionBl ; "'on_exception' block name not found"
+	dd 1
+81	dd offset aDuplicateBlock ; "duplicate block name"
+	dd 1
+82	dd 807124Bh
+	dd 1
+83	dd offset aCanTAssignToRe ; "can't assign to read-only variable"
+	dd 1
+84	dd offset aInvalidSortSpe ; "invalid sort specification"
+	dd 1
+85	dd offset aUnknownError ; "unknown error"
+	dd 1
+	dd offset aUnknownError ; "unknown error"
+	dd 1
+	dd offset aUnknownError ; "unknown error"
+	dd 1
+	dd offset aUnknownError ; "unknown error"
+	dd 1
+	dd offset aUnknownError ; "unknown error"
+	dd 1
+90	dd offset aUnknownError ; "unknown error"

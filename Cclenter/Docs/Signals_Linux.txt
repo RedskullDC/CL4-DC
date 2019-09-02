@@ -1,0 +1,144 @@
+
+#include <signal.h>
+
+typedef void (*sighandler_t)(int);
+
+sighandler_t signal(int signum, sighandler_t handler);
+
+DESCRIPTION:
+
+signal() sets the disposition of the signal signum to handler, which
+is either SIG_IGN, SIG_DFL, or the address of a programmer-defined
+function (a "signal handler").
+
+If the signal signum is delivered to the process, then one of the following happens:
+
+       *  If the disposition is set to SIG_IGN, then the signal is ignored.
+
+       *  If the disposition is set to SIG_DFL, then the default action
+          associated with the signal (see signal(7)) occurs.
+
+       *  If the disposition is set to a function, then first either the
+          disposition is reset to SIG_DFL, or the signal is blocked (see
+          Portability below), and then handler is called with argument
+          signum.  If invocation of the handler caused the signal to be
+          blocked, then the signal is unblocked upon return from the
+          handler.
+
+The signals SIGKILL and SIGSTOP cannot be caught or ignored.
+
+RETURN VALUE:
+
+       signal() returns the previous value of the signal handler, or SIG_ERR
+       on error.  In the event of an error, errno is set to indicate the cause.
+
+ERRORS:
+
+       EINVAL signum is invalid.
+
+//=======================================================================
+
+The use of sighandler_t is a GNU extension, exposed if _GNU_SOURCE is
+defined; glibc also defines (the BSD-derived) sig_t if _BSD_SOURCE is
+defined.  Without use of such a type, the declaration of signal() is
+the somewhat harder to read:
+
+	void ( *signal(int signum, void (*handler)(int)) ) (int);
+
+
+// Example signal() program usage:
+
+#include<stdio.h>
+#include<signal.h>
+#include<unistd.h>
+
+void sig_handler(int signo)
+{
+    if (signo == SIGUSR1)
+        printf("received SIGUSR1\n");
+    else if (signo == SIGKILL)
+        printf("received SIGKILL\n");
+    else if (signo == SIGSTOP)
+        printf("received SIGSTOP\n");
+}
+
+int main(void)
+{
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR)
+        printf("\ncan't catch SIGUSR1\n");
+    if (signal(SIGKILL, sig_handler) == SIG_ERR)
+        printf("\ncan't catch SIGKILL\n");
+    if (signal(SIGSTOP, sig_handler) == SIG_ERR)
+        printf("\ncan't catch SIGSTOP\n");
+    // A long long wait so that we can easily issue a signal to this process
+    while(1) 
+        sleep(1);
+    return 0;
+}
+
+
+
+
+/usr/include/bits/signum.h:
+
+#ifdef  _SIGNAL_H
+
+/* Fake signal functions.  */
+#define SIG_ERR ((__sighandler_t) -1)           /* Error return.  */
+#define SIG_DFL ((__sighandler_t) 0)            /* Default action.  */
+#define SIG_IGN ((__sighandler_t) 1)            /* Ignore signal.  */
+
+#ifdef __USE_UNIX98
+# define SIG_HOLD       ((__sighandler_t) 2)    /* Add signal to hold mask.  */
+#endif
+
+
+/* Signals.  */
+#define SIGHUP          1       /* Hangup (POSIX).  */
+#define SIGINT          2       /* Interrupt (ANSI).  */
+#define SIGQUIT         3       /* Quit (POSIX).  */
+#define SIGILL          4       /* Illegal instruction (ANSI).  */
+#define SIGTRAP         5       /* Trace trap (POSIX).  */
+#define SIGABRT         6       /* Abort (ANSI).  */
+#define SIGIOT          6       /* IOT trap (4.2 BSD).  */
+#define SIGBUS          7       /* BUS error (4.2 BSD).  */
+#define SIGFPE          8       /* Floating-point exception (ANSI).  */
+#define SIGKILL         9       /* Kill, unblockable (POSIX).  */
+#define SIGUSR1         10      /* User-defined signal 1 (POSIX).  */
+#define SIGSEGV         11      /* Segmentation violation (ANSI).  */
+#define SIGUSR2         12      /* User-defined signal 2 (POSIX).  */
+#define SIGPIPE         13      /* Broken pipe (POSIX).  */
+#define SIGALRM         14      /* Alarm clock (POSIX).  */
+#define SIGTERM         15      /* Termination (ANSI).  */
+#define SIGSTKFLT       16      /* Stack fault.  */
+#define SIGCLD          SIGCHLD /* Same as SIGCHLD (System V).  */
+#define SIGCHLD         17      /* Child status has changed (POSIX).  */
+#define SIGCONT         18      /* Continue (POSIX).  */
+#define SIGSTOP         19      /* Stop, unblockable (POSIX).  */
+#define SIGTSTP         20      /* Keyboard stop (POSIX).  */
+#define SIGTTIN         21      /* Background read from tty (POSIX).  */
+#define SIGTTOU         22      /* Background write to tty (POSIX).  */
+#define SIGURG          23      /* Urgent condition on socket (4.2 BSD).  */
+#define SIGXCPU         24      /* CPU limit exceeded (4.2 BSD).  */
+#define SIGXFSZ         25      /* File size limit exceeded (4.2 BSD).  */
+#define SIGVTALRM       26      /* Virtual alarm clock (4.2 BSD).  */
+#define SIGPROF         27      /* Profiling alarm clock (4.2 BSD).  */
+#define SIGWINCH        28      /* Window size change (4.3 BSD, Sun).  */
+#define SIGPOLL         SIGIO   /* Pollable event occurred (System V).  */
+#define SIGIO           29      /* I/O now possible (4.2 BSD).  */
+#define SIGPWR          30      /* Power failure restart (System V).  */
+#define SIGSYS          31      /* Bad system call.  */
+#define SIGUNUSED       31
+
+#define _NSIG           65      /* Biggest signal number + 1
+                                   (including real-time signals).  */
+
+#define SIGRTMIN        (__libc_current_sigrtmin ())
+#define SIGRTMAX        (__libc_current_sigrtmax ())
+
+/* These are the hard limits of the kernel.  These values should not be
+   used directly at user level.  */
+#define __SIGRTMIN      32
+#define __SIGRTMAX      (_NSIG - 1)
+
+#endif  /* <signal.h> included.  */

@@ -1,0 +1,142 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+define tess,t		tessd,d		account,c6	days,n		str30,c30 \
+		tdate,d		myerror,b	count,n		carr[10],c6
+
+define date_array[10],n	days_last_job,i	non_wk_days,i hol_date,d tot_days,i	today_date,d
+
+#define doub = 5.44
+define doub,4
+doub = -5.446
+
+getfile TESTDB	Tranfl1,t1 Tranfl1,t1a	Tran1rrd	Tran1rrdx	Tran1rra lock
+
+PLINES = 40
+print 'path' nl
+
+str30 = 'login'
+#set debug , on
+#create unique NDB t1.Rec_No with t1.Account t1.Details  #empty
+
+create NDB t1.Rec_No with t1.Account t1.Details  #empty
+
+#NDB.Rec_No	= 1
+#NDB.Account	= 3434
+#print NDB nl,3
+#put NDB
+
+#NDB.Rec_No	= 2
+#NDB.Account	= 3534
+#print NDB nl
+#put NDB
+
+#NDB.Rec_No	= 1
+getprev NDB all
+while not ERROR
+	print NDB nl
+	getprev NDB
+wend
+date_array    = 34
+date_array[0] = 44
+date_array[1] = 4
+
+print 'date_array[1] = ' date_array[1] nl
+print 'date_array[2] = ' date_array[2] nl
+print 'date_array[5] = ' date_array[5] nl,2
+
+
+define test = 'simple string'
+#set justify,on
+set convert, off
+print 'Acct   Name                                  Avg/Mth Last Job' nl
+
+today_date = '01-01-1900'
+print today_date nl
+
+#today_date = '14-04-1800'
+date_array = today_date
+
+count = '3 56'
+print count nl
+
+#print today_date,r nl
+#date_array[1] += 27
+#today_date = date_array
+
+today_date = '23-nov-2015'
+
+#count = 0
+#while count < 200
+#	print today_date,'dddd-mmm-yyyy' nl
+#	today_date += 1
+#	count += 1
+#wend
+
+#count = 5 * 2		
+count = 5 * 2.33	
+
+carr = 'test'
+carr[6] = count
+
+clear t1
+count = -5000
+while count < 0
+	t1.Rec_No = count
+	t1.Pickup = "Sans Souci"
+	put t1		# ** cclenter doesn't update open key tables!
+	count += 1
+wend
+
+print 'put finished' nl
+
+count = -5000
+while count < 0
+	t1.Rec_No = count
+	delete t1
+	count += 1
+wend
+
+print carr[6] nl
+print carr[5] nl
+
+print count nl
+print doub,'9,999.99' nl
+print doub nl
+
+print 'select starting' nl
+select t1 where t1.Rec_No > 2120 and t1.Pickup = 'north sydney' and t1.Delivery = 'broadbeach'
+getprev t1 lock
+while not ERROR
+	print t1.Rec_No t1.Pickup nl
+	getprev t1 lock
+wend
+#copy t1a from t1
+#print t1.Rec_No t1.Pickup nl
+
+#print t1a.Rec_No t1a.Pickup nl
+
+account = '4564'
+
+screen redskull
+
+refresh redskull
+
+goto ENDPROG:
+
+do Block2
+
+ENDPROG:
+
+escape s Block2
+
+}
+
+{ Block2
+
+ print 'Hello'
+
+}

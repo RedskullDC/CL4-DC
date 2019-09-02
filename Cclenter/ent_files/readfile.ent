@@ -1,0 +1,25 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+define tess,c20
+
+define line[10],c20
+
+set tab,,
+
+openin dsk 'test.csv'
+if not ERROR
+	read dsk line
+	while not ERROR
+		print line nl
+		read dsk line
+	wend
+	close dsk
+else
+	print "couldn't open file" nl
+endif
+
+}

@@ -1,0 +1,107 @@
+6 Bits available for function defs:
+
+1111 11-- ---- ----
+
+2^6 == 64 possible functions
+
+
+---- --1- ---- ----	( 0x0200 set ) 
+signifies that we want integer calculations only?
+
+---- ---1 ---- ----	( 0x0100 set )
+signifies that we are looking for a reserved value
+
+
+-----
+											Function# << 10
+OpCode = x0400, NumArgs = 1	not()								1
+OpCode = x0800, NumArgs = 1	sqrt()								2
+OpCode = x0C00, NumArgs = 1	log()								3
+OpCode = x1000, NumArgs = 1	sin()								4
+OpCode = x1400, NumArgs = 1	cos()								5
+OpCode = x1800, NumArgs = 1	tan()								6
+OpCode = x1C00, NumArgs = 1	ucase()								7
+OpCode = x2000, NumArgs = 1	lcase()								8
+OpCode = x2400, NumArgs = 1	slen()								9
+OpCode = x2800, NumArgs = 1	day()								10
+OpCode = x2C00, NumArgs = 1	getarg()							11
+OpCode = x3000, NumArgs = 1	asize()								12
+OpCode = x3400, NumArgs = 1	asc()								13
+OpCode = x3800, NumArgs = 1	chr()								14
+OpCode = x3C00, NumArgs = 1	srand()								15
+OpCode = x4000, NumArgs = 1	getenv()							16
+OpCode = x4400, NumArgs = 1	log10()								17
+OpCode = x4800, NumArgs = 1	asin()								18
+OpCode = x4C00, NumArgs = 1	acos()								19
+OpCode = x5000, NumArgs = 1	atan()								20
+
+
+OpCode = x5400, NumArgs = 2	+	add							21
+OpCode = x5800, NumArgs = 2	-	subtract   -(multiple meanings for string functions)	22
+OpCode = x5C00, NumArgs = 2	**	EXP        -power()					23
+OpCode = x6000, NumArgs = 2	*	multiply						24
+OpCode = x6400, NumArgs = 2	/	divide							25
+OpCode = x6800, NumArgs = 2	%	MOD							26
+OpCode = x6C00, NumArgs = 2	match()								27
+OpCode = x7000, NumArgs = 2			*** free?					28
+OpCode = x7400, NumArgs = 2	sdel()								29
+OpCode = x7800, NumArgs = 2	smult()								30
+OpCode = x7C00, NumArgs = 2	sword()								31
+OpCode = x8000, NumArgs = 2	setenv()							32
+OpCode = x8400, NumArgs = 2	skey()								33
+OpCode = x8800, NumArgs = 2	sfmt()								34
+
+
+OpCode = x8C00, NumArgs = 1	getxml()							35
+OpCode = x9000, NumArgs = 1	degrees()							36
+OpCode = x9400, NumArgs = 1	radians()							37
+OpCode = x9800, NumArgs = 1	exp()								38
+OpCode = x9C00, NumArgs = 1	trim()								39
+OpCode = xA000, NumArgs = 1	getcgi()							40
+
+
+OpCode = xA400, NumArgs = 0	name()				# test for valid CL4 name	41
+OpCode = xA800, NumArgs = 0	'='				assignment?			42
+OpCode = xAC00, NumArgs = 0	'['				array subscript operation	43
+OpCode = xB000, NumArgs = 0			*** free?					44
+OpCode = xB400, NumArgs = 0			*** free?					45
+OpCode = xB800, NumArgs = 0	random()							46
+OpCode = xBC00, NumArgs = 0	keyready()							47
+OpCode = xC000, NumArgs = 0			*** free?					48
+OpCode = xC400, NumArgs = 0			*** free?					49
+OpCode = xC800, NumArgs = 0			*** free?					50
+
+OpCode = xCC00, NumArgs = 3	substr()							51
+OpCode = xD000, NumArgs = 3	srep()								52
+OpCode = xD400, NumArgs = 3	sconv()								53
+
+OpCode = xD800, NumArgs = 0	'+='								54
+OpCode = xDC00, NumArgs = 0	'-='								55
+OpCode = xE000, NumArgs = 0	'*='								56
+OpCode = xE400, NumArgs = 0	'/='								57
+OpCode = xE800, NumArgs = 0	'%='								58
+OpCode = xEC00, NumArgs = 0	'**='								59
+OpCode = xF000, NumArgs = 0			*** free?					60
+OpCode = xF400, NumArgs = 0	scat()								61
+OpCode = xF800, NumArgs = 0			*** free?					62
+OpCode = xFC00, NumArgs = 0			*** free?					63
+
+
+-------------------------------------------
+
+Reserved value bitmasks:
+
+"path",		0x0001
+"version"	0x0002
+		0x0004	- unallocated?
+"date"		0x0008
+"time"		0x0010
+"pname"		0x0020
+"uname"		0x0040
+"pid"		0x0080
+"uid"		0x0100
+"login"		0x0200
+"tty"		0x0400
+"nname"		0x0800
+		0x1000	- unallocated?
+"pwd"		0x2000

@@ -1,0 +1,87 @@
+# Recalc the cost of a single T1 job. Rec_No passed as V1
+
+# !!!!!!!!!!Uses T1 records in COURDB3LOG, *NOT* normal COURDB3!!!!!!!!!!!!!!!!
+
+# Only ever called by Freight job creator programs to recalc a courier component job.
+# Typically, jobs are always on account 1000, and never follow-ons.
+
+##################
+{ A000_main
+##################
+
+# typical settings for programs who have no screen output:
+set fnum,off
+set tab
+set output,stdout
+set repeat,off
+REPLY='E'
+
+getfile COURDB1		Custfile,cst	 	CustRates,csr \
+			Cust_Pb_Exceptions,pbx \
+			Cntrlfl,cnt 		Ratefile,rf \
+			Services,s 		Service_Times,st
+
+getfile DRIVDB		Drivfile,drv 	
+
+#include 'sel_t1.eni'
+getfile COURDB3LOG	Tranfl1,t1	Tranfoj1,t1foj	Tran1rrdx,t1dx Tran1rrd,t1drv
+
+
+
+getfile COURDB6		Locfile,loc 	Locabbr,loa 	Locname,lon	Distfile,df \
+			Streetfile,sf 	DistfileZone,dfz
+
+# Only to satisfy jobcalc subroutines
+include 'sel_ia.eni'            # Includes for International Air tables.
+include 'sel_fr.eni'            # Includes for Domestic Air Freight tables.
+
+include 'sys_vars.eni'
+include 'jobvar.eni'
+include 'branch_var.eni'
+SCREEN_MODE = ZERO
+
+define		count,b		ix1,i	mult_factor,b	follow_on,c1 \
+		w_job_cost,g	w_driver_pay,g
+define		yes=1       no=0
+
+cnt.Cntrl_Key = 1
+get cnt
+
+t1.Rec_No = V1
+get t1 lock
+if not ERROR
+	do B000_recalc
+	put t1
+endif
+
+}
+
+#########################
+{ B000_recalc
+#########################
+
+branch = t1.Branch
+do change_branch_2
+
+cst.Account = t1.Account
+get cst
+if not ERROR
+	wk_date = t1.Date
+	do get_rate_record
+	s.Service_Code = t1.Service_Code
+	get s
+	wk_service_no = s.Service_No[1]		# Service Class
+	wk_service_no2 = s.Service_No[2]	# Indexer/Multiplier
+	do Set_Pricing_Arrays
+	do CC00_calculations
+	do CC60_fuel_gst
+	#do SS00_select_channel
+endif
+}
+include 'courier_inc.eni'	# Customised includes to lower executable size
+include 't1jobcalc.eni'
+include 't1drivpay.eni'
+include 'branch.eni'		# needed to get the correct rate key value (now branch specific)
+include 'set_pricing_arrays.eni' # prepare arrays before calling jobcalc
+#include 'selectchannel.eni'
+

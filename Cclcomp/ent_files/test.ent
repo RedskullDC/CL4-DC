@@ -1,0 +1,180 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main on_exit Block2
+##################
+
+define retval,c30	parm1,n		parm2,n
+
+#deffn(retval, 'libpath/name', parm1, parm2)
+
+set fnum,off
+on_eop Block2
+
+set message,f
+#set output, console
+define tess,t		tessd,d		account,c6	days,n		str30,c30 \
+		tdate,d		myerror,b	count,n		
+
+define date_array[10],n	days_last_job,i	non_wk_days,i hol_date,d tot_days,i
+
+define ab1,1 ab2,2 ab3,3 ab4,4 ab5,5 ab6,6 ab7,7 ab8,8 ab9,9
+
+define int1,i int2,i
+
+define notused,b rannum,9
+
+define teststring	# should default to variable type c20
+define mystr,c		# should also default to variable type c20
+
+define fl1 = 1.1
+define fl2 = 1.12
+define fl3 = 1.123
+define fl4 = 1.1234
+define fl5 = 1.12345
+define fl6 = 1.123456
+define fl7 = 1.1234567
+define fl8 = 1.12345678
+define fl9 = 1.123456789
+
+define fla = 1.12345678901234567890
+
+define testint2,2
+
+notused = srandom(123456)
+rannum = random()
+rannum *= 100
+
+int1 = date_array[2]
+str30 = '123'
+
+ab2 = 2.34
+ab2 *= 3.45
+
+str30 = setenv('TESTDIR','/tmp')
+
+pause 'Hello'
+
+screen 'screen1'
+refresh 'screen1'
+
+int1 = 4
+int2 = 6
+
+define doub = 5.44
+
+getfile TESTDB	Tranfl1,t1	Tran1rra,t1a
+create unique myT1 t1.Rec_No t1 t1.Branch with t1.Parcels empty
+
+#include 'test.eni'
+
+define test = 'simple string 
+
+print 'login' nl
+
+str30 = trim('trimmed string ')
+#clear_eol
+
+count = 65.4.9
+print 'count octal = ' + count nl
+
+count = 10
+count -= 3
+count = count - 4
+
+count **= 3
+count *= 3
+count = count * 2
+if int1 = 4 and int2 = 6
+	print count nl
+elsif int1 = 9
+	print '\timpossible' nl
+#elsif int1 = 9
+#	print 'impossible' nl
+#elsif int1 = 9
+#	print 'impossible' nl
+#else
+#	print 'not equal' nl
+endif
+
+#while int1 = 4
+#	print 'test' nl
+#wend
+
+hol_date = 't'
+#  10   39  300	if int1[I]  ([30]=) ~4~ ([32]AND) int2[I]  ([34]=) ~6~ (goto 13)
+#  11   40  900	print count[N] ,3072 nl,0x 
+#  12    0  700	goto 14
+#  13   42  900	print 'not equal'[C] ,0x nl,0x 
+#  14   45  200	hol_date[D]  = ~t~
+
+print hol_date,10 nl
+
+print 'Length of test = ' + slen('test' + 'str2') nl #+ sword(test,1)nl
+
+
+int1 = slen('test' + 'str2')
+print 5.46788 + slen(test) nl
+
+print 1. nl
+
+#str30	+	5	15	25	15	'test'
+
+str30 = scat('one','two','three','four')
+redisplay str30
+
+print asize(date_array)
+
+print str30,2 nl
+
+openin dsk 'testfile.ent'
+if not ERROR
+	read dsk str30
+	close dsk
+endif
+
+openout file2 'testfile2.ent'
+if not ERROR
+	write file2 str30
+endif
+
+#close 'tables'
+
+str30 = fmt(str30,'hh:mm:ss')
+
+define a1 = 'string',c7		# create a c7 variable, and initialise it!
+define a2 = 4
+ldefine a3 = 4.5,c30
+
+print slen(a3) nl
+print 'Acct   Name                                  Avg/Mth Last Job' nl
+
+count = 5 * 2
+LESLIE:
+print count nl
+print doub nl
+
+getnext t1
+#print t1.Rec_No nl
+print t1.Branc nl	# entire record
+#replace t1 count				# Not sure what this actually does. Undocumented!!
+
+account = '4564'
+
+goto ENDPROG:
+
+do Block2
+
+ENDPROG:
+
+escape s Block2
+
+
+}
+
+{ Block2
+
+ print 'Hello'
+
+}
+

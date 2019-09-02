@@ -1,0 +1,36 @@
+# test the DC extensions/ Library call functions.
+
+##################
+{ Main
+##################
+
+
+define C30,c30
+
+define HEXVAL,X		# Hexadecimal value
+
+define	libhandle,p	funchandle,p	bookhandle,p  bookver,p # pointers for return handles
+define	returnvar,c80
+
+openlib(libhandle, 'libxl.so')
+
+libcall(bookhandle, libhandle, funchandle, 'xlCreateBookCA', void)	# BookHandle = xlCreateBookCA(void);
+
+libcall(HEXVAL, libhandle, bookver, 'xlBookVersionA', bookhandle)	# Version = xlBookVersionA(BookHandle);
+
+print libhandle funchandle nl
+
+print 'xlBookVersionA() returned "' + HEXVAL + '"' nl
+
+#=====================
+
+HEXVAL = 0x1Fe0
+
+HEXVAL += 0x27
+print HEXVAL nl
+
+C30 = HEXVAL
+print C30 nl
+
+}
+

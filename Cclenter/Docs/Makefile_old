@@ -1,0 +1,6 @@
+cle : cle.o
+	gcc -pthread -lncurses -lm -lcl4 -o cle cle.o
+cle.o : cle.c src/*
+	gcc -pthread -g -c cle.c
+clean :
+	rm cle *.o

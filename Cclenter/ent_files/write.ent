@@ -1,0 +1,13 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+define tess,c20
+
+fork 'lsd -al'
+
+print ERROR EXIT nl,3
+
+}

@@ -1,0 +1,62 @@
+# fix the COURDB1:cst days_btwn_jobs fields .
+
+##################
+{ Main
+##################
+
+
+getfile TESTDB Tranfl1,t1 Tran1rra,t1a	Tranfl1,tf1
+
+#getfile DB3 Tranfl1,t3 
+
+
+define ad,c10 MyInt,b	MyChar,c1 count,i	MyArray[20],c16	teststring,c10	currtime,t	test1,g
+
+define i1,i i2,i	doub,5
+
+set fnum, off
+set csv,on
+set dos,off
+#set tab,|
+
+#MyArray = 'setall'
+
+#print MyArray[2] nl
+
+
+maintain t1,vacd
+
+head	0	5	1	'Simple heading'
+
+t1.Rec_No		+	5	5	20	5	'Rec_No :'
+escape x MyESC
+#join t3.Rec_No
+#range 10 4000 #'must be $$ between $1 and $2'
+
+t1.Time_Received	+	=	=	=	=	'Time_Rec :'
+t1.Date			+	=	=	=	=	'Date     :'
+t1.Pickup		+	=	=	=	=	'Pickup   :'
+t1.Parent		+	=	=	=	=	'Parent   :'
+
+copy tf1 from t1
+
+openout dsk 'test'
+if not ERROR
+	write dsk teststring
+	close dsk
+endif
+
+}
+
+{ MyESC
+
+ldefine mycwd,c20
+
+mycwd = 'pwd'
+print 'ffff' nl
+print mycwd nl
+print 'path' nl
+print 'version' nl
+print 'tty' nl
+
+}

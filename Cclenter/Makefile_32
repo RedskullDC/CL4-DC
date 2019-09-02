@@ -1,0 +1,7 @@
+cle : cle.o
+	gcc -pthread -m32 -o cle cle.o -lncurses -lm -lssl
+	ls -al cle
+cle.o : cle.c src/* ../Ccl4src/*
+	gcc -std=gnu99 -pthread -m32 -g -c -I../Ccl4src -I./src cle.c
+clean :
+	rm cle *.o

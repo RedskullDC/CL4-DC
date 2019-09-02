@@ -1,0 +1,87 @@
+==14990== Memcheck, a memory error detector
+==14990== Copyright (C) 2002-2012, and GNU GPL'd, by Julian Seward et al.
+==14990== Using Valgrind-3.8.1 and LibVEX; rerun with -h for copyright info
+==14990== Command: cle ./cis04e_100.enc
+==14990== Parent PID: 5880
+==14990== 
+==14990== 
+==14990== HEAP SUMMARY:
+==14990==     in use at exit: 414,105 bytes in 2,095 blocks
+==14990==   total heap usage: 6,882 allocs, 4,787 frees, 1,344,392 bytes allocated
+==14990== 
+==14990== 4 bytes in 1 blocks are definitely lost in loss record 3 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x8074B02: _gettext (loadenc.c:476)
+==14990==    by 0x8075805: loadenc (loadenc.c:1024)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== 4 bytes in 1 blocks are definitely lost in loss record 4 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x8074B02: _gettext (loadenc.c:476)
+==14990==    by 0x8075814: loadenc (loadenc.c:1025)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== 12 bytes in 1 blocks are definitely lost in loss record 9 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x807503F: getrdtabs (loadenc.c:697)
+==14990==    by 0x8075F1B: loadenc (loadenc.c:1246)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== 40 (16 direct, 24 indirect) bytes in 1 blocks are definitely lost in loss record 24 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x806D28C: elist_Create (elist.c:11)
+==14990==    by 0x80728EC: KeyF_Construct (key.c:277)
+==14990==    by 0x8072584: Key_Construct (key.c:149)
+==14990==    by 0x807F187: main (cle.c:453)
+==14990== 
+==14990== 40 (16 direct, 24 indirect) bytes in 1 blocks are definitely lost in loss record 25 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x806D28C: elist_Create (elist.c:11)
+==14990==    by 0x80728EC: KeyF_Construct (key.c:277)
+==14990==    by 0x807261F: Key_Construct (key.c:164)
+==14990==    by 0x807F187: main (cle.c:453)
+==14990== 
+==14990== 89 bytes in 11 blocks are definitely lost in loss record 36 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x8071BD4: mstrcpy (mstrings.c:88)
+==14990==    by 0x8075BDA: loadenc (loadenc.c:1136)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== 144 bytes in 1 blocks are definitely lost in loss record 40 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x8074DAD: getratabs (loadenc.c:574)
+==14990==    by 0x8075E57: loadenc (loadenc.c:1222)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== 7,420 bytes in 1 blocks are definitely lost in loss record 80 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x8074CD8: getrtabs (loadenc.c:540)
+==14990==    by 0x8075E26: loadenc (loadenc.c:1216)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== 178,192 (35,584 direct, 142,608 indirect) bytes in 1 blocks are definitely lost in loss record 89 of 89
+==14990==    at 0x40272B2: malloc (vg_replace_malloc.c:270)
+==14990==    by 0x8071ABD: mmalloc (mstrings.c:26)
+==14990==    by 0x80751F3: getptabs (loadenc.c:769)
+==14990==    by 0x8075D96: loadenc (loadenc.c:1198)
+==14990==    by 0x807F1B0: main (cle.c:459)
+==14990== 
+==14990== LEAK SUMMARY:
+==14990==    definitely lost: 43,289 bytes in 19 blocks
+==14990==    indirectly lost: 142,656 bytes in 5 blocks
+==14990==      possibly lost: 0 bytes in 0 blocks
+==14990==    still reachable: 228,160 bytes in 2,071 blocks
+==14990==         suppressed: 0 bytes in 0 blocks
+==14990== Reachable blocks (those to which a pointer was found) are not shown.
+==14990== To see them, rerun with: --leak-check=full --show-reachable=yes
+==14990== 
+==14990== For counts of detected and suppressed errors, rerun with: -v
+==14990== ERROR SUMMARY: 9 errors from 9 contexts (suppressed: 25 from 10)

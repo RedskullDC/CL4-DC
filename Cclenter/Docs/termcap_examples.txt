@@ -1,0 +1,937 @@
+argc = 1, ./list_cst.enc
+v16[0] = x08097A98, *() =x00000000
+v16[1] = x0808AB88, *() =x00000000
+v16[2] = x0809A788, *() =x00000000
+v16[3] = xFFA02EA0, *() =x0000FFFF
+v16[4] = xFFA02EA2, *() =x00000000
+v16[5] = x0808E3CC, *() =x00000000
+v16[6] = x0808AD08, *() =x00000000
+v16[7] = x0808ACE0, *() =x00000000
+v16[8] = x0808AC24, *() =x00000000
+v16[9] = x0809A7C4, *() =x00000000
+v16[10] = x080916C4, *() =x00000000
+v16[11] = x0808ACD8, *() =x00000000
+v16[12] = x08097A9C, *() =x00000000
+v16[13] = x08089D2A, *() =x00000020
+v16[14] = x080916BC, *() =x00000000
+termcap1: _yh = x08089D4C 
+gettcent() - TermName = xterm
+gettcent() - result = 1
+termcap: AttrName = co,  v1 = 160
+termcap: AttrName = li,  v1 = 45
+termcap2: _yh = x08089D4C
+
+*** These attributes are not in correct memory:
+
+termcap: AttrName = me,  v3 = xFFA02850, [[0m]  
+termcap: AttrName = mb,  v3 = xFFA02855, [[5m]  
+termcap: AttrName = me,  v3 = xFFA0285A, [[0m]  
+termcap: AttrName = md,  v3 = xFFA0285F, [[1m]  
+termcap: AttrName = cd,  v3 = xFFA02864, [[J]  
+termcap: AttrName = ce,  v3 = xFFA02868, [[K]  
+termcap: AttrName = cm,  v3 = xFFA0286C, [[%i%p1%d;%p2%dH]  
+termcap: AttrName = me,  v3 = xFFA0287D, [[0m]  
+termcap: AttrName = nd,  v3 = xFFA02882, [[C]  
+termcap: AttrName = me,  v3 = xFFA02886, [[0m]  
+termcap: AttrName = mr,  v3 = xFFA0288B, [[7m]  
+termcap: AttrName = se,  v3 = xFFA02890, [[27m]  
+termcap: AttrName = so,  v3 = xFFA02896, [[7m]  
+termcap: AttrName = ue,  v3 = xFFA0289B, [[24m]  
+termcap: AttrName = us,  v3 = xFFA028A1, [[4m]  
+termcap: AttrName = ve,  v3 = xFFA028A6, [[?25h]  
+termcap: AttrName = vi,  v3 = xFFA028AD, [[?25l]  
+termcap: AttrName = vs,  v3 = xFFA028B4, [[?25h]  
+
+on Slackware:
+
+termcap1: _yh = x0808878C
+gettcent() - TermName = ansi100
+gettcent() - result = 1
+termcap: AttrName = co,  v1 = 100
+termcap: AttrName = li,  v1 = 40
+termcap2: _yh = x0808878C
+termcap: AttrName = cd,  v3 = x0809AD04, []
+termcap: AttrName = ce,  v3 = x0809AD00, []
+termcap: AttrName = cm,  v3 = x0809AD08, [%p1%d;%p2%dH]
+termcap: AttrName = nd,  v3 = x0809AD21, [ ]
+termcap: AttrName = se,  v3 = x0809AD3D, []
+termcap: AttrName = so,  v3 = x0809AD32, []
+termcap: AttrName = ue,  v3 = x0809AD41, []
+termcap: AttrName = us,  v3 = x0809AD37, []
+
+
+
+
+
+
+
+FFA02850 = 1B 5B 30 6D 00 1B 5B 35 6D 00 1B 5B 30 6D 00 1B  .[0m..[5m..[0m..
+FFA02860 = 5B 31 6D 00 1B 5B 4A 00 1B 5B 4B 00 1B 5B 25 69  [1m..[J..[K..[%i
+FFA02870 = 25 70 31 25 64 3B 25 70 32 25 64 48 00 1B 5B 30  %p1%d;%p2%dH..[0
+FFA02880 = 6D 00 1B 5B 43 00 1B 5B 30 6D 00 1B 5B 37 6D 00  m..[C..[0m..[7m.
+FFA02890 = 1B 5B 32 37 6D 00 1B 5B 37 6D 00 1B 5B 32 34 6D  .[27m..[7m..[24m
+FFA028A0 = 00 1B 5B 34 6D 00 1B 5B 3F 32 35 68 00 1B 5B 3F  ..[4m..[?25h..[?
+FFA028B0 = 32 35 6C 00  25l.
+termcap3: _yh = x08089D4C 
+gettccl()
+termcap4: _yh = x08089D4C 
+main 151: arg = ./list_cst.enc
+main 159: arg = ./list_cst
+main 166: pname = list_cst
+Key_Construct : KEYDEFS = <null>!!
+Key_Construct : KEYINFO = /usr/cl4/etc/keyinfo
+Key_Construct : KeyDefFileName = /usr/cl4/etc/keyinfo/xterm
+Key_Construct : Calling KeyF_Construct on kt_keys
+KeyF_Construct : Calling KeyF_ReadFile(/usr/cl4/etc/keyinfo/xterm) 
+KeyF_ReadFile : Calling ReadKeyList() 
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+Lex case:3, Lex_CommFunctionName = Push
+ReadKeyList case:5, FN name = Push
+ReadKeyList case:7, Lex_CommDigit = 27
+Lex case:3, Lex_CommFunctionName = SetRetVal
+ReadKeyList case:5, FN name = SetRetVal
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:2, Adding a new sub-list
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+Lex case:3, Lex_CommFunctionName = PushK
+ReadKeyList case:5, FN name = PushK
+Lex case:3, Lex_CommFunctionName = Push
+ReadKeyList case:5, FN name = Push
+ReadKeyList case:7, Lex_CommDigit = 27
+Lex case:3, Lex_CommFunctionName = MacroAdd
+ReadKeyList case:5, FN name = MacroAdd
+Lex case:3, Lex_CommFunctionName = MacroAdd
+ReadKeyList case:5, FN name = MacroAdd
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+Lex case:3, Lex_CommFunctionName = PushK
+ReadKeyList case:5, FN name = PushK
+Lex case:3, Lex_CommFunctionName = Push
+ReadKeyList case:5, FN name = Push
+ReadKeyList case:7, Lex_CommDigit = 27
+Lex case:3, Lex_CommFunctionName = MacroAdd
+ReadKeyList case:5, FN name = MacroAdd
+Lex case:3, Lex_CommFunctionName = MacroAdd
+ReadKeyList case:5, FN name = MacroAdd
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+Lex case:3, Lex_CommFunctionName = PushK
+ReadKeyList case:5, FN name = PushK
+Lex case:3, Lex_CommFunctionName = Push
+ReadKeyList case:5, FN name = Push
+ReadKeyList case:7, Lex_CommDigit = 27
+Lex case:3, Lex_CommFunctionName = MacroAdd
+ReadKeyList case:5, FN name = MacroAdd
+Lex case:3, Lex_CommFunctionName = MacroAdd
+ReadKeyList case:5, FN name = MacroAdd
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+Lex case:3, Lex_CommFunctionName = PushK
+ReadKeyList case:5, FN name = PushK
+Lex case:3, Lex_CommFunctionName = SetRetVal
+ReadKeyList case:5, FN name = SetRetVal
+ReadKeyList case:9
+KeyF_ReadFile : returned from ReadKeyList() 
+Key_Construct : Calling KeyF_Construct on kt_macros
+KeyF_Construct : Calling KeyF_ReadFile(/usr/cl4/etc/macros) 
+KeyF_ReadFile : Calling ReadKeyList() 
+ReadKeyList case:2, Adding a new sub-list
+Lex case:7, Lex_CommRStart = x083A, KeyName = Fk6
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+Lex case:7, Lex_CommRStart = x0840, KeyName = Fk12
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+Lex case:7, Lex_CommRStart = x0899, KeyName = S_Fk1
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+ReadKeyList case:9
+ReadKeyList case:4, New element added
+Lex case:3, Lex_CommFunctionName = PushK
+ReadKeyList case:5, FN name = PushK
+Lex case:3, Lex_CommFunctionName = SetRetVal
+ReadKeyList case:5, FN name = SetRetVal
+ReadKeyList case:9
+KeyF_ReadFile : returned from ReadKeyList() 
+main 187: arg = ./list_cst
+loadenc: FileName = ./list_cst
+loadenc: v2 = /home/leslie/Cclenter/list_cst
+loadenc: version = 40403 
+loadenc: portable = false
+loadenc: EncVersion = 40403 
+loadenc: no_ttabs = 1 
+loadenc: NameLen = 7 
+loadenc: DBname = TESTDB 
+loadenc: TabNameLen = 11 
+loadenc: TableName = Tranfl1,t1 
+TableName = "Tranfl1", Alias = "t1"
+loadenc no_ttabs = 4 
+loadenc NumVariables = 80 
+loadenc var# 0 init to ZERO, size = 21
+loadenc var# 1 init to ZERO, size = 8
+loadenc var# 2 init to ZERO, size = 8
+loadenc var# 3 init to ZERO, size = 21
+loadenc var# 4 init to ZERO, size = 8
+loadenc var# 5 init to ZERO, size = 21
+loadenc var# 6 init to ZERO, size = 8
+loadenc var# 7 init to ZERO, size = 21
+loadenc var# 8 init to ZERO, size = 129
+loadenc var# 9 init to ZERO, size = 129
+loadenc var# 10 init to ZERO, size = 129
+loadenc var# 11 init to ZERO, size = 129
+loadenc var# 12 init to ZERO, size = 129
+loadenc var# 13 init to ZERO, size = 129
+loadenc var# 14 init to ZERO, size = 129
+loadenc var# 15 init to ZERO, size = 129
+loadenc var# 16 init to ZERO, size = 129
+loadenc var# 17 init to ZERO, size = 8
+loadenc var# 18 init to ZERO, size = 21
+loadenc var# 19 init to ZERO, size = 8
+loadenc var# 20 init to ZERO, size = 8
+loadenc var# 21 init to ZERO, size = 8
+loadenc var# 22 init to ZERO, size = 8
+loadenc var# 23 init to ZERO, size = 8
+loadenc var# 24 init to ZERO, size = 1001
+loadenc var# 25 init to ZERO, size = 8
+loadenc var# 26 init to ZERO, size = 8
+loadenc var# 27 init to ZERO, size = 8
+loadenc var# 28 init to ZERO, size = 8
+loadenc var# 29 init to ZERO, size = 8
+loadenc var# 30 init to ZERO, size = 8
+loadenc var# 31 init to ZERO, size = 21
+loadenc var# 32 init to ZERO, size = 8
+loadenc var# 33 init to ZERO, size = 8
+loadenc var# 34 init to ZERO, size = 8
+loadenc var# 35 init to ZERO, size = 8
+loadenc var# 36 init to ZERO, size = 8
+loadenc var# 37 init to ZERO, size = 8
+loadenc var# 38 init to ZERO, size = 8
+loadenc var# 39 init to ZERO, size = 2
+loadenc var# 40 init to ZERO, size = 8
+loadenc var# 41 init to ZERO, size = 8
+loadenc var# 42 init to ZERO, size = 8
+loadenc var# 43 init to ZERO, size = 8
+loadenc var# 44 init to ZERO, size = 8
+loadenc var# 45 init to ZERO, size = 8
+loadenc var# 46 init to ZERO, size = 8
+loadenc var# 47 init to ZERO, size = 8
+loadenc var# 48 init to ZERO, size = 8
+loadenc var# 49 init to ZERO, size = 8
+loadenc var# 50 init to ZERO, size = 8
+loadenc var# 51 init to ZERO, size = 8
+loadenc var# 52 init to ZERO, size = 8
+loadenc var# 53 init to ZERO, size = 8
+loadenc var# 54 init to ZERO, size = 16
+loadenc var# 55 init to ZERO, size = 7
+loadenc var# 56 init to ZERO, size = 13
+loadenc var# 57 init to ZERO, size = 7
+loadenc var# 58 init to ZERO, size = 129
+loadenc var# 59 init to ZERO, size = 8
+loadenc var# 60 init to ZERO, size = 8
+loadenc var# 61 init to ZERO, size = 8
+loadenc var# 62 init to ZERO, size = 8
+loadenc var# 63 init to ZERO, size = 8
+loadenc var# 64 init to ZERO, size = 7
+loadenc var# 65 init to ZERO, size = 8
+loadenc var# 66 init to ZERO, size = 31
+loadenc var# 67 init to ZERO, size = 8
+loadenc var# 68 init to ZERO, size = 8
+loadenc var# 69 init to ZERO, size = 8
+loadenc var# 70 init to ZERO, size = 8
+loadenc var# 71 init to ZERO, size = 8
+loadenc var# 72 init to ZERO, size = 8
+loadenc var# 73 init to ZERO, size = 8
+loadenc var# 74 init to ZERO, size = 8
+loadenc var# 75 Doub FLDdata = "6.78645E-316" 
+loadenc var# 76 char FLDdata = "simple string" 
+loadenc var# 77 char FLDdata = "Acct   Name                                  Avg/Mth Last Job" 
+loadenc var# 78 char FLDdata = "4564" 
+loadenc var# 79 char FLDdata = "Hello" 
+loadenc NumPtabs = 17 
+loadenc Expressions = 13 
+loadenc Accept Fields = 0 
+loadenc Record refs = 1 
+loadenc Ranges Defs = 0 
+loadenc Xfers = 0 
+loadenc FCB's = 0 
+loadenc Print Defs = 9 
+loadenc READ defs = 0 
+loadenc Create Statements = 0 
+getstrarr : StringSpace = 16 
+loadenc : no_btabs = 2 
+loadenc : in Block : Main 
+loadscr : PT_Start = 0, PT_end = 9 
+loadenc : in Block : Block2 
+loadscr : PT_Start = 11, PT_end = 12 
+main: loadmontharrays() 
+_YD set to 1985-2045:8
+pblock: calling abcd() 
+abcd: LABEL_25 
+_ploop: entry PT_Start2 = 0, PT_End2 = 9
+
+_ploop: LineNo = 17, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 77
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 77
+Acct   Name                                  Avg/Mth Last Job
+
+_ploop: LineNo = 19, OpCode = 200 [x00C8] 
+_ploop [200] : ptab->TABno  = 3, x0003
+getftf() - ent->entype = 2, UpdateTT = 0, OpCode = x6000
+getftf() - ent->entype = 8, UpdateTT = 1, OpCode = x0000
+getftf() - ent->entype = 8, UpdateTT = 1, OpCode = x0000
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+calculate : range check routines : FLDtype = N
+calculate : TestVal = 10, MinVal = -2.14748E+09, MaxVal = 2.14748E+09
+
+_ploop: LineNo = 21, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+10
+
+_ploop: LineNo = 22, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 75
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 75
+5.44
+
+_ploop: LineNo = 24, OpCode = 520 [x0208] 
+_ploop: Calling reffile(x082FF190) LineNo = 24, OpCode = 520 [x0208] 
+reffile v2 = x0002, Lock = x0000
+reffile : v2 & 0x0006
+rdnxt(TDno = 3, EXPR = x00000000, Lock = 0, a4 = 0)
+cldbopen(DBname : [/home/leslie/Cclenter/TESTDB],...)
+reffile exiting. returned ErrorCode = 0
+
+_ploop: LineNo = 25, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1315 - ent->entype = 1, TDno = 3, RecNo = 0
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1315 - ent->entype = 1, TDno = 3, RecNo = 0
+-345
+
+_ploop: LineNo = 27, OpCode = 200 [x00C8] 
+_ploop [200] : ptab->TABno  = 11, x000B
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 78
+EvalString called : entab->entype = 1
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 78
+EvalString doing v85 default, s = 4564
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 64
+
+_ploop: LineNo = 29, OpCode = 700 [x02BC] 
+
+_ploop: LineNo = 0, OpCode = 950 [x03B6] 
+_ploop: fell through to pset()
+pblock: left abcd() 
+pblock: calling reply(<r>epeat <e>nd,er)
+reply: (<r>epeat <e>nd,er)
+reply: calling prerr(<r>epeat <e>nd)
+prerr : _cx = 1, _cy = 44, ErrBuffer = "<r>epeat <e>nd"
+prerr : calling erase_line()
+prerr : returned from erase_line()
+in toscreen()
+toscreen - maxlen = 14
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 15, _cy = 44
+toscreen - 1384
+in qat(1,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+prerr : returned from toscreen()
+reply: returned from prerr
+reply: calling linput
+in toscreen()
+toscreen - maxlen = 1
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 18, _cy = 44
+toscreen - 1384
+in qat(17,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+linputChinese: FillChar = ".", _yh = x08089D4C
+linputChinese 1467: Key = "r", 114
+linputChinese 1509: Key = "r", 114
+linputChinese 1467: Key = " ", 10
+in toscreen()
+toscreen - maxlen = 18
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 19, _cy = 44
+toscreen - 1384
+in qat(1,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+pblock: returned from reply
+pblock: calling abcd() 
+abcd: LABEL_25 
+_ploop: entry PT_Start2 = 0, PT_End2 = 9
+
+_ploop: LineNo = 17, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 77
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 77
+Acct   Name                                  Avg/Mth Last Job
+
+_ploop: LineNo = 19, OpCode = 200 [x00C8] 
+_ploop [200] : ptab->TABno  = 3, x0003
+getftf() - ent->entype = 2, UpdateTT = 0, OpCode = x6000
+getftf() - ent->entype = 8, UpdateTT = 1, OpCode = x0000
+getftf() - ent->entype = 8, UpdateTT = 1, OpCode = x0000
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+calculate : range check routines : FLDtype = N
+calculate : TestVal = 10, MinVal = -2.14748E+09, MaxVal = 2.14748E+09
+
+_ploop: LineNo = 21, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+10
+
+_ploop: LineNo = 22, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 75
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 75
+5.44
+
+_ploop: LineNo = 24, OpCode = 520 [x0208] 
+_ploop: Calling reffile(x082FF190) LineNo = 24, OpCode = 520 [x0208] 
+reffile v2 = x0002, Lock = x0000
+reffile : v2 & 0x0006
+rdnxt(TDno = 3, EXPR = x00000000, Lock = 0, a4 = 0)
+reffile exiting. returned ErrorCode = 0
+
+_ploop: LineNo = 25, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1315 - ent->entype = 1, TDno = 3, RecNo = 0
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1315 - ent->entype = 1, TDno = 3, RecNo = 0
+678
+
+_ploop: LineNo = 27, OpCode = 200 [x00C8] 
+_ploop [200] : ptab->TABno  = 11, x000B
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 78
+EvalString called : entab->entype = 1
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 78
+EvalString doing v85 default, s = 4564
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 64
+
+_ploop: LineNo = 29, OpCode = 700 [x02BC] 
+
+_ploop: LineNo = 0, OpCode = 950 [x03B6] 
+_ploop: fell through to pset()
+pblock: left abcd() 
+pblock: calling reply(<r>epeat <e>nd,er)
+reply: (<r>epeat <e>nd,er)
+reply: calling prerr(<r>epeat <e>nd)
+prerr : _cx = 1, _cy = 44, ErrBuffer = "<r>epeat <e>nd"
+prerr : calling erase_line()
+prerr : returned from erase_line()
+in toscreen()
+toscreen - maxlen = 14
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 15, _cy = 44
+toscreen - 1384
+in qat(1,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+prerr : returned from toscreen()
+reply: returned from prerr
+reply: calling linput
+in toscreen()
+toscreen - maxlen = 1
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 18, _cy = 44
+toscreen - 1384
+in qat(17,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+linputChinese: FillChar = ".", _yh = x08089D4C
+linputChinese 1467: Key = "r", 114
+linputChinese 1509: Key = "r", 114
+linputChinese 1467: Key = " ", 10
+in toscreen()
+toscreen - maxlen = 18
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 19, _cy = 44
+toscreen - 1384
+in qat(1,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+pblock: returned from reply
+pblock: calling abcd() 
+abcd: LABEL_25 
+_ploop: entry PT_Start2 = 0, PT_End2 = 9
+
+_ploop: LineNo = 17, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 77
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 77
+Acct   Name                                  Avg/Mth Last Job
+
+_ploop: LineNo = 19, OpCode = 200 [x00C8] 
+_ploop [200] : ptab->TABno  = 3, x0003
+getftf() - ent->entype = 2, UpdateTT = 0, OpCode = x6000
+getftf() - ent->entype = 8, UpdateTT = 1, OpCode = x0000
+getftf() - ent->entype = 8, UpdateTT = 1, OpCode = x0000
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+calculate : range check routines : FLDtype = N
+calculate : TestVal = 10, MinVal = -2.14748E+09, MaxVal = 2.14748E+09
+
+_ploop: LineNo = 21, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 69
+10
+
+_ploop: LineNo = 22, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 75
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 75
+5.44
+
+_ploop: LineNo = 24, OpCode = 520 [x0208] 
+_ploop: Calling reffile(x082FF190) LineNo = 24, OpCode = 520 [x0208] 
+reffile v2 = x0002, Lock = x0000
+reffile : v2 & 0x0006
+rdnxt(TDno = 3, EXPR = x00000000, Lock = 0, a4 = 0)
+reffile exiting. returned ErrorCode = 0
+
+_ploop: LineNo = 25, OpCode = 900 [x0384] 
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1315 - ent->entype = 1, TDno = 3, RecNo = 0
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1315 - ent->entype = 1, TDno = 3, RecNo = 0
+1123
+
+_ploop: LineNo = 27, OpCode = 200 [x00C8] 
+_ploop [200] : ptab->TABno  = 11, x000B
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 78
+EvalString called : entab->entype = 1
+getftf() - ent->entype = 1, UpdateTT = 1, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 78
+EvalString doing v85 default, s = 4564
+getftf() - ent->entype = 1, UpdateTT = 0, OpCode = x0000
+getftf() 1312 - fld2->FLDelemID = 0
+getftf() 1315 - ent->entype = 1, TDno = 0, RecNo = 64
+
+_ploop: LineNo = 29, OpCode = 700 [x02BC] 
+
+_ploop: LineNo = 0, OpCode = 950 [x03B6] 
+_ploop: fell through to pset()
+pblock: left abcd() 
+pblock: calling reply(<r>epeat <e>nd,er)
+reply: (<r>epeat <e>nd,er)
+reply: calling prerr(<r>epeat <e>nd)
+prerr : _cx = 1, _cy = 44, ErrBuffer = "<r>epeat <e>nd"
+prerr : calling erase_line()
+prerr : returned from erase_line()
+in toscreen()
+toscreen - maxlen = 14
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 15, _cy = 44
+toscreen - 1384
+in qat(1,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+prerr : returned from toscreen()
+reply: returned from prerr
+reply: calling linput
+in toscreen()
+toscreen - maxlen = 1
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 18, _cy = 44
+toscreen - 1384
+in qat(17,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+linputChinese: FillChar = ".", _yh = x08089D4C
+linputChinese 1467: Key = "e", 101
+linputChinese 1509: Key = "e", 101
+linputChinese 1467: Key = " ", 10
+in toscreen()
+toscreen - maxlen = 18
+toscreen - 1321
+toscreen - 1348
+toscreen - 1367: _cx = 19, _cy = 44
+toscreen - 1384
+in qat(1,44), calling tputs()
+leaving qat()
+toscreen - 1386
+toscreen - 1387
+toscreen - 1390
+toscreen - 1392
+pblock: returned from reply
