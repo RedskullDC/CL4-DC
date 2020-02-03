@@ -22,32 +22,32 @@ char *exptobuf(char *buff, ENTAB *entab, unsigned int MaxLen)
 		{
 		case 0x04:							// inline float. Real clcomp doesn't create these!  
             if ( MaxLen )
-	            sprintf(buff, "%*.*f", MaxLen, typedp('6'), *(float *)&entab->TTno);
+	            sprintf(buff, "%*.*f", MaxLen, typedp('6'), entab->Enun.float4);
 			else
-				sprintf(buff, "%.*f", typedp('6'), *(float *)&entab->TTno);
+				sprintf(buff, "%.*f", typedp('6'), entab->Enun.float4);
 			break;
 
-		case 0x08:							// inline int.
+		case 0x08:							// inline long.		**** 4 bytes on x86, 8 bytes on X64!!! ***
             if ( MaxLen )
-	            sprintf(buff, "%*ld", MaxLen, *(int *)&entab->TTno);
+	            sprintf(buff, "%*ld", MaxLen, entab->Enun.long8);
 			else
-				sprintf(buff, "%ld", *(int *)&entab->TTno);
+				sprintf(buff, "%ld", entab->Enun.long8);
 			break;
 
-		case 0x10:							// inline string. 3 chars or less.
+		case 0x10:							// inline string. 3 chars or less.   *** 7 on X64??? ***
 			if ( MaxLen )
-				sprintf(buff, "%-*.*s", MaxLen,MaxLen, (char *)&entab->TTno);
+				sprintf(buff, "%-*.*s", MaxLen,MaxLen, entab->Enun.char16);
 			else
-				cdbcpystr(buff, (char *)&entab->TTno, 0);
+				cdbcpystr(buff, entab->Enun.char16, 0);
 			break;
 
 		case 0x02:							// expression or function call?
-            if (entab->TTno & 0x0200)		// integer calc flag
+            if (entab->Enun.Enop.Enoper & 0x0200)		// integer calc flag
 			{
 				if ( MaxLen )
-					sprintf(buff, "%*ld", MaxLen, evalint(entab));
+					sprintf(buff, "%*ld", MaxLen, (long)evalint(entab));
 				else
-					sprintf(buff, "%ld", evalint(entab));
+					sprintf(buff, "%ld", (long)evalint(entab));
 				break;
 			}
 			else
@@ -57,7 +57,7 @@ char *exptobuf(char *buff, ENTAB *entab, unsigned int MaxLen)
 
                 if ( FLDType == 'C' )
                 {
-                    zap(v39, 1001u);
+					memset(v39, 0, 1001u);
                     evalstr(entab, v39);
                 }
                 else
@@ -95,11 +95,11 @@ char *exptobuf(char *buff, ENTAB *entab, unsigned int MaxLen)
 							sprintf(buff, "%d", (int)doubVal);
 						break;
 
-					case 'N':
+					case 'N':													//** need to check range on X64 **
 						if ( MaxLen )
-                            sprintf(buff, "%*ld", MaxLen,(int)doubVal);
+                            sprintf(buff, "%*ld", MaxLen,(long)doubVal);
                         else
-                            sprintf(buff, "%ld",(int)doubVal);
+                            sprintf(buff, "%ld",(long)doubVal);
 						break;
 			
 					case 'X':				// DC extension! 4 byte HEX value

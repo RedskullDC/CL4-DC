@@ -1,0 +1,242 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2020.01.27.13.49.26;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.27.09.31.43;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.24.11.40.05;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.24.11.21.51;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@prior to X64 conversion
+@
+text
+@#ifndef GETETYPE_C
+#define GETETYPE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+char getetype(ENTAB *ent)	// get expression type
+{
+	FLDdesc	fld;
+    int		TTno; 
+    short	fno; 
+	char	FLDtype;
+
+    if ( ent )
+	{
+		switch (ent->entype)
+		{
+		case 0x01:
+			fno = gettdfno(ent, &TTno, &FLDtype, 1);
+			assert(fno >= 0);
+			assert(TTno >= 0);
+			//return ttab[TTno].TTfields[fno].FLDtype;	// Why not just return FLDtype??  copy und paste krapp!
+			return FLDtype;
+			break;
+
+		case 0x02:
+			if ( ent->TTno & 0x0100)					// reserved char* value/function
+				return 'C';
+			switch (ent->TTno & 0xFC00)
+			{
+				case 0x1C00:	//	ucase()
+				case 0x2000:	//	lcase()
+				case 0x2800:	//	day()
+				case 0x2C00:	//	getarg()
+				case 0x3800:	//	chr()
+				case 0x4000:	//	getenv()
+				case 0x6C00:	//	match()
+				case 0x7400:	//	sdel()
+				case 0x7800:	//	smult()
+				case 0x7C00:	//	sword()
+				case 0x8000:	//	setenv()
+				case 0x8800:	//	sfmt()
+				case 0x8C00:	//	getxml()
+				case 0xA000:	//	getcgi()
+				case 0xCC00:	//	substr()
+				case 0xF400:	//	scat()
+					return 'C';
+
+				case 0x2400:	//	slen()
+				case 0x3000:	//	asize()
+				case 0x3400:	//	asc()
+				case 0xBC00:	//	keyready()
+					return 'N';
+
+				case 0xB800:	//	random()
+					return '9';
+
+				case 0xAC00:	//	'['	array subscript operation
+					return getftf(ent, 1, &fld)->FLDtype;
+			
+				default:
+					return getetype(ENARR(ent->enleft));	// Recursion here!
+			}
+			break;
+
+		case 0x04:				// float literal, RVALUE only			*real clcomp doesn't create these*
+			return '6';
+		case 0x08:				// int literal, RVALUE only
+			return 'N';
+		case 0x10:				// String literal, 3chars or less + \0
+			return 'C';
+		}
+	}
+	return 0;	// ent == 0 or invalid expression type
+}
+
+#endif
+
+@
+
+
+1.3
+log
+@prior to ENARR() fix
+@
+text
+@a12 3
+    short fno; 
+    int TTno; 
+	char FLDtype;
+d14 3
+d18 1
+a18 3
+    if ( !ent )
+        return 0;
+	switch (ent->entype)
+d20 1
+a20 4
+	case 0x02:
+		if ( ent->TTno & 0x0100)		// reserved char* value/function
+			return 'C';
+		switch (ent->TTno & 0xFC00)
+d22 10
+a31 16
+			case 0x1C00:	//	ucase()
+			case 0x2000:	//	lcase()
+			case 0x2800:	//	day()
+			case 0x2C00:	//	getarg()
+			case 0x3800:	//	chr()
+			case 0x4000:	//	getenv()
+			case 0x6C00:	//	match()
+			case 0x7400:	//	sdel()
+			case 0x7800:	//	smult()
+			case 0x7C00:	//	sword()
+			case 0x8000:	//	setenv()
+			case 0x8800:	//	sfmt()
+			case 0x8C00:	//	getxml()
+			case 0xA000:	//	getcgi()
+			case 0xCC00:	//	substr()
+			case 0xF400:	//	scat()
+d33 43
+a75 15
+
+			case 0x2400:	//	slen()
+			case 0x3000:	//	asize()
+			case 0x3400:	//	asc()
+			case 0xBC00:	//	keyready()
+				return 'N';
+
+			case 0xB800:	//	random() ??
+				return '9';
+
+			case 0xAC00:	//	'['	array subscript operation
+				return getftf(ent, 1, &fld)->FLDtype;
+		
+			default:
+				return getetype(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0);	// Recursion here!
+a76 18
+		break;
+
+	case 0x01:
+		fno = gettdfno(ent, &TTno, &FLDtype, 1);
+		assert(fno >= 0);
+		assert(TTno >= 0);
+		//return ttab[TTno].TTfields[fno].FLDtype;	// Why not just return FLDtype??  copy und paste krapp!
+		return FLDtype;
+		break;
+
+	case 0x04:
+		return '6';
+	case 0x08:
+		return 'N';
+	case 0x10:
+		return 'C';
+	default:
+        return 0;
+d78 1
+@
+
+
+1.2
+log
+@intermediate. asserts fixed
+@
+text
+@a63 9
+        /*if ( fno >= 0 )
+        {
+			if ( TTno >= 0 )
+				return ttab[TTno].TTfields[fno].FLDtype;	// Why not just return FLDtype??  copy und paste krapp!
+			__assert_fail("td >= 0", "getetype.c", 74, "getetype");
+		}
+        else
+			__assert_fail("fno >= 0", "getetype.c", 70, "getetype");
+		*/
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 1
+d13 1
+a13 1
+    short v5; 
+d29 1
+a29 1
+			case 0x2800:
+d63 2
+a64 2
+		v5 = gettdfno(ent, &TTno, &FLDtype, 1);
+        if ( v5 >= 0 )
+d67 1
+a67 1
+				return ttab[TTno].TTfields[v5].FLDtype;	// Why not just return FLDtype??  copy und paste krapp!
+d72 5
+@

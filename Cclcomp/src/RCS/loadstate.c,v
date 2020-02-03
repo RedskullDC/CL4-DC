@@ -1,0 +1,4143 @@
+head	1.12;
+access;
+symbols;
+locks
+	leslie:1.12; strict;
+comment	@ * @;
+
+
+1.12
+date	2020.01.29.12.55.49;	author leslie;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2016.06.21.05.01.29;	author leslie;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2016.05.12.03.09.48;	author leslie;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2016.03.11.05.21.38;	author leslie;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2016.01.19.05.16.26;	author leslie;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2015.07.14.12.59.33;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2015.06.27.13.52.26;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2015.06.17.04.22.38;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.01.14.04.05.44;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.12.31.00.04.07;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.09.23.03.52.37;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.08.06.03.33;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.12
+log
+@prior to X64 compat
+@
+text
+@#ifndef LOADSTATE_C
+#define LOADSTATE_C
+
+#include <stdio.h>
+#include <stdarg.h>				// for var args stuff
+#include <stdlib.h>				// for strtod()
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for flag bits
+
+// called from leblock() initially, can be recursive
+bool loadstate(int *LineNo)
+{
+	ENTAB	*enta;
+	ENTAB	*entb;
+	PTAB	*ptab1;
+	FLDdesc *fld;
+
+	int		FieldNo;
+	int		Join;
+	int		chkINT;
+	int		TTno;
+
+	short	TABno;
+	short	ENTno;
+	short	expright;
+	short	v112;
+	short	FLDstat;
+
+	bool	AuxError;
+
+	char	Blockname[64];
+	char	FieldType;
+
+//eprint("loadstate called - *LineNo = %d\n",*LineNo);
+	if ( comp_abort )
+		return false;
+
+	while ( symbol == 930 )					// <CR>  skim through blank lines
+		symbol = getsym();
+        
+	AuxError = false;						// default to exit_success
+	switch (symbol)
+	{
+	case 0:									// no symbol found, usually means EOF
+		return false;						// error_exit
+		break;
+
+	case 660:								// include
+		if ( leincl())
+			return true;
+		break;
+
+	case 510:
+		if ( leformat(LineNo, true))		// NoBreak = true
+			return true;
+		break;
+
+	case 55:								// replace
+	case 160:								// clear
+	case 300:								// delete
+	case 580:								// getnext
+	case 590:								// getprev
+	case 600:								// get
+	case 1220:								// put
+		if ( lerfile(LineNo, symbol))		// This is a table type operation
+			return true;
+		break;
+
+	case 1430:								// set
+		if ( leset(LineNo) )
+			return true;
+		break;
+
+	case 1260:								// range
+		if ( lerange(*LineNo))
+			return true;
+		break;
+
+	case 1680:								// unlock
+		if ( leulck(LineNo))
+			return true;
+		break;
+
+	case 990:								// on_eop
+		if ( leeop(*LineNo))
+			return true;
+		break;
+
+	case 420:								// escape
+	case 1020:								// on_key
+		if ( leescape(*LineNo, symbol))
+			return true;
+		break;
+
+	case 620:								// goto
+		symbol = getsym();
+        allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 700;
+        ptab1->SrcLineNo = lla;
+        if ( symbol == 720 )				// LABEL type.   string followed by colon.  "HELLO:"
+		{
+			ptab1->TABno = getstrmem(syml + 1);	// allow room for \0
+			cdbcpystr(STRARR(ptab1->TABno), sym, 0);
+			symbol = getsym();					// advance to next symbol
+		}
+		else
+		{
+			loaderr(44, sym);				// "invalid label"
+            AuxError = true;
+		}
+		dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 650:									// if
+		if ( !leif(LineNo))
+        {
+			AuxError = true;
+            while ( symbol != 390 && symbol )	// 390 == endif
+				symbol = getsym();
+    		if ( symbol )
+				symbol = getsym();
+		}
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 1730:									// while
+		++while_count;
+		if ( !lewhile(LineNo) )
+		{
+			AuxError = true;
+            while ( symbol != 1710 && symbol )	// wend
+				symbol = getsym();
+			if ( symbol )
+				symbol = getsym();
+		}
+		while_count--;
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 1610:									// text
+		symbol = getsym();
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->OpCode	 = 4;
+		ptab1->SrcLineNo = lla;
+		AuxError = (!(ptab1->TABno = lehdtxt()));
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 950:									// no_join
+	case 690:				                    // join
+		if (symbol == 950)
+			Join = 0;		// 950 no_join
+		else
+			Join = 1;
+		if ( lejoin(*LineNo, Join))
+			return true;
+		break;
+
+	case 400:									// endloop
+	case 210:									// continue
+		if ( while_count )			// ensure we are inside a while loop!
+        {
+			allptpt(getptabp((*LineNo)++), &ptab1);
+			
+			if ( symbol == 210 )
+				ptab1->OpCode = 320;	// continue
+			else
+				ptab1->OpCode = 330;	// endloop
+
+			ptab1->SrcLineNo	= lla;
+			ptab1->Operand		= 0;
+			symbol = getsym();
+			if ( symbol != 930 )
+			{
+				loaderr(33, sym);		// unexpected symbol
+				AuxError = true;
+			}
+			dallptpt(&ptab1);
+			if ( !AuxError )
+				return true;
+		}
+		else
+			loaderr(78, sym);	// "'continue/endloop' must be inside 'while' block
+
+		break;
+
+	case 350:								// do {blockname}
+		symbol = getsym();		// get blockname
+        allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 720;
+        ptab1->SrcLineNo = lla;
+        if ( symbol == 2230 )	// string literal  blockname
+        {
+			ptab1->TABno = getstrmem(fixbname(Blockname, sym));		// ensure max length = 21 [including \0]
+			cdbcpystr(STRARR(ptab1->TABno), Blockname, 0);
+			symbol = getsym();
+		}
+		else
+		{
+			if ( symbol == 930 )
+				loaderr(33, sym);		// unexpected symbol
+			else
+				loaderr(2 , sym);		// "missing block name"
+			AuxError = true;
+		}
+		dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 402:							// endtran
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 340;
+        ptab1->SrcLineNo = lla;
+        dallptpt(&ptab1);
+        symbol = getsym();
+        if ( symbol == 930 )
+			return true;
+		else
+			loaderr(33, sym);			// unexpected symbol
+		break;
+
+	case 870:							// message
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->OpCode	 = 270;
+		ptab1->SrcLineNo = lla;
+		AuxError = !lemsg(ptab1);
+        dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 90:							// exit_block
+	case 310:							// exit_do
+	case 1090:							// exit_process
+	case 1240:							// restart_block
+        allptpt(getptabp((*LineNo)++), &ptab1);
+
+		if ( symbol == 90 )				// exit_block
+			ptab1->OpCode = 882;
+        else if ( symbol == 310 )		// exit_do
+			ptab1->OpCode = 884;
+        else if ( symbol == 1090 )		// exit_process
+			ptab1->OpCode = 886;	
+        else if ( symbol == 1240 )		// restart_block
+			ptab1->OpCode = 888;
+
+		ptab1->SrcLineNo = lla;
+		dallptpt(&ptab1);
+		symbol = getsym();
+		if ( symbol == 930 )				// expect <CR> to follow
+			return true;
+		else
+			loaderr(33, sym);				// unexpected symbol
+		break;
+
+	case 1060:								// pause
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 870;
+		ptab1->SrcLineNo = lla;
+		AuxError = !lepause(ptab1);
+        dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 500:								// fork
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 750;
+        ptab1->SrcLineNo = lla;
+		AuxError = !lefork(ptab1);
+        dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 430:								// openapp
+	case 460:								// openin
+	case 530:								// openout
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 860;
+        ptab1->SrcLineNo = lla;
+		AuxError = (!(ptab1->TABno = leopen(false)));	// true passed to leopen() indicates a Pipe, false == file
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 1460:									// select
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 560;
+        ptab1->SrcLineNo = lla;
+        TABno = leselect();
+        if ( !TABno )
+        {
+			AuxError = true;
+			ptab1->OpCode = 400;			// no-op 
+		}
+        ptab1->TABno = TABno;
+        dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 1320:									// redisplay
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 730;
+        ptab1->SrcLineNo = lla;
+        symbol = getsym();
+		AuxError = (!(ptab1->TABno = leredisp()));
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;	// exit_success
+		break;
+
+	case 230:								// copy
+	case 240:								// create
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->SrcLineNo = lla;
+		switch (symbol)
+		{
+		case 230:
+            ptab1->OpCode	 = 800;			// copy
+			AuxError = (!(ptab1->TABno = lecopy()));
+			break;
+		case 240:
+            ptab1->OpCode	 = 450;			// create
+			AuxError = (!(ptab1->TABno = lecreate()));
+			break;
+		}
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 1350:								// refresh
+	case 1390:								// screen
+	case 1470:								// sleep
+	case 1510:								// srandom
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->SrcLineNo = lla;
+		switch (symbol)
+		{
+		case 1350:
+            ptab1->OpCode	 = 250;
+			AuxError = !lefresh(ptab1);
+			break;
+		case 1390:
+            ptab1->OpCode	 = 260;
+			AuxError = !lescreen(ptab1);
+			break;
+		case 1470:
+			ptab1->OpCode	 = 880;
+			AuxError = !lesleep(ptab1);
+			break;
+		case 1510:
+            ptab1->OpCode	 = 760;
+			AuxError = !lesrand(ptab1);
+			break;
+		}
+        dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 440:								// 440 = close
+	case 540:								// 540 = read
+	case 560:								// 560 = write
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->OpCode	 = 860;
+		ptab1->SrcLineNo = lla;
+		AuxError = (!(ptab1->TABno = leread(false)));	// isPipe = false
+		dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 940:								// 940 = delay_form
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 265;
+		ptab1->SrcLineNo = lla;
+		dallptpt(&ptab1);
+		symbol = getsym();
+		if ( symbol == 930 )
+			return true;
+		else
+			loaderr(33, sym);			// unexpected symbol
+		break;
+
+	case 1110:							// 1110 = popenin
+	case 1120:							// 1120 = popenio
+	case 1150:							// 1150 = popenout
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->OpCode	 = 850;
+		ptab1->SrcLineNo = lla;
+		AuxError = (!(ptab1->TABno = leopen(true)));	// true passed to leopen() indicates a Pipe, false == file
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+
+	case 1190:							// 1190 = print
+		allptpt(getptabp((*LineNo)++), &ptab1);
+        ptab1->OpCode	 = 900;			// print
+        ptab1->SrcLineNo = lla;
+        symbol = getsym();
+		AuxError = (!(ptab1->TABno = leprint()));
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+/*
+	case 1180:							// ??		Appear to be unreachable. Old versions of popen.. cmds ?
+	case 1230:							// ??		1230 like 540 write in leread()
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->OpCode = 850;			// Same opcode as popenio, popenin, popenout
+		ptab1->SrcLineNo = lla;
+		AuxError = (!(ptab1->TABno = leread(1)));
+	    dallptpt(&ptab1);
+		if ( !AuxError )
+			return true;
+		break;
+*/
+	case 130:							// 130 = clear_eol
+	case 140:							// 140 = clear_eos
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		if (symbol == 140)
+            ptab1->OpCode = 922;		// clear_eos
+		else
+            ptab1->OpCode = 920;		// clear_eol
+        ptab1->SrcLineNo = lla;
+        dallptpt(&ptab1);
+		symbol = getsym();
+		return true;					// always succeeds
+		break;
+
+	case 720:		// we hit a LABEL: as an lvalue
+		//printf("720 Label = %s, lti = %d\n", sym, lti);
+		for ( v112 = 0 ; v112 < lti ; v112++)
+		{
+			if ( cmpbuf(sym, ltab[v112]->LabelName, ltab[v112]->NameLen) )	// returns true if match
+			{
+				loaderr(16, sym);		//"duplicate label"
+				AuxError = true;
+				break;
+			}
+		}
+		if ( !AuxError )
+		{
+			if ( lti < no_ltabs || (newltab(), lti < no_ltabs) )
+			{
+				++lti;
+				*lt = (LTAB *)getmem(syml + sizeof(LTAB));	// allocate enough to hold labelname , sizeof(LTAB) = 6
+				(*lt)->NameLen = syml;
+				(*lt)->PTno = *(short*)LineNo;
+				cdbcpystr((*lt)->LabelName, sym, 0);
+				++lt;
+				symbol = getsym();
+				return true;			// exit_success
+			}
+			__assert_fail("lti < no_ltabs", "loadstate.c", 221, "loadstate");
+		}
+		break;
+
+	case 4000:								// openlib		*** DC extension ***
+		if ( leopenlib(LineNo))
+			return true;
+		break;
+
+	case 4010:								// libcall()	*** DC extension ***
+		if ( lelibcall(LineNo))
+			return true;
+		break;
+
+	case 2230:								// we hit a table.field/variable name as an lvalue
+		allptpt(getptabp((*LineNo)++), &ptab1);
+		ptab1->SrcLineNo = lla;
+		ENTno = getenmem();
+		allenpt(ENTno, &entb);
+		if ( !gettfexp(ENTno) )				// get Table/Field expression
+		{
+			ptab1->OpCode = 400;			// no-op?
+			AuxError = true;
+            dallenpt(&entb);
+            dallptpt(&ptab1);
+			break;
+		}
+		switch (symbol)
+		{
+		// we found an accept field
+		case 50:							// "+"
+		case 930:							// <CR> same as using '=' defaults for all values
+		case 2200:							// Integer literal
+		case 2230:							// TableField/normal variable
+			TABno = leaccept(ENTno);
+            if ( TABno )
+			{
+				ptab1->OpCode = 1;			// Accept field
+                ptab1->TABno  = TABno;
+				if ( yflag )				// debug output. Show width of DateFields
+					prdatefield(ENTno, TABno, 0);
+			}
+			else
+				AuxError = true;
+
+			dallenpt(&entb);
+			dallptpt(&ptab1);
+			if ( !AuxError )
+				return true;			// exit sucess!
+			break;
+		
+		// variable assignment follows
+		case 40:							//  +=
+		case 320:							//  /=
+		case 850:							//  %=
+		case 880:							//  *=
+		case 1160:				            //  **=
+		case 1560:							//  -=
+		case 1800:							//  "=" or "eq" or "=="
+			FieldNo = gettfs(ENTno, &TTno, &FieldType, &FLDstat);
+			assert(FieldNo >= 0);
+
+			chkINT = ( FieldType == 'B' || FieldType == 'I' || FieldType == 'N' ) ? 1 : 0 ;	// check in loadexp for integer targets
+            
+			v112 = getenmem();
+            allenpt(v112, &enta);
+            enta->enleft = ENTno;
+			switch (symbol)
+			{
+			case 40:					// "+="
+				enta->TTno = f_ADDEQ;
+				break;
+			case 320:					// "/="
+				enta->TTno = f_DIVEQ;
+				break;
+			case 850:					// "%="
+				enta->TTno = f_MODEQ;
+				break;
+			case 880:					// "*="
+				enta->TTno = f_MULEQ;
+				break;
+			case 1160:					// "**="
+				enta->TTno = f_POWEQ;
+				break;
+			case 1560:					// "-="
+				enta->TTno = f_SUBEQ;
+				break;
+			case 1800:					// "=" or "==" or "eq"
+				enta->TTno = f_ASSIGN;
+				break;
+			default:
+				assert(0);// should be unreachable
+				break;
+			}
+            if ( FLDstat & fld_READ_ONLY ) 	// Only possible for SYSTEM variables. FLDstat not accesible for user vars
+			{
+				loaderr(83, sym);			// "can't assign to read-only variable"
+                AuxError = true;
+			}
+			else
+			{
+				enta->entype = 2;
+				//if ( FieldType == 'C' && isnumop((unsigned short)enta->TTno) )	// *** real CL4 doesn't pass variable correctly, msg not displayed ***
+				//	warncexp();				// "+-*%%/ will be unsupported on strings in future releases\n"
+				   
+				symbol = getsym();
+				if ( symbol == 930 )
+				{
+					loaderr(7, sym);		//  "unexpected end of line"
+					AuxError = true;
+				}
+				else
+				{
+					ptab1->OpCode = 200;		// assignment operator
+					expright = loadexp(0, chkINT);
+					if ( expright )
+					{
+						enta->enright = expright;						// rvalue
+						if ( chkINT && intexp(enta->enright) )
+							enta->TTno |= 0x0200;						// integer calcs flag for clenter
+						
+						else if ( FieldType != 'C' && ( dpexp(enta->enleft) < dpexp(enta->enright) )) // LVALUE has less decimal places than RVALUE. Possible rounding issues occur.
+							enta->TTno |= 0x0040u;						// ??? generates 'RND' in prdebug output.  Never read in clenter?
+
+						if ( symbol == 930 )							// <CR> should be next
+						{
+							ptab1->TABno = v112;						// All ok, point program instruction at assign expression
+							if ( TTno )
+								fld = &ttab[TTno].TTfields[FieldNo];	// Table Field
+							else
+								fld = getvars(FieldNo);					// Normal variable
+							fld->FLDstat |= 0x0008u;					// Indicate that is variable/field is written to. For prdebug() Not used in clenter(?)
+						}
+						else
+						{
+							loaderr(33, sym);			// " unexpected symbol"
+							AuxError = true;
+						}
+					}
+					else
+						AuxError = true;
+				}
+			}
+			dallenpt(&enta);
+			dallenpt(&entb);
+			dallptpt(&ptab1);
+			if ( !AuxError )
+				return true;		// exit success!
+			break;
+
+		default:
+			if ( symbol == 930 )
+				loaderr(7 , sym);	// "unexpected end of line"
+			else
+				loaderr(33, sym);	// " unexpected symbol"
+			AuxError = true;
+            dallenpt(&entb);
+            dallptpt(&ptab1);
+			break;
+		}
+		break;
+
+	default:
+		loaderr(33, sym);	// "unexpected symbol" error exit
+        symbol = getsym();
+		break;
+	}
+
+// general exit
+	if ( comp_abort )		// We have had more than 20 soft errors, or reached end of file unexpectedly
+		return false;	// error_exit
+	
+	while ( symbol != 930 && symbol )	// symbol == 0 may mean EOF
+		symbol = getsym();
+
+	return true;	// exit_success
+}
+
+
+#endif
+@
+
+
+1.11
+log
+@tidy up to leescape()
+@
+text
+@d12 2
+a13 772
+
+short dpexp(short ENTno)		// Return the number of decimal places expected for this expression
+{
+	ENTAB	*entb;
+    int		TDno;
+	unsigned short OpCode;
+	short	v4;
+	short	v5;
+	char	FLDtype;
+
+    if ( !ENTno )
+		return 0;
+
+    allenpt(ENTno, &entb);
+    if ( entb->entype != 2 )
+    {
+		dallenpt(&entb);
+        gettf(ENTno, &TDno, &FLDtype);
+        return typedp(FLDtype);
+	}
+    if ( ((unsigned short)entb->TTno >> 8) & 3 )    // bit 9 signifies Integer calcs, 8?    0x0200
+	{
+		dallenpt(&entb);
+        return 0;		// Integer Calcs, *NO* decimal places
+	}
+    
+	OpCode = entb->TTno & 0xFC00;
+	switch (OpCode)
+	{
+	case 0x6000:					// "*" MULTIPLY
+		dallenpt(&entb);
+        return dpexp(entb->enright) + dpexp(entb->enleft);	// add decimal places of each expression.
+		break;
+
+	case 0xAC00:					// "[" Array operation
+        gettf(ENTno, &TDno, &FLDtype);
+        dallenpt(&entb);
+        return typedp(FLDtype);
+		break;
+	
+	case 0xB800:					// random()
+		dallenpt(&entb);
+        return 9;
+		break;
+
+	case 0x2400:					// slen()
+	case 0x6800:					// "%" MOD
+	case 0x6C00:					// match()
+	case 0xBC00:					// keyready()
+		dallenpt(&entb);
+		return 0;
+		break;
+
+	case 0x5400:					// "+" ADD
+	case 0x5800:					// "-" SUBTRACT
+		v4 = dpexp(entb->enleft);		// ** recursive **
+		v5 = dpexp(entb->enright);
+		dallenpt(&entb);
+		return v5 > v4 ? v5 : v4;	// return whichever has the most decimal places
+		break;
+
+	case 0x0000:
+		__assert_fail("0", "dpexp.c", 0x24u, "dpexp");
+		break;
+
+	default:						// all others, default to destination number of places
+		dallenpt(&entb);
+		return 99;
+		break;
+	}
+}
+
+int nxtch()
+{
+	return c;
+}
+
+short putconst(char *nptr, char FLDtype)	// We hit a contstant in the program body. Save it as a variable
+{
+    FLDdesc *fld;
+	double	v3;
+
+    unsigned int v2;
+    int		v10;
+    int		VarSize;
+    short	v7;
+    short	v12;
+    short	v13;
+    char	arg[256];
+
+	//eprint("putconst(\"%s\",%c)\n",nptr,FLDtype);
+
+	v2 = strlen(nptr) + 1;
+    if ( v2 - 1 > 19 )
+    {
+		++lit_no_0;
+        sprintf(arg, ".?.%d", (unsigned short)lit_no_0);
+        v13 = last_var++;
+        v10 = v13;
+	}
+    else
+    {
+		if ( FLDtype == 'C' )					// make name for literal strings start with a single quote
+			cdbcpystr(arg, "'", nptr, 0);
+        else
+			sprintf(arg, "%.*f", FLDtype - '0', (double)strtod(nptr, 0));
+
+		troot = gettnode(troot, arg, strlen(arg), 1);
+        v13 = last_fnd;
+        v10 = last_fnd;
+	}
+//==========================================	
+    if ( !getvars(v10) )						// check to see if Variable already defined
+    {
+		fld = getvarmem();
+        fld->FLDname = getmem(strlen(arg) + 1);
+        cdbcpystr(fld->FLDname, arg, 0);
+        
+        if ( FLDtype == 'C' )
+			VarSize = v2 - 1;
+		else
+			VarSize = 8;		// sizeof(double)
+
+		v12 = VarSize;
+        fld->FLDdata = getmem(VarSize + 1);		// Why an extra byte for double types?
+        fld->FLDtype = FLDtype;
+        switch ( FLDtype )
+        {
+		   case 'B':
+				fld->FLDlen = 1;
+				fld->TDFtype = 0x0044u;
+				break;
+		   case 'I':
+				fld->FLDlen = 2;
+				fld->TDFtype = 0x0044u;
+				break;
+		   case 'N':
+				fld->FLDlen = 4;
+				fld->TDFtype = 0x0044u;
+				break;
+		   case 'L':
+				fld->FLDlen = 8;
+				fld->TDFtype = 0x0044u;
+				break;
+		   case 'G':
+				fld->FLDlen = 4;
+				fld->TDFtype = 0x0404u;
+				break;
+		   case 'T':
+				fld->FLDlen = 4;
+				fld->TDFtype = 0x0800u;
+				break;
+		   case 'R':
+				fld->FLDlen = 4;
+				fld->TDFtype = 0x0604u;
+				break;
+		   case 'D':
+				fld->FLDlen = 4;
+				fld->TDFtype = 0x1040u;
+				break;
+		   case 'C':
+				fld->FLDlen = v12;
+				fld->TDFtype = 0x001Au;
+				break;
+		   default:					// Floating point types
+				fld->FLDlen = 8;
+				v7 = FLDtype - 48;	// ascii '0' -> '9' becomes 0x00 -> 0x09
+				fld->TDFtype = FPtypes[v7];
+				break;
+		}
+        if ( FLDtype == 'C' )
+        {
+			cdbcpystr((char *)fld->FLDdata, (char *)nptr, 0);
+            if ( *nptr )
+				fld->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+			else
+				fld->FLDstat |= fld_ZERO;
+		}
+        else
+        {
+			v3 = strtod(nptr, 0);
+            if ( v3 == 0.0 )
+				fld->FLDstat |= fld_ZERO;
+			else
+				fld->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+			*(double *)fld->FLDdata = v3;
+		}
+        fld->FLDstat |= fld_VAR_USED;	// Indicate that variable is accessed in program - for prdebug() use
+	}
+    return v13;
+}
+
+bool lutree(VARTREE *vartree, char *VarName, int StrLen)					// search system variables for a match
+{
+	int v4;				
+
+	if ( vartree )
+    {
+		v4 = strncmp(VarName, vartree->VarName, StrLen + 1);
+		if ( v4 )
+        {
+			if ( v4 > 0 )
+	            return lutree(vartree->VarNext, VarName, StrLen);       // recursion here
+            else	// < 0
+	            return lutree(vartree->VarPrev, VarName, StrLen);       // recursion here
+		}
+		return true;	// match
+	}
+    return false;		// no vartree, or at end of tree structure
+}
+
+void _define(char *StringVal)
+{
+     FLDdesc *fld;
+	 int LitLen;										// string Literal length
+	 
+     LitLen = strlen(StringVal);
+
+	 assert(getvars(last_var) == ((void *)0));
+	 fld = getvarmem();									// May realloc() var mem space
+	 assert(fld == getvars(last_var));
+     
+	 fld->FLDname	= getmem(LitLen);
+     cdbcpystr(fld->FLDname, StringVal, 0);
+
+     fld->FLDlen	= LitLen;
+     fld->TDFtype	= 0x001Au;							// string type
+     fld->FLDtype	= 'C';
+     fld->FLDdata	= getmem(LitLen + 1);
+     cdbcpystr((char *)fld->FLDdata, StringVal, 0);		// copy string to data area as well as name
+     fld->FLDstat	&= 0xFFFBu;							// clear the "quick zero" flag. Variable is NON-ZERO
+}
+
+int isdef(char *StringVal)
+{
+	if ( !lutree(troot, StringVal, strlen(StringVal)) )
+		_define(StringVal);
+	return 1;
+}
+
+
+int lefork(PTAB *pt)
+{
+    int		TDno;
+	short	ENTno;
+    char	FieldType;
+
+    symbol = getsym();
+    if ( symbol == 930 )						// fork with no arguments is ok
+		return 1;
+    
+	if ( symbol == 2230 || symbol == 2220 )		// string literal or string variable
+	{
+		ENTno = loadexp(0, 0);					// also advances to next symbol
+		if ( ENTno )
+		{
+			gettf(ENTno, &TDno, &FieldType);
+			if ( FieldType == 'C' )
+			{
+				pt->TABno = ENTno;
+				if ( symbol == 930 )			// <CR> should follow
+					return 1;					// exit_success
+				else
+					loaderr(33, sym);			// unexpected symbol
+			}
+			else
+				loaderr(64, sym);				// "'fork' command must be character"
+		}
+    }
+	else
+		loaderr(64, sym);	// "'fork' command must be character"
+
+	return 0;	// error exit
+}
+
+void prdatefield(unsigned short ENTno, unsigned short XTno, PRTAB *pr)
+{
+    ENTAB	*ent; // ecx@@1
+    ENTAB	*v4; // eax@@5
+    ENTAB	*v12; // ecx@@32
+	XTAB	*xtb;
+    FLDdesc *fld;
+
+    TDesc	*TTptr;
+	
+	char	*v10;
+	char	*v20;
+	
+    int		TTno;
+    bool	isExpr;
+
+	//	ent = ENARR(ENTno);
+	//	while (ent && ent->enleft)
+	//		ent = ENARR(ent->enleft);
+
+	ent = ENARR(ENTno);
+	 
+	if ( ent->enleft )
+    {
+		if ( !ent->enleft )	// Should be unreachable due to test above
+        {
+			v4 = 0;			// Should cause a CRASH!
+            goto LABEL_7;
+		}
+        do
+        {
+			v4 = &enarr.TableAddr[ent->enleft - 1];
+LABEL_7:
+            ent = v4;
+		}
+        while ( v4->enleft );
+	}
+    
+	assert(ent->entype == 0x01);
+
+	xtb = XTARR(XTno);
+	
+	TTno = ent->TTno;
+    if ( TTno )
+		fld = &ttab[TTno].TTfields[ent->RecNo];		// Field in a Table
+	else
+		fld = getvars(ent->RecNo);					// Normal variable
+
+	if ( fld->FLDtype == 'D' )
+    {
+		++count_0;
+        if ( count_0 == 1 )		// only show datefield check message once if applicable
+            print("cl (%s) checking %s.ent for date fields\n", getclver(), clbasename(ename)); // version, EntFilename
+
+		print("%s %s: ln %d: ", FileTree->FileName, xtb? "Input" : "Output", (unsigned short)ll);
+
+        if ( TTno )				// field in table
+        {
+			TTptr = &ttab[TTno];
+			print("%s.%s ", TTptr->TableAlias[0] ? TTptr->TableAlias : TTptr->TableName, fld->FLDname);
+		}
+        else					// normal variable
+			print("%s ", fld->FLDname);
+
+		if ( xtb )
+        {
+			if ( xtb->widthEXP )
+				prtfid(xtb->widthEXP);
+			else
+				print("%d.", xtb->width);
+            print("\n");
+            return;
+		}
+        if ( !pr )
+		{
+            print("\n");
+			return;
+		}
+		if ( !pr->WIDTH_ENTno )
+        {
+			print("fw=%d\n", pr->WIDTH_FLAGS & 0x83FFu);		// 1000 0011 1111 1111
+			return;
+		}
+        v12 = &enarr.TableAddr[pr->WIDTH_ENTno - 1];		// must be true after block above
+        isExpr = false;
+        while ( v12->enleft )
+        {
+			isExpr = true;
+			v12 = ENARR(v12->enleft);		// drill down
+		}
+		assert(v12->entype == 0x01);		// check expression type == 1
+
+		TTno = v12->TTno;
+          
+		if ( TTno )
+			fld = &ttab[TTno].TTfields[v12->RecNo];		// field in table
+		else
+			fld = getvars(v12->RecNo);					// normal variable
+          
+		if ( fld->FLDtype == 'C' )
+        {
+			if ( TTno )
+            {
+				TTptr = &ttab[TTno];
+				print("%s.%s ", TTptr->TableAlias[0] ? TTptr->TableAlias : TTptr->TableName, fld->FLDname);
+			}
+            else
+            {
+				if ( *fld->FLDname == '\'' )		// ??? mask literals ???
+					print("mask=literal val=[%s] ", fld->FLDdata);
+				else
+					print("mask=[%s] val=[%s] ", fld->FLDname, (char *)fld->FLDdata);
+			}
+		}
+        else
+        {
+			if ( TTno )
+            {
+				TTptr = &ttab[TTno];
+				print("%s.%s [%c] ", TTptr->TableAlias[0] ? TTptr->TableAlias : TTptr->TableName, fld->FLDname, fld->FLDtype);
+			}
+			else
+				print("var=[%s[%c]] ", fld->FLDname, fld->FLDtype);
+		}
+        if ( isExpr )
+			print("expr ");
+		print("\n");
+        return;
+	}
+}
+/*
+bool isnumop(unsigned int a1)
+{
+	//eprint("isnumop(x%08X)\n",a1);
+	switch (a1)
+	{
+	case 0x0800:
+	case 0x0C00:
+	case 0x1000:
+	case 0x1400:
+	case 0x1800:
+	case 0x3C00:
+	case 0x4400:
+	case 0x4800:
+	case 0x4C00:
+	case 0x5000:
+	case 0x5400:
+	case 0x5800:
+	case 0x5C00:
+	case 0x6000:
+	case 0x6400:
+	case 0x6800:
+	case 0x9000:
+	case 0x9400:
+	case 0x9800:
+	case 0xD800:
+	case 0xDC00:
+	case 0xE000:
+	case 0xE400:
+	case 0xE800:
+	case 0xEC00:
+		return true;	// Operation returns a numeric result
+		break;
+
+	default:
+		return false;	// or not.....
+	}
+}
+
+void warncexp()
+{
+     eprint("\"%s\", line %4d - ", FileTree->FileName, ll);
+     eprint("+-*%%/ will be unsupported on strings in future releases\n");
+}
+
+*/
+// Normal accept type field. OpCode = 1
+short leaccept(short ENTno)
+{
+	FLDdesc *v8;
+	FLDdesc *fld;
+	XTAB	*xtb;
+	
+	int		v7;
+	int		TTno;
+	short	XTno;
+	short	FieldNo;
+	//short	FieldLen;
+	//char	v16[128];
+	bool	isEditable	= true;		// default assume this field is editable
+	bool	comma_found = false;	// default assume no comma in field width specifier
+	char	FLDtype;
+
+    //cdbcpystr(v16, sym, 0);		// not ever used. For debug display perhaps?
+    if ( block_no_0 != cur_block )
+    {
+		block_no_0	= cur_block;
+        got_fdf		= false;				// got "first display field"
+	}
+    XTno = getxtmem();
+    allxtpt(XTno, &xtb);
+    xtb->VarExpNo = ENTno;
+	
+	if ( !getadwid(xtb) )			// does this field have a default width?
+	{
+		dallxtpt(&xtb);
+        return 0;					// error_exit
+	}
+	
+	if ( symbol == 180 )            // ","
+    {
+		comma_found = true;
+        symbol = getsym();
+	}
+
+	if ( comma_found || (symbol == 2230 && syml == 1) )		// if we found a comma, or a single letter
+	{
+		if ( sym[0] == 'R' || sym[0] == 'r' )				// Required ( trumps display field, can't be both of course )
+			xtb->Flags |= xtb_REQUIRED;		// 0x0400u;
+
+		else if ( sym[0] == 'D' || sym[0] == 'd' )			// Display Only
+		{
+			xtb->Flags |= xtb_DISPLAY;		// 0x0004u;
+			isEditable = false;
+		}
+		else if ( comma_found )								// comma is only valid in width specifier if a single char follows 
+		{
+			loaderr(37, sym);								// "invalid field width"
+			dallxtpt(&xtb);
+			return 0;
+		}
+		symbol = getsym();
+	}
+
+	if ( isEditable && !got_fdf )							// is field editable (not display only), and have we found first editable field yet?
+    {
+		xtb->Flags |= xtb_FDF;				// 0x0008u;		// This is first editable field on screen
+        got_fdf = true;
+	}
+     
+	FieldNo = gettf(xtb->VarExpNo, &TTno, &FLDtype);
+	assert(FieldNo >= 0);
+     
+	switch ( FLDtype )
+    {
+          case 'C':
+               xtb->Flags |= xtb_CHAR;		// 0x0001;	// String
+               break;
+          case 'D':
+               xtb->Flags |= xtb_DATE;		// 0x0002;	// Date
+               break;
+          case 'T':
+               xtb->Flags |= xtb_TIME;		// 0x0800;	// Time
+               break;
+          default:
+               xtb->Flags |= xtb_NUMERIC;	// 0x0200;	// Numeric type
+               break;
+     }
+     if ( isEditable )
+     {
+          if ( TTno )									// Is this a record in a DBase. Variables hang of TT0
+          {
+               v7 = btab[cur_block].TTno;				// yes
+               if ( TTno == v7 )
+               {
+                    v8 = &ttab[v7].TTfields[FieldNo];
+                    if ( v8->FLDstat < 0 )				// Is this a Key Field?
+                    {
+                         xtb->Flags |= xtb_KEY;			// 0x8000u;				// yes
+                         if ( v8[1].FLDstat >= 0 )		// If next field is *not* a Key field...
+                              xtb->Flags |= xtb_LKF;	// 0x0040u;		// indicates that we are the *last* field in the Key area
+                    }
+               }
+          }
+    }
+	// all ok, get the remaining field descriptors
+    if ( !getcol(xtb, 2) || !getrow(xtb, 2) || !getcol(xtb, 1) || !getrow(xtb, 1) || !getprmpt(xtb) )
+	{
+		dallxtpt(&xtb);
+        return 0;	// error_exit
+	}
+
+	if ( TTno )
+		fld = &ttab[TTno].TTfields[FieldNo];
+	else
+		fld = getvars(FieldNo);
+	
+	// if no specifiers found, and fld points to a normal variable, use the default variable size
+	if ( !TTno && fld->FLDlen && !(((unsigned short)xtb->PLine >> 8) & 0x7E) && !(((unsigned short)xtb->PCol >> 8) & 0x7E)
+       && !(((unsigned short)xtb->ACol >> 8) & 0x7E) && !(((unsigned short)xtb->ALine >> 8) & 0x7E)
+       && !xtb->PCol_exp && !xtb->ACol_exp )
+	{
+		//if ( FLDtype == 'C' )
+		//	FieldLen = fld->FLDlen + 1;      // String variable can have different lengths
+		//else
+		//	FieldLen = sizeof(double);	     // all other variables are stored in 8 bytes
+		//xtb->Width = FieldLen;
+		xtb->Width = (FLDtype == 'C') ? fld->FLDlen + 1 : sizeof(double);		// set default field length.
+	}
+    dallxtpt(&xtb);
+    return XTno;	// exit_success
+}
+
+bool lesrand(PTAB *ptab)
+{
+     short v1;
+	 
+     symbol = getsym();
+     v1 = loadexp(0, 1);
+     if ( v1 )
+     {
+          ptab->TABno = v1;
+          return true;			// success
+     }
+     return false;				// error
+}
+
+bool lesleep(PTAB *ptab)
+{
+     short v1;
+
+     symbol = getsym();
+     v1 = loadexp(0, 1);
+     if ( v1 )
+     {
+          ptab->TABno = v1;
+          return true;			// exit_success
+     }
+     return false;	//error
+}
+
+int leescape(int PTno, int symbol2)
+{
+	PTAB	*ptb;
+	XTAB	*xtab;
+	ONESC	**v6;
+	ONESC	*v7;
+	ONESC	*v8;
+	
+    short	KeyNumber;
+	bool	AcceptField;
+	char	v16[32];
+	
+	//eprint("leescape(PTno = %d, symbol2 = x%04X)\n", PTno,symbol2);
+	AcceptField = 0;
+	if ( PTno )
+    {
+		ptb = PTARR(getptabp(PTno - 1));
+        AcceptField = ptb->OpCode == 1;        // Is this an accept field?
+    }
+
+	if ( AcceptField )
+    {
+		xtab = XTARR(ptb->TABno);
+		v6 = &xtab->onesc;           // Look at individual field escapes
+    }
+    else
+    {
+		v6 = &oelist;                // Not an accept field, look at global block escapes
+    }
+
+	printf("leescape() - &oelist = %08X, oelist = %08X \n", &oelist, oelist);
+
+// Find the last blank on_esc entry
+	/*if ( *v6 )
+    {
+		if ( (*v6)->NextESC )
+        {
+			while ( 1 )
+			{
+				v7 = *v6;
+				v6 = &v7->NextESC;
+				v8 = v7->NextESC;
+				if ( !v8 )
+					break;
+				if ( !v8->NextESC )
+					goto LABEL_13;
+			}
+		}
+        else
+		{
+LABEL_13:
+			if ( *v6 )
+				v6 = &(*v6)->NextESC;
+		}
+	}*/
+	while (*v6)
+	{
+		v6 = &(*v6)->NextESC;
+	}
+
+    v8 = (ONESC *)getmem(16);
+    *v6 = v8;
+    
+	v8->OESCFlags = symbol2 == 1020;			// 1020 == on_key command
+
+//-----------
+// work out the key number equivalent, or single char value
+    symbol = getsym();
+	//if ( syml == 1 && (*__ctype_b_loc())[sym[0]] & 0x0400 )// single char keyname specifier (isalpha())
+    if ( syml == 1 && isalpha(sym[0]) )		// single char keyname specifier (isalpha())
+    {
+		v8->KeyNumber = sym[0];
+//printf("leescape : single char key %C\n", sym[0]); 
+    }
+	else
+    {
+		KeyNumber = KeyToNumber(sym);
+		if ( !KeyNumber )
+		{
+            loaderr(73, sym);				// "invalid 'escape' character"
+            return 0;
+		}
+		v8->KeyNumber = KeyNumber;
+	}
+
+// Now load black name
+	symbol = getsym(); 
+    if ( symbol != 2230 )					// not a string literal
+    {
+        if ( symbol == 930 )
+			loaderr(2, sym);				// "missing block name"
+		else
+			loaderr(33, sym);				// "unexpected symbol"
+        return 0;
+	}
+    v8->BlockName = getmem(fixbname(v16, sym));	// truncate the blockname to 20chars + 1 for \0
+    cdbcpystr(v8->BlockName, v16, 0);
+//printf("leescape : BlockName = %s\n", v16); 
+    symbol = getsym();
+    return 1;
+}
+
+int gettfs(unsigned short ENTABno, int *TTno, char *FLDtype, short *FLDstat)
+{
+    ENTAB	*entb;
+    FLDdesc *fld;
+    int		FieldNo;
+    int		v6;
+
+    fld		= 0;
+    *TTno	= 0;		// Update caller memory directly
+    FieldNo = -1;
+	
+	//	ent = ENARR(ENTno);
+	//	while (ent && ent->enleft)
+	//		ent = ENARR(ent->enleft);
+	
+	entb	= ENARR(ENTABno);
+	if ( !entb )
+		goto LABEL_23;
+	while ( entb->enleft )
+    {
+		entb = &enarr.TableAddr[entb->enleft - 1];
+        if ( !entb )
+			goto LABEL_23;
+	}
+    if ( !entb )				// should be unreachable
+		goto LABEL_23;
+	
+	if ( entb->entype == 2 && entb->TTno & 0x0100 )
+    {
+LABEL_23:
+        *FLDtype	= 0;
+        return		FieldNo;
+	}
+	//printf("entb->entype = %d\n",entb->entype);
+    switch ( entb->entype )
+    {
+	case 0x0004:
+        *FLDtype = '6';			// embedded float literal ** REAL ** clcomp doesn't create these!!
+		break;
+	case 0x0008:
+		*FLDtype = 'N';			// embedded int
+        break;
+	case 0x0010:				
+		*FLDtype = 'C';			// embedded String
+        break;
+	case 0x0001:
+		v6		= entb->TTno;
+        *TTno	= v6;								// Update caller memory directly
+        FieldNo = entb->RecNo;
+        if ( v6 )
+			fld = &ttab[*TTno].TTfields[FieldNo];	// Table Field
+		else
+			fld = getvars(FieldNo);					// Normal variable
+		*FLDtype = fld->FLDtype;					// Update caller memory directly
+		break;
+	default:										// **ERROR**
+		__assert_fail("((t)->entype == 0x1)", "gettf.c", 0x5Cu, "gettfs");
+        break;
+	}
+    *FLDstat = fld->FLDstat;						// Update caller memory directly. ##wrong## fld uninitiliased for most types!!!
+    return FieldNo;
+}
+
+int loadstate(int *LineNo)
+a25 1
+	short	v39;
+d27 1
+a27 1
+	short	v86;
+d33 1
+a33 1
+	char	v119[64];
+d38 1
+a38 1
+		return 0;
+d47 1
+a47 1
+		return 0;							// error_exit
+d52 1
+a52 1
+			return 1;
+d56 2
+a57 2
+		if ( leformat(LineNo, 1))
+			return 1;
+d68 1
+a68 1
+			return 1;
+d73 1
+a73 1
+			return 1;
+d78 1
+a78 1
+			return 1;
+d83 1
+a83 1
+			return 1;
+d88 1
+a88 1
+			return 1;
+d94 1
+a94 1
+			return 1;
+d104 1
+a104 1
+			ptab1->TABno = getstrmem(syml + 1);
+d106 1
+a106 1
+			symbol = getsym();
+d115 1
+a115 1
+			return 1;
+d128 1
+a128 1
+			return 1;
+d143 1
+a143 1
+			return 1;
+d154 1
+a154 1
+			return 1;
+d164 1
+a164 1
+			return 1;
+d173 1
+a173 1
+			if ( symbol == 210 )   // continue
+d188 1
+a188 1
+				return 1;
+d195 2
+a196 2
+	case 350:										// do {blockname}
+		symbol = getsym();
+d202 2
+a203 5
+			ptab1->TABno = getstrmem(fixbname(v119, sym));
+			////LabelName = ptab1->TABno ? &strarr.StringTable[ptab1->TABno - 1] : 0;
+			//LabelName = STRARR(ptab1->TABno);
+			//cdbcpystr(LabelName, v119, 0);
+			cdbcpystr(STRARR(ptab1->TABno), v119, 0);
+d209 1
+a209 1
+				loaderr(33, sym);	// unexpected symbol
+d211 1
+a211 1
+				loaderr(2 , sym);	// "missing block name"
+d216 1
+a216 1
+			return 1;
+d219 1
+a219 1
+	case 402:								// endtran
+d226 1
+a226 1
+			return 1;
+d238 1
+a238 1
+			return 1;
+a244 1
+
+d247 1
+a247 1
+        if ( symbol == 90 )			// exit_block
+d249 1
+a249 1
+        else if ( symbol == 310 )	// exit_do
+d251 3
+a253 3
+        else if ( symbol == 1090 )	// exit_process
+			ptab1->OpCode = 886;
+        else if ( symbol == 1240 )	// restart_block
+d259 2
+a260 5
+		if ( symbol == 930 )
+		{
+			if ( !AuxError )	// *** never set in this block
+				return 1;
+		}
+d272 1
+a272 1
+			return 1;
+d276 1
+a276 1
+		allptpt(getptabp((*LineNo)++), &ptab1);		// 500 fork()
+d282 1
+a282 1
+			return 1;
+d294 1
+a294 1
+			return 1;
+d305 1
+a305 1
+			ptab1->OpCode = 400;	// no-op ??
+d310 1
+a310 1
+			return 1;
+d321 1
+a321 1
+			return 1;	// exit_success
+d327 1
+a331 1
+            ptab1->SrcLineNo = lla;
+a335 1
+            ptab1->SrcLineNo = lla;
+d341 1
+a341 1
+			return 1;
+d349 1
+a353 1
+            ptab1->SrcLineNo = lla;
+a355 1
+
+a357 1
+            ptab1->SrcLineNo = lla;
+a359 1
+		
+a361 1
+			ptab1->SrcLineNo = lla;
+a363 1
+
+a365 1
+            ptab1->SrcLineNo = lla;
+d371 1
+a371 1
+			return 1;
+d380 1
+a380 1
+		AuxError = (!(ptab1->TABno = leread(0)));
+d383 1
+a383 1
+			return 1;
+d393 1
+a393 1
+			return 1;
+d407 1
+a407 1
+			return 1;
+d418 1
+a418 1
+			return 1;
+d429 1
+a429 1
+			return 1;
+d442 1
+a442 2
+		if ( !AuxError )
+			return 1;
+d447 1
+a447 1
+		for ( v39 = 0 ; v39 < lti ; v39++)
+d449 1
+a449 1
+			if ( cmpbuf(sym, ltab[v39]->LabelName, ltab[v39]->NameLen) )	// returns true if match
+a455 1
+
+d461 1
+a461 1
+				*lt = (LTAB *)getmem(syml + 6);
+d467 1
+a467 3
+				//if ( !AuxError )	// should always be true
+					return 1;	// exit_success
+				//goto LABEL_307;	// unreachable
+d473 11
+a483 1
+	case 2230:								// we hit a variable name as an lvalue	(string literal)
+d507 1
+a507 1
+                ptab1->TABno = TABno;
+d517 1
+a517 1
+				return 1;			// exit sucess!
+d539 1
+a539 1
+				enta->TTno = 0xD800u;
+d542 1
+a542 1
+				enta->TTno = 0xE400u;
+d545 1
+a545 1
+				enta->TTno = 0xE800u;
+d548 1
+a548 1
+				enta->TTno = 0xE000u;
+d551 1
+a551 1
+				enta->TTno = 0xEC00u;
+d554 1
+a554 1
+				enta->TTno = 0xDC00u;
+d557 1
+a557 1
+				enta->TTno = 0xA800u;
+d560 1
+a560 1
+				__assert_fail("0", "loadstate.c", 472, "loadstate");	// should be unreachable
+d582 3
+a584 3
+					ptab1->OpCode = 200;	// assignment operator
+					v86 = loadexp(0, chkINT);
+					if ( v86 )
+d586 1
+a586 1
+						enta->enright = v86;
+d588 1
+a588 1
+							enta->TTno |= 0x0200;	// integer calcs flag for clenter
+d591 1
+a591 1
+							enta->TTno |= 0x0040u;		//??? generates 'RND' in prdebug output.  Never read in clenter?
+d593 1
+a593 1
+						if ( symbol == 930 )			// <CR> should be next
+d595 1
+a595 1
+							ptab1->TABno = v112;
+d616 1
+a616 1
+				return 1;		// exit success!
+d639 1
+a639 1
+		return 0;	// error_exit
+d644 1
+a644 1
+	return 1;	// exit_success
+@
+
+
+1.10
+log
+@intermediate
+@
+text
+@a21 2
+//printf("dpexp(%d)\n",ENTno);
+
+a80 1
+	
+d199 1
+a199 1
+        fld->FLDstat |= fld_VAR_USED;	// Indicate that variable is accessed in program
+d204 1
+a204 1
+int lutree(VARTREE *vartree, char *s1, int StrLen)
+d206 6
+a211 11
+	int v3;
+	int v4;
+	int v9;
+
+	v9 = 0;
+    v3 = 0;
+    if ( vartree )
+    {
+		v4 = strncmp(s1, vartree->VarName, StrLen + 1);
+        v3 = 1;
+        if ( v4 )
+d213 4
+a216 8
+			if ( v4 >= 0 )
+            {
+				if ( v4 <= 0 )
+					return v9;             // return ZERO, shouldn't be reachable (zero case)
+	            return lutree(vartree->VarNext, s1, StrLen);       // recursion here
+			}
+            else
+	            return lutree(vartree->VarPrev, s1, StrLen);       // recursion here
+d218 1
+d220 1
+a220 1
+    return v3;
+d225 4
+a228 9
+     FLDdesc *fld; // edi@@3
+     int v1; // kr04_4@@1
+
+     v1 = strlen(StringVal) + 1;
+
+	 if ( getvars(last_var) )
+          __assert_fail("getvars(last_var) == ((void *)0)", "isdef.c", 61, "_define");
+     
+	 fld = getvarmem();								// May realloc() var mem space
+d230 3
+a232 2
+	 if ( fld != getvars(last_var) )
+          __assert_fail("f == getvars(last_var)", "isdef.c", 63, "_define");
+d234 1
+a234 1
+	 fld->FLDname = getmem(v1);
+d237 2
+a238 2
+     fld->FLDlen	= v1 - 1;
+     fld->TDFtype	= 0x001Au;						// string type
+d240 3
+a242 3
+     fld->FLDdata	= getmem(v1);
+     cdbcpystr((char *)fld->FLDdata, StringVal, 0);	// copy string to data area as well as name
+     fld->FLDstat &= 0xFFFBu;						// clear the "quick zero" flag. Variable is NON-ZERO
+d247 3
+a249 3
+     if ( !lutree(troot, StringVal, strlen(StringVal)) )
+          _define(StringVal);
+     return 1;
+d255 3
+a257 3
+	short ENTno;
+    int TDno;
+    char FieldType;
+a291 1
+    ENTAB	*v14; // eax@@34
+d301 1
+a301 1
+    short	v13;
+d303 3
+d343 1
+a343 1
+        if ( TTno )
+d346 1
+a346 5
+            if ( TTptr->TableAlias[0] )
+				v10 = TTptr->TableAlias;
+			else
+				v10 = TTptr->TableName;
+			print("%s.%s ", v10, fld->FLDname);
+d348 1
+a348 1
+        else
+d367 1
+a367 2
+			print("fw=%d", pr->WIDTH_FLAGS & 0x83FFu);
+            print("\n");
+d370 2
+a371 2
+        v12 = &enarr.TableAddr[pr->WIDTH_ENTno - 1];
+        v13 = 0;
+d374 2
+a375 3
+			v13 = 1;
+            v14 = ENARR(v12->enleft);
+			v12 = v14;
+d377 1
+a377 2
+
+		assert(v12->entype == 0x01);	// check expression type == 1
+d382 1
+a382 1
+			fld = &ttab[TTno].TTfields[v12->RecNo];
+d384 1
+a384 1
+			fld = getvars(v12->RecNo);
+d391 1
+a391 4
+                if ( TTptr->TableAlias[0] )
+					print("%s.%s ", TTptr->TableAlias, fld->FLDname);
+				else
+					print("%s.%s ", TTptr->TableName, fld->FLDname);
+d395 1
+a395 1
+				if ( *fld->FLDname == '\'' )// ??? mask literals ???
+d406 1
+a406 4
+                if ( TTptr->TableAlias[0] )
+					print("%s.%s [%c] ", TTptr->TableAlias, fld->FLDname, fld->FLDtype);
+				else
+					print("%s.%s [%c] ", TTptr->TableName, fld->FLDname, fld->FLDtype);
+d411 1
+a411 1
+        if ( v13 )
+d464 1
+a464 1
+int leaccept(short a1)
+a470 1
+	int		v13;
+d472 1
+a472 1
+	short	v1;
+d474 2
+a475 2
+	short	FieldLen;
+	char	v16[128];
+d480 1
+a480 1
+    cdbcpystr(v16, sym, 0);
+d483 2
+a484 2
+		block_no_0 = cur_block;
+        got_fdf_1 = 0;
+d486 3
+a488 4
+    v1 = getxtmem();
+    v13 = (unsigned short)v1;
+    allxtpt(v1, &xtb);
+    xtb->VarExpNo = a1;
+d493 1
+a493 1
+        return 0;
+a500 1
+	//printf("leaccept 566: comma_found = %d, symbol = %d, sym = %s, syml = %d\n",comma_found, symbol,sym, syml);
+d505 2
+a506 4
+		{
+			xtb->Flags |= xtb_REQUIRED;						// 0x0400u;
+			symbol = getsym();
+		}
+a510 1
+			symbol = getsym();
+d518 1
+d521 1
+a521 1
+	if ( isEditable && !got_fdf_1 )							// is field editable (not display only), and have we found first editable field yet?
+d524 1
+a524 1
+        got_fdf_1 = 1;
+d574 2
+a575 1
+	if ( !(((unsigned short)xtb->PLine >> 8) & 0x7E) && !(((unsigned short)xtb->PCol >> 8) & 0x7E)
+d577 1
+a577 1
+       && !xtb->PCol_exp && !xtb->ACol_exp && !TTno && fld->FLDlen )
+d579 6
+a584 5
+		if ( FLDtype == 'C' )
+			FieldLen = fld->FLDlen + 1;      // String variable can have different lengths
+		else
+			FieldLen = sizeof(double);	     // all other variables are stored in 8 bytes
+		xtb->Width = FieldLen;
+d587 1
+a587 1
+    return v13;	// exit_success
+d592 2
+a593 2
+     short v1; // dx@@1
+
+d618 1
+a618 1
+int leescape(int PTno, int a4)
+d630 1
+a630 1
+	//eprint("leescape(PTno = %d, a4 = x%04X)\n", PTno,a4);
+d648 2
+d651 1
+a651 1
+	if ( *v6 )
+d672 4
+d677 1
+d680 2
+a681 1
+    v8->OESCFlags = a4 == 1020;	// ??
+d689 1
+a689 1
+		(*v6)->KeyNumber = sym[0];
+d700 1
+a700 1
+		(*v6)->KeyNumber = KeyNumber;
+d705 1
+a705 1
+    if ( symbol != 2230 )					// not a strig literal
+d713 2
+a714 2
+    (*v6)->BlockName = getmem(fixbname(v16, sym));	// truncate the blockname to 20chars + 1 for \0
+    cdbcpystr((*v6)->BlockName, v16, 0);
+d727 7
+a733 2
+    fld = 0;
+	entb = ENARR(ENTABno);
+d735 1
+d744 1
+a744 1
+    if ( !entb )
+d750 2
+a751 4
+        *TTno = 0;									// Update caller memory directly
+        *FLDtype = 0;
+		//FieldNo = -1;
+        return -1;	//FieldNo;
+d753 1
+a753 3
+
+    *TTno = 0;
+    FieldNo = -1;
+d757 1
+a757 1
+        *FLDtype = '6';
+d760 1
+a760 1
+		*FLDtype = 'N';
+d762 2
+a763 2
+	case 0x0010:
+		*FLDtype = 'C';
+a788 1
+	//char	*LabelName;
+d814 1
+a814 1
+	AuxError = 0;							// default to exit_success
+d827 1
+a827 1
+		if ( leformat((short *)LineNo, 1))
+a862 4
+		if ( leescape(*LineNo, symbol))
+			return 1;
+		break;
+
+d873 1
+a873 1
+        if ( symbol == 720 )        // LABEL type.   string followed by colon.  "HELLO:"
+a875 2
+			//LabelName = ptab1->TABno ? &strarr.StringTable[ptab1->TABno - 1] : 0;
+			//cdbcpystr(LabelName, sym, 0);		// Save LabelName: in String table
+d881 2
+a882 2
+			loaderr(44, sym);		// "invalid label"
+            AuxError = 1;
+d892 1
+a892 1
+			AuxError = 1;
+d906 1
+a906 1
+			AuxError = 1;
+d955 1
+a955 1
+				AuxError = 1;
+d969 1
+a969 1
+        ptab1->OpCode = 720;
+d986 1
+a986 1
+			AuxError = 1;
+d1045 1
+a1045 1
+        ptab1->OpCode = 870;
+d1055 1
+a1055 1
+        ptab1->OpCode = 750;
+d1067 1
+a1067 1
+        ptab1->OpCode = 860;
+d1069 1
+a1069 1
+		AuxError = (!(ptab1->TABno = leopen(0)));	// 1 passed to leopen() indicates a Pipe, 0 == file
+d1077 1
+a1077 1
+        ptab1->OpCode = 560;
+d1082 1
+a1082 1
+			AuxError = 1;
+d1093 1
+a1093 1
+        ptab1->OpCode = 730;
+d1159 2
+a1161 2
+	case 540:								// 540 = read
+	case 440:								// 440 = close
+d1183 1
+a1184 1
+	case 1110:							// 1110 = popenin
+d1189 1
+a1189 1
+		AuxError = (!(ptab1->TABno = leopen(1)));	// 1 passed to leopen() indicates a Pipe, 0 == file
+d1217 1
+a1218 1
+	case 130:							// 130 = clear_eol
+d1233 1
+a1233 2
+		v39 = 0;
+		while ( lti > v39 )
+d1238 1
+a1238 1
+				AuxError = 1;
+a1240 1
+			v39++;
+d1262 1
+a1262 2
+	case 2230:		// we hit a variable name as an lvalue	(string literal)
+		
+d1267 1
+a1267 1
+		if ( !gettfexp(ENTno) )		// get Table/Field expression
+d1269 2
+a1270 2
+			ptab1->OpCode = 400;	// no-op?
+			AuxError = 1;
+a1276 1
+
+a1307 2
+            //if ( FieldNo < 0 )
+			//	__assert_fail("fno >= 0", "loadstate.c", 459, "loadstate");
+d1345 1
+a1345 1
+                AuxError = 1;
+d1351 1
+a1351 1
+				//	warncexp();            // "+-*%%/ will be unsupported on strings in future releases\n"
+d1356 2
+a1357 2
+					loaderr(7, sym);	//  "unexpected end of line"
+					AuxError = 1;
+d1379 1
+a1379 1
+							fld->FLDstat |= 0x0008u;					// Indicate that is variable/field is written to. Not used in clenter?
+d1384 1
+a1384 1
+							AuxError = 1;
+d1388 1
+a1388 1
+						AuxError = 1;
+d1403 1
+a1403 1
+			AuxError = 1;
+@
+
+
+1.9
+log
+@intermediate
+@
+text
+@d15 6
+a20 6
+	ENTAB*	entb;
+    int TDno; // [sp+10h] [bp-18h]@@22
+    unsigned short OpCode; // eax@@4
+    short v4; // di@@24
+    short v5; // si@@24
+	char FLDtype;
+d45 1
+a45 1
+        return dpexp(entb->Src) + dpexp(entb->Dest);	// add decimal places of each expression.
+d69 2
+a70 2
+		v4 = dpexp(entb->Dest);		// ** recursive **
+		v5 = dpexp(entb->Src);
+d95 1
+a95 1
+	double v3;
+d98 6
+a103 6
+    int v10;
+    int VarSize;
+    short v7;
+    short v12;
+    short v13;
+    char arg[256];
+d189 1
+a189 1
+				fld->FLDstat &= 0xFFFBu;
+d199 1
+a199 1
+				fld->FLDstat &= 0xFFFBu;
+d252 4
+a255 4
+     fld->FLDlen = v1 - 1;
+     fld->TDFtype = 0x001Au;						// string type
+     fld->FLDtype = 'C';
+     fld->FLDdata = getmem(v1);
+d322 1
+a322 1
+	if ( ent->Dest )
+d324 1
+a324 1
+		if ( !ent->Dest )	// Should be unreachable due to test above
+d331 1
+a331 1
+			v4 = &enarr.TableAddr[ent->Dest - 1];
+d335 1
+a335 1
+        while ( v4->Dest );
+d390 1
+a390 1
+        while ( v12->Dest )
+d393 1
+a393 1
+            v14 = ENARR(v12->Dest);
+d492 2
+a493 2
+	FLDdesc *v8; // ecx@@37
+	FLDdesc *fld; // ecx@@47
+d496 1
+a496 1
+	int		v7; // edx@@36
+d499 2
+a500 2
+	short	v1; // ax@@3
+	short	FieldNo; // esi@@25
+d503 1
+a503 1
+	bool	isEditable = true;		// default assume this field is editable
+d518 1
+a518 1
+	if ( !getadwid(xtb) )		// does this field have a default width?
+d531 1
+a531 1
+	if ( comma_found || (symbol == 2230 && syml == 1) )	// if we found a comma, or a single letter
+d533 1
+a533 1
+		if ( sym[0] == 'R' || sym[0] == 'r' )			// Required ( trumps display field, can't be both of course )
+d535 1
+a535 1
+			xtb->Flags |= xtb_REQUIRED;		// 0x0400u;
+d538 1
+a538 1
+		else if ( sym[0] == 'D' || sym[0] == 'd' )		// Display Only
+d540 1
+a540 1
+			xtb->Flags |= xtb_DISPLAY;	// 0x0004u;
+d544 1
+a544 1
+		else if ( comma_found )							// comma is only valid in width specifier if a single char follows 
+d546 1
+a546 1
+			loaderr(37, sym);							// "invalid field width"
+d552 1
+a552 1
+	if ( isEditable && !got_fdf_1 )						// is field editable (not display only), and have we found first editable field yet?
+d554 1
+a554 1
+		xtb->Flags |= xtb_FDF;		//0x0008u;			// This is first editable field on screen
+d564 1
+a564 1
+               xtb->Flags |= xtb_CHAR;	// 0x0001;	// String
+d567 1
+a567 1
+               xtb->Flags |= xtb_DATE;	// 0x0002;	// Date
+d570 1
+a570 1
+               xtb->Flags |= xtb_TIME;	// 0x0800;	// Time
+d578 1
+a578 1
+          if ( TTno )										// Is this a record in a DBase. Variables hang of TT0
+d580 1
+a580 1
+               v7 = btab[cur_block].TTno;					// yes
+d649 10
+a658 10
+	PTAB *ptb; // ecx@@0
+    XTAB *xtab; // eax@@5
+    ONESC **v6; // edi@@7
+    ONESC *v7; // eax@@11
+    ONESC *v8; // eax@@11
+
+    short KeyNumber; // dx@@18
+	bool AcceptField; // eax@@1
+    char v16[32]; // [sp+20h] [bp-58h]@@27
+
+d726 1
+a726 1
+    if ( symbol != 2230 )                   // not a strig literal
+d729 1
+a729 1
+			loaderr(2, sym);                // "missing block name"
+d731 1
+a731 1
+			loaderr(33, sym);	           // "unexpected symbol"
+d743 1
+a743 1
+    ENTAB *entb;
+d745 2
+a746 2
+    int FieldNo;
+    int v6;
+d753 1
+a753 1
+	while ( entb->Dest )
+d755 1
+a755 1
+		entb = &enarr.TableAddr[entb->Dest - 1];
+d804 1
+a804 1
+	ENTAB	*v115;
+d808 1
+a808 1
+	char	*LabelName;
+d810 1
+a810 2
+	int		result; // eax@@12
+	int		FieldNo; // edi@@239
+d817 1
+a817 1
+	short	v82;
+d895 1
+a895 1
+        ptab1->OpCode = 700;
+d900 3
+a902 2
+			LabelName = ptab1->TABno ? &strarr.StringTable[ptab1->TABno - 1] : 0;
+			cdbcpystr(LabelName, sym, 0);		// Save LabelName: in String table
+d946 1
+a946 1
+		ptab1->OpCode = 4;
+d999 5
+a1003 3
+			ptab1->TABno = getstrmem( fixbname(v119, sym) );
+			LabelName = ptab1->TABno ? &strarr.StringTable[ptab1->TABno - 1] : 0;
+			cdbcpystr(LabelName, v119, 0);
+d1021 1
+a1021 1
+        ptab1->OpCode = 340;
+d1033 1
+a1033 1
+		ptab1->OpCode = 270;
+d1066 1
+a1066 1
+			loaderr(33, sym);			// unexpected symbol
+d1069 1
+a1069 1
+	case 1060:							// pause
+d1134 1
+a1134 1
+            ptab1->OpCode = 800;			// copy
+d1139 1
+a1139 1
+            ptab1->OpCode = 450;			// create
+d1157 1
+a1157 1
+            ptab1->OpCode = 250;
+d1163 1
+a1163 1
+            ptab1->OpCode = 260;
+d1169 1
+a1169 1
+			ptab1->OpCode = 880;
+d1175 1
+a1175 1
+            ptab1->OpCode = 760;
+d1189 1
+a1189 1
+		ptab1->OpCode = 860;
+d1197 1
+a1197 1
+	case 940:										// 940 = delay_form
+d1199 1
+a1199 1
+        ptab1->OpCode = 265;
+d1213 1
+a1213 1
+		ptab1->OpCode = 850;
+d1223 1
+a1223 1
+        ptab1->OpCode = 900;			// print
+d1231 1
+a1231 1
+
+d1242 1
+a1242 1
+
+d1294 3
+a1296 3
+		v82 = getenmem();
+		allenpt(v82, &entb);
+		if ( !gettfexp(v82) )		// get Table/Field expression
+d1312 1
+a1312 1
+			TABno = leaccept(v82);
+d1318 1
+a1318 1
+					prdatefield(v82, TABno, 0);
+d1337 4
+a1340 4
+			FieldNo = gettfs(v82, &TTno, &FieldType, &FLDstat);
+            if ( FieldNo < 0 )
+				__assert_fail("fno >= 0", "loadstate.c", 459, "loadstate");
+			//assert(FieldNo >= 0);
+d1345 2
+a1346 2
+            allenpt(v112, &v115);
+            v115->Dest = v82;
+d1350 1
+a1350 1
+				v115->TTno = 0xD800u;
+d1353 1
+a1353 1
+				v115->TTno = 0xE400u;
+d1356 1
+a1356 1
+				v115->TTno = 0xE800u;
+d1359 1
+a1359 1
+				v115->TTno = 0xE000u;
+d1362 1
+a1362 1
+				v115->TTno = 0xEC00u;
+d1365 1
+a1365 1
+				v115->TTno = 0xDC00u;
+d1368 1
+a1368 1
+				v115->TTno = 0xA800u;
+d1376 1
+a1376 1
+				loaderr(83, sym);		// "can't assign to read-only variable"
+d1381 2
+a1382 2
+				v115->entype = 2;
+				//if ( FieldType == 'C' && isnumop((unsigned short)v115->TTno) )	// *** real CL4 doesn't pass variable correctly, msg not displayed ***
+d1397 3
+a1399 3
+						v115->Src = v86;
+						if ( chkINT && intexp(v115->Src) )
+							v115->TTno |= 0x0200;	// integer calcs flag for clenter
+d1401 2
+a1402 5
+						else if ( FieldType == 'C' || ( dpexp(v115->Dest) >= dpexp(v115->Src) ))
+							goto LABEL_285;
+						
+						else
+							v115->TTno |= 0x0040u;		//???
+d1404 1
+a1404 7
+			LABEL_285:
+						if ( symbol != 930 )			// <CR>
+						{
+							loaderr(33, sym);			// " unexpected symbol"
+							AuxError = 1;
+						}
+						else
+d1411 6
+a1416 1
+							fld->FLDstat |= 0x0008u;
+d1423 1
+a1423 1
+			dallenpt(&v115);
+@
+
+
+1.8
+log
+@intermediate
+@
+text
+@d10 1
+d191 1
+a191 1
+				fld->FLDstat |= 0x0004u;
+d197 1
+a197 1
+				fld->FLDstat |= 0x0004u;
+d202 1
+a202 1
+        fld->FLDstat |= 0x0010u;	// Indicate that data is available in this fld, or that variable is used in program
+d535 1
+a535 1
+			xtb->Flags |= 0x0400u;
+d540 1
+a540 1
+			xtb->Flags |= 0x0004u;
+d554 1
+a554 1
+		xtb->Flags |= 0x0008u;							// This is first editable field on screen
+d564 1
+a564 1
+               xtb->Flags |= 0x0001;	// String
+d567 1
+a567 1
+               xtb->Flags |= 0x0002;	// Date
+d570 1
+a570 1
+               xtb->Flags |= 0x0800;	// Time
+d573 1
+a573 1
+               xtb->Flags |= 0x0200;	// Numeric type?
+d584 1
+a584 1
+                    if ( v8->FLDstat < 0 )					// Is this a Key Field?
+d586 3
+a588 3
+                         xtb->Flags |= 0x8000u;				// yes
+                         if ( v8[1].FLDstat >= 0 )			// If next field is *not* a Key field...
+                              xtb->Flags |= 0x0040u;		// indicates that we are the *last* field in the Key area
+a1234 4
+		//v19 = leread(1);
+		//if ( !v19 )
+		//	AuxError = 1;
+        //ptab1->TABno = v19;
+d1372 1
+a1372 1
+            if ( FLDstat & 0x0040 )		// Not sure how to trigger this case????
+@
+
+
+1.7
+log
+@intermediate
+@
+text
+@d14 2
+a15 1
+	//short result; // ax@@1
+a16 1
+    //char v3; // zf@@16
+a18 3
+    //short v6; // ax@@26
+    int TDno; // [sp+10h] [bp-18h]@@22
+	ENTAB*	entb;
+d94 2
+a98 1
+    //short v4;
+a101 1
+	double v3;
+d235 1
+a236 1
+     FLDdesc *fld; // edi@@3
+d279 1
+a279 1
+		ENTno = loadexp(0, 0);
+d286 1
+a286 1
+				if ( symbol == 930 )
+d298 1
+a298 1
+	return 0;
+d303 6
+a308 11
+    ENTAB *ent; // ecx@@1
+    ENTAB *v4; // eax@@5
+    ENTAB *v12; // ecx@@32
+    ENTAB *v14; // eax@@34
+
+    TDesc *TTptr; // edx@@22
+
+    char *EntFileName; // esi@@17
+    char *Version; // eax@@17
+    char *v10; // eax@@23
+    char *v20; // eax@@57
+d310 7
+a316 2
+    int TTno;
+    short v13;
+a317 2
+	XTAB *xtb;
+    FLDdesc *fld;
+d350 3
+a352 10
+        if ( count_0 == 1 )
+        {
+			EntFileName = clbasename(ename);
+            Version = getclver();
+            print("cl (%s) checking %s.ent for date fields\n", Version, EntFileName);
+		}
+        //v8 = "Output";
+        //if ( xtb )
+		//	v8 = "Input";
+		//print("%s %s: ln %d: ", FileTree->FileName, v8, (unsigned short)ll);
+d395 2
+a396 3
+        //if ( v12->entype != 1 )
+	    //    __assert_fail("((tf)->entype == 0x1)", "prdebug.c", 764, "prdatefield");
+		assert(v12->entype == 0x01);
+d493 1
+a493 1
+	XTAB*	xtb;
+a494 2
+	short	v1; // ax@@3
+	short	FieldNo; // esi@@25
+a495 1
+	short FieldLen;
+d498 3
+a649 1
+	bool AcceptField; // eax@@1
+d653 1
+d655 1
+d701 1
+a701 1
+    v8->field_0 = a4 == 1020;	// ??
+d743 2
+a744 1
+    signed int FieldNo;
+a745 1
+    FLDdesc *fld;
+a763 1
+		FieldNo = -1;
+d766 2
+a767 1
+        return FieldNo;
+d807 16
+a822 1
+	char	*v35;
+d824 2
+a825 17
+	int result; // eax@@12
+	int FieldNo; // edi@@239
+	short v39; // esi@@159
+	short v68; // dx@@190
+	short v82; // si@@219
+	short v86; // dx@@276
+	short v93; // dx@@294
+
+	int Join; // [sp+4h] [bp-B4h]@@155
+	short v112; // [sp+30h] [bp-88h]@@245
+	int chkINT;
+	bool AuxError;
+
+	int TTno;
+	char v119[64];
+	short FLDstat;
+	char FieldType;
+d827 1
+a827 1
+//printf("loadstate called - *LineNo = %d\n",*LineNo);
+d900 2
+a901 2
+			v35 = ptab1->TABno ? &strarr.StringTable[ptab1->TABno - 1] : 0;
+			cdbcpystr(v35, sym, 0);		// Save LabelName: in String table
+d999 2
+a1000 2
+			v35 = ptab1->TABno ? &strarr.StringTable[ptab1->TABno - 1] : 0;
+			cdbcpystr(v35, v119, 0);
+d1102 2
+a1103 2
+        v68 = leselect();
+        if ( !v68 )
+d1108 1
+a1108 1
+        ptab1->TABno = v68;
+d1313 2
+a1314 2
+			v93 = leaccept(v82);
+            if ( v93 )
+d1317 1
+a1317 1
+                ptab1->TABno = v93;
+d1319 1
+a1319 1
+					prdatefield(v82, v93, 0);
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@d181 1
+a181 1
+		   default:
+a184 22
+				/*if ( v7 > 2 )
+				{
+					 if ( v7 > 4 )
+					 {
+						  if ( v7 > 6 )
+						  {
+							   if ( v7 > 8 )
+									fld->TDFtype = 0x0184u;
+							   else
+									fld->TDFtype = 0x0144u;
+						  }
+						  else
+							   fld->TDFtype = 0x0104u;
+					 }
+					 else
+						  fld->TDFtype = 0x00C4u;
+				}
+				else
+					 fld->TDFtype = 0x0084u;
+				if ( v7 % 2 == 1 )
+					 fld->TDFtype |= 0x0020u;
+				*/
+a341 2
+	//if ( ent->entype != 1 )
+	//	__assert_fail("((tf)->entype == 0x1)", "prdebug.c", 733, "prdatefield");
+d927 1
+a927 1
+		if ( !leif((short *)LineNo) )
+d941 1
+a941 1
+		if ( !lewhile((short *)LineNo) )
+a1199 4
+		//v19 = leread(0);
+		//if ( !v19 )
+		//	AuxError = 1;
+		//ptab1->TABno = v19;
+d1322 1
+a1322 1
+		case 930:							// <CR> not sure this is correct....
+a1354 3
+			//chkINT = 0;
+			//if ( FieldType == 'B' || FieldType == 'I' || FieldType == 'N' )
+			//	chkINT = 1;	
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d7 1
+a25 1
+    //result = 0;
+a27 1
+		//return result;
+d47 1
+a47 3
+        //v6 = dpexp(entb->Dest);
+        //return dpexp(entb->Src) + v6;
+        return dpexp(entb->Src) + dpexp(entb->Dest);
+d71 1
+a71 1
+		v4 = dpexp(entb->Dest);
+d74 1
+a74 5
+		//result = v4;
+		//if ( v4 < v5 )
+		//	result = v5;
+		//return result;
+		return v5 > v4 ? v5 : v4;
+d96 8
+a103 1
+    unsigned int v2; // kr04_4@@1
+d105 1
+a105 8
+    short v4; // cx@@6
+    int VarSize; // eax@@8
+    signed short v7; // ax@@21
+    int v10; // [sp+0h] [bp-78h]@@5
+    FLDdesc *fld; // [sp+2Ch] [bp-4Ch]@@8
+    short v12; // [sp+30h] [bp-48h]@@10
+    short v13; // [sp+38h] [bp-40h]@@5
+    char arg[256]; // [sp+40h] [bp-38h]@@3
+d107 1
+a107 1
+//printf("putconst(\"%s\",%c)\n",nptr,FLDtype);
+d114 2
+a115 3
+        v4 = last_var++;
+        v13 = v4;
+        v10 = v4;
+d129 1
+a129 1
+    if ( !getvars(v10) )                       // check to see if Variable already defined
+d134 1
+a134 1
+        VarSize = 8;
+d137 3
+d141 1
+a141 1
+        fld->FLDdata = getmem(VarSize + 1);	// // Why an extra byte for double types?
+d145 63
+a207 61
+               case 'B':
+                    fld->FLDlen = 1;
+                    fld->TDFtype = 0x0044u;
+                    break;
+               case 'I':
+                    fld->FLDlen = 2;
+                    fld->TDFtype = 0x0044u;
+                    break;
+               case 'N':
+                    fld->FLDlen = 4;
+                    fld->TDFtype = 0x0044u;
+                    break;
+               case 'L':
+                    fld->FLDlen = 8;
+                    fld->TDFtype = 0x0044u;
+                    break;
+               case 'G':
+                    fld->FLDlen = 4;
+                    fld->TDFtype = 0x0404u;
+                    break;
+               case 'T':
+                    fld->FLDlen = 4;
+                    fld->TDFtype = 0x0800u;
+                    break;
+               case 'R':
+                    fld->FLDlen = 4;
+                    fld->TDFtype = 0x0604u;
+                    break;
+               case 'D':
+                    fld->FLDlen = 4;
+                    fld->TDFtype = 0x1040u;
+                    break;
+               case 'C':
+                    fld->FLDlen = v12;
+                    fld->TDFtype = 0x001Au;
+                    break;
+               default:
+                    fld->FLDlen = 8;
+                    v7 = FLDtype - 48;	// ascii '0' -> '9' becomes 0x00 -> 0x09
+                    if ( v7 > 2 )
+                    {
+                         if ( v7 > 4 )
+                         {
+                              if ( v7 > 6 )
+                              {
+                                   if ( v7 > 8 )
+                                        fld->TDFtype = 0x0184u;
+                                   else
+                                        fld->TDFtype = 0x0144u;
+                              }
+                              else
+                                   fld->TDFtype = 0x0104u;
+                         }
+                         else
+                              fld->TDFtype = 0x00C4u;
+                    }
+                    else
+                         fld->TDFtype = 0x0084u;
+                    if ( v7 % 2 == 1 )
+                         fld->TDFtype |= 0x0020u;
+                    break;
+d226 1
+a226 1
+        fld->FLDstat |= 0x0010u;	// Indicate that data is available in this fld
+d233 3
+a235 3
+     int v3; // edx@@1
+     int v4; // eax@@2
+     int v9; // [sp+18h] [bp-10h]@@1
+d301 2
+a302 1
+    if ( symbol != 2230 && symbol != 2220 )		// string literal or string variable
+d304 17
+d322 2
+a323 20
+        return 0;
+    }
+	ENTno = loadexp(0, 0);
+    if ( ENTno )
+    {
+		gettf(ENTno, &TDno, &FieldType);
+        if ( FieldType != 'C' )
+        {
+			loaderr(64, sym);	// "'fork' command must be character"
+            return 0;
+        }
+        pt->TABno = ENTno;
+        if ( symbol != 930 )
+        {
+			loaderr(33, sym);
+            return 0;
+        }
+        return 1;	// exit_success
+	}
+    return 0;
+a336 1
+    //char *v8; // eax@@18
+d340 2
+a341 2
+    int TTno; // edi@@12
+    signed short v13; // si@@32
+d343 2
+a344 2
+	XTAB *xtb; // [sp+14h] [bp-14h]@@10
+    FLDdesc *fld; // [sp+18h] [bp-10h]@@13
+d364 3
+a366 2
+	if ( ent->entype != 1 )
+		__assert_fail("((tf)->entype == 0x1)", "prdebug.c", 733, "prdatefield");
+d431 3
+a433 2
+        if ( v12->entype != 1 )
+	        __assert_fail("((tf)->entype == 0x1)", "prdebug.c", 764, "prdatefield");
+d479 1
+a479 1
+
+d482 1
+d524 1
+d531 1
+d535 1
+a535 1
+	signed short FieldLen; // ax@@58
+d538 2
+a539 1
+	bool	isEditable = true;				// default assume this field is editable
+a540 1
+	char	v16[128];
+a594 2
+    //if ( FieldNo < 0 )
+	//	__assert_fail("fno >= 0", "leaccept.c", 0x55u, "leaccept");
+d694 1
+d709 1
+a709 1
+		v6 = &oelist;                // Not an accpet field, look at global block escapes
+d742 2
+a743 1
+    if ( syml == 1 && (*__ctype_b_loc())[sym[0]] & 0x0400 )// single char keyname specifier (isalpha())
+a746 1
+
+d839 23
+a861 24
+     char *v35; // eax@@144
+     ENTAB *v115;
+	 ENTAB*	entb;
+     PTAB *ptab1;
+	 FLDdesc *fld; // edx@@290
+
+     int result; // eax@@12
+     short v19; // ax@@118
+     short v39; // esi@@159
+     short v68; // dx@@190
+     short v82; // si@@219
+     int FieldNo; // edi@@239
+     short v86; // dx@@276
+     short v93; // dx@@294
+     
+     int Join; // [sp+4h] [bp-B4h]@@155
+     short v112; // [sp+30h] [bp-88h]@@245
+     int v113; // [sp+34h] [bp-84h]@@241
+     bool AuxError; // [sp+38h] [bp-80h]@@4
+
+     int TTno;
+     char v119[64];
+     short FLDstat;
+     char FieldType;
+d933 1
+a933 7
+        if ( symbol != 720 )        // LABEL type.   string followed by colon.  "HELLO:"
+		{
+			loaderr(44, sym);		// "invalid label"
+            AuxError = 1;
+            dallptpt(&ptab1);
+		}
+		else
+a938 3
+			dallptpt(&ptab1);
+			if ( !AuxError )
+				return 1;
+d940 8
+a982 4
+		//v19 = lehdtxt();
+		//if ( !v19 )
+		//	AuxError = 1;
+        //ptab1->TABno = v19;
+d1001 1
+a1001 1
+		if ( !while_count )
+d1003 18
+a1020 2
+			loaderr(78, sym);	// "'continue/endloop' must be inside 'while' block
+			goto LABEL_307;
+a1021 4
+        allptpt(getptabp((*LineNo)++), &ptab1);
+        
+		if ( symbol == 210 )   // continue
+			ptab1->OpCode = 320;	// continue
+d1023 1
+a1023 1
+			ptab1->OpCode = 330;	// endloop
+a1024 11
+		ptab1->SrcLineNo	= lla;
+        ptab1->Operand		= 0;
+        symbol = getsym();
+        if ( symbol != 930 )
+        {
+			loaderr(33, sym);		// unexpected symbol
+			AuxError = 1;
+		}
+        dallptpt(&ptab1);
+		if ( !AuxError )
+			return 1;
+a1037 3
+			dallptpt(&ptab1);
+			if ( !AuxError )
+				return 1;
+a1045 1
+			dallptpt(&ptab1);
+d1047 3
+d1095 1
+a1095 1
+			if ( !AuxError )
+d1128 1
+a1128 5
+        //v19 = leopen(0);					// 1 passed to leopn() indicates a Pipe, 0 == file
+		//if ( !v19 )
+		//	AuxError = 1;
+        //ptab1->TABno = v19;
+		AuxError = (!(ptab1->TABno = leopen(0)));
+a1154 4
+        //v19 = leredisp();
+		//if ( !v19 )
+		//	AuxError = 1;
+        //ptab1->TABno = v19;
+d1163 1
+a1166 1
+            allptpt(getptabp((*LineNo)++), &ptab1);
+a1168 1
+            //v19 = lecopy();
+a1171 1
+            allptpt(getptabp((*LineNo)++), &ptab1);
+a1173 1
+            //v19 = lecreate();
+a1176 3
+		//if ( !v19 )
+		//	AuxError = 1;
+        //ptab1->TABno = v19;
+d1186 1
+a1189 1
+			allptpt(getptabp((*LineNo)++), &ptab1);
+a1195 1
+		    allptpt(getptabp((*LineNo)++), &ptab1);
+a1201 1
+			allptpt(getptabp((*LineNo)++), &ptab1);
+a1207 1
+			allptpt(getptabp((*LineNo)++), &ptab1);
+d1252 1
+a1252 6
+		//v100 = 1;
+        //v19 = leopen(1);				// 1 passed to leopen() indicates a Pipe, 0 == file
+		//if ( !v19 )
+		//	AuxError = 1;
+        //ptab1->TABno = v19;
+		AuxError = (!(ptab1->TABno = leopen(1)));
+a1343 1
+			//goto LABEL_307;
+d1351 2
+a1352 2
+		case 2200:							// string literal
+		case 2230:							// another variable?
+d1367 1
+a1367 2
+				return 1;
+
+d1371 7
+a1377 7
+		case 40:							// 40 "+="
+		case 320:							// "/="
+		case 850:							// %=
+		case 880:							// "*="
+		case 1160:				            // **=
+		case 1560:							// -=
+		case 1800:							// 1800 "=" or "eq" or "=="
+d1381 1
+d1383 4
+a1386 3
+			v113 = 0;
+			if ( FieldType == 'B' || FieldType == 'I' || FieldType == 'N' )
+				v113 = 1;	// check in loadexp for integer targets
+d1393 1
+a1393 1
+			case 40:					// 40 "+="
+d1418 1
+a1418 1
+            if ( FLDstat & 0x0040 )
+d1420 1
+a1420 1
+				loaderr(83, sym);	// "can't assign to read-only variable"
+a1421 5
+				dallenpt(&v115);
+                dallenpt(&entb);
+                dallptpt(&ptab1);
+				break;
+				//goto LABEL_307;
+d1423 1
+a1423 19
+			v115->entype = 2;
+                
+			if ( FieldType == 'C' && isnumop(v115->TTno) )
+				warncexp();            // "+-*%%/ will be unsupported on strings in future releases\n"
+               
+			symbol = getsym();
+            if ( symbol == 930 )
+            {
+				loaderr(7, sym);	//  "unexpected end of line"
+                AuxError = 1;
+				dallenpt(&v115);
+                dallenpt(&entb);
+                dallptpt(&ptab1);
+				break;
+				//goto LABEL_307;
+			}
+            ptab1->OpCode = 200;	// assignment operator
+            v86 = loadexp(0, v113);
+            if ( !v86 )
+d1425 11
+a1435 11
+				AuxError = 1;
+				goto LABEL_285;
+            }
+            v115->Src = v86;
+            if ( v113 && intexp(v115->Src) )
+			{
+				v115->TTno |= 0x0200;	// integer calcs flag for clenter
+            }
+            else
+			{
+				if ( FieldType == 'C' || ( dpexp(v115->Dest) >= dpexp(v115->Src) ))
+d1437 3
+a1439 2
+LABEL_285:
+					if ( !AuxError )
+d1441 11
+d1457 1
+a1457 1
+                        if ( !AuxError )
+d1460 1
+a1460 1
+                            if ( TTno )
+d1467 2
+a1468 6
+					dallenpt(&v115);
+	                dallenpt(&entb);
+		            dallptpt(&ptab1);
+					if ( !AuxError )
+						return 1;
+					goto LABEL_307;
+a1469 1
+				v115->TTno |= 0x0040u;
+d1471 5
+a1475 1
+			goto LABEL_285;
+d1497 1
+a1497 2
+LABEL_307:
+	if ( comp_abort )
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d340 1
+a340 1
+    char *v8; // eax@@18
+d388 6
+a393 4
+        v8 = "Output";
+        if ( xtb )
+			v8 = "Input";
+		print("%s %s: ln %d: ", FileTree->FileName, v8, (unsigned short)ll);
+d431 2
+a432 2
+            v14 = v12->Dest ? &enarr.TableAddr[v12->Dest - 1]: 0;
+            v12 = v14;
+d594 3
+a596 2
+    if ( FieldNo < 0 )
+		__assert_fail("fno >= 0", "leaccept.c", 0x55u, "leaccept");
+d656 1
+a656 1
+int lesrand(PTAB *ptab)
+a658 1
+     int v2; // ecx@@1
+a661 1
+     v2 = 0;
+d665 1
+a665 1
+          v2 = 1;
+d667 1
+a667 1
+     return v2;
+d670 1
+a670 1
+int lesleep(PTAB *ptab)
+d672 1
+a672 2
+     short v1; // dx@@1
+     int v2; // ecx@@1
+a675 1
+     v2 = 0;
+d679 1
+a679 1
+          v2 = 1;                               // exit_success
+d681 1
+a681 1
+     return v2;
+d704 1
+a704 1
+		xtab = ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0;
+d778 4
+a781 4
+    ENTAB *entb; // edx@@1
+    signed int FieldNo; // esi@@10
+    int v6; // eax@@18
+    FLDdesc *fld; // [sp+18h] [bp-10h]@@1
+d784 2
+a785 2
+	entb = ENTABno ? &enarr.TableAddr[ENTABno - 1] : 0;
+    
+d796 1
+d833 1
+a833 1
+    *FLDstat = fld->FLDstat;						// Update caller memory directly
+@
+
+
+1.3
+log
+@intermediate vers
+@
+text
+@d350 2
+a351 2
+	ent = ENTno ? &enarr.TableAddr[ENTno - 1] : 0;
+     
+d371 2
+a372 2
+	xtb = XTno ? &xtarr.TableAddr[XTno - 1] : 0;
+    
+d840 3
+a845 5
+     char v6; // zf@@13
+     char v7; // zf@@26
+     char v8; // zf@@34
+     char v9; // zf@@77
+     int v10; // eax@@113
+a846 2
+     signed int v25; // eax@@125
+     int v29; // eax@@130
+a849 2
+     char v83; // zf@@226
+     char v84; // zf@@228
+a853 3
+
+     int v100; // [sp+0h] [bp-B8h]@@176
+     int v101; // [sp+0h] [bp-B8h]@@180
+d857 1
+a857 5
+     int AuxError; // [sp+38h] [bp-80h]@@4
+
+     ENTAB *v115;
+	 ENTAB*	entb;
+     PTAB *ptab1;
+d985 5
+a989 4
+		v19 = lehdtxt();
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+d1037 1
+a1037 1
+        if ( symbol == 2230 )	// string literal
+d1074 1
+a1074 5
+		v29 = lemsg(ptab1);
+        v6 = v29 == 0;
+        AuxError = 1;
+		if ( !v6 )
+			AuxError = 0;
+d1112 1
+a1112 5
+		v29 = lepause(ptab1);
+        v6 = v29 == 0;
+        AuxError = 1;
+		if ( !v6 )
+			AuxError = 0;
+d1122 1
+a1122 5
+        v29 = lefork(ptab1);
+        v6 = v29 == 0;
+        AuxError = 1;
+		if ( !v6 )
+			AuxError = 0;
+d1134 5
+a1138 5
+        v100 = 0;
+        v19 = leopen(v100);					// 1 passed to leopn() indicates a Pipe, 0 == file
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+d1165 5
+a1169 4
+        v19 = leredisp();
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+d1183 2
+a1184 1
+            v19 = lecopy();
+d1190 2
+a1191 1
+            v19 = lecreate();
+d1194 3
+a1196 3
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+d1212 1
+a1212 1
+			v29 = lefresh(ptab1);
+d1219 1
+a1219 1
+			v29 = lescreen(ptab1);
+d1226 1
+a1226 1
+			v29 = lesleep(ptab1);
+d1233 1
+a1233 1
+			v29 = lesrand(ptab1);
+a1235 4
+		v6 = v29 == 0;
+        AuxError = 1;
+		if ( !v6 )
+			AuxError = 0;
+a1238 1
+		goto LABEL_307;
+d1247 5
+a1251 5
+		v101 = 0;
+		v19 = leread(v101);
+		if ( !v19 )
+			AuxError = 1;
+		ptab1->TABno = v19;
+a1254 1
+		goto LABEL_307;
+d1275 6
+a1280 5
+		v100 = 1;
+        v19 = leopen(v100);				// 1 passed to leopn() indicates a Pipe, 0 == file
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+a1283 1
+		goto LABEL_307;
+d1291 1
+a1291 4
+        v19 = leprint();
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+a1294 1
+		goto LABEL_307;
+d1302 5
+a1306 5
+		v101 = 1;
+		v19 = leread(v101);
+		if ( !v19 )
+			AuxError = 1;
+        ptab1->TABno = v19;
+a1309 1
+		goto LABEL_307;
+d1312 1
+a1312 1
+	case 140:							// clear_eos
+a1323 1
+		goto LABEL_307;
+d1327 1
+d1329 1
+a1329 1
+		if ( lti > 0 )
+d1331 1
+a1331 1
+			while ( !cmpbuf(sym, ltab[v39]->LabelName, ltab[v39]->NameLen) )
+d1333 3
+a1335 3
+				v39++;
+				if ( lti <= v39 )
+					goto LABEL_162;
+d1337 1
+a1337 2
+			loaderr(16, sym);		//"duplicate label"
+			AuxError = 1;
+d1339 1
+a1339 1
+LABEL_162:
+d1347 1
+a1347 1
+				(*lt)->field_2 = *(short*)LineNo;
+d1351 1
+a1351 1
+				if ( !AuxError )
+d1353 1
+a1353 1
+				goto LABEL_307;
+a1356 1
+		goto LABEL_307;
+d1371 2
+a1372 1
+			goto LABEL_307;
+a1388 4
+	            dallenpt(&entb);
+	            dallptpt(&ptab1);
+				if ( !AuxError )
+					return 1;
+d1391 7
+a1397 6
+			{
+				AuxError = 1;
+				dallenpt(&entb);
+				dallptpt(&ptab1);
+			}
+			goto LABEL_307;
+d1411 1
+d1453 2
+a1454 1
+				goto LABEL_307;
+d1469 2
+a1470 1
+				goto LABEL_307;
+a1481 3
+				//printf("loadstate 1535 v113 = 1, intexp(%d) = 1, v115->TTno = x%04X\n",v113,v86, v115->TTno);
+				//v87 = v115;
+				//v88 = v115->TTno | 0x0200;	// integer calcs flag for clenter
+a1512 2
+                //v87 = v115;
+				//v88 = v115->TTno | 0x0040u;
+a1514 1
+            //v87->TTno = v88;
+a1525 1
+			goto LABEL_307;
+@
+
+
+1.2
+log
+@prior to fixing PRTAB field names
+@
+text
+@d13 3
+a15 3
+	short result; // ax@@1
+    int OpCode; // eax@@4
+    char v3; // zf@@16
+d18 1
+a18 1
+    short v6; // ax@@26
+d24 2
+a25 1
+    result = 0;
+d27 2
+a28 1
+		return result;
+d46 1
+a46 1
+	case 0x6000:
+d48 3
+a50 2
+        v6 = dpexp(entb->Dest);
+        return dpexp(entb->Src) + v6;
+d53 1
+a53 1
+	case 0xAC00:	// Array operation
+d59 1
+a59 1
+	case 0xB800:
+d64 4
+a67 4
+	case 0x6800:
+	case 0x2400:
+	case 0xBC00:
+	case 0x6C00:
+d72 2
+a73 2
+	case 0x5400:
+	case 0x5800:
+d77 5
+a81 4
+		result = v4;
+		if ( v4 < v5 )
+			result = v5;
+		return result;
+d88 1
+a88 1
+	default:
+d103 10
+a112 10
+     unsigned int v2; // kr04_4@@1
+	 double v3;
+     short v4; // cx@@6
+     int VarSize; // eax@@8
+     signed short v7; // ax@@21
+     int v10; // [sp+0h] [bp-78h]@@5
+     FLDdesc *fld; // [sp+2Ch] [bp-4Ch]@@8
+     short v12; // [sp+30h] [bp-48h]@@10
+     short v13; // [sp+38h] [bp-40h]@@5
+     char arg[256]; // [sp+40h] [bp-38h]@@3
+d331 12
+a342 12
+     ENTAB *ent; // ecx@@1
+     ENTAB *v4; // eax@@5
+     ENTAB *v12; // ecx@@32
+     ENTAB *v14; // eax@@34
+
+     TDesc *TTptr; // edx@@22
+
+     char *EntFileName; // esi@@17
+     char *Version; // eax@@17
+     char *v8; // eax@@18
+     char *v10; // eax@@23
+     char *v20; // eax@@57
+d344 2
+a345 2
+     int TTno; // edi@@12
+     signed short v13; // si@@32
+d347 2
+a348 2
+	 XTAB *xtb; // [sp+14h] [bp-14h]@@10
+     FLDdesc *fld; // [sp+18h] [bp-10h]@@13
+d418 1
+a418 1
+		if ( !pr->field_2 )
+d420 1
+a420 1
+			print("fw=%d", pr->field_4 & 0x83FFu);
+d424 1
+a424 1
+        v12 = &enarr.TableAddr[pr->field_2 - 1];
+d526 13
+a538 14
+     short v1; // ax@@3
+     signed int v2; // edi@@5
+     short v3; // ax@@25
+     int FieldNo; // esi@@25
+     int v7; // edx@@36
+     FLDdesc *v8; // ecx@@37
+     FLDdesc *fld; // ecx@@47
+     signed short FieldLen; // ax@@58
+     signed int v12; // [sp+1Ch] [bp-6Ch]@@1
+     int	v13;
+     int	TTno;
+	 XTAB*	xtabptr;
+	 char	v16[128];
+	 char	FLDtype;
+a539 1
+    v12 = 1;
+d548 4
+a551 3
+    allxtpt(v1, &xtabptr);
+    xtabptr->VarExpNo = a1;
+	if ( !getadwid(xtabptr) )
+d553 1
+a553 1
+		dallxtpt(&xtabptr);
+d556 1
+d559 1
+a559 1
+		v2 = 1;
+d562 1
+a562 5
+    else
+		v2 = 0;
+
+	if ( !v2 && (symbol != 2230 || syml != 1) )
+          goto LABEL_22;
+d564 1
+a564 1
+    if ( sym[0] == 'R' || sym[0] == 'r' )		// Required
+d566 17
+a582 10
+          xtabptr->Flags |= 0x0400u;
+          symbol = getsym();
+          goto LABEL_22;
+	}
+    if ( sym[0] == 'D' || sym[0] == 'd' )		// Display Only
+    {
+		xtabptr->Flags |= 0x0004u;
+        v12 = 0;
+        symbol = getsym();
+        goto LABEL_22;
+d585 1
+a585 1
+	if ( v2 )
+d587 2
+a588 3
+		loaderr(37, sym);                     // "invalid field width"
+        dallxtpt(&xtabptr);
+        return 0;
+a589 11
+
+LABEL_22:
+     if ( v12 && !got_fdf_1 )
+     {
+          xtabptr->Flags |= 0x0008u;			// This is first editable field on screen
+          got_fdf_1 = 1;
+     }
+     v3 = gettf(xtabptr->VarExpNo, &TTno, &FLDtype);
+     FieldNo = v3;
+     if ( v3 < 0 )
+          __assert_fail("fno >= 0", "leaccept.c", 0x55u, "leaccept");
+d591 6
+a596 2
+	 switch ( FLDtype )
+     {
+d598 1
+a598 1
+               xtabptr->Flags |= 0x0001;	// String
+d601 1
+a601 1
+               xtabptr->Flags |= 0x0002;	// Date
+d604 1
+a604 1
+               xtabptr->Flags |= 0x0800;	// Time
+d607 1
+a607 1
+               xtabptr->Flags |= 0x0200;	// Numeric type?
+d610 1
+a610 1
+     if ( v12 )
+d612 1
+a612 1
+          if ( TTno )
+d614 1
+a614 1
+               v7 = btab[cur_block].TTno;
+d618 1
+a618 1
+                    if ( v8->FLDstat < 0 )
+d620 3
+a622 3
+                         xtabptr->Flags |= 0x8000u;
+                         if ( v8[1].FLDstat >= 0 )
+                              xtabptr->Flags |= 0x0040u;
+d627 2
+a628 1
+    if ( !getcol(xtabptr, 2) || !getrow(xtabptr, 2) || !getcol(xtabptr, 1) || !getrow(xtabptr, 1) || !getprmpt(xtabptr) )
+d630 1
+a630 1
+		dallxtpt(&xtabptr);
+d633 1
+d639 3
+a641 3
+	if ( !(((unsigned short)xtabptr->PLine >> 8) & 0x7E) && !(((unsigned short)xtabptr->PCol >> 8) & 0x7E)
+       && !(((unsigned short)xtabptr->ACol >> 8) & 0x7E) && !(((unsigned short)xtabptr->ALine >> 8) & 0x7E)
+       && !xtabptr->PCol_exp && !xtabptr->ACol_exp && !TTno && fld->FLDlen )
+d647 1
+a647 1
+		xtabptr->Width = FieldLen;
+d649 1
+a649 1
+    dallxtpt(&xtabptr);
+d801 1
+a801 1
+        *TTno = 0;
+d805 1
+d819 3
+a821 5
+	default:
+		if ( entb->entype != 1 )
+			__assert_fail("((t)->entype == 0x1)", "gettf.c", 0x5Cu, "gettfs");
+		v6 = entb->TTno;
+        *TTno = v6;
+d826 5
+a830 2
+			fld = getvars(entb->RecNo);				// Normal variable
+		*FLDtype = fld->FLDtype;
+d943 1
+a943 1
+		symbol = getsym();	// 620 goto
+d1204 1
+a1204 1
+            ptab1->OpCode = 800;
+d1210 1
+a1210 1
+            ptab1->OpCode = 450;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d5 2
+a6 1
+#include <stdarg.h>		// for var args stuff
+d11 1
+a11 1
+short dpexp(short ENTno)
+d27 1
+d35 1
+a35 1
+    if ( ((unsigned short)entb->TTno >> 8) & 3 )    // bit 9 signifies Integer calcs, 8?
+d38 1
+a38 1
+        return 0;
+d97 1
+a97 1
+short putconst(char *nptr, char FLDtype)
+d110 2
+d124 1
+a124 1
+			cdbcpystr(arg, "'", nptr, 0);		// *** be careful of buffer overrun on this case **
+d126 1
+a126 1
+			sprintf(arg, "%.*f", FLDtype - 48, (double)__strtod_internal(nptr, 0, 0));
+d132 1
+d142 1
+a142 1
+        fld->FLDdata = getmem(VarSize + 1);
+d184 1
+a184 1
+                    v7 = FLDtype - 48;
+d218 1
+a218 1
+			v3 = __strtod_internal(nptr, 0, 0);
+d225 1
+a225 1
+        fld->FLDstat |= 0x0010u;
+d267 1
+a267 1
+	 fld = getvarmem();
+d274 1
+d276 1
+a276 1
+     fld->TDFtype = 0x001Au;	// string type
+d279 2
+a280 2
+     cdbcpystr((char *)fld->FLDdata, StringVal, 0);// copy string to data area as well as name
+     fld->FLDstat &= 0xFFFBu;
+d298 1
+a298 1
+    if ( symbol == 930 )                       // fork with no arguments is ok
+d329 5
+a333 1
+     int TTno; // edi@@12
+a336 1
+     TDesc *v9; // edx@@22
+d338 3
+a340 1
+     ENTAB *v12; // ecx@@32
+a341 9
+     ENTAB *v14; // eax@@34
+     int v15; // edi@@41
+     TDesc *v17; // edx@@49
+     char *v18; // eax@@50
+     TDesc *v19; // edx@@56
+     char *v20; // eax@@57
+     XTAB *v26; // [sp+14h] [bp-14h]@@10
+     FLDdesc *v27; // [sp+18h] [bp-10h]@@13
+     FLDdesc *v28; // [sp+18h] [bp-10h]@@42
+d343 4
+a346 1
+	ent = ENTno ? (ENTAB *)&enarr.TableAddr[12 * (ENTno - 1)] : 0;
+d350 1
+a350 1
+		if ( !ent->Dest )
+d352 1
+a352 1
+			v4 = 0;
+d357 1
+a357 1
+			v4 = (ENTAB *)&enarr.TableAddr[12 * (ent->Dest - 1)];
+d367 1
+a367 1
+	v26 = XTno ? (XTAB *)&xtarr.TableAddr[52 * (XTno - 1)] : 0;
+d371 1
+a371 1
+		v27 = &ttab[TTno].TTfields[ent->RecNo];
+d373 1
+a373 1
+		v27 = getvars(ent->RecNo);
+d375 1
+a375 1
+	if ( v27->FLDtype == 'D' )
+d385 1
+a385 1
+        if ( v26 )
+d390 3
+a392 3
+			v9 = &ttab[TTno];
+            if ( v9->TableAlias[0] )
+				v10 = v9->TableAlias;
+d394 2
+a395 2
+				v10 = v9->TableName;
+			print("%s.%s ", v10, v27->FLDname);
+d398 1
+a398 1
+			print("%s ", v27->FLDname);
+d400 1
+a400 1
+		if ( v26 )
+d402 2
+a403 2
+			if ( v26->widthEXP )
+				prtfid(v26->widthEXP);
+d405 1
+a405 1
+				print("%d.", v26->width);
+d416 1
+a416 1
+			print("fw=%d", pr->field_4 & 0xFFFF83FF);
+d420 1
+a420 1
+        v12 = (ENTAB *)&enarr.TableAddr[12 * (pr->field_2 - 1)];
+d425 1
+a425 1
+            v14 = v12->Dest ? (ENTAB *)&enarr.TableAddr[12 * (v12->Dest - 1)]: 0;
+d431 1
+a431 1
+		v15 = v12->TTno;
+d433 2
+a434 2
+		if ( v15 )
+			v28 = &ttab[v15].TTfields[v12->RecNo];
+d436 1
+a436 1
+			v28 = getvars(v12->RecNo);
+d438 1
+a438 1
+		if ( v28->FLDtype == 'C' )
+d440 1
+a440 1
+			if ( v15 )
+d442 3
+a444 3
+				v17 = &ttab[v15];
+                if ( v17->TableAlias[0] )
+					v18 = v17->TableAlias;
+d446 1
+a446 2
+					v18 = v17->TableName;
+				print("%s.%s ", v18, v28->FLDname);
+d450 2
+a451 2
+				if ( *v28->FLDname == '\'' )// ??? mask literals ???
+					print("mask=literal val=[%s] ", v28->FLDdata);
+d453 1
+a453 1
+					print("mask=[%s] val=[%s] ", v28->FLDname, (char *)v28->FLDdata);
+d458 1
+a458 1
+			if ( v15 )
+d460 3
+a462 3
+				v19 = &ttab[v15];
+                if ( v19->TableAlias[0] )
+					v20 = v19->TableAlias;
+d464 1
+a464 2
+					v20 = v19->TableName;
+				print("%s.%s [%c] ", v20, v28->FLDname, v28->FLDtype);
+d467 1
+a467 1
+				print("var=[%s[%c]] ", v28->FLDname, v28->FLDtype);
+d480 12
+d493 5
+d499 2
+d502 1
+a503 8
+	case 0xD800:
+	case 0x6800:
+	case 0x9000:
+	case 0x6000:
+	case 0x3C00:
+	case 0x4C00:
+	case 0x5400:
+	case 0x4400:
+d505 1
+a505 13
+	case 0xE400:
+	case 0xDC00:
+	case 0x9400:
+	case 0x6400:
+	case 0x5800:
+	case 0x5000:
+	case 0x4800:
+	case 0x1000:
+	case 0x0800:
+	case 0x0C00:
+	case 0x1400:
+	case 0x1800:
+		return true;
+d509 1
+a509 1
+		return false;
+d645 1
+a645 1
+			FieldLen = 8;                    // all other variables are stored in 8 bytes
+d704 1
+a704 1
+		xtab = ptb->TABno ? (XTAB *)&xtarr.TableAddr[52 * (ptb->TABno - 1)] : 0;
+d776 1
+a776 1
+int gettfs(unsigned short ENTABno, int *TTno, char *FLDtype, short *Status)
+d784 1
+a784 1
+	entb = ENTABno ? (ENTAB *)&enarr.TableAddr[12 * (ENTABno - 1)] : 0;
+d790 1
+a790 1
+		entb = (ENTAB *)&enarr.TableAddr[12 * (entb->Dest - 1)];
+d808 1
+a808 1
+	case 4:
+d811 1
+a811 1
+	case 8:
+d814 1
+a814 1
+	case 0x10:
+d824 1
+a824 1
+			fld = &ttab[*TTno].TTfields[FieldNo];
+d826 1
+a826 1
+			fld = getvars(entb->RecNo);
+d830 1
+a830 1
+    *Status = fld->FLDstat;
+d836 3
+a845 1
+     signed int v22; // edx@@120
+a847 2
+     short v32; // ax@@135
+     char *v35; // eax@@144
+a848 1
+     signed int v43; // eax@@168
+a854 3
+     ENTAB *v87; // edx@@280
+     short v88; // ax@@280
+     FLDdesc *v92; // edx@@290
+d856 2
+d864 2
+a865 3
+     ENTAB *v115; // [sp+3Ch] [bp-7Ch]@@245
+     int TTno; // [sp+40h] [bp-78h]@@239
+     char FieldType; // [sp+47h] [bp-71h]@@219
+d867 6
+a872 3
+     PTAB *ptab1; // [sp+4Ch] [bp-6Ch]@@114
+     char v119[64]; // [sp+50h] [bp-68h]@@128
+     int a4; // [sp+9Eh] [bp-1Ah]@@239
+d877 2
+a878 1
+	while ( symbol == 930 )
+d881 1
+a881 1
+	AuxError = 0;
+d885 1
+a885 1
+		return 0;		// error_exit
+d905 1
+a905 1
+		if ( lerfile(LineNo, symbol))
+d919 1
+a919 1
+	case 1680:								// 1680 = unlock
+d939 1
+a939 1
+	case 620:									// goto
+d954 1
+a954 1
+			cdbcpystr(v35, sym, 0);
+d966 1
+a966 1
+            while ( symbol != 390 && symbol )
+d996 2
+a997 4
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1022 3
+a1024 2
+        if ( symbol == 210 )   // continue
+			v32 = 320;	// continue
+d1026 4
+a1029 4
+			v32 = 330;	// endloop
+		ptab1->OpCode = v32;
+        ptab1->SrcLineNo = lla;
+        ptab1->Operand = 0;
+d1033 1
+a1033 1
+			loaderr(33, sym);
+d1085 1
+a1085 1
+        v43 = 1;
+d1087 1
+a1087 2
+			v43 = 0;
+        AuxError = v43;
+d1127 1
+a1127 1
+        v43 = 1;
+d1129 1
+a1129 2
+			v43 = 0;
+        AuxError = v43;
+d1141 1
+a1141 1
+        v43 = 1;
+d1143 1
+a1143 2
+			v43 = 0;
+		AuxError = v43;
+d1155 4
+a1158 6
+        v100 = 0;				// 0 == file
+        v19 = leopen(v100);
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1187 2
+a1188 4
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1212 2
+a1213 4
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1255 1
+a1255 1
+        v43 = 1;
+d1257 1
+a1257 2
+			v43 = 0;
+        AuxError = v43;
+d1264 4
+a1267 4
+	case 560:			//   **** check this case ***
+	case 540:
+	case 440:
+		allptpt(getptabp((*LineNo)++), &ptab1);		// 440? close() and/or  read()?
+d1272 2
+a1273 4
+		v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1293 1
+a1293 1
+	case 1120:							// popenio
+d1300 3
+a1302 5
+        v19 = leopen(v100);
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1312 1
+a1312 1
+        ptab1->OpCode = 900;
+d1316 2
+a1317 4
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1325 2
+a1326 2
+	case 1180:
+	case 1230:
+d1328 1
+a1328 1
+		ptab1->OpCode = 850;
+d1332 2
+a1333 4
+        v22 = 1;
+		if ( v19 )
+			v22 = 0;
+		AuxError = v22;
+d1343 1
+d1345 1
+a1345 4
+		{
+			allptpt(getptabp((*LineNo)++), &ptab1);
+            ptab1->OpCode = 922;
+		}
+d1347 1
+a1347 4
+		{
+			allptpt(getptabp((*LineNo)++), &ptab1);
+            ptab1->OpCode = 920;
+		}
+d1390 1
+a1390 1
+	case 2230:		// we hit a variable name as an lvalue
+d1396 1
+a1396 1
+		if ( !gettfexp(v82) )
+d1415 1
+a1415 1
+				ptab1->OpCode = 1;
+d1417 1
+a1417 1
+				if ( yflag )
+d1441 1
+a1441 1
+			FieldNo = gettfs(v82, &TTno, &FieldType, (short *)&a4);
+d1447 2
+a1448 1
+            v112 = getenmem();
+d1478 1
+a1478 1
+            if ( a4 & 0x0040 )
+d1513 3
+a1515 2
+				v87 = v115;
+				v88 = v115->TTno | 0x0200;	// integer calcs flag for clenter
+d1524 1
+a1524 1
+						if ( symbol != 930 )
+d1526 1
+a1526 1
+							loaderr(33, sym);
+d1533 1
+a1533 1
+								v92 = &ttab[TTno].TTfields[FieldNo];
+d1535 2
+a1536 2
+								v92 = getvars(FieldNo);
+							v92->FLDstat |= 0x0008u;
+d1546 3
+a1548 2
+                v87 = v115;
+				v88 = v115->TTno | 0x0040u;
+d1550 1
+a1550 1
+            v87->TTno = v88;
+@

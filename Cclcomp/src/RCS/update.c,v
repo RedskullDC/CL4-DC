@@ -1,0 +1,164 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.01.57.24;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef UPDATE_C
+#define UPDATE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+bool _update(TDinfo *TDptr, char *WorkArea, POS *Pos, short PutMode, short *a5)
+{
+	short Depth; // ax@@2
+	NODE *NodePtr;
+	int v8;
+	int PID;
+	int v10;
+	short v11;
+	bool result; // bool?
+	char *RecBuffer; // [sp+2Ch] [bp-5Ch]@@1
+	int TableLocked; // [sp+30h] [bp-58h]@@1
+	bool v15; // [sp+34h] [bp-54h]@@1
+	int PageList[6];
+	short N1_2idx;
+
+	printf("_update(TDptr: x%08X,WorkArea: x%08X,POS: x%08X, PutMode: x%02X, a5: x%08X)\n" ,TDptr,WorkArea,Pos,PutMode,a5);
+
+	// bitfields in PutMode.
+	// ZERO = delete record
+	TableLocked = 0;
+	v15 = 0;
+	RecBuffer = ealloc(TDptr->TDRecSize, 0);
+	TDptr->KeyDefSize = rtokey(TDptr->TDKeyDefs, WorkArea, Pos, TDptr->TableDefs);
+	printf("_update : KeyDefSize = %d\n",TDptr->KeyDefSize);
+	while ( 1 )
+	{
+		while ( 1 )
+		{
+			emark(TDptr->TDDBinfo, TDptr->TDindexOff);
+			Depth = _getpath(PageList, TDptr);
+			printf("_update : _getpath returned = %d\n",Depth);
+			if ( Depth )
+				break;
+			if ( !PutMode )
+				goto LABEL_33;
+			if ( TableLocked )
+				break;
+			TableLocked = _locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 1);
+			if ( !TableLocked )
+				goto LABEL_32;
+		}
+		if ( Depth <= 0 || _lockpg(TDptr->TDDBinfo, PageList[Depth - 1], 2) )
+			break;
+LABEL_32:
+		ewait(TDptr->TDDBinfo, TDptr->TDindexOff);
+	}
+//----------------
+  
+	if ( !Depth )
+	{
+		NodePtr = freshnode(TDptr, 0);
+		N1_2idx = 0;
+		goto LABEL_22;
+	}
+
+//----------------
+
+	NodePtr = getnode(TDptr, PageList[Depth - 1], 0);
+	v8 = _scanpg((PAGE*)NodePtr, TDptr, &N1_2idx, 1);	// scanpg takes NODE or PAGE structure.
+	v15 = v8;
+	if ( PutMode != 1 )
+	{
+		if ( v8 )
+		{
+			if ( PutMode == 0 )
+			{
+				delpage(NodePtr, N1_2idx);
+				goto LABEL_22;
+			}
+			if ( v8 )
+				goto LABEL_18;
+		}
+		if ( PutMode == 0 )
+		{
+			if ( v8 )
+			{
+LABEL_18:
+				if ( PutMode == 2 )
+				{
+					PID = mstol((int *)(NodePtr->NODE1ptr[N1_2idx].Data + 129));
+					if ( PID == getpid() )
+						v15 = v15 == 0;
+				}
+			}
+			_lockpg(TDptr->TDDBinfo, NodePtr->PageNo, 0);
+			relnode(NodePtr);
+			goto LABEL_33;
+		}
+	}
+
+LABEL_22:
+//-------------------
+	if ( PutMode == 2 )
+	{
+		//printf("_update: calling rtotup()\n");
+		v10 = rtotup(RecBuffer, WorkArea, Pos, TDptr->TableDefs);
+		addpage(NodePtr, N1_2idx,RecBuffer, v10);
+	}
+	else
+	{
+		if ( v15 )
+		{
+			if ( PutMode == 1 )
+			{
+				v11 = _uptuple(RecBuffer, NodePtr->NODE1ptr[N1_2idx].Data, WorkArea, Pos, TDptr->TableDefs, a5);
+				modpage(NodePtr, N1_2idx, RecBuffer, v11);
+			}
+		}
+		else
+		{
+			if ( PutMode )
+			{
+				v10 = rtotup(RecBuffer, WorkArea, Pos, TDptr->TableDefs);
+				addpage(NodePtr, N1_2idx,RecBuffer, v10);
+			}
+		}
+	}
+//-------------------
+	if ( !_balance(TDptr, NodePtr, PageList, Depth) )
+		goto LABEL_32;
+	if ( TableLocked )
+		_locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 0);	// Free the table entry before exiting
+
+LABEL_33:
+	ewake(TDptr->TDDBinfo, TDptr->TDindexOff);
+	nfree(RecBuffer, 0);
+	result = v15;
+	if ( PutMode == 2 )
+		result = v15 == 0;
+	return result;
+}
+
+#endif
+@

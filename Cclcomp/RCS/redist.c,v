@@ -1,0 +1,63 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.01.40.35;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef REDISTRIBUTE_C
+#define REDISTRIBUTE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int _redistrib(NODE *a1, NODE *a2, short PageSize)
+{
+	int v3; // ecx@@2
+	int v4; // ecx@@5
+	int i; // [sp+14h] [bp-14h]@@1
+
+    //printf("_redistrib(a1: x%08X, a2: x%08X, Pagesize: %d [x%04X])\n" ,a1,a2,PageSize, PageSize);
+
+	for ( i = 0; ; i++ )	// Try shifting recs from Node a1 to Node a2
+	{
+		v3 = a2->DataEnd + (a1->field_16 + a1->NODE1ptr[a1->NumEntries - 1].Size);
+		if ( PageSize < v3 )	// would moving this record exceed pagesize for Node a2?
+			break;
+		if ( a1->DataEnd - (a1->field_16 + a1->NODE1ptr[a1->NumEntries - 1].Size) < v3 )
+			break;				// Does Node a1 now fit in a page? yes == break
+		moveright(a1, a2, 1);		// a1 > a2, 1 entry
+	}
+	while ( 1 )  // Try shifting recs from a2 back to a1
+	{
+		v4 = a1->DataEnd + (a2->field_16 + a2->NODE1ptr[0].Size);
+		if ( PageSize < v4 )	// would moving this record exceed pagesize for Node a1?
+			break;
+		if ( a2->DataEnd - (a2->field_16 + a2->NODE1ptr[0].Size) < v4 )
+			break;				// Does Node a2 now fit in a page? yes == break
+		moveleft(a1, a2, 1);	// a1 < A2 , 1 entry
+		i--;
+	}
+	//printf("_redistrib - recs moved: %d\n",i); 
+	return i; // = Final number of recs moved from a1 to a2, may be -ve value
+}
+
+#endif
+@

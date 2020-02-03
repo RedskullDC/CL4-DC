@@ -1,0 +1,207 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.06.20.12.49.35;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.04.27.41;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef LEOPEN_C
+#define LEOPEN_C
+
+void newfile()
+{
+    int v0;
+	
+	v0 = no_files++;
+    _files = (FCB *)mrealloc(_files, 28 * v0, 28 * no_files);
+}
+
+short leopen(int isPipe)
+{
+    short SFno; // ax@@1
+    short symb; // edi@@3
+    char *StrVal; // esi@@9
+    FCB *fcb; // edx@@15
+    short FCBno; // esi@@15
+
+	short entno; // [sp+18h] [bp-20h]@@12
+    SFTAB *sft; // [sp+20h] [bp-18h]@@1
+    int TDno; // [sp+24h] [bp-14h]@@13
+    char FLDtype; // [sp+2Bh] [bp-Dh]@@13
+
+	SFno = getsfmem();
+	sft = SFARR(SFno);
+	
+	symb = symbol;									// Save previous symbol which is the command type
+    symbol = getsym();
+    if ( symbol != 2230 && symbol != 2220 )			// string literal or variable name
+    {
+		if ( symbol == 930 )
+			loaderr(50, sym);                       // "missing file/pipe name"
+		else
+			loaderr(51, sym);                       // "invalid file/pipe name"
+		return 0;
+    }
+    StrVal = (char *)mmalloc(syml + 1);
+    cdbcpystr(StrVal, sym, 0);
+    if ( symbol == 2230 && nxtch() != '.' )
+		isdef(StrVal);
+	
+	entno = loadexp(0, 1);
+    if ( entno )
+    {
+		gettf(entno, &TDno, &FLDtype);
+        if ( FLDtype != 'C' )
+        {
+			loaderr(51, StrVal);				// "invalid file/pipe name"
+            return 0;
+		}
+        mfree_0(StrVal);
+        fcb = _files;
+        FCBno = 0;
+		while ( no_files > FCBno && fcb->field_0 );
+		{
+			FCBno++;
+            fcb++;
+		}
+        
+		if ( no_files == FCBno )
+		{
+			newfile();
+            if ( no_files <= FCBno )
+				__assert_fail("fpno < no_files", "leopen.c", 0x47u, "leopen");
+			fcb = &_files[FCBno];
+		}
+        
+		sft->field_4 = entno;
+
+		switch (symb)
+		{
+		case 430:						// openapp
+			fcb->field_0 = 0x0004u;
+            sft->field_0 = 0x0014u;
+			break;
+		case 1120:						// popenio
+			fcb->field_0 = 0x0003u;
+            sft->field_0 = 0x0013u;
+			break;
+		case 530:						// openout
+		case 1150:						// popenout
+			fcb->field_0 = 0x0002u;
+			sft->field_0 = 0x0012u;
+			break;
+		case 460:						// openin
+		case 1110:						// popenin
+			fcb->field_0 = 0x0001u;
+            sft->field_0 = 0x0011u;
+			break;
+		}
+
+		if ( isPipe )					// If isPipe == 1, this is a Pipe type command: popenin, popenio, popenout
+        {
+			fcb->field_0 |= 0x0040u;
+            sft->field_0 |= 0x0040u;
+		}
+		entno = loadexp(0, 1);
+        if ( entno )
+        {
+			gettf(entno, &TDno, &FLDtype);
+            if ( FLDtype == 'C' )
+            {
+				sft->field_6 = entno;
+                return SFno;
+			}
+			loaderr(55, sym); // "file name / pipe command must be charac"..
+		}
+	}
+    return 0;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 1
+a12 1
+short leopen(int a1)
+d15 1
+a15 2
+    signed int symb; // edi@@3
+    short v3; // ax@@3
+d19 2
+a20 4
+    char v9; // zf@@26
+    short v13; // [sp+18h] [bp-20h]@@12
+    short v14; // [sp+18h] [bp-20h]@@40
+    short v15; // [sp+1Ch] [bp-1Ch]@@1
+d26 1
+a26 3
+    v15 = SFno;
+	
+	sft = SFno ? (SFTAB *)&sfarr.TableAddr[8 * (SFno - 1)] : 0;
+d28 3
+a30 4
+	symb = (unsigned short)symbol;
+    v3 = getsym();
+    symbol = v3;
+    if ( v3 != 2230 && v3 != 2220 )
+d33 1
+a33 1
+			loaderr(50, sym);                         // "missing file/pipe name"
+d35 1
+a35 1
+			loaderr(51, sym);                         // "invalid file/pipe name"
+d43 2
+a44 2
+	v13 = loadexp(0, 1);
+    if ( v13 )
+d46 1
+a46 1
+		gettf(v13, &TDno, &FLDtype);
+d69 1
+a69 1
+		sft->field_4 = v13;
+d93 1
+a93 1
+		if ( a1 )
+d98 2
+a99 2
+		v14 = loadexp(0, 1);
+        if ( v14 )
+d101 1
+a101 1
+			gettf(v14, &TDno, &FLDtype);
+d104 2
+a105 2
+				sft->field_6 = v14;
+                return v15;
+a112 1
+
+@

@@ -1,0 +1,1137 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.08.28.04.06.08;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.27.06.00.31;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@split reffile() of to own file.
+@
+text
+@#ifndef DBASE_FNS_C
+#define DBASE_FNS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void setclvars(int ErrVal, int LockedVal)
+{
+    setvar(v_ERROR  , ErrVal);                          // "ERROR"
+    setvar(v_LOCKED , LockedVal);                       // "LOCKED"
+}
+
+char *getkerr(char *Src, BTAB *btb, FLDdesc *fld2)
+{
+    PTAB *ptb; // edi@@1
+    XTAB *xtb; // esi@@4
+    ENTAB *ent; // eax@@7
+    FLDdesc *fld1; // [sp+2Ch] [bp-ACh]@@9
+    FLDdesc fld; // [sp+30h] [bp-A8h]@@9
+    char s[256]; // [sp+50h] [bp-88h]@@11
+
+    *Src = 0;
+	ptb = PTARR(getptabp(btb->TYPE24->PT_start));
+    
+	while ( ptb->OpCode != 950 )	// 950 = "break"
+    {
+        srclineno = ptb->SrcLineNo;
+        if ( ptb->OpCode == 1 )                 // accept field
+        {
+            xtb = ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0;
+            ent = xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0;
+            fld1 = getftf(ent, 1, &fld);
+            
+			if ( xtb->Flags < 0 && fld1 <= fld2 )
+            {
+                fldtobuf(s, fld1, 0);
+                cdbcpystr(Src, Src, "'", s, "' ", 0);
+            }
+            if ( fld1 == fld2 )
+                break;
+        }
+		ptb++;
+    }
+    return Src;
+}
+
+int eaddkey(BTAB *bt, PTAB *pt, FLDdesc *fld, int TDno)
+{
+    short Error; // dx@@1
+    char *v5; // eax@@8
+    int result; // eax@@9
+    char Src[112]; // [sp+20h] [bp-F8h]@@8
+    char format[128]; // [sp+90h] [bp-88h]@@8
+
+    Error = rdrec(TDno, 0x0400u);                // 1024 = "lockr"  (0x400)
+    if ( Error <= 0 && Error != -10 )
+    {
+        prerr(0, 0, 0);
+        result = 0x40u;
+    }
+    else
+    {
+        if ( bt->On_excep )
+        {
+            if ( Error == -10 )     // record locked
+				setclvars(0,1);		// quick fn to set both ERROR and LOCKED variables  ErrVal = 0, LockedVal = 1, 
+            else
+				setclvars(1,0);		// ErrVal = 1, LockedVal = 0;
+
+			pexcept(bt);            // do on_exception block routine
+        }
+        else
+        {
+            v5 = getkerr(Src, bt, fld);
+            sprintf(format, "%snot unique", v5, pt);
+            prerr(format, 0, 1);
+        }
+        ulckrec(TDno);
+        rfree(TDno, 0);
+        disprec(bt, TDno, 0, 0, 0);
+        result = 0x80u;
+    }
+    return result;
+}
+
+int egetkey(BTAB *bt, PTAB *ptb, XTAB *xtb, FLDdesc *fld, int TDno, int RecNo, int a5)
+{
+    RTAB *rtb; // ecx@@4
+    RTAB *v26; // ecx@@4
+    ENTAB *v10; // edx@@8
+    ENTAB *v11; // eax@@10
+    ENTAB *v12; // eax@@12
+    FLDdesc *j; // edx@@40
+    signed int v7; // edi@@2
+    int v9; // eax@@8
+    int v15; // eax@@26
+    char v18; // zf@@34
+    void *i; // edx@@37
+    short v21; // eax@@45
+    char *v25; // eax@@82
+    unsigned int ErrorCode; // [sp+2Ch] [bp-9Ch]@@1
+    signed int v31; // [sp+30h] [bp-98h]@@1
+    signed int v32; // [sp+34h] [bp-94h]@@1
+    signed int v33; // [sp+38h] [bp-90h]@@1
+    char Buffer; // [sp+3Fh] [bp-89h]@@33
+    char Src[128]; // [sp+40h] [bp-88h]@@29
+	short RdRtn;
+
+    v33 = 0;
+    v32 = 0;
+    v31 = 0;
+    ErrorCode = 0;
+    ++no_fields;
+    if ( !bt->field_0 )
+    {
+        bt->EXPR = (EXPR *)fretre(bt->EXPR, 0);
+        v31 = 0;
+        v7 = 0;
+        if ( xtb->Flags & 0x0010 )	// Does this field have a range specifier?
+        {
+            rtb = xtb->RangeID ? &rtarr.TableAddr[xtb->RangeID - 1] : 0;
+            if ( TDno == rtb->TTno )
+            {
+                v31 = 1;
+                if ( rtb->WhereEXP )
+                {
+                    v9 = rtb->WhereEXP;
+                    v10 = enarr.TableAddr;
+	                    if ( *((short *)&v10[v9] - 2) )
+                    {
+                        v11 = rtb->WhereEXP ? &v10[v9 - 1] : 0;
+                        v12 = &enarr.TableAddr[v11->Dest - 1];
+                    }
+                    else
+                        v12 = 0;
+
+					if ( bt->SrchMode )					
+                    {											// 3 Operators bits: 
+                        if ( bt->SrchMode == '-' )				// 0x08 == less than				'<'
+                            v12->TTno = 0x18u;					// 0x10 == equal to					'='
+                        else									// 0x20 == greater than				'>'
+                            v12->TTno = 0x30u;					// Mixed bit tests:
+                    }											// 0x30 == greater than or equal	'>='
+                    else										// 0x18 == less than or equal		'<='
+                    {											// 0x28 == not equal to				'<>'
+                        v12->TTno = 0x10u;
+                    }
+                    v12->entype = 2;
+                    bt->EXPR = getexpr(rtb->WhereEXP ? &enarr.TableAddr[rtb->WhereEXP - 1] : 0, TDno);
+                    v7 = 1;	// EXPR loaded ok
+                }
+            }
+        }
+        if ( !v7 )	// if not, create a default EXPR
+            bt->EXPR = bldexpr(TDno, RecNo, bt->SrchMode);
+
+		v15 = rtdget(&ttab[TDno]);
+        ErrorCode = (signed short)cdbrestrict(v15, bt->EXPR);
+        if ( ErrorCode < 0 )
+            dberror(ErrorCode, 0, v15);
+
+		if ( !bt->SrchMode )
+            getkerr(Src, bt, fld);
+    }
+//--------------------------------------
+    if ( bt->SrchMode == '-' )	// don't check for '+'
+        Buffer = 'p';
+    else
+        Buffer = 'n';
+
+//--------------------------------------
+    if ( Buffer != 'n' )
+        goto LABEL_35;
+
+LABEL_37:
+    for ( RdRtn = rdnxt(TDno, bt->EXPR, 0, 1); RdRtn <= 0;  RdRtn = rdprev(TDno, bt->EXPR, 0, 1) )
+    {
+        if ( !bt->field_0 )
+        {
+            if ( bt->SrchMode )
+            {
+                prerr("no more", 0, 1);
+            }
+            else
+            {
+                if ( bt->On_excep )
+                {
+                    setclvars(1, 0);            // "ERROR"
+                    pexcept(bt);
+                }
+                else
+                {
+                    prerr("%snot found", Src, 1);
+                }
+                v33 = 1;
+            }
+        }
+        Buffer = 'q';
+LABEL_74:
+        if ( Buffer != 'y' )
+            goto LABEL_84;
+        if ( !rcheck(xtb, fld, 0) )
+		{
+			Buffer = 'q';
+			goto LABEL_84;	// get out of the routine
+		}
+        if ( bt->Curr_Mode == 'v' )
+            ErrorCode = rdrec(TDno, 0);
+        else
+            ErrorCode = rdrec(TDno, 1024);	//lockr
+        
+        if ( (signed int)ErrorCode <= 0 )       // rdrec filters -10 error code in View mode?
+        {
+            if ( bt->On_excep )
+            {
+                setclvars(0, 1);
+                pexcept(bt);
+            }
+            else
+            {
+                v25 = fldtobuf(Src, fld, 0);
+                prerr("'%s' record locked", v25, 1);
+            }
+            Buffer = 'q';
+        }
+
+LABEL_84:
+        if ( Buffer == 'n' )
+            goto LABEL_37;
+LABEL_35:
+        if ( !(Buffer == 'p'))
+            goto LABEL_86;
+// if we go around here, we do a rdprev();
+    }
+//-----------------------------
+    rectott(TDno, RecNo);
+    for ( j = fld; j->FLDstat < 0; ++j )
+        j->FLDstat &= 0xFFEFu;
+    if ( !bt->SrchMode )
+    {
+        dispfld(xtb, fld, 1, 0, 1, 0);
+        goto LABEL_50;
+    }
+    if ( !v31 && !jcheck(ptb, fld, 0, 0) )
+        goto LABEL_84;
+    dispfld(xtb, fld, 1, 0, 1, 0);
+
+    v33 = 1;
+    v21 = sploop(bt, 0, a5, bt->TYPE24->PT_end, a5, bt->TYPE24->PT_end);
+    ErrorCode = v21;
+    if ( v21 == 1 || v21 == 256 )
+    {
+        v33 = 1;
+        setcvar(5, "");	//	"REPLY"
+LABEL_50:
+        if ( bt->SrchMode )
+        {
+            if ( ErrorCode == 256 )
+            {
+                linput(&Buffer, 0, 0);
+                if ( Buffer == 'n' )
+					Buffer = reply("<n>ext <p>rev or <q>uit", "npq");
+                else
+					Buffer = reply("<p>rev <n>ext or <q>uit", "pnq");
+
+				ErrorCode = 0;
+            }
+            else
+            {
+                if ( Buffer == 'n' )
+					Buffer = reply("<y>es <n>ext <p>rev or <q>uit", "npyq");
+                else
+					Buffer = reply("<y>es <p>rev <n>ext or <q>uit", "pnyq");
+            }
+        }
+        else
+        {
+            Buffer = 'y';
+        }
+        
+		if ( Buffer == 'n' || Buffer == 'p' )	// next/previous
+        {
+            rfree(TDno, 0);
+            if ( var_cr )
+            {
+                dscreen(bt, 0, a5);
+                var_cr = 0;
+            }
+            else
+            {
+                disprec(bt, TDno, 0, 0, a5);
+            }
+        }
+        goto LABEL_74;
+    }
+    bt->field_0 = 0;
+    bt->SrchMode = 0;
+    Buffer = 'q';
+    v32 = 1;
+
+LABEL_86:
+//------------------------------
+    if ( Buffer == 'q' )
+    {
+        bt->field_0 = 0;
+        bt->SrchMode = 0;
+    }
+    if ( v33 )
+    {
+        if ( Buffer != 'y' )
+        {
+            rfree(TDno, 0);
+            if ( var_cr )
+            {
+                dscreen(bt, 0, 0);
+                var_cr = 0;
+            }
+            else
+            {
+                disprec(bt, TDno, 0, 0, 0);
+            }
+            if ( xtb->Flags & 0x10 )
+            {
+				v26 = xtb->RangeID ? &rtarr.TableAddr[xtb->RangeID - 1] : 0;
+                rfree(v26->TTno, 0);
+            }
+            goto LABEL_98;
+        }
+LABEL_99:
+        if ( bt->SrchMode )
+            bt->field_0 = 1;
+    }
+    else
+    {
+LABEL_98:
+        if ( Buffer == 'y' )
+            goto LABEL_99;
+    }
+//-----------------------------
+    if ( !v32 )
+    {
+        if ( Buffer == 'y' )
+            ErrorCode = 0x40u;
+        else
+            ErrorCode = 0x80u;
+    }
+    return ErrorCode;
+}
+
+int _tdopen(int DBno, TDesc *TTptr)	// Only called by pcreate()
+{
+    short v2; // ax@@2
+    int result; // eax@@4
+    short NumFields; // esi@@6
+    short i; // edx@@6
+    short v6; // ax@@12
+    short v7; // kr04_4@@16
+    short v8; // cx@@16
+    short v13; // ax@@30
+    int v9; // esi@@17
+    int TDno; // [sp+24h] [bp-2044h]@@8
+    
+	TDef *tdef;
+    TDef *tdef2;
+	FLDdesc *fld;
+
+	char Dest[32];
+    ELEMENTREC Buffer;
+
+	//printf("_tdopen(%d, %08X)\n", DBno, TTptr);
+
+    if ( no_ttabs - 1 >= TTptr->TTrtd )
+    {
+        tdef = tblrow(TTptr->TTrtd);
+        result = 0;
+        if ( tdef )
+        {
+            tdef2 = tdef;
+            
+			NumFields = 0;
+            for ( i = 0; tdef2->TDFentry; ++tdef2 )
+            {
+                i += tdef2->TDFsize;
+                NumFields++;
+            }
+            TTptr->TDworkarea1	= (char *)mmalloc(i + 1);
+            TTptr->NumFields	= NumFields;
+            TTptr->TTfields		= (FLDdesc *)mmalloc(24 * (NumFields + 1));
+
+            TDno = identify(DBno, "elements");
+            if ( TDno >= 0 || (TDno = identify(DBno, "domains"), result = 0, TDno >= 0) )
+            {
+                tdef2 = tdef;
+                for ( fld = TTptr->TTfields; tdef2->TDFentry; ++tdef2 )
+                {
+                    Dest[0] = 0;
+                    if ( TDno > 0 )
+                    {
+                        itoms(&Buffer.TDFentry, tdef2->TDFentry);
+                        v6 = getr(TDno, (char *)&Buffer, 0);
+                        if ( v6 <= 0 )
+                        {
+                            Dest[0] = 0;
+                            if ( v6 < 0 )
+                                dberror(v6, 0, TDno);
+                        }
+                        else
+                        {
+                            Buffer.FLDlen = 0; // ensure FieldName string terminated
+                            cdbcpystr(Dest, Buffer.FieldName, 0);
+                        }
+                        v7 = strlen(Dest) + 1;
+                        v8 = v7 - 1;
+                        if ( v7 != 1 )	// true if not a blank string
+                        {
+                            v9 = v8 + 1;
+                            fld->FLDname = (char *)mmalloc(v8 + 1);
+                            cpybuf(fld->FLDname, Dest, v9);
+                        }
+                    }
+                    
+					fld->FLDtype = gettype(tdef2->TDFtype, tdef2->TDFsize);
+					switch (fld->FLDtype)
+					{
+					case 'C':
+                        fld->FLDdata = mmalloc(tdef2->TDFsize + 1);			// strings are variable length
+						break;
+					case 'S':				// do nothing. Keys and Subrecs have no data field
+					case 'K':
+						break;
+					default:
+						fld->FLDdata = mmalloc(sizeof(double));		//mmalloc(8)	// all other var types stored as doubles internally
+						break;
+					}
+
+                    fld->FLDstat |= fld_ZERO;				// 0x0004;	quick zero flag
+					if ( tdef2->TDFtype & tdf_KEY )			// Key field
+                        fld->FLDstat |= fld_KEY;			// 0x8000u;
+                    else
+                        fld->FLDstat &= ~fld_KEY;			// 0x7FFFu;
+
+                    fld->FLDelemID	= tdef2->TDFentry;
+                    fld->FLDlen		= tdef2->TDFsize;
+                    fld->TDFtype	= tdef2->TDFtype;
+                    ++fld;
+                }
+                v13 = release(TDno);
+                if ( v13 < 0 )
+                    dberror(v13, 0, TDno);
+                result = 1;
+            }
+        }
+    }
+    else
+    {
+        fwrite("too many tables open\n", 1u, 0x15u, stderr);
+        v2 = release(TTptr->TTrtd);
+        if ( v2 < 0 )
+            dberror(v2, 0, TTptr->TTrtd);
+        result = 0;
+    }
+    return result;
+}
+
+int getfile(char *DBname, char *TableName)
+{
+    DBase **v2; // ecx@@7
+    TDesc *TTptr; // esi@@9
+    char *Alias; // eax@@16
+    short DBno; // [sp+18h] [bp-10h]@@1
+
+printf("getfile  DBname = %s, TableName = %s\n", DBname, TableName);
+
+    DBno = 0;
+    while ( no_dtabs > DBno )
+    {
+		if ( !strcmp(DBname, dtab[DBno].FullDBname))
+			break;
+		DBno++;
+    }
+    if ( no_dtabs == DBno )
+    {
+        newdtab();
+        if ( no_dtabs <= DBno )
+            __assert_fail("dbii < no_dtabs", "getfile.c", 0xD5u, "getfile");
+    }
+    v2 = &dtab;
+    if ( !dtab[DBno].FullDBname )
+    {
+        dtab[DBno].DBno = -1;
+        (*v2)[DBno].FullDBname = mstrcpy(DBname, 0);
+    }
+    for ( TTptr = ttab + 3; TTptr < &ttab[no_ttabs]; ++TTptr )
+    {
+        if ( !TTptr->TableName[0] )
+            break;
+        if ( !strcmp(TTptr->TableName, TableName) )
+            break;
+    }
+    if ( TTptr == &ttab[no_ttabs] )
+    {
+        newttab();
+        TTptr = &ttab[no_ttabs - 1];
+    }
+    if ( !TTptr->TableName[0] )
+    {
+        Alias = TableName;
+        if ( *TableName )
+        {
+            if ( *TableName == ',' )
+            {
+LABEL_20:
+                if ( *Alias )
+                    *Alias++ = 0;
+            }
+            else
+            {
+                while ( 1 )
+                {
+                    ++Alias;
+                    if ( !*Alias )
+                        break;
+                    if ( *Alias == ',' )
+                        goto LABEL_20;
+                }
+            }
+        }
+        cdbcpystr(TTptr->TableAlias, Alias, 0);
+        cdbcpystr(TTptr->TableName, TableName, 0);
+        TTptr->DBnumber = DBno;
+        TTptr->TTrtd = -1;
+    }
+    return rtdget(TTptr);
+}
+
+void fix_buf(int TTno, char *WorkArea)
+{
+	FLDdesc *fld;
+	char *v3;
+	int v4;
+	signed int v6;
+
+	// convert all string key fields to uppercase for comparison  
+	for ( fld = ttab[TTno].TTfields; fld->FLDstat & fld_KEY; ++fld )
+	{
+		if ( fld->FLDtype == 'C' )
+		{
+			v3 = WorkArea;
+			v6 = 0;
+			while ( fld->FLDlen > v6 && *v3 )
+			{
+				v4 = *v3;
+				if (islower(v4))
+					*v3 = toupper(v4);
+				++v6;
+				++v3;
+			}
+		}
+		WorkArea += fld->FLDlen;
+	}
+}
+
+short rdnxt(int TDno, EXPR *expr, int Lock, int a4)
+{
+    char *v4; // edi@@1
+    int v5; // eax@@1
+    short v6; // ax@@9
+    short v7; // esi@@9
+    short v8; // ax@@11
+    short v9; // ax@@21
+    int MaxLen; // [sp+14h] [bp-B4h]@@6
+    int TDNo; // [sp+18h] [bp-B0h]@@1
+    TDesc *TTptr; // [sp+1Ch] [bp-ACh]@@1
+    char Src[1024]; // [sp+20h] [bp-A8h]@@6
+
+	//printf("rdnxt(TDno = %d, EXPR = x%08X, Lock = %d, a4 = %d)\n",TDno,expr,Lock,a4);
+
+    TTptr = &ttab[TDno];
+    TDNo = rtdget(TTptr);
+    v4 = TTptr->TDworkarea1;
+    ulckrec(TDno);
+    
+	v5 = 0;
+    if ( a4 )
+        v5 = 99;	// This will break records with > 98 fields if a4 is set!
+
+    rfree(TDno, v5);
+    TTptr->TDlocked &= 0xFFDFu;		// clear 0x0040
+    if ( TTptr->TDlocked & 0x0200 )	// Lock bit included by clcomp?
+        Lock = 0;
+    
+	while ( 1 )
+    {
+        v9 = getnxt(TDNo, v4, expr);
+        v7 = v9;
+        if ( v9 <= 0 )	// Either no data, or error condition
+            break;
+        if ( !Lock )	// Data found, if no lock requested, return to caller
+		{
+            rkfree(TDno);
+            ravail(TDno);	// Set flags indication data is in WorkArea buffer
+            break;
+		}
+        
+		MaxLen = keysize(TDNo);
+        cpybuf(Src, v4, MaxLen);
+        fix_buf(TDno, v4);
+
+        while ( 1 )
+        {
+            v6 = lgetr(TDNo, v4, 0);
+            v7 = v6;
+            if ( v6 != -10 || Lock == 1024 )
+                break;
+            sleep(1u);	// Keep trying until record becomes free. Potential deadlock!
+			//printf("rdnxt stuck in lock loop\n");
+        }
+		//printf("rdnxt 952 - v6 = %d, Lock = %d\n",v6,Lock);
+        if ( v6 )
+        {
+            if ( v6 > 0 || v6 == -10 )
+                cpybuf(v4, Src, MaxLen);
+            if ( v7 <= 0 )
+			{
+                if ( v7 != -10 )
+                    break;
+	            rkfree(TDno);
+		        ravail(TDno);
+			    break;
+			}
+            TTptr->TDlocked |= 0x0001u;
+            cpybuf(TTptr->TDworkarea2, v4, TTptr->TDrecsize);
+            if ( v7 <= 0 )
+            {
+                if ( v7 != -10 )
+                    break;
+            }
+            rkfree(TDno);
+            ravail(TDno);
+            break;
+        }
+		//printf("rdnxt 967 - v6 = %d, Lock = %d\n",v6,Lock);
+        v8 = ulockr(TDNo, v4, 0);
+        if ( v8 < 0 )
+            dberror(v8, 0, TDNo);
+    }
+//================================
+    if ( v7 < 0 && v7 != -10 )
+        dberror(v7, 0, TDNo);
+    return v7;
+}
+
+short rdprev(int TDno, EXPR *expr, int Lock, int a4)
+{
+    char *v4; // edi@@1
+    int v5; // eax@@1
+    short v6; // ax@@9
+    short v7; // esi@@9
+    short v8; // ax@@11
+    short v9; // ax@@21
+    int MaxLen; // [sp+14h] [bp-B4h]@@6
+    int TDNo; // [sp+18h] [bp-B0h]@@1
+    TDesc *TTptr; // [sp+1Ch] [bp-ACh]@@1
+    char Src[1024]; // [sp+20h] [bp-A8h]@@6
+
+//printf("rdprev(TDno = %d, EXPR = x%08X, Lock = %d, a4 = %d)\n",TDno,expr,Lock,a4);
+
+    TTptr = &ttab[TDno];
+    TDNo = rtdget(&ttab[TDno]);
+    v4 = TTptr->TDworkarea1;
+    ulckrec(TDno);
+    v5 = 0;
+    if ( a4 )
+        v5 = 99;
+    rfree(TDno, v5);
+    TTptr->TDlocked &= 0xFFDFu;
+    if ( TTptr->TDlocked & 0x0200 )
+        Lock = 0;
+    while ( 1 )
+    {
+        v9 = getprev(TDNo, v4, expr);
+        v7 = v9;
+        if ( v9 <= 0 )
+            break;
+        if ( !Lock )
+            goto LABEL_18;
+        MaxLen = keysize(TDNo);
+        cpybuf(Src, v4, MaxLen);
+        fix_buf(TDno, v4);
+        while ( 1 )
+        {
+            v6 = lgetr(TDNo, v4, 0);
+            v7 = v6;
+            if ( v6 != -10 )
+                break;
+            if ( Lock == 1024 )
+                break;
+            sleep(1u);
+        }
+        if ( v6 )
+        {
+            if ( v6 > 0 || v6 == -10 )
+                cpybuf(v4, Src, MaxLen);
+            if ( v7 <= 0 )
+                goto LABEL_28;
+            TTptr->TDlocked |= 0x0001u;
+            cpybuf(TTptr->TDworkarea2, v4, TTptr->TDrecsize);
+LABEL_18:
+            if ( v7 <= 0 )
+            {
+LABEL_28:
+                if ( v7 != -10 )
+                    break;
+            }
+            rkfree(TDno);
+            ravail(TDno);
+            break;
+        }
+        v8 = ulockr(TDNo, v4, 0);
+        if ( v8 < 0 )
+            dberror(v8, 0, TDNo);
+    }
+    if ( v7 < 0 && v7 != -10 )
+        dberror(v7, 0, TDNo);
+    return v7;
+}
+
+int rtdget(TDesc *TTptr)
+{
+//printf("rtdget()\n");
+
+    if ( ttab > TTptr || TTptr >= &ttab[no_ttabs] )
+        __assert_fail("ttab <= tt && tt < &ttab[no_ttabs]", "getfile.c", 178, "rtdget");
+
+	if ( TTptr->TTrtd == -1 && tgetfile(TTptr) < 0 )	// opens table if necessary
+    {
+        eprint("can't open table '%s'\n", TTptr->TableName);
+        dberror(-98, TTptr->DBnumber, TTptr->TTrtd);
+        mexit(-98);
+    }
+    if ( TTptr->TTrtd < 0 || TTptr->TTrtd >= no_ttabs )
+        __assert_fail("tt->runtd >= 0 && tt->runtd < no_ttabs", "getfile.c", 188,  "rtdget");
+
+	//printf("rtdget : returning %d\n",TTptr->TTrtd);
+    return TTptr->TTrtd;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a352 59
+int delset(int TDno, int DBno, char *TableName, int Key)
+{
+    signed int result; // eax@@1
+    TDesc *TTptr; // edi@@2
+    int v6; // eax@@4
+    short v7; // ax@@6
+    FLDdesc *fld; // esi@@9
+    short v9; // ax@@16
+    int TTno; // [sp+10h] [bp-18h]@@1
+    int TDnoa; // [sp+14h] [bp-14h]@@2
+    EXPR *expr; // [sp+18h] [bp-10h]@@6
+
+    TTno = findtd(TableName, DBno);
+    result = 0;
+    if ( TTno >= 0 )
+    {
+        TTptr = &ttab[TTno];
+        TDnoa = rtdget(TTptr);
+        if ( Key )							// Key == 1 if we are deleting a Key Field, 0 if a SUBrecord
+            tdtotd(TTno, TDno, 1, 2);		// copy current key fields from parent record. 
+        v6 = TTno;
+        if ( !Key )
+            v6 = TDno;
+        expr = bldexpr(v6, -1, 0);				// -1 creates a "match all" expression
+        v7 = cdbrestrict(TDnoa, expr);
+        if ( v7 < 0 )
+            dberror(v7, 0, TDnoa);
+        
+		while ( 1 )
+        {
+            if ( rdnxt(TTno, expr, 0, 0) <= 0 )
+            {
+                fretre(expr, 0);
+                return 1;				// exit_success
+            }
+            if ( TTptr->TDlocked & 0x4010 )	// Do we have any sub recs?
+            {
+                fld = TTptr->TTfields;
+				while (fld->FLDelemID)
+				{
+					if ( fld->FLDtype = 'S' )
+						delset(TTno, DBno, (char *)fld->FLDdata, 0);	// recursive behaviour
+					else if ( fld->FLDtype == 'K' )
+						delset(TTno, DBno, (char *)fld->FLDdata, 1);	// recursive behaviour
+					++fld;
+				}
+            }
+            tttorec(TTno, TTptr->TDworkarea1, 1);
+            v9 = cldelr(TDnoa, TTptr->TDworkarea1, 0, TTptr);
+            if ( v9 < 0 )
+                dberror(v9, 0, TDnoa);
+            rfree(TTno, 0);
+            TTptr->TDlocked &= 0xFFDFu;	// clear bit 0x0040u
+        }
+        
+    }
+    return result;
+}
+
+a538 267
+short reffile(RTAB *rtab)
+{
+    RTAB *v20; // eax@@61
+    RTAB *v23; // eax@@68
+    RTAB *v26; // eax@@75
+
+    ENTAB *v22; // eax@@65
+    ENTAB *v25; // eax@@72
+    ENTAB *v27; // eax@@79
+    ENTAB *ent; // eax@@29
+    FLDdesc *fld; // edx@@56
+    DBase *v28; // esi@@82
+    TDesc *TTptr; // [sp+1Ch] [bp-BFCh]@@1
+    TDesc *TTptra; // [sp+1Ch] [bp-BFCh]@@89
+
+    short OpCode; // si@@3
+    short v5; // ax@@7
+    int v6; // esi@@7
+    char v7; // zf@@8
+    short v9; // si@@15
+    void *v10; // eax@@20
+    short v14; // ax@@33
+    int v15; // esi@@33
+    short v17; // ax@@44
+    signed int v18; // esi@@45
+    signed int v29; // edi@@82
+    int v34; // [sp+20h] [bp-BF8h]@@60
+    int TDno; // [sp+24h] [bp-BF4h]@@1
+    signed int TDnoa; // [sp+24h] [bp-BF4h]@@89
+    short ErrorCode; // [sp+28h] [bp-BF0h]@@1
+    int Lock; // [sp+2Ch] [bp-BECh]@@3
+    char v39[1008]; // [sp+30h] [bp-BE8h]@@60
+    char Src[1008]; // [sp+420h] [bp-7F8h]@@60
+    char s[1008]; // [sp+810h] [bp-408h]@@60
+
+    ErrorCode = 0;	// default success
+    TDno = rtab->TTno;
+    TTptr = &ttab[TDno];
+    if ( !(TTptr->TDlocked & 0x0800) )
+    {
+        setvar(v_ERROR, 12);		// "ERROR" 1
+        return 12;
+    }
+    OpCode = rtab->field_2;		// Specifies the operation type.
+    Lock = rtab->field_0;		// Lock type. May be a lockr
+
+printf("reffile OpCode = x%04X, Lock = x%04X\n",OpCode,Lock);
+
+	if (OpCode & rtb_SELECT)	// select command	0x0080u
+	{
+		printf("reffile :(OpCode & 0x0080)\n");
+		TTptr->TTselect = (EXPR *)fretre(TTptr->TTselect, 0);	// get rid of previous expression
+		TTptr->TTselect = getexpr(rtab->WhereEXP ? &enarr.TableAddr[rtab->WhereEXP - 1] : 0, TDno);
+		v5 = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+
+		v6 = v5;
+		if ( v5 >= 0 )
+		{
+		    if ( v5 < 0 )	
+		    {
+		        dberror(v6, 0, rtdget(TTptr));	// shouldn't be reachable
+		    }
+		    goto LABEL_102;
+		}
+		v7 = (TTptr->TDlocked & 0x0200) == 0x0000;
+		if ( v7 )
+			ErrorCode = 1;
+	    goto LABEL_102;
+
+	}
+    else if ( OpCode & rtb_GET) // 0x0001 ) get command
+    {
+		while ( 1 )
+        {
+			v9 = rdrec(TDno, Lock);
+            if ( v9 != -10 || Lock == 1024 )  // -10 return code == locked by another user, Lock == 1024 means called with lockr (Lock Request)
+				break;
+			sleep(1u);
+			printf("reffile - OpCode & rtb_GET stuck in lock loop!!\n");
+		}
+        if ( v9 > 0 )			// exit_success
+			goto LABEL_102;
+		else if ( v9 == -10 )	// record was locked, but we must have been called with lockr to get here
+			ErrorCode = 4;
+		else
+		{
+			rfree(TDno, 0);
+			ErrorCode = 1;
+		}
+		goto LABEL_102;
+	}
+    else if ( OpCode & 0x0040 )		//??????? Not sure if this is reachable with V4?
+    {
+		printf("reffile : OpCode & 0x0040\n");
+		if (OpCode & 0x0002)	// direction bit
+		{
+			if ((short) rdnxt(TDno, TTptr->TTselect, Lock, 1) > 0 )
+				goto LABEL_102;
+		}
+		else
+		{
+			if ((short) rdprev(TDno, TTptr->TTselect, Lock, 1) > 0 )
+				goto LABEL_102;
+		}
+	    ErrorCode = 2;	// no more data
+		goto LABEL_102;
+	}
+	else if ( OpCode & (rtb_GETNEXT|rtb_GETPREV))	// 0x0006 )	// checks 2 bits  0000-0000-0000-0110    0002 is getnext, 0004 is getprev
+    {
+		printf("reffile : OpCode & (rtb_GETNEXT|rtb_GETPREV)\n");
+		ErrorCode = 0;	// default success
+        if ( OpCode & rtb_SEL_ALL || rtab->WhereEXP )			// rtab->field_2 & 0x100 == "all" flag
+        {
+			TTptr->TTselect = (EXPR *)fretre(TTptr->TTselect, 0);
+            ent = 0;
+            if ( !(OpCode & rtb_SEL_ALL) )	// if "all" not specified, get the "where" expression
+            {
+				ent = rtab->WhereEXP ? &enarr.TableAddr[rtab->WhereEXP - 1] : 0;
+			}
+            TTptr->TTselect = getexpr(ent, TDno);
+            v14 = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+            v15 = v14;
+			if ( v14 < 0 )
+				dberror(v15, 0, rtdget(TTptr));
+		}
+			
+		if (OpCode & rtb_GETNEXT)	// 0x0002)		// check direction 
+			v9 = rdnxt(TDno, TTptr->TTselect, Lock, 0);	// rdnxt clobbers KeyTablenames :o(
+		else
+			v9 = rdprev(TDno, TTptr->TTselect, Lock, 0);
+                
+		if ( v9 > 0 )			// exit_success
+			goto LABEL_102;
+		else if ( v9 == -10 )
+			ErrorCode = 4;
+		else
+		{
+			rfree(TDno, 0);
+			ErrorCode = 2;	// no more data
+		}
+		goto LABEL_102;
+	}
+	else if ( OpCode & rtb_PUT)		// 0x0008  put command
+    {
+		printf("reffile : OpCode & rtb_PUT\n");
+		repkey(TDno, 0);			// ensure key fields are updated in record area
+        if ( reprec(TDno, Lock == 0) < 0 )
+			ErrorCode = 3;
+		goto LABEL_102;
+	}
+	else if ( OpCode & rtb_DELETE )	// 0x0010  delete command
+    {
+		printf("reffile : OpCode & rtb_DELETE\n");
+        v17 = TTptr->TDlocked;
+        if ( v17 & 0x0010 )
+        {
+			v18 = 0;
+            if ( (v17 & 0x0021) == 0x0021 && cmpbuf(TTptr->TDworkarea1, TTptr->TDworkarea2, TTptr->TDrecsize) )
+				v18 = 1;
+			if ( !v18 && (short)rdrec(TDno, 0) <= 0 )
+            {
+				rfree(TDno, 0);
+                ErrorCode = 1;	// error_exit
+                ulckrec(TDno);
+			}
+		}
+        if ( ErrorCode )
+			goto LABEL_102;
+		v7 = delhier(TDno, 1) == 0;
+		if ( v7 )
+			ErrorCode = 1;
+		goto LABEL_102;
+	}
+    else if ( OpCode & rtb_CLEAR )		// 0x0020 clear record
+    {
+		printf("reffile : OpCode & rtb_CLEAR - OpCode = %04X\n",(unsigned int)OpCode );
+		rfree(TDno, 0);	// bit clunky.  rfree(TD,0) frees all Fields, but also clears fld_DATA_AVAIL bits
+		// so we have to go and turn them all back on again. :o(
+		for ( fld = TTptr->TTfields; fld->FLDelemID; ++fld )
+			fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010u; *** Seems like the wrong flag to set ?? ***
+		goto LABEL_102;
+	}
+    else if ( OpCode & 0x0800 )			// replace command. Removed from CL4?
+    {
+		printf("reffile : v39[0] = 0 (OpCode & 0x0800)\n");
+        v39[0] = 0;
+        Src[0] = 0;
+        s[0] = 0;
+        v34 = rtab->TTno;
+        v20 = rtab->NextRT ? &rtarr.TableAddr[rtab->NextRT - 1] : 0;
+        if ( v20 )
+        {
+			v22 = v20->field_E ? &enarr.TableAddr[v20->field_E - 1] : 0;
+            exptobuf(s, v22, 0);
+            v23 = v20->NextRT ? &rtarr.TableAddr[v20->NextRT - 1] : 0;
+            if ( v23 )
+            {
+				v25 = v23->field_E ? &enarr.TableAddr[v23->field_E - 1] : 0;
+                exptobuf(Src, v25, 0);
+                v26 = v23->NextRT ? &rtarr.TableAddr[v23->NextRT - 1] : 0;
+                if ( v26 )
+					exptobuf(v39, v26->field_E ? &enarr.TableAddr[v26->field_E - 1] : 0, 0);
+			}
+		}
+        v28 = dtab;
+        v29 = 0;
+        while ( no_dtabs > v29 && *v28->FullDBname )
+        {
+			if ( !compare(s, clbasename(v28->FullDBname)) )
+				break;
+			++v28;
+            ++v29;
+		}
+        if ( v29 == no_dtabs )	// reached end of dtabs with no name match!
+		{
+			ErrorCode = 1;	// error_exit
+            goto LABEL_102;
+		}
+        TTptra = ttab;
+        TDnoa = 0;
+        if ( no_ttabs > 0 )
+        {
+			while ( TTptra->DBnumber != v29 || compare(Src, TTptra->TableName) || v39[0] && compare(v39, TTptra->TableAlias) )
+            {
+				++TDnoa;
+                ++TTptra;
+                if ( TDnoa >= no_ttabs )// error_exit
+				{
+					ErrorCode = 2;	// no more data
+				    goto LABEL_102;
+				}
+			}
+            if ( TDnoa < no_ttabs )
+            {
+				if ( ttab[TDnoa].TTrtd < 0 )	// check to see if Table is actually open!
+					getfile(s, Src);
+				cpybuf((char *)&ttab[v34], (char *)&ttab[TDnoa], 80);
+                *(short *)&ttab[v34].TableAlias[0] = '>';	// this is some sneaky functionality.......
+                goto LABEL_102;
+			}
+		}
+		ErrorCode = 2;	// no more data error_exit
+        goto LABEL_102;
+	}
+	else
+	{
+		printf("reffile : Unknown command!!!\n");
+        ErrorCode = 9;
+	}
+
+//=======================================
+LABEL_102:
+    if ( Lock == 1024 )					// Lock request -> lockr
+    {
+        if ( ErrorCode == 4 )
+        {
+            setvar(v_LOCKED, 1);		// "LOCKED"
+            ErrorCode = 0;
+        }
+        else
+            setvar(v_LOCKED, 0);		// "LOCKED"
+    }
+    setvar(v_ERROR, ErrorCode);				// "ERROR"
+printf("reffile exiting. returned ErrorCode = %d\n",ErrorCode);
+    return ErrorCode;
+}
+
+d579 1
+a579 1
+printf("rdnxt(TDno = %d, EXPR = x%08X, Lock = %d, a4 = %d)\n",TDno,expr,Lock,a4);
+d585 2
+a586 1
+    v5 = 0;
+d589 1
+d607 2
+a608 1
+        MaxLen = keysize(TDNo);
+d611 1
+d619 1
+a619 1
+			printf("rdnxt stuck in lock loop\n");
+d621 1
+a621 1
+		printf("rdnxt 952 - v6 = %d, Lock = %d\n",v6,Lock);
+d645 1
+a645 1
+		printf("rdnxt 967 - v6 = %d, Lock = %d\n",v6,Lock);
+@

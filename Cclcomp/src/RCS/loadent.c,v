@@ -1,0 +1,1272 @@
+head	1.6;
+access;
+symbols;
+locks
+	leslie:1.6; strict;
+comment	@ * @;
+
+
+1.6
+date	2016.06.24.03.41.29;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2016.06.02.02.44.06;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.03.10.22.48.17;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.01.18.05.50.48;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.01.14.04.05.53;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.59.16;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.6
+log
+@tidyup
+@
+text
+@#ifndef LOADENT_C
+#define LOADENT_C
+
+#include <stdio.h>
+#include <stdarg.h>			// for var args stuff
+#include <ctype.h>          // for islower() and toupper() functions
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"		// for flag bits
+
+short fixbname(char *Dest, char *Src)
+{
+     cdbcpystr(Dest, Src, 0);
+     Dest[20] = 0;					// max buffer size == 21
+     return strlen(Dest) + 1;		// include the \0 terminator byte
+}
+
+FLDdesc* getvarname(char *VariableName)
+{
+     int FieldNo;
+     FLDdesc *fld;
+
+     FieldNo = Nvars - 1;
+     fld = &ttab->TTfields[FieldNo];
+     while ( FieldNo > 20 )							// <=20 are pre-defined system vars
+     {
+        if ( !strcmp(VariableName, fld->FLDname) ) // 0 == match
+			return fld;	// exit_success
+        --fld;
+        --FieldNo;
+     }
+     return 0;		// not found
+}
+
+int lemaint(BTAB *btb)
+{
+	TDesc	*TTptr;
+	char	*v7;
+	char	*v8;
+	ONESC	*escp;
+	FLDdesc *fld;
+	
+	int		TDno;
+	short	cmd;
+	char	blockname[32];		// only need 21 bytes here
+	
+	symbol = getsym();
+    if ( symbol != 2230 )                   // expecting a Table/Alias name. error if not
+    {
+		if ( symbol == 930 )
+			loaderr(40, sym);               // missing table/alias
+		else
+			loaderr(39, sym);               // invalid table/alias
+		return 0;
+	}
+
+	TDno = findtd(sym, -1);
+    if ( TDno < 0 )
+    {
+		loaderr(14, sym);						// "table not open"
+		return 0;
+    }
+	ttab[TDno].TDlocked |= 0x0007u;				// 0000-0000-0000-0111
+    btb->TTno = TDno;
+
+	symbol = getsym();
+    if ( (symbol == 180 || symbol == 330) && (symbol = getsym(), symbol == 2230) )	// 180 = ",", 330="/", 2230 = string literal
+	{
+		TTptr = &ttab[TDno];
+		fld = getvarname(sym);					// maintain code can be in a pre-defined variable????  *undocumented*
+		if ( fld )
+		{
+			v7 = (char *)fld->FLDdata;
+			v8 = (char *)fld->FLDdata;
+		}
+		else
+		{
+			v8 = sym;
+			v7 = sym;
+		}
+		while (*v7)
+		{
+			switch (*v7)
+			{
+				case 'a':
+				case 'c':
+					TTptr->TDlocked |= 0x0006;
+					break;
+				case 'd':
+					TTptr->TDlocked |= 0x8004;
+					break;
+				case 'v':
+					TTptr->TDlocked |= 0x0004;
+					break;
+				default:
+					loaderr(42, sym);				// error!!!  invalid maintain mode
+					return 0;
+					break;
+			}
+			v7++;
+		}
+		cdbcpystr(btb->Maintain, v8, 0);           // copy maintain codes to BTAB
+		symbol = getsym();
+	}
+    if ( !btb->Maintain[0] )
+		cdbcpystr(btb->Maintain, "vac", 0);   // default = view, add, change if no codes selected
+//--------------------------------------------     
+	while ( symbol == 970 || symbol == 1000 )     // 970="on_delete", 1000="on_exception"
+    {
+		cmd = symbol;					// save for check below
+		symbol = getsym();
+        if ( symbol != 2230 )           // string literal {block name}
+		{
+			if ( symbol == 930 )		// newline
+				loaderr( 2, sym);		// missing block name
+			else
+				loaderr(33, sym);		// unexpected symbol
+			return 0;
+		}
+		escp = (ONESC *)getmem(sizeof(ONESC));	// 16
+        escp->BlockName = getmem(fixbname(blockname, sym));
+        cdbcpystr(escp->BlockName, blockname, 0);
+        if ( cmd == 970 )               // "on_delete"
+			btb->On_delete = escp;
+		else
+			btb->On_excep = escp;        // "on_exception
+        symbol = getsym();
+	}
+    return 1;							// exit success
+}
+
+short lehdtxt(void)
+{
+    XTAB *xtab;
+	short XTno;
+	short result = 0;	// default to fail. 0 = error
+	 
+    XTno = getxtmem();
+    allxtpt(XTno, &xtab);
+    
+	if ( getadwid(xtab) && getcol(xtab, 4) && getrow(xtab, 4) && getprmpt(xtab) )
+		result = XTno;
+	
+	dallxtpt(&xtab);
+    return result;
+}
+
+int legetf()
+{
+    DBase	*DTptr;
+	TDesc	*TTptr;
+	char	*DBname;
+	
+	int		TDno;
+	//int		v9;
+	int		TTno;
+	int		DBno;
+	char	v20[128];
+	bool	FileLock;
+	
+    DBname = 0;
+    symbol = getsym();			// should be DBase name
+    if ( symbol == 930 )
+	{
+		loaderr(7, sym);		// "unexpected end of line"
+        return 0;
+	}
+    if ( dbrename )				// set if command line option "-r {db1=db2,..}" is found
+    {
+         if ( !dbarray )
+              dbarray = camake(dbrename, ',');		// mem never free'd in clcomp!
+         DBname = checkdbrename(sym);
+    }
+    if ( !DBname )
+         DBname = sym;
+
+	DTptr = dtab;
+    DBno = 0;
+    while ( DBno < no_dtabs && !cmpbuf(DBname, DTptr->FullDBname, syml + 1) )
+    {
+         ++DBno;
+         ++DTptr;
+    }
+
+	if ( DBno == no_dtabs )		// DB in question is not already open
+    {
+        cdbcpystr(v20, chkpath(DBname, 0, "CLDPATH", 0, 384), 0);
+        DBno = cldbopen(v20, 0);
+        if ( DBno < 0 )
+        {
+             eprint("can't open database - %s\n", DBname);
+             return 0;
+		}
+		// Removed Demo check
+        newdtab();				// should bump no_dtabs so that next assert will pass
+		assert(DBno < no_dtabs);
+
+		dtab[DBno].FullDBname = mstrcpy(sym, 0);
+        dtab[DBno].DBno = DBno;
+	}
+    
+	// DB now opened, look for Tables/Aliases
+
+	FileLock = false;
+    TTno = 0;
+    
+	symbol = getsym();		// Should be next Table name
+    if ( symbol == 930 )
+    {
+		loaderr(7, sym);	// "unexpected end of line"
+        return 0;
+    }
+    while ( symbol != 930 )
+    {
+		TDno = tdopen(DBno, sym);		// *** Doesn't check if sym is actually a reserved name here!! ***
+        if ( TDno < 0 )					// Error condition here
+		{
+		    fprintf(stderr, "can`t identify - %s err=%d\n", sym, TDno);		// not necessarily a fatal error. DBase may never be accessed.
+			fflush(stderr);
+			symbol = getsym();
+		    if ( symbol != 180 || (symbol = getsym(), symbol != 2230) )		// 180 = ',', 2230 = table/varname
+				continue;
+		    symbol = getsym();
+			continue;
+		}
+        if ( no_ttabs - 1 <= TDno )
+		{
+			newttab();
+			assert(TDno < no_ttabs);
+		}
+        cdbcpystr(ttab[TDno].TableName, sym, 0);			// No sanity check on the length of TableName!
+        ttab[TDno].DBnumber = DBno;
+
+        //v9 = TTno;
+        //if ( !TTno )
+		//	v9 = TDno;
+        //TTno = v9;
+        if ( !TTno )
+			TTno = TDno;				// remember lowest TDno in this DBase in case of File level Locking below
+
+        symbol = getsym();
+        if ( symbol == 180 )            // ',' Comma
+        {
+			symbol = getsym();
+            if ( symbol == 2230 )		// String literal, assume this is an Alias! 
+            {
+				cdbcpystr(ttab[TDno].TableAlias, sym, 0);	// No sanity check on the length
+                symbol = getsym();
+            }
+		}
+        if ( symbol == 800 )             // "lock"
+        {
+			FileLock = true;
+			symbol = getsym();
+		}
+	}
+
+	if ( FileLock )		// if any tables had file locking, flag *all* TDs in this DBase for locking
+    {
+		for ( TTptr = &ttab[TTno]; TTno <= TDno; ++TTptr )
+        {
+			TTptr->TDlocked |= ttl_FLOCK;	// 0x0040u;	// bit 6 = FILE level locking indicator
+            ++TTno;
+        }
+    }
+    return 1;
+}
+
+
+bool leincl(void)
+{
+	char	*v0;
+	char	*IncludeFileName;
+	INCLUDE *incl;
+	FILE	*InclFP;
+	
+	symbol = getsym();			// filename
+	if ( symbol == 2220 )		// String literal filename - quoted string
+    {
+		v0 = chkpath(sym, incl_dir, "CLIPATH", 0, 256);
+        IncludeFileName = mstrcpy(v0, 0);
+        InclFP = fopen64(IncludeFileName, "r");
+        if ( InclFP )
+        {
+			gotonl();
+			incl = (INCLUDE *)mmalloc(sizeof(INCLUDE));
+			incl->FileName = mstrcpy(IncludeFileName, 0);
+			FileTree->childINC = incl;
+			FileTree->LastLine = ll;
+			ll = -1;
+			--lla;
+			incl->parentINC = FileTree;	// set linkage so we can "find our way back"
+			FileTree = incl;
+			MainFile = InclFP;			// MainFile is always the *currently active* file
+			incl->filePTR = InclFP;
+			return false;					// return 0 = success.
+        }
+		loaderr(72, sym);	// "can't open include file"
+     }
+     else
+		loaderr(71, sym);	// "invalid 'include' filename"
+
+	 return true;				// error exit
+}
+
+int loadent(char *FullPathName)
+{
+	PTAB	*ptb;
+	PTAB	*ptb2;
+	BTAB	*btb;
+	BTAB	*btb2;
+	char	*IDname;
+	
+	char	*v1;
+	char	*v2;
+	char	*v10;
+	char	*i;
+	
+	size_t	v23; // esi@@62
+	short	LineNo; // si@@101
+	short	v35; // si@@110
+
+	SCR		**v53;
+	short	NumScreens;
+	short	NumFormats;
+	
+	short	count;
+	short	CurrBTno;
+	
+	
+	int		a1;
+	char	command[256];
+	char	FileName[168];
+	
+	cdbcpystr(FileName, FullPathName, ".ent", 0);
+	v1 = &FileName[lenstr(FileName) - 1];
+	for ( i = v1; FileName < i && *i != '/'; --i )
+		;
+	if ( i == FileName )
+		v2 = i;
+	else
+		v2 = i + 1;
+
+	// deleted the pre-processing stuff.
+
+	MainFile = fopen64(FileName, "r");
+	if ( lenstr(v2) > 140u || !MainFile )
+	{
+		eprint("ent file not found - %s\n", FileName);
+		exit(1);
+	}
+	FileTree = (INCLUDE *)mmalloc(sizeof(INCLUDE));
+	FileTree->FileName = mmalloc(lenstr(FileName) + 1);
+	cdbcpystr(FileTree->FileName, FileName, 0);
+	FileTree->filePTR = MainFile;
+	ltab	= mmalloc(0);
+	itab	= mmalloc(0);
+	newltab();
+	lt		= ltab;		// program label tables
+	it		= itab;		// if/while tables
+	
+	a1 = 0;	// a1 is used to count NumPTABs : program steps
+
+	loadvars();	// initialise system vars
+
+	symbol = getsym();
+	while ( symbol && !comp_abort )
+	{
+		while ( symbol && symbol != 820 && !comp_abort )	//820 = "{"  start of block token
+		{
+			if ( symbol == 660 )		// include directive. Only valid item outside of a block construct.
+				leincl();				// leincl() returns pointing at last <CR> after the include statement
+			if ( symbol != 930 )		// <CR>
+				loaderr(33, sym);		// unexpected symbol
+			symbol = getsym();
+		}
+		if ( symbol && !comp_abort)
+		{
+			leblock(&a1);			// returns with symbol pointing at the "}" at the end of the block (token == 1360)
+			while ( symbol && symbol != 930 )
+				symbol = getsym();
+		}
+	}
+	fclose(MainFile);
+
+// ENT file has now been read with no syntax errors, or we struck an error (or 2...)
+// Lets go ahead and check it for logical errors, and link all the tables etc.
+
+	PTARR(getptabp(a1))->OpCode = 950;	// add two 950's to signify end of file
+	a1++;	// doesn't work properly if the ++ is inclued in the macro [expands to *2* ++'s]!! 
+	PTARR(getptabp(a1))->OpCode = 950;
+
+	// fix all links do do{blockname} and goto LABEL: commands
+	if ( !comp_errs )
+	{
+		a1 = 0;
+		while( (ptb = PTARR(getptabp(a1)), ptb->OpCode))
+		{
+			if ( ptb->OpCode == 720 && ptb->TABno )		// 720 = do block_name
+			{
+				IDname = STRARR(ptb->TABno);			// Identifier name. Block or Label name
+				v23 = lenstr(IDname) + 1;
+				btb = btab;
+				count = 0;
+				while ( no_btabs > count )
+				{
+					if ( cmpbuf(IDname, btb->BlockName, v23) )
+					{
+						ptb->Operand = count;
+						break;
+					}
+					count++;
+					btb++;
+				}
+				if ( count == no_btabs )	// got to end of btab array and no match
+					loaderr(68,IDname);		// 'do/format' block name not found"
+
+			}
+			else if ( ptb->OpCode == 700 && ptb->TABno )	// 700 goto handler. 
+			{
+				IDname = STRARR(ptb->TABno);
+				for ( lt = ltab; *lt; lt++ )	// Program Label Tables
+				{
+					if ( cmpbuf(IDname, (*lt)->LabelName, (*lt)->NameLen ))
+					{
+						ptb->Operand = (*lt)->PTno;
+						ptb->TABno = 0;
+						if ( *lt )			// should always be true here!
+							goto LABEL_91;	// We found a match before end of the list
+						break;
+					}
+				}
+				cdbcpystr(sym, IDname, 0);
+				loaderr(11, sym);	//"label not found"
+			}
+			else if ( ptb->OpCode == 1 && ptb->TABno )	// 1 = accept field, look for a field specific escape
+			{
+				chkoelist(XTARR(ptb->TABno)->onesc);
+			}
+
+LABEL_91:
+			a1++;
+		}
+
+		// check for global block escapes 
+		chkoelist(oelist);
+
+		// lastly, check for block specific stuff: On_exit, On_entry, On_excep, On_delete
+		btb = btab;
+		CurrBTno = 0;
+		if ( no_btabs <= CurrBTno )
+			return comp_errs;
+		while ( 1 )
+		{
+			if ( btb->BlockName[0] )
+			{
+				if ( btb->StartLine || btb->EndLine )
+				{
+					v53			= &btb->TYPE24;
+					btb->TYPE24 = (SCR*)mmalloc(8u);
+					LineNo		= btb->StartLine;
+					NumScreens	= 0;
+					NumFormats	= 0;
+
+					while ( PTARR(getptabp(LineNo))->OpCode != 999 )	// 999 == end
+					{
+						if ( !*v53 )
+							*v53 = (SCR*)mmalloc(8u);
+						(*v53)->PT_start = LineNo;
+						
+						while ( (ptb2 = PTARR(getptabp(LineNo)), ptb2->OpCode != 950)) // break;
+						{
+							if ( ptb2->OpCode == 600 ) // format
+								NumFormats++;
+							LineNo++;
+						}
+						(*v53)->PT_end = LineNo;
+						NumScreens++;
+						v53 = &(*v53)->NextSCR;
+						LineNo++;
+					}
+					btb->Scrs = NumScreens;
+					btb->fmts = NumFormats;
+
+					if ( btb->On_delete )
+					{
+						btb2	= btab;
+						v35		= 0;
+						while ( no_btabs > v35 )
+						{
+							if ( btb2->BlockName[0] && cmpbuf(btb2->BlockName, btb->On_delete->BlockName, lenstr(btb2->BlockName) + 1))
+							{
+								btb->On_delete->BlockNo = v35;
+								break;
+							}
+							++v35;
+							++btb2;
+						}
+						if ( no_btabs == v35 )
+							loaderr(75, btb->On_delete->BlockName);	// 'on_delete' block name not found
+					}
+					
+					if ( btb->On_exit )
+					{
+						btb2	= btab;
+						v35		= 0;
+						while ( no_btabs > v35 )
+						{
+							if ( btb2->BlockName[0] && cmpbuf(btb2->BlockName, btb->On_exit->BlockName, lenstr(btb2->BlockName) + 1))
+							{
+								btb->On_exit->BlockNo = v35;
+								break;
+							}
+							++v35;
+							++btb2;
+						}
+						if ( no_btabs == v35 )
+							loaderr(79, btb->On_exit->BlockName);	// 'on_exit' block name not found
+					}
+					
+					if ( btb->On_excep )
+					{
+						btb2 = btab;
+						v35 = 0;
+						while ( no_btabs > v35 )
+						{
+							if ( btb2->BlockName[0] && cmpbuf(btb2->BlockName, btb->On_excep->BlockName, lenstr(btb2->BlockName) + 1))
+							{
+								btb->On_excep->BlockNo = v35;
+								break;
+							}
+							++v35;
+							++btb2;
+						}
+						if ( no_btabs == v35 )
+							loaderr(80, btb->On_excep->BlockName); //'on_exception' block name not found
+					}
+
+					if ( btb->On_entry )
+					{
+						btb2 = btab;
+						v35 = 0;
+						while ( no_btabs > v35 )
+						{
+							if ( btb2->BlockName[0] && cmpbuf(btb2->BlockName, btb->On_entry->BlockName, lenstr(btb2->BlockName) + 1))
+							{
+								btb->On_entry->BlockNo = v35;
+								break;
+							}
+							++v35;
+							++btb2;
+						}
+						if ( no_btabs == v35 )
+							loaderr(80, btb->On_entry->BlockName); //'on_exception' block name not found  ***error in real CL4 *** should be 'on_entry'
+					}
+				}
+				else
+					loaderr(68, btb->BlockName);	// 'do/format' block name not found
+			}
+			CurrBTno++;
+			btb++;
+			if ( no_btabs <= CurrBTno )
+				return comp_errs;
+		}
+	}	
+	if ( symbol )
+	{
+		fwrite("too many errors - aborting\n", 1u, 0x1Bu, stderr);
+		fflush(stderr);
+	}
+	return comp_errs;
+}
+
+#endif
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d7 1
+a67 2
+//    if ( symbol != 180 && symbol != 330 || (symbol = getsym(), symbol != 2230) )	// 180 = ",", 330="/", 2230 = string literal
+//		goto LABEL_26;
+d71 1
+a71 1
+		fld = getvarname(sym);					// maintain code can be in a variable????  *undocumented*
+a105 1
+//LABEL_26:
+d108 1
+a108 1
+     
+d155 2
+a156 3
+	int		v0;
+	int		v7;
+	int		v9;
+a157 1
+	int		Lock;
+d160 1
+d186 1
+a186 1
+	if ( DBno == no_dtabs )
+a187 2
+        //v3 = chkpath(DBname, 0, "CLDPATH", 0, 384);
+        //cdbcpystr(v20, v3, 0);
+d195 3
+a197 9
+		/*  Remove Demo check nonsense
+		v4 = checkForDemo(DBno, DBname);      // returns 0 if this is a demo version
+        v5 = 0;
+        if ( !v4 )
+			return v5;
+		*/
+        newdtab();
+        if ( DBno >= no_dtabs )
+			__assert_fail("db < no_dtabs", "legetf.c", 106, "legetf");
+d203 3
+a205 1
+	Lock = 0;
+d207 2
+a208 1
+    symbol = getsym();
+d216 2
+a217 3
+		v7 = tdopen(DBno, sym);		// *** Doesn't check if sym is actually a reserved name here!! ***
+        v0 = v7;
+        if ( v7 < 0 )				// Error condition here
+d219 1
+a219 1
+		    fprintf(stderr, "can`t identify - %s err=%d\n", sym, v7);
+d222 1
+a222 1
+		    if ( symbol != 180 || (symbol = getsym(), symbol != 2230) )
+d227 1
+a227 1
+        if ( no_ttabs - 1 <= v7 )
+d230 1
+a230 3
+            if ( v0 >= no_ttabs )
+				__assert_fail("td < no_ttabs", "legetf.c", 132, "legetf");
+
+d232 2
+a233 2
+        cdbcpystr(ttab[v0].TableName, sym, 0);			// No sanity check on the length
+        ttab[v0].DBnumber = DBno;
+d235 4
+a238 1
+        v9 = TTno;
+d240 2
+a241 2
+			v9 = v0;
+        TTno = v9;
+d248 1
+a248 2
+				cdbcpystr(ttab[v0].TableAlias, sym, 0);	// No sanity check on the length
+				//DumpBlock(&ttab[v0], sizeof(TDesc));
+d254 1
+a254 1
+			Lock = 1;
+a257 1
+//============================
+d259 1
+a259 1
+	if ( Lock )
+d261 1
+a261 1
+		for ( TTptr = &ttab[TTno]; TTno <= v0; ++TTptr )
+d271 1
+a271 1
+int leincl()
+d278 2
+a279 2
+	symbol = getsym();
+	if ( symbol == 2220 )		// String literal filename
+d297 1
+a297 1
+			return 0;					// return 0 = success.
+d304 1
+a304 1
+	 return 1;				// error exit
+d363 1
+a363 1
+	a1 = 0;	// a1 is used to count NumBTABs
+d378 1
+a378 1
+		if ( symbol )
+d380 3
+a382 7
+			if ( !comp_abort )
+			{
+				leblock(&a1);	// returns with symbol pointing at the "}" at the end of the block (token == 1360)
+
+				while ( symbol && symbol != 930 )
+					symbol = getsym();
+			}
+a399 1
+			//DumpPTAB(ptb);
+d416 1
+a416 1
+				if ( no_btabs == count )	// got to end of btab array and no match
+d429 1
+a429 1
+						if ( *lt )	// should always be true here!
+a438 1
+				//chkoelist(*((ONESC **)&xtarr.TableAddr[ptb->TABno] - 7));
+d446 1
+a446 1
+// check for global block escapes 
+d449 1
+a449 1
+// lastly, check for block specific stuff: On_exit, On_entry, On_excep, On_delete
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d14 1
+a14 1
+     Dest[20] = 0;				// max buffer size == 21
+d25 1
+a25 1
+     while ( FieldNo > 20 ) // <=20 are pre-defined system vars
+d60 1
+a60 1
+		loaderr(14, sym);					// "table not open"
+d63 1
+a63 1
+	ttab[TDno].TDlocked |= 0x0007u;			// 0000-0000-0000-0111
+d67 3
+a69 17
+    if ( symbol != 180 && symbol != 330 || (symbol = getsym(), symbol != 2230) )	// 180 = ",", 330="/", 2230 = string literal
+		goto LABEL_26;
+
+    TTptr = &ttab[TDno];
+    fld = getvarname(sym);			// maintain code can be in a variable????  *undocumented*
+    if ( fld )
+    {
+        v7 = (char *)fld->FLDdata;
+		v8 = (char *)fld->FLDdata;
+    }
+    else
+    {
+		v8 = sym;
+		v7 = sym;
+	}
+     
+	while (*v7)
+d71 3
+a73 1
+		switch (*v7)
+d75 28
+a102 14
+			case 'a':
+			case 'c':
+				TTptr->TDlocked |= 0x0006;
+				break;
+			case 'd':
+				TTptr->TDlocked |= 0x8004;
+				break;
+			case 'v':
+				TTptr->TDlocked |= 0x0004;
+				break;
+			default:
+				loaderr(42, sym);		// error!!!  invalid maintain mode
+				return 0;
+				break;
+d104 2
+a105 1
+		v7++;
+d107 1
+a107 4
+    cdbcpystr(btb->Maintain, v8, 0);           // copy maintain codes to BTAB
+	symbol = getsym();
+
+LABEL_26:
+d153 11
+a163 12
+    DBase *DTptr;
+	TDesc *TTptr;
+	//char *v3;
+	char *DBname;
+	
+	int v0;
+	int v7;
+	int v9;
+	int TTno;
+	int Lock;
+	int DBno;
+	char v20[128];
+d166 1
+a166 1
+    symbol = getsym();
+d172 1
+a172 1
+    if ( dbrename )
+d319 26
+a344 26
+	PTAB *ptb;
+	PTAB *ptb2;
+	BTAB *btb;
+	BTAB *btb2;
+	char *IDname;
+	
+	char *v1;
+	char *v2;
+	char *v10;
+	
+	size_t v23; // esi@@62
+	short LineNo; // si@@101
+	short v35; // si@@110
+
+	TYPE24** v53; // [sp+54h] [bp-444h]@@101
+	short NumScreens; // [sp+58h] [bp-440h]@@101
+	short NumFormats; // [sp+5Ch] [bp-43Ch]@@101
+	
+	short count; // [sp+60h] [bp-438h]@@62
+	short CurrBTno; // [sp+60h] [bp-438h]@@92
+	
+	char *i; // [sp+68h] [bp-430h]@@1
+	
+	int a1;
+	char command[256];
+	char FileName[168];
+d367 2
+a368 2
+	ltab = mmalloc(0);
+	itab = mmalloc(0);
+d370 2
+a371 2
+	lt = ltab;
+	it = itab;
+d453 4
+a456 2
+				//chkoelist(*(ONESC **)&xtarr.TableAddr[52 * ptb->TABno - 28]);
+				chkoelist(*((ONESC **)&xtarr.TableAddr[ptb->TABno] - 7));
+d476 6
+a481 5
+					v53 = &btb->TYPE24;
+					btb->TYPE24 = (TYPE24*)mmalloc(8u);
+					LineNo = btb->StartLine;
+					NumScreens = 0;
+					NumFormats = 0;
+d485 1
+a485 1
+							*v53 = (TYPE24*)mmalloc(8u);
+d496 1
+a496 1
+						v53 = &(*v53)->NextT24;
+d504 2
+a505 2
+						btb2 = btab;
+						v35 = 0;
+d522 2
+a523 2
+						btb2 = btab;
+						v35 = 0;
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d9 1
+d137 12
+a148 17
+     short XTno; // si@@1
+     short result; // ax@@5
+     XTAB *xtab; // [sp+Ch] [bp-Ch]@@1
+
+     XTno = getxtmem();
+     allxtpt(XTno, &xtab);
+     if ( getadwid(xtab) && getcol(xtab, 4) && getrow(xtab, 4) && getprmpt(xtab) )
+     {
+          dallxtpt(&xtab);
+          result = XTno;
+     }
+     else
+     {
+          dallxtpt(&xtab);
+          result = 0;
+     }
+     return result;
+d155 1
+a155 1
+	char *v3;
+d164 2
+a165 2
+	char v20[128]; // [sp+40h] [bp-A8h]@@13
+
+d192 3
+a194 2
+        v3 = chkpath(DBname, 0, "CLDPATH", 0, 384);
+        cdbcpystr(v20, v3, 0);
+d274 1
+a274 1
+			TTptr->TDlocked |= 0x0040u;	// bit 6 = locked indicator
+d320 2
+a321 2
+	PTAB *ptb; // edi@@59
+	PTAB *ptb2; // edi@@104
+d323 6
+a328 2
+	BTAB *btb2; // edi@@110
+	char *IDname; // eax@@65
+a329 4
+	char *v1; // eax@@1
+	char *v2; // edx@@5
+	char *v10; // eax@@15
+
+a341 1
+	char *v61; // [sp+68h] [bp-430h]@@7
+a350 1
+	v2 = i + 1;
+d353 2
+a354 1
+	v61 = v2;
+d359 1
+a359 1
+	if ( lenstr(v61) > 140u || !MainFile )
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d10 1
+a10 1
+short fixbname(char *a1, char *a2)
+d12 3
+a14 3
+     cdbcpystr(a1, a2, 0);
+     a1[20] = 0;	// max buffer size == 21
+     return strlen(a1) + 1;		// include the \0 terminator byte
+d27 1
+a27 1
+			return fld;
+d31 1
+a31 1
+     return 0;
+d36 10
+a45 9
+     int TDno; // eax@@5
+     TDesc *TTptr; // esi@@10
+     FLDdesc *fld; // eax@@10
+     char *v7; // edx@@11
+     char *v8; // ecx@@11
+     ONESC *v12; // esi@@36
+     short v16; // [sp+1Ch] [bp-5Ch]@@30
+     char v17[32]; // [sp+20h] [bp-58h]@@36
+
+d47 1
+a47 1
+    if ( symbol != 2230 )                   // expecting a string literal. error if not
+d62 1
+a62 1
+	ttab[TDno].TDlocked |= 0x0007u;
+d66 1
+a66 1
+    if ( symbol != 180 && symbol != 330 || (symbol = getsym(), symbol != 2230) )// 180 = ",", 330="/", 2230 = string literal
+d96 2
+a97 2
+			default:					// error!!!
+				loaderr(42, sym);		// invalid maintain mode
+a103 1
+     
+d112 1
+a112 1
+		v16 = symbol;					// save for check below
+d122 5
+a126 5
+		v12 = (ONESC *)getmem(16);
+        v12->BlockName = getmem(fixbname(v17, sym));
+        cdbcpystr(v12->BlockName, v17, 0);
+        if ( v16 == 970 )               // "on_delete"
+			btb->On_delete = v12;
+d128 1
+a128 1
+			btb->On_excep = v12;        // "on_exception
+d136 1
+a136 1
+     short v0; // si@@1
+d140 2
+a141 2
+     v0 = getxtmem();
+     allxtpt(v0, &xtab);
+d145 1
+a145 1
+          result = v0;
+d157 12
+a168 13
+	signed int v0; // edi@@0
+    char *v1; // eax@@6
+    DBase *DTptr; // esi@@8
+    char *v3; // eax@@13
+    int v7; // eax@@23
+    signed int v9; // eax@@31
+    TDesc *TTptr; // edx@@41
+    char *arg; // [sp+30h] [bp-B8h]@@1
+    char *DBname; // [sp+30h] [bp-B8h]@@8
+    signed int TTno; // [sp+34h] [bp-B4h]@@19
+    signed int Lock; // [sp+38h] [bp-B0h]@@19
+    signed int DBno; // [sp+3Ch] [bp-ACh]@@8
+    char v20[128]; // [sp+40h] [bp-A8h]@@13
+d170 1
+a170 1
+    arg = 0;
+d177 1
+a177 1
+    /*if ( dbrename )		// work this out later
+d180 2
+a181 2
+              dbarray = camake(dbrename, ',');
+         arg = checkdbrename(sym);
+d183 4
+a186 7
+    v1 = arg;
+    if ( !arg )
+         v1 = sym;
+    DBname = v1;
+	*/
+    DBname = sym;		// *** remove this when DBrename allowed
+    DTptr = dtab;
+d272 2
+a273 2
+LABEL_40:
+    if ( Lock )
+d287 7
+a293 7
+	char *v0; // eax@@3
+    char *IncludeFileName; // esi@@3
+    INCLUDE *incl; // edi@@6
+    FILE *InclFP; // [sp+14h] [bp-14h]@@3
+
+    symbol = getsym();
+    if ( symbol == 2220 )
+d301 13
+a313 13
+            incl = (INCLUDE *)mmalloc(0x14u);
+            incl->FileName = mstrcpy(IncludeFileName, 0);
+            FileTree->field_10 = incl;
+            FileTree->LastLine = ll;
+            ll = -1;
+            --lla;
+            incl->field_C = FileTree;
+            FileTree = incl;
+            MainFile = InclFP;
+            incl->PrevFILE = InclFP;			// return 0 = success.
+            return 0;
+         }
+		 loaderr(72, sym);						// "can't open include file"
+d316 3
+a318 4
+     {
+		loaderr(71, sym);						// "invalid 'include' filename"
+     }
+     return 1;                                  // error exit
+d326 2
+a327 1
+	BTAB *v34; // edi@@110
+d332 1
+a333 2
+	char *v24; // eax@@65
+	char *ErrorStr; // eax@@84
+d340 1
+d343 1
+d346 1
+a346 1
+	char *v62; // [sp+68h] [bp-430h]@@77
+d348 3
+a350 3
+	char command[256]; // [sp+2F0h] [bp-1A8h]@@24
+	char FileName[168]; // [sp+3F0h] [bp-A8h]@@1
+
+d368 1
+a368 1
+	FileTree = (INCLUDE *)mmalloc(0x14u);
+d371 1
+a371 1
+	FileTree->PrevFILE = MainFile;
+d377 1
+d389 1
+a389 1
+			if ( symbol != 930 )
+d413 1
+d420 1
+a420 1
+			if ( ptb->OpCode == 720 && ptb->TABno )	// 720 = do block_name
+d422 2
+a423 1
+				v23 = (signed short)(lenstr(&strarr.StringTable[ptb->TABno - 1]) + 1);
+d428 1
+a428 2
+					v24 = ptb->TABno ? &strarr.StringTable[ptb->TABno - 1] : 0;
+					if ( cmpbuf(v24, btb->BlockName, v23) )
+d433 2
+a434 7
+					++count;
+					++btb;
+				}
+				if ( no_btabs == count )
+				{
+					ErrorStr = ptb->TABno ? &strarr.StringTable[ptb->TABno - 1] : 0;
+					loaderr(68,ErrorStr);	// 'do/format' block name not found"
+d436 3
+d440 1
+a440 1
+			else if ( ptb->OpCode == 700 && ptb->TABno )	// 700 = goto
+d442 2
+a443 2
+				v62 = &strarr.StringTable[ptb->TABno - 1];		// 700 goto handler. 
+				for ( lt = ltab; *lt; ++lt )	// Program Label Tables
+d445 1
+a445 1
+					if ( cmpbuf(v62, (*lt)->LabelName, (*lt)->NameLen ))
+a446 1
+						//printf("loadent : 1171 v62 = %s, LabelName = %s, len = %d\n",v62, (*lt)->LabelName, (*lt)->NameLen);
+d449 2
+a450 2
+						if ( *lt )	// We found a match before end of the list
+							goto LABEL_91;
+d454 1
+a454 2
+				ErrorStr = ptb->TABno ? &strarr.StringTable[ptb->TABno - 1] : 0;
+				cdbcpystr(sym, ErrorStr, 0);
+d467 1
+d506 1
+a506 1
+						v34 = btab;
+d510 1
+a510 1
+							if ( v34->BlockName[0] && cmpbuf(v34->BlockName, btb->On_delete->BlockName, lenstr(v34->BlockName) + 1))
+d516 1
+a516 1
+							++v34;
+d524 1
+a524 1
+						v34 = btab;
+d528 1
+a528 1
+							if ( v34->BlockName[0] && cmpbuf(v34->BlockName, btb->On_exit->BlockName, lenstr(v34->BlockName) + 1))
+d534 1
+a534 1
+							++v34;
+d542 1
+a542 1
+						v34 = btab;
+d546 1
+a546 1
+							if ( v34->BlockName[0] && cmpbuf(v34->BlockName, btb->On_excep->BlockName, lenstr(v34->BlockName) + 1))
+d552 1
+a552 1
+							++v34;
+d560 1
+a560 1
+						v34 = btab;
+d564 1
+a564 1
+							if ( v34->BlockName[0] && cmpbuf(v34->BlockName, btb->On_entry->BlockName, lenstr(v34->BlockName) + 1))
+d570 1
+a570 1
+							++v34;
+d573 1
+a573 1
+							loaderr(80, btb->On_entry->BlockName); //'on_exception' block name not found
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d183 1
+a183 1
+    }*/
+d188 2
+d232 1
+a232 1
+		v7 = tdopen(DBno, sym);
+d234 1
+a234 1
+        if ( v7 < 0 )
+d251 1
+a251 1
+        cdbcpystr(ttab[v0].TableName, sym, 0);
+d253 1
+d259 1
+a259 1
+        if ( symbol == 180 )             // ',' Comma
+d262 1
+a262 1
+            if ( symbol == 2230 )
+d264 2
+a265 1
+				cdbcpystr(ttab[v0].TableAlias, sym, 0);
+a294 1
+    int v7; // [sp+18h] [bp-10h]@@1
+a295 1
+    v7 = 0;
+d315 1
+a315 1
+            return v7;
+d411 2
+a412 1
+	PTARR(getptabp(a1++))->OpCode = 950;	// add two 950's to signify end of file
+d451 1
+a451 1
+						ptb->Operand = (*lt)->field_2;
+d463 3
+a465 1
+				chkoelist(*(ONESC **)&xtarr.TableAddr[52 * ptb->TABno - 28]);
+@

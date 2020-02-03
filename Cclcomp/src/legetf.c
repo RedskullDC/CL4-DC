@@ -100,8 +100,8 @@ int tdopen(int DBno, char *TableName)
 				if ( TDno2 > 0 )
 				{
 					v6 = (char *)&elem1;
-					zap((char*)&elem1, sizeof(ELEMENTREC));		 // = 76 bytes
-					zap((char*)&elem2, sizeof(ELEMENTREC));
+					memset((char*)&elem1, 0, sizeof(ELEMENTREC));		 // = 76 bytes
+					memset((char*)&elem2, 0, sizeof(ELEMENTREC));
 					itoms(&elem1.TDFentry, tdef->TDFentry);
 					
 					RetCode = retrieve(TDno2, (char *)&elem1, (char *)&elem1);
@@ -176,7 +176,7 @@ int tdopen(int DBno, char *TableName)
     return TDno;	// error TDno < 0
 }
 
-int legetf()
+int legetf(void)
 {
     DBase	*DTptr;
 	TDesc	*TTptr;

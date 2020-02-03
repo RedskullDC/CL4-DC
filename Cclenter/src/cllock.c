@@ -20,8 +20,9 @@ bool cllock(int PID)
         sprintf(lpath, "/tmp/clfl%d", PID);			// global goodness :o)
     
 	while ( 1 )
-    {								//                               1 
-        v4 = open64(lpath, 0xC1);	// 0000 0000 1100 0001 ==    O_WRONLY | ?? | ??
+    {
+        //v4 = open64(lpath, 0xC1);			// 0000 0000 1100 0001 ==    O_WRONLY | ?? | ??
+        v4 = open64(lpath, 0301,0666);		// 0000 0000 1100 0001 ==    O_WRONLY | ?? | ??
 		if ( v4 >= 0 || *__errno_location() != 17 )
             break;
         

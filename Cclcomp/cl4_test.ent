@@ -1,0 +1,75 @@
+
+##################
+{ Main
+##################
+
+define tess,t		tessd,d		account,c6	days,n		str30,c30 \
+		tdate,d		myerror,b	count,n		
+
+define date_array[10],n	days_last_job,i	non_wk_days,i hol_date,d tot_days,i
+
+getfile COURDB2		Pjobfile,pj		Holidays,hol
+
+getfile COURDB1		Custfile,cst 		Custhist,chst \
+			Cust_Job_Count,cjc	Custhist,csth \
+			Cust_Job_Count,cjc2
+
+getfile COURLOG		Credit_Limit,cla 	Credit_Limit_Xa		Web_Discount_Change,wdc		RateKeyChange,rkc
+
+
+print 'Acct Name                                  Date   Notes:' nl
+#      27   Leslie Ayling                       24-12-12 Rate Key changed from: 75 to: RK1
+
+getnext cst where cst.Rec_Status = 'a' and cst.Date_Account_Created < ('t' - 180) and cst.Account_Lock <> 'Y'
+while not ERROR
+	# Courier Jobs:
+	if cst.Date_Last_Cour_Job < ('t' - 180) and cst.Rate_Key[1] <> '1' and (cst.Rate_Key[1] < 100 or (cst.Rate_Key[1] >= 200 and cst.Rate_Key[1] <= 203) or cst.Rate_Key[1] = cst.Account) 
+		rkc.Account	= cst.Account
+		rkc.Comment_60	= 'Rate Key changed from: ' + cst.Rate_Key[1] + ' to: RK1'
+		print rkc.Account,4 cst.Name,35 cst.Date_Last_Cour_Job,8 rkc.Comment_60 nl
+	endif
+
+	# Freight Jobs:
+	if cst.Date_Last_Frt_Job < ('t' - 180) and (cst.Rate_Key[2] <> '1' or cst.Rate_Key[3] <> '1') and (cst.Rate_Key[2] <> 'NA' or cst.Rate_Key[3] <> 'NA')
+		rkc.Account	= cst.Account
+		rkc.Comment_60	= 'Fr Rate changed: ' + cst.Rate_Key[2] + ', IA Rate changed : ' + cst.Rate_Key[3] + ' to: RK1'
+		print rkc.Account,4 cst.Name,35 cst.Date_Last_Frt_Job,8 rkc.Comment_60 nl
+	endif
+
+	getnext cst
+wend
+
+define notused,b rannum,4	testint,n
+#notused = srandom(123456)
+srandom(123456)
+rannum = random()
+rannum *= 100
+print rannum nl
+
+rannum = random()
+rannum *= 100
+print rannum nl
+
+tdate = 't'
+date_array = tdate
+testint = date_array[1]
+print tdate testint date_array[1] date_array[2] date_array[3] nl
+tdate = date_array
+print date_array nl
+
+print 'time' nl
+print 'pname' nl
+print 'tty' nl
+print 'uname' nl
+print 'path' nl
+print 'pid' nl
+print 'pwd' nl
+print 'uid' nl
+print 'version' nl
+print 't' nl
+
+if '245a4' > '24511'
+	print 'greater than' nl
+endif	
+
+}

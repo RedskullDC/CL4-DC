@@ -31,9 +31,9 @@ void Key_Debugem()
             if ( !Key_Ready() )
                 break;
             ReadChar = Key_GetChar();
-            _IO_putc(' ', stdout);
+            putc(' ', stdout);
         }
-        _IO_putc('\n', stdout);
+        putc('\n', stdout);
         if ( ReadChar == 'q' )
             cleanup(0);                         // time to get out of here......
     }

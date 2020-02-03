@@ -1,0 +1,191 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.06.21.04.56.58;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2016.06.03.05.54.39;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.10.05.39.43;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@inital checkin
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef LEEOP_C
+#define LEEOP_C
+
+int leeop(int a1)					// on end of page 'on_eop'
+{
+	ONESC **v2; // edi@@3
+	//ONESC *v3; // eax@@5
+	//ONESC *v4; // eax@@5
+	ONESC *v5; // eax@@9
+	char v9[32]; // [sp+20h] [bp-58h]@@14
+
+	printf("leeop(%d)\n", a1);
+	if ( a1 )
+		PTARR(getptabp(a1 - 1));	// seems pointless, but may force new PTAB
+
+	printf("leeop() - &oelist = %08X, oelist = %08X \n", &oelist, oelist);
+
+	v2 = &oelist;
+	printf("leeop() - v2 = %08X , *v2 = %08X\n", v2, *v2);
+
+	while (*v2)
+	{
+		v2 = &(*v2)->NextESC;
+	}
+     /*if ( *v2 )				// true if we're not the first escape
+     {
+
+          if ( (*v2)->NextESC )
+          {
+               while ( 1 )
+               {
+                    v3 = *v2;
+                    v2 = &v3->NextESC;
+                    v4 = v3->NextESC;
+                    if ( !v4 )
+                         break;
+                    if ( !v4->NextESC )
+                         goto LABEL_7;
+               }
+          }
+          else
+          {
+LABEL_7:
+               if ( *v2 )
+                    v2 = &(*v2)->NextESC;
+          }
+     }*/
+
+     v5 = (ONESC *)getmem(16);		// create new escape, Add it to the end of the list
+     *v2 = v5;						// Links the new escape into the chain
+	
+	printf("leeop(52) - v2 = %08X , *v2 = %08X\n", v2, *v2);
+    
+	 v5->KeyNumber = 49;			// ????
+     symbol = getsym();
+
+     if ( symbol == 2230 )			// String literal - Blockname
+     {
+          v5->BlockName = getmem(fixbname(v9, sym));
+          cdbcpystr(v5->BlockName, v9, 0);
+          symbol = getsym();
+          return 1;					// exit success
+     }
+     else
+     {
+          if ( symbol == 930 )		// <CR>
+               loaderr(2, sym);		// missing block name
+          else
+               loaderr(33, sym);	// unexpected symbol
+          return 0;					// error exit
+     }
+}
+
+#endif
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d4 1
+a4 1
+int leeop(int a1)
+d6 21
+a26 8
+     ONESC **v2; // edi@@3
+     ONESC *v3; // eax@@5
+     ONESC *v4; // eax@@5
+     ONESC *v5; // eax@@9
+     char v9[32]; // [sp+20h] [bp-58h]@@14
+
+     if ( a1 )
+          PTARR(getptabp(a1 - 1));	// seems pointless, but may force new PTAB
+d28 1
+a28 4
+	 v2 = &oelist;
+     if ( oelist )
+     {
+          if ( oelist->NextESC )
+d47 1
+a47 1
+     }
+d51 4
+a54 2
+
+     v5->KeyNumber = 49;			// ????
+d59 2
+a60 2
+          (*v2)->BlockName = getmem(fixbname(v9, sym));
+          cdbcpystr((*v2)->BlockName, v9, 0);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a9 3
+     int v6; // eax@@11
+     int result; // eax@@13
+     short v8; // ax@@14
+a12 1
+     {
+d14 2
+a15 2
+     }
+     v2 = &oelist;
+d38 5
+a42 3
+     v5 = (ONESC *)getmem(16);
+     *v2 = v5;
+     v5->KeyNumber = 49;
+d44 2
+a45 1
+     if ( symbol == 2230 )	// String literal
+d47 1
+a47 2
+          v8 = fixbname(v9, sym);
+          (*v2)->BlockName = getmem(v8);
+d50 1
+a50 1
+          result = 1;
+d54 2
+a55 2
+          if ( symbol == 930 )
+               v6 = 2;
+d57 2
+a58 3
+               v6 = 33;
+          loaderr(v6, sym);
+          result = 0;
+a59 1
+     return result;
+@

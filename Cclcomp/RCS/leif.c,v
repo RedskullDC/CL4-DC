@@ -1,0 +1,630 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.05.31.06.28.07;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.06.19.05.55.59;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.01.15.05.02.50;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.08.34;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@#ifndef LEIF_C
+#define LEIF_C
+
+#include <assert.h>
+
+#define max_it &itab[no_itabs]
+
+int leif(int *a1)
+{
+	PTAB *v11;
+	PTAB *ptb;
+	
+	short v2;
+	short v13;
+	unsigned short PTno;
+	
+
+	//if ( &itab[no_itabs] <= it )	// "it" is some nice global goodness
+	if ( max_it <= it )	// "it" is some nice global goodness
+    {
+		newitab();
+        //if ( it >= &itab[no_itabs] )
+		//	__assert_fail("it < max_it", "leif.c", 36, "leif");
+		assert (it < max_it);
+	}
+    v2 = getptabp((*a1)++);
+    it->itType	= 1;			// 1 = 'if', 2 = 'while'
+    it->PTfalse	= v2;			// Jump here when "IF" expression evaluates to false
+    it++;
+
+    //if ( &itab[no_itabs] <= it )
+    if ( max_it <= it )
+    {
+		newitab();
+        //if ( it >= &itab[no_itabs] )
+		//	__assert_fail("it < max_it", "leif.c", 47, "leif");
+		assert (it < max_it);
+	}
+    do
+		symbol = getsym();		// skip past any blank lines
+	while ( symbol == 930 );	// <CR>
+
+	allptpt(v2, &ptb);
+    ptb->OpCode		= 300;		// 300 == "if"
+    ptb->SrcLineNo	= lla;
+    ptb->TABno		= loadexp(1, 1);	// in conditional, expect int answer
+    dallptpt(&ptb);
+    
+	if ( !ptb->TABno || symbol != 930 )
+    {
+		while ( symbol )
+        {
+			if ( ptb->TABno )			// loaded expression ok, but <CR> didn't follow!
+				loaderr(33, sym);		// unexpected symbol
+			symbol = getsym();
+            if ( comp_abort )
+				break;
+			if ( symbol == 930 )
+				goto LABEL_15;
+		}
+        return 0;	// error_exit
+	}
+
+LABEL_15:
+    while ( symbol == 930 )
+		symbol = getsym();
+    
+	// perfectly ok to have a blank block in between if/elsif, elsif/else, else/endif pairs
+
+	if ( symbol == 370 )                       // elsif
+	{
+		while ( 1 )
+        {
+DO_ELSIF:
+            --it;
+            if ( it->HasElse )					// We've already encountered an 'else' case. ERROR 
+            {
+				loaderr(9, sym);				// "unexpected elsif"
+	            return 0;
+			}
+            it->HasElsif = 1;
+            PTno = getptabp((*a1)++);
+
+			v11 = PTARR(PTno);
+			v11->OpCode = 700;	// goto
+            
+			it->PTABno = PTno;
+            if ( it->PTfalse )
+            {
+				(&ptarr.TableAddr[it->PTfalse - 1])->Operand = *(short *)a1;
+                it->PTfalse = 0;
+			}
+            ++it;
+			//printf("do_elsif_90: it = x%08X\n", it);
+            //if ( &itab[no_itabs] <= it )
+			if ( max_it <= it )
+            {
+				newitab();
+                //if ( it >= &itab[no_itabs] )
+ 				//	__assert_fail("it < max_it", "leif.c", 100, "leif");
+				assert (it < max_it);
+			}
+            v13 = getptabp((*a1)++);
+            it->itType = 1;				// 1 = 'if', 2 = 'while'
+            it->PTfalse = v13;
+            ++it;
+			//printf("do_elsif_104: it = x%08X\n", it);
+            //if ( &itab[no_itabs] <= it )
+			if ( max_it <= it )
+            {
+				newitab();
+                //if ( it >= &itab[no_itabs] )
+				//	__assert_fail("it < max_it", "leif.c", 110, "leif");
+				assert (it < max_it);
+			}
+               
+			do
+				symbol = getsym();
+			while ( symbol == 930 );		// <CR>
+
+            allptpt(v13, &ptb);
+            ptb->OpCode		= 300;			// if OpCode
+            ptb->SrcLineNo	= lla;
+            ptb->TABno = loadexp(1, 1);
+            dallptpt(&ptb);
+
+            if ( !ptb->TABno )
+				break;
+			if ( symbol != 930 )
+				break;
+LABEL_48:
+			while ( symbol == 930 )
+				symbol = getsym();
+
+			if ( symbol != 370 )             // elsif
+            {
+				if ( symbol != 360 && symbol != 390 && symbol )// 360 = else, 390 = endif
+                {
+					do
+                    {
+						loadstate(a1);
+                        if ( comp_abort )
+							return 0;
+							  
+						while ( symbol == 930 )
+							symbol = getsym();
+					}		// 370 = elsif, 360 = else,  390 = "endif"
+					while ( symbol != 370 && symbol != 360 && symbol != 390 && symbol );
+				}
+                if ( symbol != 370 )        // 370 = elsif
+					goto CHECK_ELSE;
+			}
+		}
+        while ( symbol )
+        {
+			if ( ptb->TABno )
+				loaderr(33, sym);			// unexpected symbol
+			symbol = getsym();
+            if ( comp_abort )
+				break;
+			if ( symbol == 930 )
+				goto LABEL_48;
+		}
+        return 0;	// error_exit
+	}
+    if ( symbol != 360 && symbol != 390 && symbol )// 360 = "else", 390 = "endif"
+    {
+		do
+        {
+			loadstate(a1);			// *** many levels of recursion possible here !! ***
+            if ( comp_abort )
+				return 0;
+			while ( symbol == 930 )
+				symbol = getsym();
+		}	// 370 = elsif, 360 = else,  390 = "endif"
+        while ( symbol != 370 && symbol != 360 && symbol != 390 && symbol );
+	}
+
+    if ( symbol == 370 )			// 370 = "elsif"
+		goto DO_ELSIF;
+
+CHECK_ELSE:
+	if ( symbol == 360 )			// 360 = "else"
+    {
+		--it;
+        it->HasElse = 1;			// This if/end block has an 'ELSE' case!
+        
+		PTno = getptabp((*a1)++);
+		v11 = PTARR(PTno);
+		v11->OpCode = 700;			// goto OpCode. 
+        
+		it->PTABno = PTno;	// This will be the next instruction after the if/endif block.
+        if ( it->PTfalse )
+        {
+			//(&ptarr.TableAddr[it->PTfalse - 1])->Operand = *(short *)a1;
+			PTARR(it->PTfalse)->Operand = *(short *)a1;
+            it->PTfalse = 0;
+		}
+        it++;
+        //if ( &itab[no_itabs] <= it )
+		if ( max_it <= it )
+        {
+			newitab();
+            //if ( it >= &itab[no_itabs] )
+	        //     __assert_fail("it < max_it", "leif.c", 160, "leif");
+			assert (it < max_it);
+		}
+          
+		do
+			symbol = getsym();
+		while ( symbol == 930 );
+
+        while ( symbol != 390 && symbol )		// 390 = "endif"
+        {
+			loadstate(a1);				// many levels of recursion possible here
+            if ( comp_abort )
+				return 0;
+			while ( symbol == 930 )		// skip blank lines
+				symbol = getsym();
+		}
+	}
+// CHECK_ENDIF
+    if ( symbol == 390 )				// 390 = "endif"
+    {
+		symbol = getsym();
+        --it;							// back up the ITAB array, and set all linkages
+        if ( it->itType != 1 )			// 1 = 'if', 2 = 'while' ?
+        {
+			loaderr(5, sym);			// "endif without if"
+            return 0;
+		}
+
+		if ( itab < it && it[-1].HasElsif )	// This was an "if/elsif/endif" *OR* "if/elsif/else/endif"
+        {
+			if ( it->HasElse )			// This block has an 'ELSE' case!
+            {
+				it->HasElse = 0;
+                /*if ( it->PTABno )	// appears duplicated below...
+                {
+					(&ptarr.TableAddr[it->PTABno - 1])->Operand = *(short *)a1;
+                    it->PTABno = 0;
+				}*/
+			}
+            if ( it->PTfalse )
+            {
+				(&ptarr.TableAddr[it->PTfalse - 1])->Operand = *(short *)a1;
+                it->PTfalse = 0;
+			}
+            if ( it->PTABno ) // duplicated here ???
+            {
+				(&ptarr.TableAddr[it->PTABno - 1])->Operand = *(short *)a1;
+                it->PTABno = 0;
+			}
+            for ( --it; it->HasElsif; --it )	// Possibly many levels of elsif's!
+            {
+                it->HasElse = 0;
+                it->HasElsif = 0;
+                if ( it->PTABno )
+                {
+					(&ptarr.TableAddr[it->PTABno - 1])->Operand = *(short *)a1;
+                    it->PTABno = 0;
+				}
+                if ( itab >= it )
+					break;
+				if ( !it[-1].HasElsif)	// Don't really need this check. For loop should suffice?
+					break;
+			}
+		}
+        else
+        {
+			if ( it->HasElse )		// This was an if/else/endif block
+            {
+				it->HasElse = 0;
+                if ( it->PTABno )
+                {
+					(&ptarr.TableAddr[it->PTABno - 1])->Operand = *(short *)a1;
+                    it->PTABno = 0;
+				}
+			}
+            else					// This was a simple if/endif block
+            {
+				if ( it->PTfalse )
+                {
+					(&ptarr.TableAddr[it->PTfalse - 1])->Operand = *(short *)a1;
+                    it->PTfalse = 0;
+				}
+			}
+		}
+	}
+    return 1;
+}
+
+#endif
+@
+
+
+1.3
+log
+@initermediate
+@
+text
+@d4 4
+d10 7
+a16 8
+     //ITAB *v8; // eax@@29
+	PTAB *v11; // eax@@30
+    PTAB *ptb; // [sp+48h] [bp-10h]@@8
+    
+	short v2; // di@@4
+    short v13; // di@@37
+    unsigned short PTno; // edi@@63
+
+d18 2
+a19 1
+	if ( &itab[no_itabs] <= it )	// "it" is some nice global goodness
+d22 3
+a24 2
+        if ( it >= &itab[no_itabs] )
+			__assert_fail("it < max_it", "leif.c", 36, "leif");
+d31 2
+a32 1
+    if ( &itab[no_itabs] <= it )
+d35 3
+a37 2
+        if ( it >= &itab[no_itabs] )
+			__assert_fail("it < max_it", "leif.c", 47, "leif");
+d95 2
+a96 1
+            if ( &itab[no_itabs] <= it )
+d99 3
+a101 2
+                if ( it >= &itab[no_itabs] )
+ 					__assert_fail("it < max_it", "leif.c", 100, "leif");
+d108 2
+a109 1
+            if ( &itab[no_itabs] <= it )
+d112 3
+a114 2
+                if ( it >= &itab[no_itabs] )
+					__assert_fail("it < max_it", "leif.c", 110, "leif");
+d170 1
+a170 1
+			loadstate(a1);
+d200 2
+a201 1
+        if ( &itab[no_itabs] <= it )
+d204 3
+a206 2
+            if ( it >= &itab[no_itabs] )
+	             __assert_fail("it < max_it", "leif.c", 160, "leif");
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@a7 1
+	PTAB *v21; // eax@@63
+a10 1
+    unsigned short v10; // edi@@30
+d39 1
+a39 1
+    ptb->TABno		= loadexp(1, 1);
+d41 2
+a42 1
+    if ( !ptb->TABno || symbol != 930 )
+d46 1
+a46 1
+			if ( ptb->TABno )
+d54 1
+a54 1
+        return 0;
+d75 1
+a75 1
+            v10 = getptabp((*a1)++);
+d77 1
+a77 1
+			v11 = v10 ? &ptarr.TableAddr[v10 - 1] : 0;
+d79 2
+a80 1
+            it->PTABno = v10;
+d176 6
+a181 5
+        PTno = getptabp((*a1)++);
+
+		v21 = PTno ? &ptarr.TableAddr[PTno - 1] : 0;
+		v21->OpCode = 700;	// goto OpCode. 
+        it->PTABno = PTno;	// This will be the next instruction after the if/endif block.
+d184 2
+a185 1
+			(&ptarr.TableAddr[it->PTfalse - 1])->Operand = *(short *)a1;
+d188 1
+a188 1
+        ++it;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 10
+a15 13
+     short v1; // ST00_2@@4
+     short v2; // di@@4
+     ITAB *v8; // eax@@29
+     short v9; // ST00_2@@30
+     unsigned short v10; // edi@@30
+     PTAB *v11; // eax@@30
+     short v12; // ST00_2@@37
+     short v13; // di@@37
+     short v19; // ST00_2@@63
+     unsigned short PTno; // edi@@63
+     PTAB *v21; // eax@@63
+     ITAB *v24; // eax@@92
+     PTAB *ptb; // [sp+48h] [bp-10h]@@8
+d17 1
+a17 1
+	if ( &itab[no_itabs] <= it )
+d23 5
+a27 5
+    v1 = (*a1)++;
+    v2 = getptabp(v1);
+    it->field_C = 1;
+    it->PTno = v2;
+    ++it;
+d35 2
+a36 2
+		symbol = getsym();
+	while ( symbol == 930 );
+d39 3
+a41 3
+    ptb->OpCode = 300;                         // OpCode for "if"
+    ptb->SrcLineNo = lla;
+    ptb->TABno = loadexp(1, 1);
+d48 1
+a48 1
+				loaderr(33, sym);
+d57 1
+d62 2
+d68 3
+a70 4
+LABEL_29:
+			v8 = it - 1;
+            it = v8;
+            if ( v8->field_4 )
+d75 4
+a78 4
+            v8->field_8 = 1;
+            v9 = (*a1)++;
+            v10 = getptabp(v9);
+			v11 = v10 ? (PTAB *)&ptarr.TableAddr[8 * (v10 - 1)] : 0;
+d81 1
+a81 1
+            if ( it->PTno )
+d83 2
+a84 2
+				*(short *)&ptarr.TableAddr[8 * it->PTno - 4] = *(short *)a1;
+                it->PTno = 0;
+d87 1
+d94 3
+a96 4
+            v12 = (*a1)++;
+            v13 = getptabp(v12);
+            it->field_C = 1;
+            it->PTno = v13;
+d98 1
+d108 1
+a108 1
+			while ( symbol == 930 );
+d111 2
+a112 2
+            ptb->OpCode = 300;
+            ptb->SrcLineNo = lla;
+d136 1
+a136 1
+					}
+d139 2
+a140 2
+                if ( symbol != 370 )        // 370 = elsif, 360 = else
+					goto LABEL_62;
+d146 1
+a146 1
+				loaderr(33, sym);
+d153 1
+a153 1
+        return 0;
+d155 1
+a155 1
+    if ( symbol != 360 && symbol != 390 && symbol )// 360 = else
+d164 1
+a164 1
+		}
+d167 1
+d169 3
+a171 2
+		goto LABEL_29;
+LABEL_62:
+d175 7
+a181 8
+        it->field_4 = 1;
+        v19 = (*a1)++;
+        PTno = getptabp(v19);
+
+		v21 = PTno ? (PTAB *)&ptarr.TableAddr[8 * (PTno - 1)] : 0;
+		v21->OpCode = 700;	// goto
+        it->PTABno = PTno;
+        if ( it->PTno )
+d183 2
+a184 2
+			*(short *)&ptarr.TableAddr[8 * it->PTno - 4] = *(short *)a1;
+            it->PTno = 0;
+d200 1
+a200 1
+			loadstate(a1);	// recursion?
+d203 1
+a203 1
+			while ( symbol == 930 )
+d207 2
+a208 1
+    if ( symbol == 390 )
+d211 2
+a212 2
+        --it;
+        if ( it->field_C != 1 )
+d217 2
+a218 1
+        if ( itab < it && *((int *)it - 2) )
+d220 1
+a220 1
+			if ( it->field_4 )
+d222 2
+a223 2
+				it->field_4 = 0;
+                if ( it->PTABno )
+d225 1
+a225 1
+					*(short *)&ptarr.TableAddr[8 * it->PTABno - 4] = *(short *)a1;
+d227 1
+a227 1
+				}
+d229 1
+a229 1
+            if ( it->PTno )
+d231 2
+a232 2
+				*(short *)&ptarr.TableAddr[8 * it->PTno - 4] = *(short *)a1;
+                it->PTno = 0;
+d234 1
+a234 1
+            if ( it->PTABno )
+d236 1
+a236 1
+				*(short *)&ptarr.TableAddr[8 * it->PTABno - 4] = *(short *)a1;
+d239 1
+a239 1
+            for ( --it; it->field_8; --it )
+d241 2
+a242 3
+				v24 = it;
+                it->field_4 = 0;
+                v24->field_8 = 0;
+d245 1
+a245 1
+					*(short *)&ptarr.TableAddr[8 * it->PTABno - 4] = *(short *)a1;
+d250 1
+a250 1
+				if ( !*((int *)it - 2) )
+d256 1
+a256 1
+			if ( it->field_4 )
+d258 1
+a258 1
+				it->field_4 = 0;
+d261 1
+a261 1
+					*(short *)&ptarr.TableAddr[8 * it->PTABno - 4] = *(short *)a1;
+d265 1
+a265 1
+            else
+d267 1
+a267 1
+				if ( it->PTno )
+d269 2
+a270 2
+					*(short *)&ptarr.TableAddr[8 * it->PTno - 4] = *(short *)a1;
+                    it->PTno = 0;
+@

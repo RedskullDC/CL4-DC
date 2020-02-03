@@ -1,0 +1,2016 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.08.27.14.13.51;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef EVALSTRING_C
+#define EVALSTRING_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <monetary.h>	// for strfmon()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+
+int __getrnge(int *a1, int *a2, char *a3)
+{
+    *a1 = (unsigned char)*a3;
+    if ( a3[1] == -1 )
+        *a2 = 20000;
+    else
+        *a2 = (unsigned char)a3[1] - *a1;
+    return 1;
+}
+
+int __cclass(char *a1, char a2, int a3)
+{
+    int v3; // edi@@1
+    char *v4; // ecx@@2
+    int v5; // esi@@2
+    char *v6; // ecx@@5
+    char *v7; // ecx@@6
+    char v8; // al@@10
+
+    v3 = 0;
+    if ( a2 )
+    {
+        v4 = a1 + 1;
+        v5 = *a1 - 1;
+        if ( *a1 == 1 )
+            return a3 == 0;
+        while ( 1 )
+        {
+            if ( *v4 == 0x10 )
+            {
+                v3 = 0;
+                if ( v4[2] - v4[1] < 0 )
+                    return v3;
+                v6 = v4 + 1;
+                if ( *v6 > a2 )
+                {
+                    v7 = v6 + 1;
+                }
+                else
+                {
+                    v7 = v6 + 1;
+                    if ( a2 <= *v7 )
+                        return a3;
+                }
+                v4 = v7 + 1;
+                v5 -= 2;
+            }
+            else
+            {
+                v8 = *v4++;
+                v3 = a3;
+                if ( v8 == a2 )
+                    return v3;
+            }
+            --v5;
+            if ( !v5 )
+                return a3 == 0;
+        }
+    }
+    return v3;
+}
+
+char *form(char *a1, char *a2, char *a3, unsigned int a4, bool Negative)
+{
+    char *v5; // esi@@5
+    char *v6; // edi@@5
+    char v7; // al@@19
+    char *v8; // eax@@21
+    char v9; // al@@22
+    char v10; // al@@33
+    char *v11; // edx@@50
+    char v12; // al@@57
+    unsigned int v14; // [sp+0h] [bp-18h]@@5
+    signed int v15; // [sp+4h] [bp-14h]@@5
+    char *i; // [sp+8h] [bp-10h]@@1
+    char *v17; // [sp+8h] [bp-10h]@@5
+
+    for ( i = a2; *i == ' '; ++i )
+        ;
+    if ( *i == '0' )
+        *i = ' ';
+    v14 = (a4 >> 3) & 1;
+    v15 = 0;
+    v5 = a1;
+    v17 = a2;
+    v6 = a3;
+    while ( *v6 )
+    {
+        switch ( *v6 )
+        {
+            case ',':
+                if ((*__ctype_b_loc())[*(v5 - 1)] & 0x0800 )	// isdigit()  ==	0x0800
+				{
+					v12 = *v6;
+					*v5 = v12;
+					++v5;
+					++v6;
+					break;
+				}
+                if ( *(v5 - 1) == '*' )
+                {
+                    *v5 = '*';
+                }
+                else
+                {
+                    if ( a4 & 0x18 )
+                    {
+                        *v5 = *(v5 - 1);
+                        *(v5 - 1) = *(v5 - 2);
+                        *(v5 - 2) = ' ';
+                    }
+                    else
+                    {
+                        if ( *(v5 - 1) == ' ' )
+						{
+                            *v5 = ' ';
+			                ++v5;
+						    ++v6;
+							break;
+						}
+                        *v5 = *(v5 - 1);
+                        *(v5 - 1) = ' ';
+                    }
+                }
+                ++v5;
+                ++v6;
+                break;
+            case 'V':
+            case 'v':
+                ++v17;
+                --v5;	//******
+                ++v5;
+                ++v6;
+                break;
+            case '.':
+                if ((*__ctype_b_loc())[*(v5 - 1)] & 0x0800 || v6[1] == '&' || v6[1] == '9' ) //isdigit()  ==	0x0800
+				{
+				    v9 = *v6;
+				    *v5 = v9;
+					++v17;
+					++v5;
+	                ++v6;
+	                break;
+				}
+                if ( *v17 != ' ' )
+				{
+				    v11 = v17;
+                    v9 = *v11;
+	                *v5 = v9;
+					++v17;
+					++v5;
+					++v6;
+					break;
+				}
+                v7 = *(v5 - 1);
+                *v5 = v7;
+                if ( v7 == '*' )
+				{
+					++v17;
+					++v5;
+					++v6;
+					break;
+				}
+				else
+				{
+					*(v5 - 1) = ' ';
+					++v17;
+					++v5;
+				    ++v6;
+				    break;
+				}
+
+            case '&':
+            case '9':
+                v8 = v17;
+                if ( *v17 != ' ' )
+				{
+					v11 = v8;
+				    v9 = *v11;
+					*v5 = v9;
+				}
+				else
+				{
+					v9 = '0';
+					*v5 = v9;
+				}
+				++v17;
+				++v5;
+				++v6;
+				break;
+
+			case '(':
+            case '+':
+            case '-':
+            case '<':
+                if ( a4 & 8 )
+                {
+                    if ( v14 )
+                    {
+                        if ( *v6 == '+' )
+                        {
+                            if ( Negative )
+                            {
+                                *v5 = '-';
+                                v14 = 0;
+				                ++v5;
+							    ++v6;
+								break;
+                            }
+                        }
+                        else
+                        {
+                            if ( !Negative )
+                            {
+                                *v5 = ' ';
+                                v14 = 0;
+				                ++v5;
+							    ++v6;
+								break;
+                            }
+                        }
+                        *v5 = *v6;
+                        v14 = 0;
+		                ++v5;
+					    ++v6;
+						break;
+                    }
+                    if ( *v17 == ' ' )
+                    {
+                        v10 = *(v5 - 1);
+                        *v5 = v10;
+                        *(v5 - 1) = ' ';
+                        ++v17;
+                    }
+                    else
+                    {
+                        if ( a4 & 0x10 && !v15 )
+                        {
+                            *v5 = currency_symbol;
+                            v15 = 1;
+                        }
+                        else
+                        {
+                            *v5 = *v17++;
+                        }
+                    }
+                }
+                else
+                {
+                    if ( *v6 == '+' )
+                    {
+                        if ( Negative )
+                        {
+                            *v5 = '-';
+			                ++v5;
+					        ++v6;
+							break;
+                        }
+                    }
+                    else
+                    {
+                        if ( !Negative )
+                        {
+                            *v5 = ' ';
+			                ++v5;
+						    ++v6;
+							break;
+                        }
+                    }
+                    v12 = *v6;
+                    *v5 = v12;
+                }
+                ++v5;
+                ++v6;
+                break;
+            case '#':
+            case 'Z':
+            case 'z':
+				*v5 = *v17++;
+                ++v5;
+                ++v6;
+                break;
+            case '$':
+                if ( !v15 )
+				{
+					*v5 = currency_symbol;
+					v15 = 1;
+					++v5;
+					++v6;
+					break;
+				}
+                if ( *v17 != ' ' )
+                {
+                    v11 = v17;
+                    v9 = *v11;
+	                *v5 = v9;
+					++v17;
+					++v5;
+					++v6;
+					break;
+				}
+                if ( !v15 )
+				{
+					++v17;
+					++v5;
+					++v6;
+					break;
+				}
+				v10 = *(v5 - 1);
+                if ( v10 != currency_symbol )
+                {
+                    *v5 = ' ';
+					++v17;
+					++v5;
+					++v6;
+					break;
+				}
+				else
+				{
+				    *v5 = v10;
+				    *(v5 - 1) = ' ';
+					++v17;
+					++v5;
+				    ++v6;
+				    break;
+				}
+
+            case '*':
+                v8 = v17;
+                if ( *v17 == ' ' )
+                {
+                    v9 = *v6;
+                }
+                else
+                {
+                    v11 = v8;
+                    v9 = *v11;
+                }
+                *v5 = v9;
+				++v17;
+				++v5;
+                ++v6;
+                break;
+			case ')':
+            case '>':
+                v12 = ' ';
+                if ( Negative )
+				{
+					v12 = *v6;
+					*v5 = v12;
+				}
+				else
+				{
+					*v5 = v12;
+				}
+				++v5;
+				++v6;
+				break;
+			case 'D':
+            case 'd':
+                if ( !Negative )
+				{
+                    *v5++ = ' ';
+                    *v5 = ' ';
+				}
+				else
+				{
+					*v5++ = *v6;
+					if ( *v6 == 'd' )
+					    v12 = 'b';
+					else
+					    v12 = 'B';
+					*v5 = v12;
+				}
+				++v5;
+				++v6;
+				break;
+            case 'C':
+            case 'c':
+                if ( !Negative )
+                {
+                    *v5++ = ' ';
+                    *v5 = ' ';
+                }
+				else
+				{
+					*v5++ = *v6;
+					if ( *v6 == 'c' )
+					    v12 = 'r';
+					else
+					    v12 = 'R';
+					*v5 = v12;
+				}
+				++v5;
+				++v6;
+				break;
+			case ' ':
+            case '/':
+            case '0':
+            case '_':
+                if ( *v6 != '_' )
+				{
+					v12 = *v6;
+					*v5 = v12;
+				}
+				else
+				{
+				    v12 = ' ';
+					*v5 = v12;
+				}
+				++v5;
+				++v6;
+				break;
+			default:
+				v12 = *v6;
+                *v5 = v12;
+                ++v5;
+                ++v6;
+                break;
+        }
+    }
+    *v5 = 0;
+    return a1;
+}
+
+char *nfmt(char *a1, const char *format, double a3)
+{
+    signed int v3; // edi@@3
+    const char *v4; // edx@@3
+    char *i; // ecx@@3
+    char *v6; // eax@@5
+    unsigned int v7; // ecx@@12
+    size_t v8; // esi@@12
+    int v9; // edx@@13
+    int NumLen; // [sp+2Ch] [bp-10Ch]@@1
+    bool a5; // [sp+30h] [bp-108h]@@1
+    int a4; // [sp+34h] [bp-104h]@@12
+    char NumBuff[112]; // [sp+40h] [bp-F8h]@@15
+    char v18[128]; // [sp+B0h] [bp-88h]@@3
+
+    a5 = 0;
+    NumLen = 0;
+    if ( strchr(format, '%') )
+    {
+        strfmon(a1, 0x20u, format, a3);
+        return a1;
+    }
+    v3 = 2;
+    v4 = format;
+    for ( i = v18; *v4; ++v4 )
+    {
+        *i = *v4;
+        if ( v3 == 1 )
+        {
+            v6 = i++;
+            *v6 |= 0x80u;
+            v3 = 2;
+        }
+        else
+        {
+            if ( *v4 == '\\' )
+                v3 = 1;
+            else
+                ++i;
+        }
+    }
+    if ( v3 == 1 )
+        ++i;
+//--------------------
+    *i = 0;
+    a4 = issign(v18);
+    v7 = strlen(v18) + 1;
+    v8 = v7 - 1;
+    if ( v8 > 0 )
+    {
+        NumLen = getdlen(v18, v8, a4);	// v8 ignored by getdlen
+        v9 = getdp(v18, a4);
+        a5 = 0.0 > a3;					// a5 signifies negative
+        if ( v9 && a3 == 0.0)
+        {
+            fillbuf(NumBuff, NumLen, ' ');
+            NumBuff[NumLen] = 0;
+        }
+        else
+        {
+            if (a5)
+				a3 = -a3;
+            sprintf(NumBuff, "%*.*f", NumLen, v9, a3);
+        }
+    }
+    if ( !v8 || NumLen < (unsigned int)lenstr(NumBuff) || a5 && !(a4 & 1) )
+    {
+        if ( a4 & 0x20 )
+        {
+            --v8;
+        }
+        else
+        {
+            if ( a4 & 4 )
+                ++v8;
+        }
+        fillbuf(a1, v8, '?');
+        a1[v8] = 0;
+        return a1;
+    }
+    return form(a1, NumBuff, v18, a4, a5);
+}
+
+int getdp(char *a1, int a2)
+{
+    int result; // eax@@1
+    char *v3; // edx@@1
+    char *i; // edx@@10
+
+    result = 0;
+    v3 = a1;
+    if ( *a1 )
+    {
+        if ( *a1 == '.' || *a1 == 'v' || *a1 == 'V' )
+        {
+LABEL_9:
+            if ( *v3 )
+            {
+                for ( i = v3 + 1; *i; ++i )
+                {
+                    if ( !(a2 & 2) || *i != '+' && *i != '-' && *i != 'd' && *i != 'D' && *i != 'c' && *i != 'C' )
+                    {
+                        if ( *i != '>' && *i != ')' && *i != '0' && *i != '/' && *i != ' ' && *i != '_'
+                          && (*i == '#' || *i == 'z' || *i == 'Z' || *i == '&' || *i == '9') )
+                            result++;
+                    }
+                }
+            }
+        }
+        else
+        {
+            while ( 1 )
+            {
+                ++v3;
+                if ( !*v3 )
+                    break;
+                if ( *v3 == '.' || *v3 == 'v' || *v3 == 'V' )
+                    goto LABEL_9;
+            }
+        }
+    }
+    return result;
+}
+
+int issign(char *a1)
+{
+    int v1; // esi@@1
+    char *v3; // edx@@6
+    char *i; // edx@@10
+
+    v1 = 0;
+    switch ( *a1 )
+    {
+        case '\0':
+            return 0;
+        case '(':
+        case '+':
+        case '-':
+        case '<':
+            v1 = 1;
+            if ( a1[1] == *a1 )
+                v1 = 9;
+            break;
+        default:
+            if ( a1[1] != *a1 )
+                break;
+            v1 = 0x18u;
+            currency_symbol = a1[1];
+            v3 = a1;
+            if ( !*a1 )
+                goto LABEL_17;
+            do
+            {
+                if ( *v3 == currency_symbol )
+                    *v3 = '$';
+                ++v3;
+            }
+            while ( *v3 );
+            break;
+        case '#':
+        case '&':
+        case '*':
+        case '.':
+        case '9':
+        case 'C':
+        case 'D':
+        case 'V':
+        case 'Z':
+        case 'c':
+        case 'd':
+        case 'v':
+        case 'z':
+            break;
+    }
+    for ( i = a1; *i; ++i )
+    {
+        if ( *i != 'v' && *i != 'V' )
+        {
+            if ( *i == '$' )
+                v1 |= 0x10u;
+        }
+        else
+        {
+            v1 |= 0x20u;
+        }
+    }
+LABEL_17:
+    switch ( a1[lenstr(a1) - 1] )
+    {
+        case '+':
+        case '-':
+            if ( !(v1 & 1) )
+                v1 |= 3u;
+            break;
+        case 'C':
+        case 'D':
+        case 'c':
+        case 'd':
+            v1 |= 7u;
+            break;
+        default:
+            return v1;
+    }
+    return v1;
+}
+
+int getdlen(char *a1, int a2, int a3)
+{
+    int v3; // esi@@1
+    char *i; // edx@@1
+    int result; // eax@@7
+
+    v3 = 0;
+    for ( i = a1; *i; ++i )
+    {
+        switch ( *i )
+        {
+            case '#':
+            case '$':
+            case '&':
+            case '(':
+            case '*':
+            case '+':
+            case '-':
+            case '.':
+            case '9':
+            case '<':
+            case 'V':
+            case 'Z':
+            case 'v':
+            case 'z':
+                ++v3;
+                break;
+            default:
+                continue;
+        }
+    }
+    if ( (a3 & 5) == 1 )
+        --v3;
+    result = v3 - 1;
+    if ( !(a3 & 0x10) )
+        result = v3;
+    return result;
+}
+
+int __xpop(int a1)
+{
+    int *v1; // edx@@3
+
+    if ( a1 )
+    {
+        if ( (unsigned int)__lptr_ >= (unsigned int)__st )
+        {
+            v1 = __lptr_;
+            --__lptr_;
+            return v1[-1];
+        }
+    }
+    else
+    {
+        if ( (unsigned int)__eptr_ <= (unsigned int)&__st[200] )
+        {
+            v1 = __eptr_;
+            ++__eptr_;
+            return v1[1];
+        }
+    }
+    return 0;
+}
+
+int __xpush(int a1, int a2)
+{
+    if ( __lptr_ >= __eptr_ )
+    {
+        write(2, "stack overflow\n", 0xFu);
+        exit(1);
+    }
+    if ( a1 )
+    {
+        *__lptr_ = a2;
+        ++__lptr_;
+    }
+    else
+    {
+        *__eptr_ = a2;
+        --__eptr_;
+    }
+    return 1;
+}
+
+char *__advance(char *a1, char *a2)
+{
+    char *v2; // edi@@1
+    char *v3; // esi@@1
+    int v4; // edx@@2
+    char v5; // dl@@3
+    char v6; // al@@3
+    char *v7; // ecx@@3
+    char v8; // al@@7
+    int v9; // edx@@13
+    char *v10; // esi@@13
+    char *v11; // ST14_4@@13
+    char *v12; // eax@@17
+    char *v13; // eax@@20
+    char v14; // al@@21
+    char v15; // al@@24
+    char v16; // al@@28
+    char v17; // al@@31
+    char v18; // ST04_1@@37
+    int v19; // eax@@37
+    char v20; // ST04_1@@40
+    char v21; // ST04_1@@47
+    int v22; // eax@@47
+    char v23; // al@@52
+    char v24; // al@@54
+    char v25; // al@@56
+    char v26; // al@@58
+    int v27; // edx@@61
+    char *v28; // esi@@61
+    char *v29; // eax@@63
+    char v30; // ST04_1@@65
+    int v31; // eax@@65
+    char v32; // ST04_1@@67
+    int v34; // [sp+8h] [bp-30h]@@45
+    signed int v35; // [sp+18h] [bp-20h]@@1
+    char *v36; // [sp+1Ch] [bp-1Ch]@@20
+    char *v37; // [sp+20h] [bp-18h]@@16
+    int v38; // [sp+24h] [bp-14h]@@13
+    int v39; // [sp+28h] [bp-10h]@@13
+
+    v2 = a1;
+    v3 = a2;
+    v35 = 0;
+    while ( 2 )
+    {
+        v4 = *v3++ - 8;
+        switch ( v4 )
+        {
+            case '\f':
+                v5 = *v2++;
+                v6 = *v3++;
+                v7 = 0;
+                if ( v6 == v5 )
+                    continue;
+                return v7;
+            case '%':
+                __xpop(0);
+                __xpush(0, v3 + 1);
+                return v2;
+            case '&':
+                __xpush(0, v3 + 1);
+                return v2;
+            case '8':
+                v8 = *v2++;
+                v7 = 0;
+                if ( v8 )
+                    continue;
+                return v7;
+            case '\x14':
+                if ( !*v2 )
+                    continue;
+                return 0;
+            case ',':
+                __cflg = 1;		// comma flag
+                return v2;
+            case '\'':
+                return v2;
+            case '(':
+            case ')':
+            case '*':
+            case '+':
+                v9 = (unsigned char)*v3 + ((*(v3 - 1) & 3) << 8);
+                v10 = v3 + 1;
+                v11 = &v10[v9];
+                __xpush(0, &v10[v9 + 2]);
+                v35 = 1;
+                __getrnge(&v38, &v39, v11);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_16;
+                while ( 1 )
+                {
+                    v2 = __advance(v2, v10);
+                    v7 = 0;
+                    if ( !v2 )
+                        return v7;
+                    --v38;
+                    if ( v38 == -1 )
+                    {
+LABEL_16:
+                        v37 = v2;
+                        __xpush(1, v2);
+                        --v39;
+                        for ( ; v39 != -1; --v39 )
+                        {
+                            v12 = __advance(v2, v10);
+                            if ( !v12 )
+                                break;
+                            v2 = v12;
+                            __xpush(1, v12);
+                        }
+                        v3 = (char *)__xpop(0);
+                        goto LABEL_69;
+                    }
+                }
+            case '\x0F':
+                v13 = v3++;
+                v36 = v13;
+                __getrnge(&v38, &v39, v3);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_23;
+                do
+                {
+                    v14 = *v2++;
+                    if ( v14 != *v36 )
+                        return 0;
+                    --v38;
+                }
+                while ( v38 != -1 );
+LABEL_23:
+                v37 = v2;
+                --v39;
+                for ( ; v39 != -1; --v39 )
+                {
+                    v15 = *v2++;
+                    if ( v15 != *v36 )
+                        break;
+                }
+                goto LABEL_33;
+            case ';':
+                __getrnge(&v38, &v39, v3);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_30;
+                while ( 1 )
+                {
+                    v16 = *v2++;
+                    v7 = 0;
+                    if ( !v16 )
+                        return v7;
+                    --v38;
+                    if ( v38 == -1 )
+                    {
+LABEL_30:
+                        v37 = v2;
+                        --v39;
+                        for ( ; v39 != -1; --v39 )
+                        {
+                            v17 = *v2++;
+                            if ( !v17 )
+                                break;
+                        }
+LABEL_33:
+                        if ( v39 < 0 )
+                            ++v2;
+                        v3 += 2;
+                        goto LABEL_69;
+                    }
+                }
+            case '\x03':
+            case '\x13':
+                __getrnge(&v38, &v39, &v3[(unsigned char)*v3]);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_39;
+                break;
+            case '\x10':
+                v34 = 1;
+                goto LABEL_47;
+            case '\0':
+                v34 = 0;
+LABEL_47:
+                v21 = *v2++;
+                v22 = __cclass(v3, v21, v34);
+                v7 = 0;
+                if ( !v22 )
+                    return v7;
+                v3 += *v3;
+                continue;
+            case '4':
+                __braslist[*v3] = v2;
+                ++v3;
+                continue;
+            case '\x04':
+                __braelist[*v3] = v2;
+                __bravar[*v3] = 0;
+                ++v3;
+                continue;
+            case ' ':
+            case '$':
+                ++v3;
+                continue;
+            case ':':
+                v23 = *v2++;
+                v7 = 0;
+                if ( v23 )
+                    goto _L123_0;
+                return v7;
+            case '9':
+_L123_0:
+                v37 = v2;
+                do
+                    v24 = *v2++;
+                while ( v24 );
+                goto LABEL_69;
+            case '\x0E':
+                v25 = *v2++;
+                if ( v25 == *v3 )
+                    goto _L129;
+                return 0;
+            case '\r':
+_L129:
+                v37 = v2;
+                do
+                    v26 = *v2++;
+                while ( v26 == *v3 );
+                ++v3;
+                goto LABEL_69;
+            case '<':
+            case '=':
+            case '>':
+            case '?':
+                v2 = __advance(v2, v3 + 1);
+                v7 = 0;
+                if ( v2 )
+                    goto _L141;
+                return v7;
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+_L141:
+                v27 = (unsigned char)*v3 + ((*(v3 - 1) & 3) << 8);
+                v28 = v3 + 1;
+                __xpush(0, &v28[v27]);
+                v37 = v2;
+                while ( 1 )
+                {
+                    __xpush(1, v2);
+                    v29 = __advance(v2, v28);
+                    if ( !v29 )
+                        break;
+                    v2 = v29;
+                }
+                v3 = (char *)__xpop(0);
+                v35 = 1;
+                goto LABEL_69;
+            case '\x02':
+            case '\x12':
+                v30 = *v2++;
+                v31 = __cclass(v3, v30, *(v3 - 1) == 0x1A);
+                v7 = 0;
+                if ( v31 )
+                    goto _L150;
+                return v7;
+            case '\x01':
+            case '\x11':
+_L150:
+                v37 = v2;
+                do
+                    v32 = *v2++;
+                while ( __cclass(v3, v32, (unsigned char)(*(v3 - 1) - 25) <= 1u) );
+                v3 += *v3;
+                goto LABEL_69;
+            default:
+                return 0;
+        }
+        break;
+    }
+//---------------------------
+    while ( 1 )
+    {
+        v18 = *v2++;
+        v19 = __cclass(v3, v18, *(v3 - 1) == 27);
+        v7 = 0;
+        if ( !v19 )
+            break;
+        --v38;
+        if ( v38 == -1 )
+        {
+LABEL_39:
+            v37 = v2;
+            --v39;
+            for ( ; v39 != -1; --v39 )
+            {
+                v20 = *v2++;
+                if ( !__cclass(v3, v20, *(v3 - 1) == 27) )
+                    break;
+            }
+            if ( v39 < 0 )
+                ++v2;
+            v3 += *v3 + 2;
+            do
+            {
+LABEL_69:
+                if ( v35 )
+                {
+                    v2 = (char *)__xpop(1);
+                    if ( !v2 )
+                        return 0;
+                }
+                else
+                {
+                    --v2;
+                }
+                v7 = __advance(v2, v3);
+                if ( v7 )
+                    return v7;
+            }
+            while ( v2 > v37 );
+            return 0;
+        }
+    }
+    return v7;
+}
+
+char *__execute(char *a1, char *a2)
+{
+    char *v2; // esi@@1
+    char *v3; // edx@@2
+    char v4; // al@@9
+    char v5; // al@@13
+    char v7; // [sp+2Bh] [bp-Dh]@@6
+
+    v2 = a2;
+    __eptr_ = &__st[50];
+    __lptr_ = __st;
+    if ( *a1 == ' ' )
+    {
+        __loc1 = a2;
+        v3 = __advance(a2, a1 + 1);
+        if ( !v3 )
+            v3 = a2;
+    }
+    else
+    {
+        if ( *a1 == 20 )
+        {
+            v7 = a1[1];
+            while ( 1 )
+            {
+                if ( *v2 == v7 )
+                {
+                    __eptr_ = &__st[50];
+                    __lptr_ = __st;
+                    v3 = __advance(v2, a1);
+                    if ( v3 )
+                        break;
+                }
+                v4 = *v2++;
+                v3 = a2;
+                if ( !v4 )
+                    return v3;
+            }
+        }
+        else
+        {
+            while ( 1 )
+            {
+                __eptr_ = &__st[50];
+                __lptr_ = __st;
+                v3 = __advance(v2, a1);
+                if ( v3 )
+                    break;
+                v5 = *v2++;
+                if ( !v5 )
+                    return a2;
+            }
+        }
+        __loc1 = v2;
+    }
+    return v3;
+}
+
+char *reexec(char *a1, char *a2, char **a3)
+{
+    int v3; // edi@@1
+    int v4; // edi@@3
+    char *v5; // esi@@4
+    char *v6; // eax@@6
+    char *i; // edx@@6
+    char v8; // al@@7
+    char *result; // eax@@11
+    char *v10; // [sp+18h] [bp-10h]@@3
+
+    *a3 = 0;
+    v3 = 0;
+    do
+    {
+        __braslist[v3] = 0;
+        __bravar[v3++] = -1;
+    }
+    while ( v3 <= 9 );
+    __cflg = 0;
+    v10 = __execute(a1, a2);                     // sets _cflg!
+    v4 = 0;
+    do
+    {
+        v5 = __braslist[v4];
+        if ( v5 && __bravar[v4] >= 0 )
+        {
+            v6 = (char *)mmalloc(__braelist[v4] - v5 + 1);
+            *a3 = v6;
+            for ( i = v6; v5 < __braelist[v4]; ++i )
+            {
+                v8 = *v5++;
+                *i = v8;
+            }
+            *i = 0;
+        }
+        ++v4;
+    }
+    while ( v4 <= 9 );
+    if ( __cflg )
+    {
+        result = v10;
+    }
+    else
+    {
+        result = 0;
+        if ( a2 != v10 )
+            result = v10;
+    }
+    return result;
+}
+
+short trysmatch(char *a2, char *arg0)
+{
+    char *v2; // edi@@1
+    short result; // ax@@1
+    char *v4; // eax@@2
+    char *v5; // esi@@2
+    signed short v6; // ax@@6
+    char *MatchChars; // eax@@8
+    short MaxLen; // [sp+4h] [bp-24h]@@8
+    int MatchCount; // [sp+8h] [bp-20h]@@8
+    short v10; // [sp+14h] [bp-14h]@@1
+    char *a3; // [sp+18h] [bp-10h]@@2
+
+    v10 = 0;
+    //v2 = recomp(arg0, 0, 0, 0); need to fixx!!!!!!
+	v2 = a2;	/** fudge**/
+    result = -1;
+    if ( v2 )
+    {
+        setmatch("", 0, 0);                     // clear any existing values for "MATCH" and "LMATCH"
+        a3 = 0;
+        v4 = reexec(v2, a2, &a3);
+        v5 = v4;
+        if ( v4 )
+        {
+            if ( lenstr(v4) > 1000 )
+                v5[1000] = 0;
+            v10 = (short)(__loc1 - a2 + 1);
+            if ( a3 )
+            {
+                v6 = lenstr(a3);
+                if ( v6 >= 1001 )
+                    v6 = 1000;
+                MatchCount = v5 - __loc1;
+                MaxLen = v6;
+                MatchChars = a3;
+            }
+            else
+            {
+                MatchCount = v5 - __loc1;
+                MaxLen = 0;
+                MatchChars = "";
+            }
+            setmatch(MatchChars, MaxLen, MatchCount);
+        }
+        mfree_0(v2);
+        result = v10;
+    }
+    return result;
+}
+
+short smatch(char *a1, char *a2)
+{
+    char *v2; // esi@@1
+    char *v3; // edx@@1
+    short v4; // ax@@2
+    short result; // ax@@10
+    char v6; // [sp+Fh] [bp-9h]@@10
+
+    v2 = a2;
+    v3 = a2;
+    if ( *a2 )
+    {
+        while ( 1 )
+        {
+            v4 = 0;
+            while ( *v2 && (*v2 != ('|') || v4))
+			{
+				if ( *v2 == '\\' )
+					v4 = v4 == 0;
+				else
+					v4 = 0;
+				++v2;
+            }
+            v6 = *v2;
+            *v2 = 0;
+            result = trysmatch(a1, v3);
+            if ( result )
+                break;
+            *v2 = v6;
+            if ( v6 )
+                ++v2;
+            v3 = v2;
+            if ( !*v2 )
+                goto LABEL_15;
+        }
+        *v2 = v6;
+    }
+    else
+    {
+LABEL_15:
+        result = 0;
+    }
+    return result;
+}
+
+void setmatch(char *MatchChars, short MaxLen, int MatchCount)
+{
+    FLDdesc *MatchFLD; // edi@@1
+    int v4; // esi@@1
+
+	MatchFLD = &ttab->TTfields[v_MATCH];		// "MATCH" fld
+    v4 = MaxLen;
+    if ( MaxLen >= 1000 )
+        v4 = 999;
+    
+	cpybuf((char *)ttab->TTfields[v_MATCH].FLDdata, MatchChars, v4);// Max 1000 chars
+    *((char *)MatchFLD->FLDdata + v4) = 0;
+    
+	if ( *MatchChars )
+        MatchFLD->FLDstat = (MatchFLD->FLDstat | fld_DATA_AVAIL) & ~fld_ZERO;
+//        MatchFLD->FLDstat = (MatchFLD->FLDstat | 0x0010) & 0xFFFB;
+
+    setvar(v_LMATCH, MatchCount);		// "LMATCH"
+}
+
+void repstr(char *Dest, char *Src, const char *s2, const char *a4)
+{
+    unsigned int v4; // kr04_4@@1
+    char *v5; // esi@@2
+    char *v6; // edi@@2
+    char *v7; // esi@@4
+    size_t n; // [sp+18h] [bp-10h]@@1
+
+    v4 = strlen(s2) + 1;
+    n = v4 - 1;
+    if ( v4 == 1 )
+    {
+        cdbcpystr(Dest, Src, 0);
+    }
+    else
+    {
+        v5 = Src;
+        v6 = Src;
+        while ( 1 )
+        {
+            v7 = strchr(v5, *s2);
+            if ( !v7 )
+                break;
+            if ( !strncmp(v7, s2, n) )
+            {
+                *v7 = 0;
+                strcat(Dest, v6);
+                strcat(Dest, a4);
+                v6 = &v7[n];
+                v7 = &v7[n - 1];
+            }
+            v5 = v7 + 1;
+        }
+        strcat(Dest, v6);
+    }
+}
+
+int stroper(short a1, char *Dest, char *a2, char *nptr)
+{
+    const char *v4; // edi@@1
+    int OpCode; // eax@@1
+    char *v6; // edi@@20
+    char *i; // esi@@20
+    char *v8; // edi@@26
+    short v9; // si@@28
+    int v10; // edi@@28
+    short v11; // si@@28
+    char *v12; // esi@@33
+    short v13; // ax@@40
+    signed short v14; // ax@@45
+    signed short v15; // cx@@45
+    char *v16; // esi@@45
+    char *j; // edi@@58
+    char v18; // al@@60
+    char *v20; // [sp+0h] [bp-38h]@@39
+    char *v21; // [sp+4h] [bp-34h]@@24
+    int v22; // [sp+8h] [bp-30h]@@24
+    short MaxLen; // [sp+24h] [bp-14h]@@18
+
+    v4 = nptr;
+    OpCode = a1 & 0xFC00;
+	switch (OpCode)
+	{
+	case 0x5400 :				// string addition 
+        cdbcpystr(Dest, a2, 0);
+        concat(Dest, nptr);
+        return 1;
+		break;
+	case 0x6400:				// string Division
+		v13 = __strtol_internal(nptr, 0, 10, 0);
+        if ( v13 > 99 )
+        {
+			substr( Dest, a2, (signed short)((v13 - (signed short)(v13 - 100
+                     * (((signed int)((unsigned long long)(1374389535LL * v13) >> 32) >> 5) - ((unsigned long long)v13 >> 32)))) / 100),
+                   (signed short)(v13 - 100 * (((signed int)((unsigned long long)(1374389535LL * v13) >> 32) >> 5) - ((unsigned long long)v13 >> 32))));
+        }
+		else
+	        cdbcpystr(Dest, a2, 0);
+        return 1;
+		break;
+	
+	case 0x6000:				// string Multiply
+	case 0x7800:
+		v9 = __strtol_internal(nptr, 0, 10, 0);
+        v10 = lenstr(a2);
+        MaxLen = 0;
+        v11 = v9 - 1;
+	    while ( v11 != -1 && MaxLen <= 1000 - v10 )
+        {
+			cdbcpystr(&Dest[MaxLen], a2, 0);
+            MaxLen = v10 + MaxLen;
+		    --v11;
+        }
+        return 1;
+		break;
+
+	case 0x5800:				// string Subtraction
+	case 0x7400:
+        v12 = a2;
+        MaxLen = lenstr(nptr);
+        while ( *v12 )
+        {
+			if ( *v12 == *nptr && cmpbuf(v12, (char *)nptr, MaxLen) )
+				cdbcpystr(v12, &v12[MaxLen], 0);
+			else
+				++v12;
+        }
+        cdbcpystr(Dest, a2, 0);
+        return 1;
+		break;
+
+	case 0x8400:
+		*Dest = 0;
+        MaxLen = lenstr(a2);
+        while ( 1 )
+        {
+			v8 = strchr(v4, *a2);
+            if ( !v8 )
+				return 1;
+			if ( !strncmp(v8, a2, MaxLen) )
+			{
+				v6 = &v8[MaxLen];
+                for ( i = v6; *i && *i != TAB; ++i )
+					;
+				*i = 0;
+		        cdbcpystr(Dest, v6, 0);
+	            return 1;
+			}
+            v4 = v8 + 1;
+		}
+		break;
+
+	case 0x6800:					// string % MOD Operator
+	case 0x7C00:
+	    v14 = __strtol_internal(nptr, 0, 10, 0);
+	    v15 = 1;
+	    v16 = a2;
+	    if ( !*a2 || v14 <= 1 )
+	        goto LABEL_58;
+	    while ( *v16 != TAB )
+	    {
+	        ++v16;
+LABEL_56:
+		    if ( !*v16 || v15 >= v14 )
+		        goto LABEL_58;
+		}
+		++v15;
+		++v16;
+		if ( TAB != ' ' && TAB != '\t' )
+		    goto LABEL_56;
+		if ( !*v16 )
+		    goto LABEL_58;
+		if ( *v16 != TAB )
+		    goto LABEL_56;
+		while ( 1 )
+		{
+		    ++v16;
+	        if ( !*v16 )
+	            break;
+	        if ( *v16 != TAB )
+	            goto LABEL_56;
+		}	
+LABEL_58:
+		for ( j = Dest; *v16 && *v16 != TAB; ++j )
+		{
+		    v18 = *v16++;
+		    *j = v18;
+		}
+		*j = 0;
+		return 1;
+		break;
+	}
+	return 0;	// indicate to caller that we didn't handle OpCode!
+//---------------
+}
+
+char *dosrch(char *a1, char **a2)
+{
+    char **v2; // esi@@1
+    int v3; // edi@@1
+    char *v4; // eax@@3
+    char *v5; // edx@@4
+    char *result; // eax@@6
+
+    v2 = a2;
+    v3 = strlen(a1);
+    if ( *a2 )
+    {
+        while ( 1 )
+        {
+            if ( cmpbuf(a1, *v2, v3) )
+            {
+                v4 = *v2;
+                if ( (*v2)[v3] == '=' )
+                    break;
+            }
+            ++v2;
+            if ( !*v2 )
+                goto LABEL_8;
+        }
+        v5 = &v4[v3 + 1];
+        if ( strlen(&v4[v3 + 1]) > 1000 )
+            v5[1000] = 0;
+        result = v5;
+    }
+    else
+    {
+LABEL_8:
+        result = 0;
+    }
+    return result;
+}
+
+char *getarg(char *a1)
+{
+    return dosrch(a1, argvect);
+}
+
+void substr(char *Dest, char *Buffer, int Start, int MaxLen)
+{
+    short BuffLen; // eax@@4
+
+    if ( Start > 0 && MaxLen >= 0 )
+    {
+        BuffLen = lenstr(Buffer);
+        if ( MaxLen )
+        {
+            if ( Start <= BuffLen )
+            {
+                cpybuf(Dest, &Buffer[Start - 1], MaxLen);
+                Dest[MaxLen] = 0;
+            }
+        }
+        else
+            cdbcpystr(Dest, &Buffer[Start - 1], 0);
+    }
+    else
+        *Dest = 0;
+}
+
+void concat(char *Src, char *a2)
+{
+    short v2;
+    short v3;
+    char SaveLast;
+    char Dest[1024]; 
+
+    v2 = lenstr(Src);
+    v3 = lenstr(a2);
+    if ( v3 + v2 > 1000 )	// max copy length is 1000
+        v3 = (1000 - v2);
+    SaveLast = a2[v3];	
+    a2[v3] = 0;
+    cdbcpystr(Dest, Src, a2, 0);
+    cdbcpystr(Src, Dest, 0);
+    a2[v3] = SaveLast;
+}
+
+char *evalstr(ENTAB *entab, char *s)
+{
+    ENTAB *v5; // esi@@15
+    ENTAB *v7; // eax@@22
+    ENTAB *v11; // eax@@35
+    ENTAB *v16; // eax@@45
+    ENTAB *v17; // eax@@48
+    ENTAB *v23; // eax@@66
+    ENTAB *v32; // eax@@98
+    ENTAB *v41; // edx@@198
+    FLDdesc *v40; // eax@@196
+    FLDdesc *v42; // eax@@203
+    FLDdesc *v54; // eax@@230
+    FLDdesc *v67; // eax@@277
+
+    int OpCode; // edx@@3
+    char *chr_ptr; // esi@@240
+
+    char *v19; // esi@@55
+    char *v25; // esi@@74
+    short v31; // eax@@96
+    char v35; // zf@@111
+    double v38; // fst7@@171
+    double v44; // fst7@@208
+    short v50; // eax@@219
+    double v55; // fst7@@231
+    int v60; // edi@@242
+    int v62; // edi@@249
+    char *v63; // edx@@256
+    char *v64; // eax@@260
+    char *v65; // esi@@260
+    short v66; // ax@@263
+    char *v72; // [sp+0h] [bp-F8h]@@224
+    char *v73; // [sp+0h] [bp-F8h]@@246
+    const char *v74; // [sp+4h] [bp-F4h]@@224
+    char *v75; // [sp+4h] [bp-F4h]@@246
+    int v77; // [sp+8h] [bp-F0h]@@103
+    int v78; // [sp+8h] [bp-F0h]@@224
+    char FLDtype; // [sp+3Bh] [bp-BDh]@@203
+    char *s2; // [sp+3Ch] [bp-BCh]@@74
+    char *nptr; // [sp+40h] [bp-B8h]@@55
+    signed short v85; // [sp+44h] [bp-B4h]@@1
+    double v86; // [sp+48h] [bp-B0h]@@150
+    char *a1; // [sp+50h] [bp-A8h]@@1
+	char *a2; // [sp+54h] [bp-A4h]@@1
+    ENTAB *ent; // [sp+100h] [bp+8h]@@37
+    
+	FLDdesc v94; // [sp+60h] [bp-98h]@@203
+    FLDdesc v95; // [sp+80h] [bp-78h]@@196
+    FLDdesc v96; // [sp+A0h] [bp-58h]@@277
+    char dest[21]; // [sp+C0h] [bp-38h]@@233
+
+
+    a2 = 0;
+    a1 = 0;
+    v85 = 0;
+    if ( !entab )
+        return s;
+printf("EvalString called : entab->entype = %d\n",entab->entype);
+
+	if ( entab->entype != 2 )
+	{
+        if ( entab->entype == 0x10 )
+			cdbcpystr(s, (char *)&entab->TTno, 0);	// Simple copy operation
+		else
+            v85 = 1;	// fall through to default operation
+        goto LABEL_276;
+	}
+
+
+    OpCode = entab->TTno & 0xFC00;
+printf("EvalString - entab->entype == %d, OpCode = x%04X \n",entab->entype,OpCode);
+    if ( OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
+    {
+		switch (OpCode)
+		{
+		case  0xD000:		// srep("The string to look at", "string","new string") 
+            a2 = (char *)mmalloc(1001u);
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+			// Dest = "The String to look at"        
+			v23 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+            if ( v23->entype == 0x20 )
+            {
+                ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+                s2 = (char *)mmalloc(1001u); // Old String to look for 
+                v25 = (char *)mmalloc(1001u); // String to replace it with
+                evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, s2);
+                evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, v25);
+                repstr(s, a2, s2, v25);
+                free(s2);
+                free(v25);
+                free(a2);
+                return s;
+            }
+			__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",669,"evalstr");
+			break;
+		case 0xCC00:		// substr("The string", start, length)
+			a2 = (char *)mmalloc(1001u);
+			// Dest contains the "The String"
+			evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+			v11 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+			// Params hang off Src
+			if ( v11->entype == 0x20 )
+			{
+				int StartPos = evalint(v11->Dest ? &enarr.TableAddr[v11->Dest - 1] : 0);
+				int Length = evalint(v11->Src ? &enarr.TableAddr[v11->Src - 1] : 0);
+				substr(s, a2, StartPos, Length);
+				free(a2);
+	            return s;
+			}
+			__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",638,"evalstr");
+			break;
+		case 0xD400:	// sconv()
+            a2 = (char *)mmalloc(1001u);
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+
+            v17 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+            if ( v17->entype == 0x20 )
+            {
+                ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+                nptr = (char *)mmalloc(1001u);
+                v19 = (char *)mmalloc(1001u);
+                evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, nptr);
+                evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, v19);
+                //cnvstr(s, a2, nptr, v19);	// to do   sconv() function handler
+				s = "function not enabled";
+                free(nptr);
+                free(v19);
+                free(a2);
+                return s;
+            }
+			__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",651,"evalstr");
+			break;
+
+		case 0xF400:		// scat("str",....) 
+			a2 = (char *)mmalloc(1001u);
+			evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);  // nice recursion
+			cdbcpystr(s, a2, 0);	// First param is in Dest
+
+			v5 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+			while ( v5->entype == 0x20 )	// Remainder of multiple args hang off Src....
+			{
+		        evalstr(v5->Dest ? &enarr.TableAddr[v5->Dest - 1] : 0, a2);  // nice recursion
+		        concat(s, a2);
+		        v5 = v5->Src ? &enarr.TableAddr[v5->Src - 1] : 0;
+			}
+			evalstr(v5, a2);
+			concat(s, a2);
+			free(a2);
+			return s;
+			break;
+
+		default:
+			*s = 0;
+			return s;
+			break;
+		}
+    }
+
+    if ( entab->TTno & 0x0100 )		// get a reserved variable. Takes no params 
+    {
+        cdbcpystr(s, getresv(entab->RecNo), 0);
+        goto LABEL_276;
+    }
+
+//=============================================
+
+	//set up a1, a2 for following routines
+
+    if ( entab->TTno & 0xFDFF ) // 1111-1101-1111-1111	// clear integer calc flag 0x0200
+    {
+        if ( entab->Dest )
+        {
+            a2 = (char *)mmalloc(1001u);
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+		}
+        if ( entab->Src )
+        {
+            a1 = (char *)mmalloc(1001u);
+            if ( OpCode == 0x6800 || OpCode == 0x6400 || OpCode == 0x6000 )
+                sprintf(a1, "%ld", evalint(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0));
+            else
+                evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, a1);
+        }
+    }
+printf("EvalString - 1722 - OpCode = x%04X , a1 = %s, a2 = %s\n", OpCode, a1, a2);
+
+	switch (OpCode)
+	{
+	case 0x4000:					// getenv()
+        cdbcpystr(s, getenv(a2), 0);
+		break;
+
+	case 0x3400:					// asc()	// **** CHECK THIS ****
+	case 0x2400:					// slen()
+        sprintf(s, "%ld", evalint(entab));
+		break;
+	
+	case 0x9C00:					// trim()
+	    cdbcpystr(s, ftrim(a2), 0);
+		break;
+	
+	case 0x6C00:					// match()
+	    sprintf(s, "%ld", smatch(a1, a2));
+		break;
+
+	case 0x8000:					// setenv()
+		chr_ptr = mstrcpy(a2, "=", a1, 0);
+		putenv(chr_ptr);
+		cdbcpystr(s, chr_ptr, 0);
+		break;
+
+	case 0x2C00:					// getarg()
+		cdbcpystr(s, (char *)getarg(a2), 0);
+		break;
+
+	case 0x3800:					// chr()
+		v50 = evalint(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0);
+		if ( v50 >= 0x100 )
+		    v50 &= 0xFF00;
+		*s = v50;		// *** need to check ***
+		s[1] = 0;
+		break;
+
+	case 0x2800:
+        v54 = getftf(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 1, &v94);
+        v55 = 0.0;
+        if ( v54 )
+        {
+            if ( v54->FLDtype == 'C' )
+            {
+                strncpy(dest, (const char *)v54->FLDdata, 20u);
+                dest[20] = 0;
+                v55 = (double)clgetdate(dest);
+            }
+            else
+                v55 = *(double *)v54->FLDdata;
+        }
+        if ( v55 <= 0.0 )
+        {
+            *s = 0;
+            goto LABEL_276;
+        }
+        cdbcpystr(s, aday[(signed int)(double)v55 % 7], 0);
+		break;
+
+	case 0x2000:					// lcase()
+		chr_ptr = a2;
+		while ( *chr_ptr )
+		{
+			v62 = *chr_ptr;
+		    if (isupper(v62))
+				*chr_ptr = tolower(v62);
+			++chr_ptr;
+		}
+		cdbcpystr(s, a2, 0);
+		break;
+
+	case 0x1C00:					// ucase()
+        chr_ptr = a2;
+        while ( *chr_ptr )
+        {
+			v60 = *chr_ptr;
+            if (islower(v60))
+				*chr_ptr = toupper(v60);
+			++chr_ptr;
+        }
+        cdbcpystr(s, a2, 0);
+		break;
+
+	case 0xA000:					// cgiGetValue
+		chr_ptr = "not enabled";
+        //chr_ptr = (char *)cgiGetValue(a2, sv_wid);  ** to do **
+        trim(chr_ptr);
+        if ( chr_ptr )
+        {
+			if ( strlen(chr_ptr) > 1000 )
+            {
+				strncpy(s, chr_ptr, 1000u);
+                s[1000] = 0;
+			}
+			else
+				cdbcpystr(s, chr_ptr, 0);
+		}
+		else
+			*s = 0;
+		break;
+
+	case 0x8C00:							// xmlGetValue
+		v64 = "not enabled";
+        //v64 = xmlGetValue(a2, sv_wid);	// ** to do **
+        v65 = v64;
+        v63 = s;
+        if ( v65 && *v64 && sv_wid )
+        {
+			do
+            {
+				*v63++ = *v65;
+                v66 = sv_wid-- - 1;
+                ++v65;
+			}
+            while ( v65 && *v65 && v66 );
+		}
+	    *v63 = 0;
+		break;
+
+	case 0x8800:						// sfmt()
+        *s = 0; // default return blank string
+        v40 = getftf(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 1, &v95);
+        if ( v40 )
+		{
+            if ( v40->FLDtype == 'C' )
+				nfmt(s, a1, clatof(a2));
+			else if ( v40->FLDtype == 'D' )
+				dfmt(s, a1, (double)clgetdate(a2));
+			else if ( v40->FLDtype == 'T' )
+				tfmt(s, a1, (double)gettime(ftrim(a2)));
+        }
+        else
+		{
+            v41 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+            for ( ; v41; v41 = &enarr.TableAddr[v41->Dest - 1] )
+			{
+				if ( !v41->Dest )
+					break;
+            }
+            v42 = getftf(v41, 0, &v94);
+            FLDtype = '9';					// default to max decimal places
+			if ( v42 )
+				FLDtype = v42->FLDtype;
+            v44 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, FLDtype);
+			nfmt(s, a1, clround(v44, FLDtype));
+        }
+		break;
+
+	default:	
+		// remaining OpCodes require a parameter to work:
+		v86 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 'F');
+printf("EvalString 1873 - OpCode = x%04X , v86 = %G\n", OpCode, v86);
+
+		switch (OpCode)
+		{
+		case 0x4400:
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = log10(v86);
+			sprintf(s, "%.f", v38);
+			break;
+
+		case 0x1800:
+			v38 = tan(v86);
+			sprintf(s, "%.f", v38);
+			break;
+		
+		case 0x1400:
+			v38 = cos(v86);
+			sprintf(s, "%.f", v38);
+			break;
+
+		case 0x1000:
+			v38 = sin(v86);
+			sprintf(s, "%.f", v38);
+			break;
+		
+		case 0x0C00:
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = log(v86);
+            sprintf(s, "%.f",v38);
+			break;
+
+		case 0x0800:
+			v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = sqrt(v86);
+            sprintf(s, "%.f",v38);
+			break;
+
+		case 0x5000:
+			sprintf(s, "%.f", (double)atan(v86));
+			break;
+
+		case 0x9800:							// exp()
+			v38 = exp(v86);
+            sprintf(s, "%.f",v38);
+			break;
+
+		case 0x9000:							// degrees()
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = v86 * 180.0 / 3.141592653589793;
+            sprintf(s, "%.f",v38);
+			break;
+
+		case 0x9400:							// radians()	// one of these routines is wrong!
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+	            v38 = v86 / 180.0 * 3.141592653589793;
+            sprintf(s, "%.f",v38);
+			break;
+
+		case 0x4800:
+            if ( v86 <= 1.0 )
+				sprintf(s, "%.f", (double)asin(v86));
+			else
+                sprintf(s, "%.f",0.0);
+			break;
+
+		case 0x4C00:
+            if ( v86 <= 1.0 )
+				sprintf(s, "%.f", (double)acos(v86));
+			else
+                sprintf(s, "%.f",0.0);
+			break;
+
+		default:
+			v85 = !stroper(entab->TTno, s, a2, a1);
+printf("Fell through to default, v85 = %d\n", v85);
+			break;
+		}
+		break;
+	}
+
+// default handler:
+
+//============================================
+LABEL_276:
+    if ( v85 )
+    {
+        v67 = getftf(entab, 1, &v96);
+        if ( v67 )
+        {
+            if ( v67->FLDtype == 'C' )
+                cdbcpystr(s, (char *)v67->FLDdata, 0);
+            else if ( v67->FLDtype == 'D' )
+				makedate(s, *(double *)v67->FLDdata);
+            else if ( v67->FLDtype == 'T' )
+				maketimehms(s, *(double *)v67->FLDdata);
+            else
+				sprintf(s, "%.*f", typedp(v67->FLDtype),*(double *)v67->FLDdata);
+        }
+        else
+            *s = 0;	// default == blank string
+printf("EvalString doing v85 default, s = %s\n",s);
+
+    }
+    if ( a2 )
+        free(a2);
+    if ( a1 )
+        free(a1);
+    return s;
+}
+
+#endif
+@

@@ -1,0 +1,74 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.02.49.16;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef CLRTABLE_C
+#define CLRTABLE_C
+
+
+int _sparetree(TDinfo *TDptr, int PageNo, short Depth)
+{
+	NODE *node;
+	int *PageList;
+	DBinfo *DBptr; 
+	int result; 
+	short v7;
+
+	//printf("_sparetree( TDptr: x%08X ,PageNo: %d, Depth: %d\n", TDptr, PageNo, Depth);
+
+	if ( PageNo && Depth )
+	{
+		if ( Depth > 1 )
+		{
+			node = getnode(TDptr, PageNo, 2);
+			v7 = 0;
+			while ( node->NumEntries >= v7 )
+			{
+				_sparetree(TDptr, node->NODE2ptr[v7].PageNo, Depth - 1);	// recursion
+				v7++;
+			}
+			relnode(node);
+		}
+		
+		for ( PageList = TDptr->TDDBinfo->SpareList; *PageList; ++PageList )// PageList points to last spare PageNo after this
+			;
+    
+		DBptr = TDptr->TDDBinfo;
+		if ( &DBptr->SpareList[32] <= PageList )              // Past end of the table?
+		{
+			_mkfree(DBptr, DBptr->SpareList);
+			PageList = TDptr->TDDBinfo->SpareList;
+		}
+		*PageList = PageNo;
+		PageList[1] = 0;
+		result = 1;
+	}
+	else
+	{
+		result = 0;
+	}
+	return result;
+}
+
+#endif
+@

@@ -1,0 +1,233 @@
+cgi.c:		v3 = mstrcpy(a1, 0);	// make a local copy in global mem
+cnvstr.c:		memset(hash, 0x00, SHA_DIGEST_LENGTH);
+compose.c:        v11 = _commit(rtd, false);		// false means don't free the TDptr->SallocBuf mem
+dates.c:	memset(&tp, 0, sizeof(tp));
+elist.c:        mfree_0(CurrElem);                      // free memory occupied by current node
+encrypt.c:        memcpy (shsInfo->data, buffer, SHS_BLOCKSIZE);  
+encrypt.c:    memcpy(shsInfo->data, buffer, count);  
+encrypt.c:        memset ((BYTE *) shsInfo->data + count, 0, 64 - count);  
+encrypt.c:        memset (shsInfo->data, 0, 56);  
+encrypt.c:        memset ((BYTE *) shsInfo->data + count, 0, 56 - count);  
+getpt.c:		ptidx = getptmem();				// should bump ptidx so it == seq+1
+getpt.c://	getvarmem
+getpt.c://	getenmem
+getpt.c://	getxtmem
+getpt.c:short getptmem()
+getpt.c://printf("getptmem 139 v1 = %d, MaxAvail = %d\n",v1, v0->MaxAvail);
+getpt.c:		//printf("getptmem 144 v1(%d) == MaxAvail(%d)\n",v1, v0->MaxAvail);
+getpt.c://printf("getptmem 154 MaxAvail = %d, NextElement = %d\n", v0->MaxAvail,v0->NextElement);
+getpt.c://	getrtmem
+getpt.c://	getramem
+getpt.c://	getprmem
+getpt.c://	getrdmem
+getpt.c://	getxfmem
+getpt.c://	getsfmem
+getpt.c://	getkxmem
+getpt.c:short getstrmem(int amt)
+gettdfno.c:        *TTno		= entb->TTno;			// 0 = Variable, non-zero = Field in a Table		** update caller mem **
+gettdfno.c:		*FLDtype = fld->FLDtype;				// ** update caller mem **
+key.c:					// KeyPtr-Type == 1 is only an integer, no extra mem allocated
+key.c:                elist_Destruct(kelem->lx_elist, key_node);// key_node() just frees the userdata memory
+loadenc.c:            mfree_0(DBname);	// replaces memory pointed to by *DBname
+loadenc.c:    v1 = (char *)mmalloc(size + 1);				// zero memory area too
+loadenc.c:        finDBname	= checkdbrename(DBname);	// actually replaces memory pointed to by *DBname
+loadenc.c:		    fld->FLDdata = (void*)_gettext(fld->FLDlen);	// gettext and getdouble alloc required memory
+loadenc.c:					pt->TABno = getstrmem(v38);     // Offset into string table area
+loadenc.c:					pt->TABno = getstrmem(20);      // get a block_name here, max 20chars
+loadenc.c:				xt->field_20 = (char *)mmalloc(xt->Width);	// allocate sufficient mem for the accept field to process. Appears unused?
+pcreate.c:        mfree_0(TTnos);						// memory leak if mktable() fails?
+pedit.c:            *skipPtr = 1;		// Update caller mem directly.  Sets "skip" global variable
+pfile.c:    cdbcpystr(a1, FileName, 0);		// need a second copy in allocated mem space as passed externally!
+pfile.c:			assert(pno < no_files);			// couldn't allocate mem for a new FCB
+pfile.c:    mfree_0(fcb->ALIAS);	// free alias name memory
+pfile.c:			assert(fno < no_files);	// couldn't allocate mem for a new FCB
+pflush.c:    rlst->PageNo	= PageNo;				// update caller memory
+plibcall.c:				cdbcpystr((char*)fld_dest->FLDdata, str_return, 0);	// copy string to our memory space. *** to do, check limits**
+salloc.c:00000010 WorkArea        dd ?                   points to mem following DataStart structures
+sflush.c:            *RL_Head = rlst;										// Alters caller memory directly
+tdclose.c:	//TTptr->TTfields = 0;            // possible memory leak here ??......
+tdtotd.c:						if (!(fld_src->FLDstat & fld_DATA_AVAIL))	// no data in mem?
+termcap.c:	//char TCLArea[1024];	//**** needs to be in global memory area **. ???
+tty.c:		memcpy(&new_term,&save_term,sizeof(struct termio));		// copy to our new structure, and make few changes
+calculate.c:				StrLeft = (char *)mmalloc(1001u);
+calculate.c:					CBuf1 = (char *)mmalloc(1001u);					// Old String to look for 
+calculate.c:					CBuf2 = (char *)mmalloc(1001u);					// String to replace it with
+calculate.c:				StrLeft = (char *)mmalloc(1001u);
+calculate.c:				StrLeft = (char *)mmalloc(1001u);
+calculate.c:					CBuf1 = (char *)mmalloc(1001u);
+calculate.c:					CBuf2 = (char *)mmalloc(1001u);
+calculate.c:				StrLeft = (char *)mmalloc(1001u);
+calculate.c:				StrLeft = (char *)mmalloc(1001u);
+calculate.c:				StrRight = (char *)mmalloc(1001u);
+cgi.c:			fme = (form_entry *)mmalloc(12);
+cgi.c:					v61 = (form_entry *)mmalloc(12);
+cgi.c:		ptr = (form_entry *)mmalloc(12);
+cgi.c:		ptr->name = mmalloc(asize);
+cgi.c:				ptr->name = (char *)mrealloc(ptr->name, asize, 2 * asize);
+cgi.c:			ptr->val = mmalloc(asize);
+cgi.c:						ptr->val = (char *)mrealloc(ptr->val, asize, 2 * asize);
+cgi.c:		frm = (form_entry *)mmalloc(12);
+cgi.c:			frm->name = mmalloc(asize);
+cgi.c:					frm->name = (char *)mrealloc(frm->name, asize, 2 * asize);	// try to double buffer size
+cgi.c:					frm->val = mmalloc(asize);
+cgi.c:							frm->val = (char *)mrealloc(frm->val, asize, 2 * asize);
+cgi.c:	v39 = (form_entry *)mmalloc(12);
+cgi.c:			v38->name = mmalloc(asize);
+cgi.c:						v38->name = (char *)mrealloc(v38->name, asize, 2 * asize);	// try to double array size
+cgi.c:			v38->val = mmalloc(asize);
+cgi.c:					v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+cgi.c:								v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+cgi.c:								v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+cgi.c:			v22 = (form_entry *)mmalloc(12);
+commit.c:    if ( TDptr->TDSallocBuf && !(TDptr->TDFlags & 2) )	// bit 2 indicates that TDSallocBuf is holding a RLARR* !
+commit.c:        v6 = _sflush(rlst, 1, TDptr->TDSallocBuf, TDptr);								// MaxDepth of 1
+commit.c:            TDptr->TDSallocBuf = (SALLOCBUF *)nfree(TDptr->TDSallocBuf, 0);// 
+compose.c:    if ( TDptr->TDSallocBuf )
+compose.c:    TDptr->TDSallocBuf = _salloc((SALLOCBUF *)Buffer, LDsize, (unsigned int)(TDptr->TDRecMin + TDptr->TDRecSize) >> 1);
+compose.c:        v11 = _commit(rtd, false);		// false means don't free the TDptr->SallocBuf mem
+compose.c:        v12 = _sflush(rlarr, 6, TDptr->TDSallocBuf, TDptr);		// RLIST array has to be at least [6]  (6 = MaxDepth)
+compose.c:            TDptr->TDSallocBuf = (SALLOCBUF *)_rlist(rlarr, v12, TDptr->TDRecSize);	//	_rlist returns an RLARR structure!!!
+compose.c:            TDptr->TDFlags |= 0x1002u;		//	flags indicate what type of structure is held in TDSallocBuf
+compose.c:    TDptr->TDSallocBuf = 0;
+dates.c:	wday = mmalloc(28u);	// 4 * 7
+dates.c:	fmth = mmalloc(52u);	// 4 * 13
+dates.c:	mth	 = mmalloc(52u);
+elist.c://    result			= (Elist *)mmalloc(16u);    // create a blank elist header item
+elist.c:    result			= (Elist *)mmalloc(sizeof(Elist));    // create a blank elist header item
+elist.c://    NewEL = (Elist_Elem *)mmalloc(16u);
+elist.c:    NewEL = (Elist_Elem *)mmalloc(sizeof(Elist_Elem));
+getfile.c:            TTptr->TDworkarea1	= (char *)mmalloc(RecSize + 1);
+getfile.c:            TTptr->TDworkarea2	= (char *)mmalloc(RecSize + 1);
+getfile.c:			TTptr->TTfields = (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));	// sizeof(FLDdesc) == 24
+getfile.c:				fld->FLDdata = mmalloc(2 * v10);	// why twice the size??
+getfile.c:    if ( TTptr == &ttab[no_ttabs] )		// shouldn't be possible in clenter. All tables pre-allocated?
+getpt.c:		v0->TableAddr = (PTAB *)mmalloc(0);
+getpt.c:		v3 = v1 + 1500;                             // alloc in blocks of 1500
+getpt.c:		v5 = (PTAB*)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);
+getpt.c:          v1->StringTable = (char *)mmalloc(0);
+getpt.c:          v1->StringTable = (char *)mrealloc(v1->StringTable, v2, v3);
+getresv.c:		//case 0x0004:	Unallocated?
+getresv.c:		//case 0x1000:	Unallocated?
+getresv.c:		//case 0x8000:	Unallocated?
+gnname.c:		name = (struct utsname *)mmalloc(sizeof(struct utsname));	// 390u
+join.c:        WorkAreas[count] = (char *)alloc(RowSizes[count], 0);
+join.c:        //fill(WorkAreas[count], RowSizes[count], 0);		// Not necessary. alloc fills buffer with ZEROs anyway.
+join.c:    Buffer	 = (char *)alloc(BuffSize, 0);
+key.c:					// KeyPtr-Type == 1 is only an integer, no extra mem allocated
+key.c:    key_el = (KEY_Elist *)mmalloc(20u);
+key.c:	KeyElem = (KEY_Elem *)mmalloc(20u);
+loadenc.c:    esc = (ONESC *)mmalloc(sizeof(ONESC));		// 16
+loadenc.c:    scr = (SCR *)mmalloc(sizeof(SCR));		// 8
+loadenc.c:    v1 = (short *)mmalloc(2 * (a1 + 1));	// +1 ensures null terminated array
+loadenc.c:    v1 = (int *)mmalloc(4 * (count + 1));	// +1 ensures null terminated array
+loadenc.c:    v1 = (double *)mmalloc(sizeof(double));
+loadenc.c:        Dest = (double *)mmalloc(sizeof(double));
+loadenc.c:    clst->StrMaxSize	= StringSpace;			// shouldn't grow as all string space pre-allocated?
+loadenc.c:    ptr = (char *)mmalloc(StringSpace);
+loadenc.c:    v1 = (char *)mmalloc(size + 1);				// zero memory area too
+loadenc.c:        ptr = (XTAB *)mmalloc( sizeof(XTAB) * NumXTABs);	// 52
+loadenc.c:        rtb = (RTAB *)mmalloc(sizeof(RTAB) * NumRTABs);
+loadenc.c:        ratb = (RATAB *)mmalloc(sizeof(RATAB) * NumRATABs);  // 12
+loadenc.c:        ptr = (XFTAB *)mmalloc( sizeof(XFTAB) * NumXFTABs);
+loadenc.c:        ptr = (SFTAB *)mmalloc( sizeof(SFTAB) * NumSFTABs);
+loadenc.c:        ptr = (PRTAB *)mmalloc(sizeof(PRTAB) * NumPRTABs);
+loadenc.c:        ptr = (RDTAB *)mmalloc( sizeof(RDTAB) * NumRDTABs);
+loadenc.c:        ptr = (KXTAB *)mmalloc(NumKxtabs * sizeof(KXTAB)); //  == 64
+loadenc.c:        ptr = (PTAB *)mmalloc(sizeof(PTAB) * NumPTABs);
+loadenc.c:        ptr = (ENTAB *)mmalloc(sizeof(ENTAB) * NumENTABs);
+loadenc.c:    ptr = (BTAB *)mmalloc(sizeof(BTAB) * (NumBtabs + 1));
+loadenc.c:    ptr = (FLDdesc *)mmalloc( sizeof(FLDdesc) * NumVariables);
+loadenc.c:    dtab	 = (DBase *)mmalloc(0);
+loadenc.c:    ttab = (TDesc *)mmalloc( sizeof(TDesc) * (no_ttabs + 3)); // no_ttabs * 80 + 3 system tables:  Tables, Fields, Locks 
+loadenc.c:        if ( fld->FLDstat & fld_ZERO )						// variable is set to NULL, allocate space for a value though
+loadenc.c:				fld->FLDname = (char *)mmalloc(v21 * fld->FLDelemID);	// Array vars hang of FLDname
+loadenc.c:                fld->FLDdata = mmalloc(v21);				// allocate sufficient space for variable.
+loadenc.c:		    fld->FLDdata = (void*)_gettext(fld->FLDlen);	// gettext and getdouble alloc required memory
+loadenc.c:				xt->field_20 = (char *)mmalloc(xt->Width);	// allocate sufficient mem for the accept field to process. Appears unused?
+loadr.c:        rl_dest = (RLIST *)alloc(56, 0);        // 7 x 8 = 56
+loadr.c:    SAp = TDptr->TDSallocBuf;                   // 
+loadr.c:        SAp = _salloc((SALLOCBUF *)ealloc(_ldsize, 0), _ldsize, (unsigned int)(TDptr->TDRecMin + TDptr->TDRecSize) >> 1);		// ldsize defaults to 0x8000 (32768)
+loadr.c:        TDptr->TDSallocBuf = SAp;
+loadr.c:    while ( SAp->field_4 == SAp->MaxRecs2 || SAp->refr.Data - 1 < (REFR **)&SAp->refr.Offset[TDptr->TDRecSize] )// While room left in sallocbuf
+loadr.c:        if ( !SAp->field_4 )                    // initialized to ZERO by salloc()
+newdtab.c:	// dtab = ( DBase *)mrealloc(dtab, 12 * v0, 12 * (no_dtabs + 2));
+newdtab.c:	dtab = ( DBase *)mrealloc(dtab, sizeof(DBase) * v0, sizeof(DBase) * (no_dtabs + 2));
+newstab.c:    stab = (STAB **)mrealloc(stab, 4 * v0, 4 * no_stabs++ + 8);
+newttab.c:	//ttab = (TDesc *)mrealloc(ttab, 80 * v0, 80 * (no_ttabs + 2));
+newttab.c:	ttab = (TDesc *)mrealloc(ttab, sizeof(TDesc) * v0, sizeof(TDesc) * (no_ttabs + 2));
+pattern.c:	if ( MaxLen > 999 )		// MATCH var has 1000 chars space pre-allocated in clcomp
+pcreate.c:            TTptr->TDworkarea1	= (char *)mmalloc(size + 1);
+pcreate.c:            TTptr->TTfields		= (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));				// null terminated array
+pcreate.c:                            fld->FLDname = (char *)mmalloc(NameLen);
+pcreate.c:                        fld->FLDdata = mmalloc(tdef2->TDFsize + 1);		// strings are variable length
+pcreate.c:						fld->FLDdata = mmalloc(sizeof(double));			// mmalloc(8) all other var types stored as doubles internally
+pcreate.c:    TTnos	= (int *)mmalloc(4 * kxtab->NumTTs);
+pcreate.c:            if ( kxtab->KXFlags & kxf_EMPTY || ((expr = getexpr(ENARR(kxtab->WhereEXP), 0), ptr = mmalloc(_ldsize), (kxtab->KXFlags & 0x0400)) 
+pfile.c:    cdbcpystr(a1, FileName, 0);		// need a second copy in allocated mem space as passed externally!
+pfile.c:			assert(pno < no_files);			// couldn't allocate mem for a new FCB
+pfile.c:			assert(fno < no_files);	// couldn't allocate mem for a new FCB
+pfile.c:    _files = (FCB *)mrealloc(_files, sizeof(FCB) * v0, sizeof(FCB) * no_files);	// sizeof(FCB) == 28
+pfile.c:        _files = (FCB *)mmalloc(0);
+pfresh.c:			v5 = mmalloc(sizeof(STAB));				// sizeof(STAB) == 12
+pfresh.c:			v5->ScreenName	= mmalloc(NameLen + 1);
+pfresh.c:			v5->abuf	= mmalloc(Size);
+pfresh.c:			v5->ccbuf	= mmalloc(Size);
+process.c:				lxelem				= (KEY_Elem *)mmalloc(20u);
+process.c:                v5 = (KEYPTR *)mmalloc(8u);
+process.c:                v5 = (KEYPTR *)mmalloc(8u);
+process.c:                v5 = (KEYPTR *)mmalloc(8u);
+process.c:                v5 = (KEYPTR *)mmalloc(8u);
+rdkey.c:	Buff	 = mmalloc(TTptr->TDrecsize + 1);		// ensure big enough to fit entire record in case all values are keys
+recomp.c:	v6 = mmalloc(2 * v3 + SLOP);
+reexec.c:            p2 = (char *)mmalloc(__braelist[in] - p1 + 1);	// *****************
+rlist.c:        rlarr = (RLARR *)ealloc(RecSize + 36, rlarr);	// chained structure
+rlist.c:		// rlarr->NextRLARR is implicitly set to previous RLARR by ealloc();
+salloc.c:SALLOCBUF *_salloc(SALLOCBUF *SAp, int LDsize, int avgRecSize)
+termcap.c:    abuf = (char *)mmalloc(_li * _co + 10);	 // Number of visible characters on screen + 10 ?
+termcap.c:    ccbuf = (char *)mmalloc(_li * _co + 10);
+testr.c:	Buffer	= (char *)alloc(_rowsize(tdef), 0);	// RowSized buffer
+UTIL_FUNCTIONS.c:	printf("TD->TDSallocBuf = x%08X \n",TD->TDSallocBuf);	 
+dispfld.c:            fillbuf(a3, MaxLen, ' ');	// fill with <SPC>
+disprec.c:                fillbuf(a3, MaxLen, ' ');								// clear answer area 
+dscreen.c:            fillbuf(head_txt, MaxLen, ' ');			// ensure screen area for text field is clear before displaying
+oformat.c:            fillbuf(NumBuff, NumLen, ' ');
+oformat.c:		fillbuf(a1, v8, '?');
+ppause.c:        fillbuf(s, v4, ' ');
+reply.c:			fillbuf(reply_buff, Column + 1, ' ');
+termcap.c:        fillbuf(&abuf[ScreenOffset], (_li * _co) - ScreenOffset, ' ');	// character buffer
+termcap.c:        fillbuf(&abuf[ScreenOffset], RemainChars, ' ');			// character buffer
+toscreen.c:			fillbuf(AttrBuff, MaxLen + num_glitch, v25);						// Fill attribute buffer with required info
+blowfish.c:	zap(results, 1001u);
+calculate.c:        zap(result, 1001u);
+dates.c:	zap(s, 30u);
+dscreen.c:                        zap(fnum_txt, 10u);
+eafr.c:    zap(Buffer, sizeof(Buffer));	// 22u);
+exptobuf.c:                    zap(v39, 1001u);
+getexpr.c:        zap(s, 1001u);
+getexpr.c:				zap(a3, 1000u);
+getftf.c:    zap((char*)fld, sizeof(FLDdesc));
+jcheck.c:	zap((char*)&ent, sizeof(ENTAB));	// 12 - Fudge our own local ENTAB record. :o)
+modfld.c:                zap(LineBuff, 20u);
+modfld.c:            zap(LineBuff, MaxLen + 1);
+modfld.c:				zap(LineBuff, MaxLen + 1);
+pblock.c:	zap(s, 20u);
+rectott.c:		else	// *NO* data in TTptr->Workarea for this field, just zap the fld data area
+rectott.c:				zap(fld->FLDdata, fld->FLDlen);
+reply.c:    zap(Buffer, 2u);
+rfree.c:					zap(fld->FLDdata,(fld->FLDlen + 1));	// string
+rfree.c:				//	zap(fld->FLDdata,80);
+rfree.c:						zap(fld->FLDdata,sizeof(double));	// everything else stored internally as a double
+rfree.c:			zap(fld->FLDdata, (fld->FLDlen + 1));	// string variable
+rfree.c:			zap(fld->FLDdata,sizeof(double));		// everything else stored internally as a double
+rfree.c:		// *****   doesn't zap Date/Time fields when in Key? (80 bytes)??
+rfree.c:					zap(fld->FLDdata,(fld->FLDlen + 1));		// string
+rfree.c:				//	zap(fld->FLDdata,80);
+rfree.c:						zap(fld->FLDdata, sizeof(double));		// everything else stored as double
+rfree.c:		zap(buffptr, fld->FLDlen);
+termcap.c:	zap(v9,1024);
+termcap.c:        zap(Src, 2u);
+termcap.c:        zap(&ccbuf[ScreenOffset], (_li * _co) - ScreenOffset);			// attribute buffer
+termcap.c:        zap(&ccbuf[ScreenOffset], RemainChars);					// attribute buffer
+toscreen.c:                    zap(CharBuff, num_glitch);
+toscreen.c:                    zap(&CharBuff[-num_glitch], num_glitch);
+toscreen.c:			if ( num_glitch && (*AttrBuff = v25 | 0x80, zap(&CharBuff[MaxLen], num_glitch), (_cx += num_glitch) != 0) && _YF == 1 )

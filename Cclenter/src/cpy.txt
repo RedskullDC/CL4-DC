@@ -1,0 +1,4 @@
+
+cldelput.c:	cpybuf(buf, (char *)&tl, 32);
+cldelput.c:        cpybuf(v11, WorkArea, tl.RecSize);
+

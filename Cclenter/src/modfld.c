@@ -104,7 +104,7 @@ int modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld, int mySkip, char **a5, int a2)
     int		v51;
 	int		forceUpdate;
 	int		v56;
-	int		MaxLen;
+	short	MaxLen;
 	int		v61;
 	int		TTno;
 	
@@ -183,12 +183,13 @@ int modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld, int mySkip, char **a5, int a2)
 
 //printf("modfld #248 - v52 = %d, AllowLookup = %d, v48 = %d \n",v52,AllowLookup,v48);
 //------------------------------------
-    MaxLen = (signed short)getwid(xt);
+    MaxLen = getwid(xt);
     clgetyx(xt, &Column, &Line, yx_answer);		// get the column/line for where the *answer* shall be
     whereat(Column, Line, 1, MaxLen);
     
 	if ( fld->FLDtype == 'C' && fld->FLDlen < (signed short)MaxLen )
         MaxLen = fld->FLDlen;
+//printf("modfld #188 : fld->FLDlen = %d, MaxLen = %d, Column = %d, Line = %d\n",fld->FLDlen,MaxLen, Column, Line);
     
 	xt->C_X = _cx;	// update current coords. clgetyx() may have evaluated an expression!
     xt->C_Y = _cy;
@@ -207,7 +208,7 @@ int modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld, int mySkip, char **a5, int a2)
             {
                 v51 = 0;
                 forceUpdate = 0;
-                zap(LineBuff, 20u);
+				memset(LineBuff, 0, 20u);
                 fldtobuf(LineBuff, fld, 0);
                 if ( fld->FLDtype == 'D' && strlen(LineBuff) > MaxLen )
                 {
@@ -336,7 +337,7 @@ LABEL_149:
         while ( 1 )
         {
             v51 = 0;
-            zap(LineBuff, MaxLen + 1);
+			memset(LineBuff, 0,MaxLen + 1);
             
 			if ( rawdisplay )
 				cdbcpystr(LineBuff, (char *)fld->FLDdata, 0);
@@ -442,7 +443,7 @@ LABEL_85:
 				v51 = 0;
 				forceUpdate = 0;
 				
-				zap(LineBuff, MaxLen + 1);
+				memset(LineBuff, 0,MaxLen + 1);
 				fldtobuf(LineBuff, fld, 0);
 				
 				dstrip(LineBuff);				// remove any thousands seperator chars, leading zeroes

@@ -21,7 +21,7 @@ void prtfid(unsigned short ENTABno)
 	if ( !entab )
 		return;
 	//DumpBlock(entab, sizeof(ENTAB));
-	OpCode = entab->TTno & 0xFC00u;
+	OpCode = entab->Enun.Enop.Enoper & 0xFC00u;
 
 	fflush(stdout);
     if ( entab->entype == 2 )                  // Expression Type
@@ -117,7 +117,7 @@ void prtfid(unsigned short ENTABno)
 					printf(" GETCGI ");
 					break;
 				default:
-					printf(" unop: ?%o? ", entab->TTno);
+					printf(" unop: ?%o? ", entab->Enun.Enop.Enoper);
 					break;
 			}
 		}
@@ -165,7 +165,7 @@ void prtfid(unsigned short ENTABno)
 			if ( v5 )
 			{
                 printf(" %s(", v5);
-                prtfid(entab->enleft);	// *** recursion here ***
+                prtfid(entab->enleft);		// *** recursion here ***
                 putchar(',');
                 prtfid(entab->enright);		// *** recursion here ***
                 putchar(')');
@@ -184,16 +184,16 @@ void prtfid(unsigned short ENTABno)
 	switch (entab->entype)
 	{
 	case 0x02:										// Expression
-		v9 = ((unsigned int)entab->TTno >> 9) & 1;		// 0x200 integer calc flag
+		v9 = ((unsigned int)entab->Enun.Enop.Enoper >> 9) & 1;		// 0x200 integer calc flag
 		if ( v9 & 1 )
 			printf(" (");
 		else
 			putchar(' ');
 
-		if ( entab->TTno & 0x3F )					// mask all but relational operator bits
+		if ( entab->Enun.Enop.Enoper & 0x3F )					// mask all but relational operator bits
 		{
 			printf("[%d]", ENTABno);
-		    switch ( entab->TTno & 0x1FF )
+		    switch ( entab->Enun.Enop.Enoper & 0x1FF )
 		    {
 			case 0x01:
 				printf("OR");
@@ -223,7 +223,7 @@ void prtfid(unsigned short ENTABno)
 				printf(">=");
 				break;
 			default:
-				printf(" relop: ?%o?", entab->TTno);
+				printf(" relop: ?%o?", entab->Enun.Enop.Enoper);
 				break;
 			}
 		}
@@ -257,11 +257,11 @@ void prtfid(unsigned short ENTABno)
 				putchar('[');
 				break;
 			default:										// Reserved string names
-				if ( entab->TTno & 0x0100 )
-					prresv(entab->RecNo);					// in this case, RecNo is a bitmask
+				if ( entab->Enun.Enop.Enoper & 0x0100 )
+					prresv(entab->Enun.Enop.RecNo);					// in this case, RecNo is a bitmask
 		
 				else if ( entab->enright )
-					printf(" op: ?%o?", entab->TTno);
+					printf(" op: ?%o?", entab->Enun.Enop.Enoper);
 				break;
 			}
 		}
@@ -271,26 +271,26 @@ void prtfid(unsigned short ENTABno)
 			putchar(' ');
 		break;
 	case 0x04:
-		printf("~%f~", *(float *)&entab->TTno);		// Embedded Float Literal ** not created by real clcomp **
+		printf("~%f~", entab->Enun.float4);		// Embedded Float Literal ** not created by real clcomp **
 		break;
 	case 0x08:
-		printf("~%ld~", *(int *)&entab->TTno);		// Embedded Integer Literal
+		printf("~%ld~", entab->Enun.long8);		// Embedded Integer Literal
 		break;
 	case 0x10:
-		printf("~%s~", (char *)&entab->TTno);		// Embedded String Literal ( <= 3 chars)
+		printf("~%s~", entab->Enun.char16);		// Embedded String Literal ( <= 3 chars)
 		break;
 	case 0x20:
 		putchar(',');								// Function Type. Multiple values follow
 		break;
 	case 0x01:										// Variable/ Table field
-		TTno = entab->TTno;
+		TTno = entab->Enun.Enref.TTno;
         if ( TTno )
-			fld = &ttab[TTno].TTfields[entab->RecNo];
+			fld = &ttab[TTno].TTfields[entab->Enun.Enref.VarNum];
 		else
-			fld = getvars(entab->RecNo);
+			fld = getvars(entab->Enun.Enref.VarNum);
 
 		if (fld->FLDstat & fld_ADDROF)				// DC extension '&' = *ADDRESS OF*
-			_IO_putc('&', stdout);
+			putc('&', stdout);
 
 		if ( TTno )									// This is a field in a table record
         {
@@ -305,13 +305,13 @@ void prtfid(unsigned short ENTABno)
         {
 			prstr(fld->FLDname);
 			if ( *fld->FLDname == '\'' )
-				_IO_putc('\'', stdout);
+				putc('\'', stdout);
 		}
         else if ( fld->FLDtype == 'C' )				// else print variable contents if a string
         {
-			_IO_putc('\'', stdout);
+			putc('\'', stdout);
 			prstr((char *)fld->FLDdata);
-			_IO_putc('\'', stdout);
+			putc('\'', stdout);
 		}
 		else
 			prstr(fld->FLDname);					// varname for all other types
@@ -342,7 +342,7 @@ void prstr(char *a1)
 		if (iscntrl(v3))
 			printf("^%c", v3 + 0x40);
 		else
-			_IO_putc(v3, stdout);
+			putc(v3, stdout);
 	}
 }
 
@@ -399,7 +399,7 @@ void prresv(int ReservedMask)
 			return;
 			break;
 	}
-	printf(v1);
+	printf("%s",v1);			// stop compiler warning on later GCC (format not a string literal and no format arguments)
     return;
 }
 
@@ -666,9 +666,8 @@ void prcalc(ENTAB *ent)
             prtfid(ent->enright);
             return;
 		}
-		// OpCode = ent->TTno & 0xFC00;
-		// switch (OpCode)
-		switch (ent->TTno & 0xFC00)			// OpCode
+
+		switch (ent->Enun.Enop.Enoper & 0xFC00)			// OpCode
 		{
 		case 0xA800:
 			v2 = "=";
@@ -696,9 +695,9 @@ void prcalc(ENTAB *ent)
 			break;
 		}
 
-		if ( ent->TTno & 0x0200 )			// Integer result
+		if ( ent->Enun.Enop.Enoper & 0x0200 )			// Integer result
 			printf(" (%s) ", v2);
-        else if ( ent->TTno & 0x0040 )		// *LIKE* wildcard flag - indicate possible loss of precision in result
+        else if ( ent->Enun.Enop.Enoper & 0x0040 )		// *LIKE* wildcard flag - indicate possible loss of precision in result
 			printf(" %s RND ", v2);			
         else
 			printf(" %s ", v2);
@@ -855,7 +854,7 @@ void prvars(bool ShowTree)
 				case 'I':
 				case 'N':
 				case 'B':
-					printf("\t(%ld)", (signed int)*(double *)fld->FLDdata);
+					printf("\t(%ld)", (long int)*(double *)fld->FLDdata);
 					break;
 		
 				default:
@@ -874,9 +873,9 @@ void prtree(VARTREE *a1, int Depth)
 {
      if ( a1 )
      {
-          prtree(a1->VarPrev, Depth + 1);
+          prtree(a1->VarPrev, Depth + 1);			// Recursion here
           printf("%3d %s\n", Depth, a1->VarName);
-          prtree(a1->VarNext, Depth + 1);       // Recursion here
+          prtree(a1->VarNext, Depth + 1);			// Recursion here
      }
 }
 
@@ -1043,9 +1042,9 @@ void prtds()
 	short	count;
     short	scrn_no;
 
-    BTCOUNT = (int*) alloca(4 * no_btabs);
+    BTCOUNT = (int*) alloca(sizeof(int*) * no_btabs);
 
-    count = 0;					// pointless really, alloca clears memory
+    count = 0;					// pointless really, alloca clears memory?
     while ( no_btabs > count )
 		BTCOUNT[count++] = 0;
 
@@ -1172,51 +1171,55 @@ void prkx(KXTAB *kxtab)
 
 void prdatefield(unsigned short ENTno, unsigned short XTno, PRTAB *pr)
 {
-    ENTAB	*ent;
-    ENTAB	*v4;
-    ENTAB	*v12;
+	ENTAB	*ent;
+	//ENTAB	*v4;
+	ENTAB	*v12;
 	XTAB	*xtb;
-    FLDdesc *fld;
+	FLDdesc *fld;
 
-    TDesc	*TTptr;
-	
+	TDesc	*TTptr;
+
 	char	*v10;
 	char	*v20;
-	
-    int		TTno;
-    bool	isExpr;
+
+	int		TTno;
+	short	LeftNo;
+	bool	isExpr;
 
 	//	ent = ENARR(ENTno);
 	//	while (ent && ent->enleft)
 	//		ent = ENARR(ent->enleft);
 
 	ent = ENARR(ENTno);
-	 
-	if ( ent->enleft )
-    {
-		if ( !ent->enleft )	// Should be unreachable due to test above
-        {
-			v4 = 0;			// Should cause a CRASH!
-            goto LABEL_7;
-		}
-        do
-        {
-			v4 = &enarr.TableAddr[ent->enleft - 1];
-LABEL_7:
-            ent = v4;
-		}
-        while ( v4->enleft );
-	}
+
+	for (LeftNo = ent->enleft; LeftNo ; LeftNo = ent->enleft )
+		ent = &enarr.TableAddr[LeftNo - 1];
+
+//	if ( ent->enleft )
+//    {
+//		if ( !ent->enleft )	// Should be unreachable due to test above
+//        {
+//			v4 = 0;			// Should cause a CRASH!
+//            goto LABEL_7;
+//		}
+//        do
+//        {
+//			v4 = &enarr.TableAddr[ent->enleft - 1];
+//	LABEL_7:
+//            ent = v4;
+//		}
+//        while ( v4->enleft );
+//	}
     
 	assert(ent->entype == 0x01);
 
 	xtb = XTARR(XTno);
 	
-	TTno = ent->TTno;
+	TTno = ent->Enun.Enref.TTno;
     if ( TTno )
-		fld = &ttab[TTno].TTfields[ent->RecNo];		// Field in a Table
+		fld = &ttab[TTno].TTfields[ent->Enun.Enref.VarNum];		// Field in a Table
 	else
-		fld = getvars(ent->RecNo);					// Normal variable
+		fld = getvars(ent->Enun.Enref.VarNum);					// Normal variable
 
 	if ( fld->FLDtype == 'D' )
     {
@@ -1262,12 +1265,12 @@ LABEL_7:
 		}
 		assert(v12->entype == 0x01);		// check expression type == 1
 
-		TTno = v12->TTno;
+		TTno = v12->Enun.Enref.TTno;
           
 		if ( TTno )
-			fld = &ttab[TTno].TTfields[v12->RecNo];		// field in table
+			fld = &ttab[TTno].TTfields[v12->Enun.Enref.VarNum];		// field in table
 		else
-			fld = getvars(v12->RecNo);					// normal variable
+			fld = getvars(v12->Enun.Enref.VarNum);					// normal variable
           
 		if ( fld->FLDtype == 'C' )
         {

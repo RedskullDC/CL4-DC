@@ -1,0 +1,352 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.07.16.04.42.56;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.09.06.09.35;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef KFIELDS_C
+#define KFIELDS_C
+
+int getkflds(KXTAB *kxtab)
+{
+	FLDdesc *fld; // ecx@@10
+    int		*TTlist; // edx@@4
+    short	*v9; // edx@@16
+    short	*v11; // edx@@22
+
+	int v1; // eax@@1
+    short FieldNo; // ax@@2
+    int v8; // eax@@14
+    short v10; // si@@16
+    short v12; // si@@22
+     
+	unsigned short v15; // [sp+10h] [bp-28h]@@38
+    bool first_keys; // [sp+14h] [bp-24h]@@10
+	short *v17; // [sp+18h] [bp-20h]@@1
+    short *v18; // [sp+1Ch] [bp-1Ch]@@1
+    short *v19; // [sp+20h] [bp-18h]@@1
+    int TTno;
+    char FieldType[13];
+
+	#ifdef DEBUG_OUTPUT
+	printf("getkflds()\n");
+	#endif
+
+    FieldType[0] = 0;
+    fflush(stdout);
+    v1 = kxtab->NumKeyFields;							// normally ZERO. Suggests we can call routine again to add extra keys :o) 
+    v19 = &kxtab->KeyElemIDs[v1];
+    v18 = &kxtab->TkeyTy[v1];							//specifies any fields which have a descending sort
+    v17 = &kxtab->DataElemIDs[kxtab->NumDataFields];	// normally ZERO. Same as above
+     
+	while ( symbol == 2230 )            // 2230 = possible variable/table name. pre-tested for sanity. (starts with alpha, then alphanum)
+    {
+		// sym is a TableName at this point . getident updates symbol for next loop
+		FieldNo = getident(sym, &TTno, FieldType);  // result >= zero == a FieldNo. < zero == a TableNo. -1 == ERROR!
+		if ( FieldNo < 0 )              // negative if we are including all *key* fields from TTno
+		{
+			if ( FieldNo == -1 )		// -1 means sym wasn't located. ERROR! Will be in the <= -3 if a user table.
+				return -1;				// error_exit.
+			
+			TTno = -FieldNo;			// FieldNo held a TTno
+			
+			TTlist = kxtab->TTlist;
+			while (*TTlist && (*TTlist != TTno))	// Look to see if this TT is already in the list.
+				TTlist++;
+				
+			if (!*TTlist)					// end of list reached, not found. add it to the list
+			{
+				*TTlist = TTno;
+				++kxtab->NumTTs;       // Number of TT's referenced
+			}
+
+			first_keys = kxtab->NumKeyFields == 0;		// Can only be true if this whole table is first specifier following create command
+			
+			fld = ttab[TTno].TTfields;
+			while ( fld->FLDelemID )
+			{
+				if ( first_keys && fld->TDFtype & 1 )	// Add *all* key fields from whole table if no keys existed already
+				{
+					*v19++ = fld->FLDelemID;
+					++kxtab->NumKeyFields;
+					kxtab->KeySize += fld->FLDlen;
+					kxtab->RecSize += fld->FLDlen;
+				}
+				else if ( (v8 = fld->TDFtype & 0x3000, v8 != 0x2000) && v8 != 0x3000 )// sub/key recs
+				{
+					v9 = kxtab->KeyElemIDs;				// see if this element has already been indexed
+					v10 = 0;
+					while ( kxtab->NumKeyFields > v10 && *v9 != fld->FLDelemID )	// if *v9 == fld->FLDelemID , already in our keylist, just continue
+					{
+						v10++;
+						v9++;
+					}
+					if ( *v9 != fld->FLDelemID )		// Doesn't exist in our Keylist, check for it in the Datalist
+					{
+						v11 = kxtab->DataElemIDs;
+						v12 = 0;
+						while ( kxtab->NumDataFields > v12 && *v11 != fld->FLDelemID )
+						{
+							v12++;
+							v11++;
+						}
+						if ( *v11 != fld->FLDelemID )	// Not already in our datalist, so add it.
+						{
+							*v17++ = fld->FLDelemID;
+							++kxtab->NumDataFields;
+							kxtab->RecSize += fld->FLDlen;
+						}
+					}
+				}
+				fld++;
+			}
+		}
+		else		// FieldNo >= 0 . Look for a single Field in a Table
+		{
+			TTlist = kxtab->TTlist;
+			while (*TTlist && (*TTlist != TTno))	// Look to see if this TT is already in the list. TTno can't be zero
+				TTlist++;
+				
+			if (!*TTlist)					// end of list reached, not found. add it to the list
+			{
+				*TTlist = TTno;
+				++kxtab->NumTTs;			// Number of TT's referenced
+			}
+
+			fld = &ttab[TTno].TTfields[FieldNo];
+			*v19++ = fld->FLDelemID;			// Add the elementID to our KeyIDList. **don't check for duplicates!!**
+			++kxtab->NumKeyFields;
+			kxtab->KeySize += fld->FLDlen;		// adjust Key/Rec size to include this new element
+			kxtab->RecSize += fld->FLDlen;
+			
+			v15 = 0;						// look for a descending sort specifier
+			if ( symbol == 180 )			// ","
+			{
+				symbol = getsym();
+				if ( sym[0] != 'd' )		// specifies a descending sort on this field
+				{
+					loaderr(84, sym);		// "invalid sort specification" ??
+					return -1;
+				}
+				v15 = 0x4000u;
+				symbol = getsym();			// update symbol for next loop
+			}
+			*v18++ = v15;
+		}
+	}
+	return 0;
+}
+
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 126
+a131 177
+     int v1; // eax@@1
+     short FieldNo; // ax@@2
+     short v3; // esi@@2
+     signed int result; // eax@@3
+     int v5; // ecx@@4
+     int *v6; // edx@@4
+     FLDdesc *fld; // ecx@@10
+     int v8; // eax@@14
+     short *v9; // edx@@16
+     short v10; // si@@16
+     short *v11; // edx@@22
+     short v12; // si@@22
+     int *v13; // edx@@32
+     FLDdesc *fld2; // ecx@@38
+     unsigned short v15; // [sp+10h] [bp-28h]@@38
+     bool v16; // [sp+14h] [bp-24h]@@10
+     short *v17; // [sp+18h] [bp-20h]@@1
+     short *v18; // [sp+1Ch] [bp-1Ch]@@1
+     short *v19; // [sp+20h] [bp-18h]@@1
+     int TTno; // [sp+24h] [bp-14h]@@2
+     char FieldType[13]; // [sp+2Bh] [bp-Dh]@@1
+
+     FieldType[0] = 0;
+     fflush(stdout);
+     v1 = kxtab->NumKeyFields;
+     v19 = &kxtab->KeyElemIDs[v1];
+     v18 = &kxtab->TkeyTy[v1];
+     v17 = &kxtab->DataElemIDs[kxtab->NumDataFields];
+     if ( symbol == 2230 )                      // string literal follows?
+     {
+          while ( 1 )
+          {
+               FieldNo = getident(sym, &TTno, FieldType);
+               v3 = FieldNo;
+               if ( FieldNo < 0 )               // negative if we are including all fields from TTno
+               {
+                    result = -1;                // -1 means sym wasn't located. ERROR!
+                    if ( v3 == -1 )
+                         return result;
+                    v5 = -v3;
+                    TTno = -v3;
+                    v6 = kxtab->TTlist;
+//------------
+                    if ( *v6 )                  // Any TT's noted already?
+                    {
+                         while ( *v6 != v5 )    // Look for this TT in the list.
+                         {
+                              ++v6;
+                              if ( !*v6 )
+                                   goto LABEL_9;// not found. add it to the list
+                         }
+                         if ( !*v6 )            // end of list reached, not found. add it to the list
+                              goto LABEL_9;
+                    }
+                    else
+                    {
+LABEL_9:
+                         *v6 = TTno;
+                         ++kxtab->NumTTs;       // Number of TT's referenced
+                    }
+//------------------------
+                    v16 = kxtab->NumKeyFields == 0;
+                    fld = ttab[TTno].TTfields;
+                    if ( fld->FLDelemID )
+                    {
+                         while ( 1 )
+                         {
+                              if ( v16 && fld->TDFtype & 1 )
+                              {
+                                   *v19 = fld->FLDelemID;
+                                   ++v19;
+                                   ++kxtab->NumKeyFields;
+                                   kxtab->KeySize += fld->FLDlen;
+LABEL_29:
+                                   kxtab->RecSize += fld->FLDlen;
+                                   goto LABEL_30;
+                              }
+                              v8 = fld->TDFtype & 0x3000;
+                              if ( v8 == 0x2000 || v8 == 0x3000 )// sub/key recs
+                                   goto LABEL_30;
+                              v9 = kxtab->KeyElemIDs;
+                              v10 = 0;
+                              if ( kxtab->NumKeyFields > 0 )
+                              {
+                                   if ( *v9 == fld->FLDelemID )
+                                        goto LABEL_30;
+                                   while ( 1 )
+                                   {
+                                        ++v10;
+                                        ++v9;
+                                        if ( kxtab->NumKeyFields <= v10 )
+                                             break;
+                                        if ( *v9 == fld->FLDelemID )
+                                             goto LABEL_30;
+                                   }
+                              }
+                              if ( *v9 != fld->FLDelemID )
+                              {
+                                   v11 = kxtab->DataElemIDs;
+                                   v12 = 0;
+                                   if ( kxtab->NumDataFields > 0 )
+                                   {
+                                        if ( *v11 == fld->FLDelemID )
+                                             goto LABEL_30;
+                                        while ( 1 )
+                                        {
+                                             ++v12;
+                                             ++v11;
+                                             if ( kxtab->NumDataFields <= v12 )
+                                                  break;
+                                             if ( *v11 == fld->FLDelemID )
+                                                  goto LABEL_30;
+                                        }
+                                   }
+                                   if ( *v11 != fld->FLDelemID )
+                                   {
+                                        *v17 = fld->FLDelemID;
+                                        ++v17;
+                                        ++kxtab->NumDataFields;
+                                        goto LABEL_29;
+                                   }
+                              }
+LABEL_30:
+                              ++fld;
+                              if ( !fld->FLDelemID )
+                                   goto LABEL_43;
+                         }
+                    }
+                    goto LABEL_43;
+               }
+               v13 = kxtab->TTlist;
+               if ( !*v13 )
+                    goto LABEL_37;
+               if ( *v13 != TTno )
+                    break;
+LABEL_36:
+               if ( !*v13 )
+                    goto LABEL_37;
+LABEL_38:
+               fld2 = &ttab[TTno].TTfields[FieldNo];
+               *v19 = fld2->FLDelemID;
+               ++v19;
+               ++kxtab->NumKeyFields;
+               kxtab->KeySize += fld2->FLDlen;
+               kxtab->RecSize += fld2->FLDlen;
+               v15 = 0;
+               if ( symbol == 180 )             // ","
+               {
+                    symbol = getsym();
+                    if ( sym[0] != 'd' )
+                    {
+                         loaderr(84, sym);
+                         return -1;
+                    }
+                    v15 = 0x4000u;
+                    symbol = getsym();
+               }
+               *v18 = v15;
+               ++v18;
+LABEL_43:
+               if ( symbol != 2230 )
+                    return 0;
+          }
+          while ( 1 )
+          {
+               ++v13;
+               if ( !*v13 )
+                    break;
+               if ( *v13 == TTno )
+                    goto LABEL_36;
+          }
+LABEL_37:
+          *v13 = TTno;
+          ++kxtab->NumTTs;
+          goto LABEL_38;
+     }
+     return 0;
+@

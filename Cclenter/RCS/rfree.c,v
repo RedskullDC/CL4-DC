@@ -1,0 +1,178 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.06.13.04.31.28;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Routines to clear Tables, Fields
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef RECORDFREE_C
+#define RECORDFREE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void DumpBlock(char* Buffer, int NumBytes);
+void DumpTDptr(TDinfo* TD,bool ShowTDef);
+
+/* contains rfree(), rkfree(), rdfree(), ravail(), tfree()*/
+
+// Set field flags to indicate that data record has been loaded, and can be examined
+void ravail(int TDno)
+{
+	TDesc *TTptr;
+	FLDdesc *fld;
+
+	//printf("ravail(TDno = %d)\n" ,TDno);
+	TTptr = &ttab[TDno];
+	for ( fld = TTptr->TTfields; fld->FLDelemID; ++fld )
+		fld->FLDstat |= fld_REC_LOADED;				// data in TTptr->Workarea for this field
+	TTptr->TDlocked |= 0x0020u;
+}
+
+void rfree(int TDno, int FieldNo)
+{
+	FLDdesc *fld; // esi@@1
+	TDesc *TTptr;
+	int CurrField; // edi@@1
+	size_t FLDlen; // [sp+4h] [bp-14h]@@7
+
+	//printf("rfree(TDno = %d, FieldNo = %d)\n" ,TDno,FieldNo);
+
+	TTptr = &ttab[TDno];
+	rtdget(TTptr);               // appears useless, but can throw an assert()
+	fld = TTptr->TTfields;
+	CurrField = 0;
+	while ( fld->FLDelemID )
+	{			// Can't free FieldNo ZERO by itself, even though we are Zero-based array at this point!!!
+		if ( FieldNo && CurrField != FieldNo && fld->FLDstat & 0x0008 && fld->FLDstat < 0 )
+			goto LABEL_14;
+		
+		fld->FLDstat = (fld->FLDstat | 4) & 0xFFE6;
+		//printf("rfree(TDno = %d, FLDtype = %c, CurrField = %d)\n" ,TDno, fld->FLDtype, CurrField);
+		switch (fld->FLDtype)
+		{
+			case 'C':
+				zap(fld->FLDdata,(fld->FLDlen + 1));
+				break;
+			// *** LIBCL4 functionality below ***
+			//case 'D':
+			//case 'T':
+			//	zap(fld->FLDdata,80);
+			//	break;
+			default:
+				if ( fld->FLDlen )
+					zap(fld->FLDdata, 8);
+				break;
+		}
+LABEL_14:
+		CurrField++;
+		fld++;
+	}
+}
+
+// Free the *Key* fields of a TD
+void rkfree(int TDno)
+{
+	FLDdesc *fld;
+
+	//printf("rkfree(TDno = %d)\n" ,TDno);
+
+	fld = ttab[TDno].TTfields;
+	while ( fld->FLDelemID && fld->FLDstat & fld_KEY)//	< 0 )// High bit set indicates Key field
+//	while ( fld->FLDelemID && fld->FLDstat & < 0 ) GCC optimises &0x8000 to "< 0" for a short :o)
+	{
+	//printf("FLDlen = %2d, FLDstat = %04X , FLDtype = %c\n",fld->FLDlen,(unsigned short)fld->FLDstat, fld->FLDtype);
+		//fld->FLDstat = (fld->FLDstat | 4) & 0xFFE6;
+		fld->FLDstat = (fld->FLDstat | fld_ZERO) & ~(fld_DATA_AVAIL|fld_SUBREC|fld_REC_LOADED);
+
+		if ( fld->FLDtype == 'C' )
+			zap(fld->FLDdata, (fld->FLDlen + 1));	// string variable
+		else if ( fld->FLDlen )
+			zap(fld->FLDdata,sizeof(double));		// everything else stored internally as a double
+
+		// *****   doesn't zap Date/Time fields when in Key? (80 bytes)??
+		++fld;
+	}
+}
+
+// Free the *data* (non-Key) fields of a TD
+void rdfree(int TDno)
+{
+	FLDdesc *fld; // esi@@1
+	//int CurrField = 0;
+
+	//printf("rdfree(TDno = %d)\n" ,TDno);
+
+	fld = ttab[TDno].TTfields;
+	while( fld->FLDelemID )
+	{
+		if ( fld->FLDstat & fld_KEY	)	// Skip Key fields. GCC will optimise to ( < 0 )
+		{
+			fld++;
+			//printf("rdfree(TDno = %3d, FLDtype =[KEY] %c, Curr = %3d, Len = %3d)\n" ,TDno, fld->FLDtype, CurrField,fld->FLDlen);
+			//CurrField++;
+			continue;
+		}
+		//printf("rdfree(TDno = %3d, FLDtype = %c, Curr = %3d, Len = %3d)\n" ,TDno, fld->FLDtype, CurrField,fld->FLDlen);
+		//fld->FLDstat = (fld->FLDstat | 0x0004) & 0xFFEE;
+		fld->FLDstat |= fld_ZERO;
+		fld->FLDstat &= ~(fld_DATA_AVAIL|fld_REC_LOADED);
+		
+		switch (fld->FLDtype)
+		{
+			case 'C':
+				zap(fld->FLDdata,(fld->FLDlen + 1));
+				break;
+			// **** LIBCL4 different ***
+			//case 'D':
+			//case 'T':
+			//	zap(fld->FLDdata,80);
+			//	break;
+			default:
+				if( fld->FLDlen )
+					zap(fld->FLDdata, sizeof(double));
+				break;
+		}
+		fld++;
+		//CurrField++;
+	}
+}
+
+// Free the Workarea buffer, and mark fields as having no data loaded
+void tfree(int TDno)
+{
+	TDesc *TTptr; // eax@@1
+	FLDdesc *fld; // esi@@1
+	char *buffptr; // edi@@1
+
+	//printf("tfree(TDno = %d)\n" ,TDno);
+
+	TTptr = &ttab[TDno];
+	fld = TTptr->TTfields;
+	for ( buffptr = TTptr->TDworkarea1; fld->FLDelemID; ++fld )
+	{
+		zap(buffptr, fld->FLDlen);
+		fld->FLDstat &= ~fld_REC_LOADED;            // clear fld_REC_LOADED flag
+		buffptr += fld->FLDlen;
+	}
+}
+#endif
+@

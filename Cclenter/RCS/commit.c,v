@@ -1,0 +1,82 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.04.22.06.16.54;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef COMMIT_C
+#define COMMIT_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+short _commit(int TDno, int FreeSbuf)
+{
+    TDinfo *TDptr; // esi@@1
+    int v4; // eax@@1
+    short result; // ax@@5
+    short v6; // di@@6
+    short Depth; // ST18_2@@9
+    int PageNo; // [sp+1Ch] [bp-1Ch]@@9
+    RLIST rlst[6]; // [sp+20h] [bp-18h]@@6
+
+    TDptr = _chktd(TDno);
+    v4 = check_bup_sem(TDptr->TDDBinfo);
+    if ( v4 )
+        derror(v4, 0, TDptr);                   // 
+                                                // 
+    if ( TDptr->TDSallocBuf && !(TDptr->field_0 & 2) )	// bit 2 indicates that TDSallocBuf is holding a RLARR* !
+    {
+        v6 = _sflush(rlst, 1, TDptr->TDSallocBuf, TDptr);
+        if ( v6 )
+        {
+            if ( !_locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 1) )						// couldn't lock the table header for writing. error!
+                derror(18, 0, TDptr); 
+
+            Depth = _rhead(TDptr->TDDBinfo, TDptr->TDindexOff, &PageNo);				// Read old table data, updates PageNo
+            _whead(TDptr->TDDBinfo, TDptr->TDindexOff, rlst[0].PageNo, rlst[0].Depth);	// Save new data to Table header
+            _locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 0);							// Unlock table header
+            _sparetree(TDptr, PageNo, Depth);											// Return old table data pages to system
+        }
+        if ( FreeSbuf )
+            TDptr->TDSallocBuf = (SALLOCBUF *)nfree(TDptr->TDSallocBuf, 0);// 
+                                                // 
+        return v6;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+short commit(int a1)
+{
+	//return (signed short)xenter((int)commit, a1, 1);
+	return _commit(a1, 1);
+}
+
+#endif
+@

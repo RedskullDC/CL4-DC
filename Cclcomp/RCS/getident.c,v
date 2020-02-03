@@ -1,0 +1,245 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.06.17.06.53.13;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.07.16.06.26.04;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.06.21.12.51.13;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.09.11.43.52;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@intermediate. removing unused code
+@
+text
+@#ifndef GETIDENT_C
+#define GETIDENT_C
+
+// only called by lecreate() routines
+
+short getident(char *FieldName, int *TTno, char *FieldType)
+{
+	int TDno;
+    short FieldNo;
+    char v7;
+    bool WholeTable = false;
+    char TableName[32];
+    char FieldName2[128];
+
+	if ( symbol )
+	{
+		cdbcpystr(TableName, FieldName, 0);
+		//cdbcpystr(v13, FieldName, 0);         // not actually used. Debug code?
+		FieldName2[0] = 0;
+		
+		symbol = getsym();
+		if ( symbol == 1080 )                   // "." (decimal point)
+		{
+			//WholeTable = false;
+			symbol = getsym();
+			cdbcpystr(FieldName2, sym, 0);
+			//cdbcpystr(v13, v13, ".", sym, 0); // v13 isn't actually used below....
+		}
+		else
+			WholeTable = true;                  // if no ".", we want to include *all* fields from this table
+
+		TDno = findtd(TableName, -1);			// Look for tablename in *all* open *user* tables.
+		*TTno = TDno;							// Update caller mem directly
+		
+		if ( TDno >= 0 )						
+		{
+			if ( WholeTable )
+				return -TDno;						// Return the *negative* TD no if whole Record
+			
+			FieldNo = findfno(*TTno, FieldName2);
+			if ( FieldNo >= 0 )
+			{
+				v7 = ttab[*TTno].TTfields[FieldNo].FLDtype;
+				*FieldType = v7;
+				if ( v7 != 'S' && v7 != 'K' )
+				{
+					symbol = getsym();				// updates symbol for caller
+					return FieldNo;					// Return the FieldNo in this case - *** exit_success ***
+				}
+				loaderr(24, FieldName2);			// "invalid operation on 'set' or 'key' field"
+			}
+			else
+				loaderr(8, FieldName2);				// "invalid field name or number"
+		}
+		else										// couldn't find this table amongst the open tables
+			loaderr(14, TableName);				// "table not open"
+	}
+	return -1;			// -1 == ERROR
+	
+	// Will be in the <= -3 if a user table.
+	// Safe to use -1 as an error indicator
+}
+#endif
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d4 2
+d15 16
+a30 17
+	if ( !symbol )
+        return -1;							// -1 == ERROR
+
+	cdbcpystr(TableName, FieldName, 0);
+    //cdbcpystr(v13, FieldName, 0);         // not actually used. Debug code?
+    FieldName2[0] = 0;
+    
+	symbol = getsym();
+    if ( symbol == 1080 )                   // "." (decimal point)
+    {
+		//WholeTable = false;
+        symbol = getsym();
+        cdbcpystr(FieldName2, sym, 0);
+        //cdbcpystr(v13, v13, ".", sym, 0); // v13 isn't actually used below....
+    }
+    else
+		WholeTable = true;                  // if no ".", we want to include *all* fields from this table
+d32 4
+a35 16
+	TDno = findtd(TableName, -1);			// Look for tablename in *all* open *user* tables.
+    *TTno = TDno;							// Update caller mem directly
+    if ( TDno < 0 )							// can't find this table amongst the open tables
+    {
+        loaderr(14, TableName);				// "table not open"
+        return -1;							// -1 == ERROR
+	}
+    if ( WholeTable )
+		return -TDno;						// Return the *negative* TD no if whole Record
+	
+	FieldNo = findfno(*TTno, FieldName2);
+	if ( FieldNo >= 0 )
+	{
+		v7 = ttab[*TTno].TTfields[FieldNo].FLDtype;
+		*FieldType = v7;
+		if ( v7 != 'S' && v7 != 'K' )
+d37 17
+a53 2
+			symbol = getsym();				// updates symbol for caller
+			return FieldNo;					// Return the FieldNo in this case
+d55 2
+a56 1
+		loaderr(24, FieldName2);			// "invalid operation on 'set' or 'key' field"
+d58 1
+a58 4
+	else
+		loaderr(8, FieldName2);				// "invalid field name or number"
+
+	return -1;								// -1 == ERROR
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@a6 1
+    short v4;
+a10 1
+    //char v13[32];
+a41 1
+	v4 = FieldNo;
+d49 1
+a49 1
+			return v4;						// Return the FieldNo in this case
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 8
+a13 8
+	int v3; // eax@@5
+    short v4; // eax@@8
+    short FieldNo; // ax@@9
+    char v7; // al@@11
+    signed int WholeTable; // [sp+2Ch] [bp-7Ch]@@3
+    char TableName[32]; // [sp+30h] [bp-78h]@@2
+    char v13[32]; // [sp+50h] [bp-58h]@@2
+    char FieldName2[128]; // [sp+70h] [bp-38h]@@2
+d16 1
+a16 1
+        return -1;                      // -1 == ERROR
+d19 1
+a19 1
+    cdbcpystr(v13, FieldName, 0);           // not actually used. Debug code?
+d21 2
+a22 1
+    symbol = getsym();
+d25 1
+a25 1
+		WholeTable = 0;
+d28 1
+a28 1
+        cdbcpystr(v13, v13, ".", sym, 0);   // v13 isn't actually used below....
+d31 5
+a35 6
+    {
+		WholeTable = 1;                     // if no ".", we want to include *all* fields from this table
+	}
+    v3 = findtd(TableName, -1);
+    *TTno = v3;
+    if ( v3 < 0 )                           // can't find this table amongst the open tables
+d40 13
+a52 14
+    if ( !WholeTable )
+    {
+		FieldNo = findfno(*TTno, FieldName2);
+        v4 = FieldNo;
+        if ( FieldNo >= 0 )
+        {
+			v7 = ttab[*TTno].TTfields[FieldNo].FLDtype;
+            *FieldType = v7;
+            if ( v7 != 'S' && v7 != 'K' )
+            {
+				symbol = getsym();
+                return v4;					// Return the FieldNo in this case
+			}
+		    loaderr(24, FieldName2);		// "invalid operation on 'set' or 'key' field"
+d54 4
+a57 2
+        else
+	        loaderr(8, FieldName2);			// "invalid field name or number"
+d59 1
+a59 3
+		return -1;							// -1 == ERROR
+	}
+    return -*TTno;                          // Return the *negative* TD no if whole Record
+@

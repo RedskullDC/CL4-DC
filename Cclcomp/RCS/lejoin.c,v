@@ -1,0 +1,404 @@
+head	1.6;
+access;
+symbols;
+locks
+	leslie:1.6; strict;
+comment	@ * @;
+
+
+1.6
+date	2016.05.16.05.59.04;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2016.01.22.02.28.12;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.01.18.05.14.18;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.07.14.13.31.39;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.12.30.04.11.33;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.03.31.17;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@#ifndef LEJOIN_C
+#define LEJOIN_C
+
+#include <assert.h>
+#include "lvarnames.h"			// for flag bits
+
+int lejoin(short PTno, int join)
+{
+    PTAB	*ptab;
+	ENTAB	*v12;
+	ENTAB	*entb;
+    XTAB	*xtb;
+	RTAB	*rtb;
+	
+    int		TDno;
+	short	v9;
+	short	fno;
+	short	RTno;
+	char	FLDtype;
+
+    ptab = PTARR(getptabp(PTno - 1));	// examine the *PREVIOUS* instruction
+    allxtpt(ptab->TABno, &xtb);
+    if ( ptab->OpCode != 1 )			// accept field
+    {
+		loaderr(20, sym);				// "previous field not accept field"
+		dallxtpt(&xtb);
+		return 0;
+	}
+    symbol = getsym();
+    if ( symbol != 2230 )
+    {
+        if ( symbol == 930 )
+			loaderr( 7, sym);			// "unexpected end of line"
+		else
+			loaderr(33, sym);			// "unexpected symbol"
+        dallxtpt(&xtb);
+        return 0;
+	}
+    v9 = getenmem();
+    if ( !gettfexp(v9) )				// get table/field expression
+	{
+		dallxtpt(&xtb);
+        return 0;
+	}
+	if ( xtb->RangeID )					// Not sure how to trigger this condition
+    {
+		loaderr(18, sym);				// "cannot join and range check"
+        dallxtpt(&xtb);
+        return 0;
+	}
+    
+	RTno = getrtmem();
+    allrtpt(RTno, &rtb);
+    rtb->field_C = v9;
+    rtb->field_E = xtb->VarExpNo;
+    if ( gettf(v9, &TDno, &FLDtype) < 0 )
+    {
+        __assert_fail("fno >= 0", "lejoin.c", 62, "lejoin");
+	}
+    rtb->TTno = TDno;
+    xtb->RangeID = RTno;
+
+	if (join)		// Join == 1 join, 0 nojoin
+	{
+		rtb->OpType = rtb_JOIN;		// 0x0040u;
+		xtb->Flags |= xtb_JOIN;		// 0x0010;	// join
+	}
+	else
+	{
+		rtb->OpType = 0x0001u;		// same as GET
+		xtb->Flags |= xtb_NOJOIN;	// 0x0100;	// nojoin
+	}
+    
+	dallxtpt(&xtb);
+    if ( symbol == 800 )                       // "lock"
+    {
+		symbol = getsym();
+        xtb->Flags		|= xtb_LOCK;	// 0x0020u;
+        rtb->LockType	|= 0x0400u;
+    }
+    
+	if ( symbol == 1720 )                      // where
+    {
+		symbol = getsym();
+        v9 = loadexp(1, 1);
+        if ( !v9 )
+        {
+			dallrtpt(&rtb);
+            return 0;
+        }
+        rtb->WhereEXP = v9;
+        
+		v9 = getenmem();
+        allenpt(v9, &entb);
+        entb->TTno = 2;
+        entb->entype = 2;
+        entb->enright = rtb->WhereEXP;
+        entb->enleft = getenmem();
+        rtb->WhereEXP = v9;
+        dallenpt(&entb);
+
+		entb = ENARR(rtb->WhereEXP);
+		
+		allenpt(entb->enleft, &entb);
+        entb->TTno = 16;
+        entb->entype = 2;
+//----------------------------
+		entb->enleft = getenmem();
+		fno = gettf(rtb->field_C, &TDno, &FLDtype);
+        //if ( fno < 0 )
+        //    __assert_fail("fno >= 0", "lejoin.c", 106, "lejoin");
+		assert(fno >= 0);
+
+		v12 = ENARR(entb->enleft);
+		v12->TTno = TDno;
+        v12->RecNo = fno;
+		v12->entype = 1;
+//-----------------------------
+		entb->enright = getenmem();
+        
+		fno = gettf(rtb->field_E, &TDno, &FLDtype);
+        //if ( fno < 0 )
+		//	__assert_fail("fno >= 0", "lejoin.c", 115, "lejoin");
+		assert(fno >= 0);
+
+		v12 = ENARR(entb->enright);
+		v12->TTno = TDno;
+		v12->RecNo = fno;
+		v12->entype = 1;
+
+		dallenpt(&entb);
+	}
+    dallrtpt(&rtb);
+    if ( symbol != 930 )
+    {
+		loaderr(33, sym);
+		return 0;
+	}
+    return 1;	// exit_success
+}
+
+#endif
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d5 1
+d40 1
+a40 1
+    if ( !gettfexp(v9) )
+d65 2
+a66 2
+		rtb->OpType = 0x0040u;
+		xtb->Flags |= 0x0010;					// join
+d70 2
+a71 2
+		rtb->OpType = 0x0001u;
+		xtb->Flags |= 0x0100;					// nojoin
+d78 1
+a78 1
+        xtb->Flags		|= 0x0020u;
+d97 2
+a98 2
+        entb->Src = rtb->WhereEXP;
+        entb->Dest = getenmem();
+d104 1
+a104 1
+		allenpt(entb->Dest, &entb);
+d108 1
+a108 1
+		entb->Dest = getenmem();
+d110 3
+a112 2
+        if ( fno < 0 )
+            __assert_fail("fno >= 0", "lejoin.c", 106, "lejoin");
+d114 1
+a114 1
+		v12 = ENARR(entb->Dest);
+d119 1
+a119 1
+		entb->Src = getenmem();
+d122 3
+a124 2
+        if ( fno < 0 )
+			__assert_fail("fno >= 0", "lejoin.c", 115, "lejoin");
+d126 1
+a126 1
+		v12 = ENARR(entb->Src);
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@a12 1
+    char	*v21;
+a14 3
+	int		v20;
+	short	v5;
+	short	v8;
+d38 2
+a39 2
+    v5 = getenmem();
+    if ( !gettfexp(v5) )
+d53 1
+a53 1
+    rtb->field_C = v5;
+d55 1
+a55 1
+    if ( gettf(v5, &TDno, &FLDtype) < 0 )
+d60 1
+d63 1
+d65 2
+d68 1
+a69 6
+
+    xtb->RangeID = RTno;
+    
+    if ( join )
+		xtb->Flags |= 0x0010;					// join
+	else
+d71 1
+d84 2
+a85 2
+        v8 = loadexp(1, 1);
+        if ( !v8 )
+d90 1
+a90 1
+        rtb->WhereEXP = v8;
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d4 2
+d8 14
+a21 15
+    PTAB  *ptab; // esi@@1
+    ENTAB *v12; // edx@@30
+    ENTAB *entb;
+    XTAB  *xtb;
+	RTAB  *rtb;
+
+    short v5; // si@@10
+    short v7; // ax@@17
+    short v8; // dx@@22
+    short v9; // si@@24
+    short fno; // cx@@27
+    int v20; // [sp+0h] [bp-38h]@@2
+    char *v21; // [sp+4h] [bp-34h]@@2
+    short RTno; // [sp+14h] [bp-24h]@@13
+    int TDno; // [sp+1Ch] [bp-1Ch]@@13
+d24 1
+a24 1
+    ptab = PTARR(getptabp(PTno - 1));
+d26 1
+a26 1
+    if ( ptab->OpCode != 1 )	// accept field
+d28 3
+a30 3
+          loaderr(20, sym);		// "previous field not accept field"
+          dallxtpt(&xtb);
+          return 0;
+d36 1
+a36 1
+			loaderr( 7, sym);		// "unexpected end of line"
+d38 1
+a38 1
+			loaderr(33, sym);		// "unexpected symbol"
+d48 1
+a48 1
+	if ( xtb->RangeID )
+d50 1
+a50 1
+		loaderr(18, sym);			// "cannot join and range check"
+a71 1
+	v7 = xtb->Flags | 0x0100;
+d73 3
+a75 2
+		v7 = xtb->Flags | 0x0010;
+    xtb->Flags = v7;
+d140 1
+a140 1
+    return 1;
+@
+
+
+1.2
+log
+@prior to TableAddr fixes
+@
+text
+@d16 1
+a16 1
+    short v11; // cx@@27
+d65 1
+a65 1
+		rtb->field_2 = 0x40u;
+d67 1
+a67 1
+		rtb->field_2 = 0x01u;
+d80 2
+a81 2
+        xtb->Flags |= 0x20u;
+        rtb->field_0 |= 0x400u;
+d104 2
+a105 2
+		entb = rtb->WhereEXP ? &enarr.TableAddr[rtb->WhereEXP - 1] : 0;
+
+d111 2
+a112 2
+		v11 = gettf(rtb->field_C, &TDno, &FLDtype);
+        if ( v11 < 0 )
+d115 3
+a117 3
+		v12 = entb->Dest ? &enarr.TableAddr[entb->Dest - 1] : 0;
+        v12->TTno = TDno;
+        v12->RecNo = v11;
+d122 2
+a123 2
+		v11 = gettf(rtb->field_E, &TDno, &FLDtype);
+        if ( v11 < 0 )
+d126 1
+a126 1
+		v12 = entb->Src ? &enarr.TableAddr[entb->Src - 1] : 0;
+d128 1
+a128 1
+		v12->RecNo = v11;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d104 1
+a104 1
+		entb = rtb->WhereEXP ? (ENTAB *)&enarr.TableAddr[12 * (rtb->WhereEXP - 1)] : 0;
+d115 1
+a115 1
+		v12 = entb->Dest ? (ENTAB *)&enarr.TableAddr[12 * (entb->Dest - 1)] : 0;
+d126 1
+a126 1
+		v12 = entb->Src ? (ENTAB *)&enarr.TableAddr[12 * (entb->Src - 1)] : 0;
+@

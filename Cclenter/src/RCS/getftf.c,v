@@ -1,0 +1,391 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2020.01.27.13.16.42;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.05.09.03.02.45;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.04.13.04.20.22;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.22.06.17.07;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@changed filed in ENTAB to ENUM
+prior to X64 compat.
+cd ../
+@
+text
+@#ifndef GETFTF_C
+#define GETFTF_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <termcap.h>
+#include <stdlib.h>		// for srand48()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+// Find the Field pointed to by the expression, and set the fld parameters
+// accordingly depending to the expression type
+
+FLDdesc *getftf(ENTAB *ent, bool UpdateTT, FLDdesc *fld)
+{
+    ENTAB	*v6;
+    FLDdesc *fld2;
+    TDesc	*TTptr;
+    short	Subscript;
+    short	fno;
+    int		TDno;
+    bool	AllArray = false;
+
+	// fld is provided by caller, in case necessary. Not always returned. Routine assumes that ent is correctly set.
+
+	memset((char*)fld, 0, sizeof(FLDdesc));
+	if ( ent->entype == 0x04 )					// Float Literal - RVALUE only - **clcomp doesn't create these!**
+    {
+        fld->FLDdata = (void*)&dbl_0;
+        fld->FLDtype = '6';
+        if ( *(float *)&ent->TTno == 0.0 )		//ent->TTno should be an enum field ?!?
+            fld->FLDstat |= fld_ZERO;
+        dbl_0 = *(float *)&ent->TTno;
+        return fld;
+    }
+    else if ( ent->entype == 0x08 )				// Integer literal - RVALUE only
+    {
+        fld->FLDdata = (void*)&dbl_1;
+        fld->FLDtype = 'N';
+        if ( !*(int *)&ent->TTno )
+            fld->FLDstat |= fld_ZERO;
+        dbl_1 = (double)*(int *)&ent->TTno;
+        return fld;
+    }
+    else if ( ent->entype == 0x10 )				// String Literal (3chars or less) - RVALUE only
+    {
+        fld->FLDdata = (void*)&ent->TTno;
+        fld->FLDtype = 'C';
+        if ( !*(char*)&ent->TTno )
+            fld->FLDstat |= fld_ZERO;
+        return fld;
+    }
+    else if ( ent->entype == 0x01 )				// Retrieve variable or field data - LVALUE or RVALUE
+    {
+        fno		= ent->RecNo;
+        TDno	= ent->TTno;
+        TTptr	= &ttab[TDno];
+        rtdget(TTptr);							// appears pointless, but throws exceptions on TTptr sanity checks.
+        if ( !TDno )							// Is this a normal variable? (Hangs off TD0)
+        {
+            fld2 = &TTptr->TTfields[fno];
+            if ( fld2->FLDelemID )				// Is this an Array variable?
+            {									// No subscript specified, so.....
+                AllArray = true;				// set AllArray flag for below.
+                fld2->FLDdata = fld2->FLDname;	// set data pointer to Array element[0]
+            }
+        }
+    }
+    else if ( ent->entype == 2 && (unsigned short)(ent->TTno & 0xFC00) == 0xAC00 )	// 0xAC00 == Array operation - LVALUE or RVALUE
+	{
+		v6 = ENARR(ent->enleft);
+
+		fno		= v6->RecNo;				// FieldNo
+		TDno	= v6->TTno;
+		TTptr	= &ttab[TDno];
+		rtdget(TTptr);						// appears pointless, but throws exceptions on TTptr sanity checks.
+		fld2	= &TTptr->TTfields[fno];
+
+		Subscript = evalint(ENARR(ent->enright));	// get Array index, ONE based at this point
+		AllArray = (Subscript == 0);				// ZERO means set all values, Set AllArray flag for below
+		
+		if ( Subscript <= 0 )				// range check
+		    Subscript = 1;
+
+		if ( TDno )			// table field
+		{
+		    if ( TTptr->NumFields < fno + Subscript )	// bounds check on Subscript
+		        Subscript = 1;
+		    fno = (fno + Subscript - 1);
+		}
+		else				// Normal variable
+		{												// check for Array variables, and find offset to data.
+			if ( fld2->FLDelemID < Subscript )			// bounds check on Subscript
+			    Subscript = 1;
+			Subscript--;								// now ZERO based
+
+			if ( fld2->FLDtype == 'C' )
+			{
+				fld2->FLDdata = &fld2->FLDname[Subscript * (fld2->FLDlen + 1)];	// allow for \0 byte terminator in strings
+			    if ( *(char*)fld2->FLDdata )									// set quick zero flags
+					fld2->FLDstat &= ~fld_ZERO;	// 0xFFFB;	// non-zero
+				else
+				    fld2->FLDstat |= fld_ZERO;	// 0x0004;	// zero
+			}
+			else
+			{
+				fld2->FLDdata = &fld2->FLDname[Subscript * sizeof(double)];		// all numerics stored as doubles
+			    if ( *(double *)fld2->FLDdata == 0.0 )							// set quick zero flags
+				    fld2->FLDstat |= fld_ZERO;	// 0x0004;
+				else
+					fld2->FLDstat &= ~fld_ZERO;	// 0xFFFB;
+			}
+		}
+	}
+	else
+        return 0;	// error.
+
+//==============================================================
+
+    fld2 = &TTptr->TTfields[fno];
+    if ( AllArray && !TDno && fld2->FLDelemID )		// *Array* type *variable* with default value set. 
+        fld2->FLDstat |= fld_ARRAY;		// $0002
+    else
+        fld2->FLDstat &= ~fld_ARRAY;	// $FFFD
+
+	if ( UpdateTT && TDno && !(fld2->FLDstat & fld_DATA_AVAIL) )	// 0x0010 == data_avail flag
+        rectott(TDno, fno);	// Update data in TT Workarea
+
+    return fld2;
+}
+
+#endif
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d28 2
+a29 2
+    zap((char*)fld, sizeof(FLDdesc));
+	if ( ent->entype == 0x04 )				// Float Literal - RVALUE only - **clcomp doesn't create these!**
+d33 2
+a34 2
+        if ( *(float *)&ent->TTno == 0.0 )	//ent->TTno should be an enum field ?!?
+            fld->FLDstat |= fld_ZERO;	// 0x0004;
+d38 1
+a38 1
+    else if ( ent->entype == 0x08 )			// Integer literal - RVALUE only
+d43 1
+a43 1
+            fld->FLDstat |= fld_ZERO;	// 0x0004;
+d47 1
+a47 1
+    else if ( ent->entype == 0x10 )			// String Literal (3chars or less) - RVALUE only
+d52 1
+a52 1
+            fld->FLDstat |= fld_ZERO;	// 0x0004;
+a69 1
+		//printf("getftf() 1315 - ent->entype = %d, TDno = %d, fno = %d\n",ent->entype,TDno,fno);
+d75 1
+a75 1
+		fno		= v6->RecNo;
+d78 2
+a79 2
+		rtdget(TTptr);		// appears pointless, but throws exceptions on TTptr sanity checks.
+		fld2 = &TTptr->TTfields[fno];
+d81 2
+a82 2
+		Subscript = evalint(ENARR(ent->enright));	// ONE based at this point
+		AllArray = (Subscript == 0);		// Set AllArray flag for below
+d87 1
+a87 1
+		if ( TDno )	// table field
+d89 1
+a89 1
+		    if ( TTptr->NumFields < fno + Subscript )	 // bounds check on Subscript
+d93 2
+a94 3
+		else	// Normal variable
+		{
+			// check for Array variables, and find offset to data.
+d100 1
+d102 1
+a102 6
+			else
+				fld2->FLDdata = &fld2->FLDname[Subscript * sizeof(double)];		// all numerics stored as doubles
+
+			if ( fld2->FLDtype == 'C' )			// set quick zero flags
+			{
+			    if ( *(char*)fld2->FLDdata )
+d109 2
+a110 1
+			    if ( *(double *)fld2->FLDdata == 0.0 )
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d16 1
+a16 1
+FLDdesc *getftf(ENTAB *ent, int UpdateTT, FLDdesc *fld)
+d18 1
+a18 1
+    ENTAB *v6;
+d20 5
+a24 5
+    TDesc *TTptr;
+    short Subscript;
+    short fno;
+    int TDno;
+    bool AllArray = false;
+d28 2
+a29 2
+    zap((char*)fld, sizeof(*fld));			// sizeof(*fld) = 24, sizeof(fld) = 4 (size of the pointer itself!)
+    if ( ent->entype == 0x04 )				// Float Literal - RVALUE only
+d55 1
+a55 1
+    else if ( ent->entype == 0x01 )		// Retrieve variable or field data - LVALUE or RVALUE
+d60 2
+a61 2
+        rtdget(TTptr);					// appears pointless, but throws exceptions on TTptr sanity checks.
+        if ( !TDno )					// Is this a normal variable? (Hangs off TD0)
+d74 1
+a74 1
+	    v6 = ENARR(ent->enleft);
+d76 3
+a78 3
+		fno = v6->RecNo;
+		TDno = v6->TTno;
+		TTptr = &ttab[TDno];
+d125 2
+d128 2
+a129 2
+    if ( AllArray && !TDno && fld2->FLDelemID )	// *Array* type variable with default value set
+        fld2->FLDstat |= 0x0002;
+d131 1
+a131 1
+        fld2->FLDstat &= 0xFFFD;
+d135 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d18 7
+a24 16
+    ENTAB *v5; // eax@@20
+    ENTAB *v6; // eax@@23
+    FLDdesc *fld2; // esi@@15
+    short v10; // ecx@@28
+    signed int v12; // eax@@28
+    int Subscript; // ecx@@35
+    int TDno; // [sp+Ch] [bp-1Ch]@@14
+    bool IsArray; // [sp+10h] [bp-18h]@@1
+    TDesc *TTptr; // [sp+14h] [bp-14h]@@14
+    short RecNo; // [sp+18h] [bp-10h]@@14
+
+//printf("getftf() - ent->entype = %d, UpdateTT = %d, OpCode = x%04X\n",ent->entype,UpdateTT,(ent->TTno & 0xFC00));
+
+    IsArray = false;
+	// fld is provided by caller, in case necessary. Not always returned.
+	// Routine assumes that ent is correctly set.
+d26 4
+a29 2
+    zap((char*)fld, sizeof(*fld));     // sizeof(*fld) = 24, sizeof(fld) = 4 (size of the pointer itself!)
+    if ( ent->entype == 4 )
+d38 1
+a38 1
+    if ( ent->entype == 8 )
+a44 1
+		//printf("getftf() - ent->entype = %d, dbl_1 set to %G\n",ent->entype,dbl_1);
+d47 1
+a47 1
+    if ( ent->entype == 0x10 )
+d55 1
+a55 2
+//------------------------------
+    if ( ent->entype == 1 )				// Retrieve (non-array type) variable or field data
+d57 1
+a57 1
+        RecNo	= ent->RecNo;
+d63 1
+a63 2
+            fld2 = &TTptr->TTfields[RecNo];
+			//printf("getftf() 1312 - fld2->FLDelemID = %d\n",fld2->FLDelemID);
+d65 2
+a66 2
+            {
+                IsArray = true;					// set isArray flag for below.
+d70 1
+a70 1
+		//printf("getftf() 1315 - ent->entype = %d, TDno = %d, RecNo = %d\n",ent->entype,TDno,RecNo);
+d72 1
+a72 1
+    else if ( ent->entype == 2 && (unsigned short)(ent->TTno & 0xFC00) == 0xAC00 )	// 0xAC00 == Array operation
+d74 1
+a74 4
+		// Copy a value to a single Array element
+
+		//printf("getftf() #1316 - ent->entype = %d\n",ent->entype);
+	    v6 = ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0;
+d76 1
+a76 1
+		RecNo = v6->RecNo;
+d80 7
+a86 1
+		fld2 = &TTptr->TTfields[RecNo];
+a87 8
+		v10 = evalint(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0);	// possibly recursive
+		v12 = 1;
+		if ( !(v10 == 0) )
+		    v12 = 0;
+		IsArray = v12;		// Set isArray flag for below
+		if ( v10 <= 0 )
+		    v10 = 1;
+		//printf("getftf() #1331 - ent->entype = %d, TDno = %d, RecNo = %d, v10 = %d\n",ent->entype,TDno,RecNo,v10);
+d90 3
+a92 3
+		    if ( TTptr->NumFields < RecNo + v10 )	 // bounds check on Subscript
+		        v10 = 1;
+		    RecNo = (RecNo + v10 - 1);
+d97 3
+a99 3
+			if ( fld2->FLDelemID < v10 )			// bounds check on Subscript
+			    v10 = 1;
+			Subscript = v10 - 1;
+d123 4
+a126 5
+        return 0;
+//----------------------------------------
+//printf("getftf() #1370 - ent->entype = %d, IsArray = %d\n",ent->entype ,IsArray);
+    fld2 = &TTptr->TTfields[RecNo];
+    if ( IsArray && !TDno && fld2->FLDelemID )	// This is an *Array* type variable
+d132 1
+a132 1
+        rectott(TDno, RecNo);	// Update data in TT Workarea
+a135 1
+
+@

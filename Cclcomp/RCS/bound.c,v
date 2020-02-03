@@ -1,0 +1,136 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.06.28.09.05.46;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.11.03.33.27;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef BOUND_C
+#define BOUND_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+EXPR* _bound(EXPR *Expr, short Operator, TDef *Tdefp);
+
+EXPR* _bound(EXPR *Expr, short Operator, TDef *Tdefp)
+{
+	EXPR *v3;
+	EXPR *v4;
+	short v5;
+	//EXPR *result;
+	EXPR *v7;
+	EXPR *v8;
+
+	//printf("_bound( EXPR: x%08X,Operator: x%04X, TDef: x%08X)\n", Expr,Operator,Tdefp);
+	v3 = Expr;                                    // possible for many levels of recursion to happen inside _bound() !!
+	if ( !Expr )
+		return 0;
+  //-----------
+
+	if ( Expr->Operator == 1 )  // Expr is actually a "join". Operator == 1 means an "OR" join.
+	{
+		v7 = _bound(Expr->NextEXPR, Operator, Tdefp);
+		if ( !v7 || (v4 = _bound(Expr->PrevEXPR, Operator, Tdefp), (v3 = v4) == 0) )
+			return 0;
+
+		v5 = _cmpattrib(&v7->ExprData, v7->ExprSize, &v4->ExprData, v4->ExprSize, Tdefp->TDFtype);
+		if ( v5 < 0 )
+		{
+			//result = v3;
+			//if (Operator & 0x20)	// not greater than flag
+			//	result = v7;
+			//return result;
+			return (Operator & 0x20) ? v7 : v3;
+
+		}
+		if ( v5 <= 0 )
+		{
+			//if ( v7->ExprSize < v3->ExprSize )
+			//	return v7;
+			//return v3;
+			return (v7->ExprSize < v3->ExprSize) ? v7 : v3;
+		}
+		// v5 > 0
+		
+		//result = v7;
+		//if ( Operator & 0x20 )	// greater than
+		//	result = v3;
+		//return result;
+		return (Operator & 0x20) ? v3 : v7;
+	}
+	else if ( Expr->Operator == 2 )  // Expr is actually a "join". Operator == 2 means an "AND" join.
+	{
+		v8 = _bound(Expr->NextEXPR, Operator, Tdefp);
+		if ( v8 || (v8 = _bound(Expr->PrevEXPR, Operator, Tdefp)) != 0 )
+			return v8;
+	}
+	else             // Normal single Expr type record
+	{
+		if ( ((unsigned short)Operator | Expr->Operator) == Operator && Expr->Type == Tdefp->TDFentry )
+			return v3;
+	}
+	return 0;
+}
+
+	// 3 Operators bits: 
+	// 0x08 == less than				'<'
+	// 0x10 == equal to					'='
+	// 0x20 == greater than				'>'
+
+	// Mixed bit tests:
+	// 0x18 == less than or equal		'<='
+	// 0x30 == greater than or equal	'>='
+	// 0x28 == not equal to				'<>'
+	
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 1
+a13 1
+	EXPR *result;
+d32 6
+a37 4
+			result = v7;
+			if ( !(Operator & 0x20) )	// not greater than flag
+				result = v3;
+			return result;
+d41 4
+a44 3
+			if ( v7->ExprSize < v3->ExprSize )
+				return v7;
+			return v3;
+d46 7
+a52 4
+		result = v7;
+		if ( Operator & 0x20 )	// greater than
+			result = v3;
+		return result;
+@

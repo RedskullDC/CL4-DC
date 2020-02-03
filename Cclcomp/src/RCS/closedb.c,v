@@ -1,0 +1,77 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2016.06.17.06.23.47;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef CLOSEDB_C
+#define CLOSEDB_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+//=== different functionality to libcl4. No context value passed ===
+int closedb(int DBno)
+{
+    int TDno; // edi@@1
+    TDesc *TTptr; // esi@@4
+    short v3; // di@@12
+    DBase *DTptr; // esi@@12
+    int v5; // edx@@15
+
+    TDno = 0;
+    if ( no_ttabs )
+    {
+        if ( !DBno )
+            ulockall();
+        for ( TTptr = &ttab[no_ttabs - 1]; TTptr >= ttab; --TTptr )
+        {
+            if ( TTptr->TDrecsize && TTptr->TableAlias[0] != '>' )// alias > = some hokey stuff?!?
+            {
+                if ( TTptr->TTrtd != -1 )
+                {
+                    TDno = rtdget(TTptr);
+                    release(TDno);
+                }
+                TTptr->TableName[0] = 0;
+                if ( TDno == no_ttabs - 1 )
+                    --no_ttabs;
+            }
+        }
+        v3 = 0;
+        DTptr = dtab;
+        while ( no_dtabs > v3 )
+        {
+			if ( DTptr->FullDBname && DTptr->DBno >= 0 )
+            {
+				v5 = cldbclose(DTptr->DBno);
+                if ( v5 != DTptr->DBno )
+					dberror(v5, DTptr->DBno, -1);
+				DTptr->FullDBname = mfree_0(DTptr->FullDBname);
+			}
+            ++DTptr;
+            ++v3;
+        }
+    }
+    return 0;
+}
+
+#endif
+@

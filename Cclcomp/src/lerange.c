@@ -26,7 +26,7 @@ int numrange(short ENTno, XTAB *xt)			// xt == accept field preceeding the range
 				loaderr(3, sym);		// "invalid date"
 				return 0;
 			}
-			entb->TTno = 0;
+			entb->Enun.Enref.TTno = 0;
 			v4 = putconst(nptr, 'C');	// string type
 		}
 		else
@@ -42,13 +42,13 @@ int numrange(short ENTno, XTAB *xt)			// xt == accept field preceeding the range
 				sprintf(nptr, "%f", v12);
 			}
 			// this catches all other numeric values
-			entb->TTno = 0;
+			entb->Enun.Enref.TTno = 0;
 			v4 = putconst(nptr, '6');		// store numbers as 6 digit floats internally
 		}
 		if ( v4 >= 0 )
 		{
-			entb->RecNo = v4;
-			entb->entype = 1;
+			entb->Enun.Enref.VarNum = v4;
+			entb->entype			= 1;
 			symbol = getsym();
 			return ENTno;
 		}
@@ -114,10 +114,10 @@ int lerange(short PTno)
 
 		else if ( symbol == 840 )       // match		** undocumented **  perhaps unfinished?
 		{
-			ratb->RangeFrom = ENTno;	// 840 match
-			entb->TTno = 0x6C00u;
-			entb->entype = 2;
-			ratb->RangeType = 5;
+			ratb->RangeFrom			= ENTno;	// 840 match
+			entb->Enun.Enop.Enoper	= 0x6C00u;
+			entb->entype			= 2;
+			ratb->RangeType			= 5;
 			cdbcpystr(v21, sym, 0);		// ** never used **
 			symbol = getsym();         
 			
@@ -141,11 +141,11 @@ int lerange(short PTno)
 		}
         else if ( symbol == 2220 )		// string literal
 		{
-			entb->TTno = 0;
-			entb->RecNo = putconst(sym, 'C');
-			entb->entype = 1;
-			ratb->RangeFrom = ENTno;
-			ratb->RangeType = 4;		// range 'one,two,three'
+			entb->Enun.Enref.TTno	= 0;
+			entb->Enun.Enref.VarNum = putconst(sym, 'C');
+			entb->entype			= 1;
+			ratb->RangeFrom			= ENTno;
+			ratb->RangeType			= 4;		// range 'one,two,three'
 		}
 		else if ( symbol == 2230 )		// variable/field def
 		{

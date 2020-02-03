@@ -1,0 +1,94 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.17.10.46.26;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef DFETCH_C
+#define DFETCH_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+// Descending fetch [see also _ifetch()]
+
+short _dfetch(char *Dest, DPOS *dpos, TDinfo *TDptr)
+{
+	PAGE *page; // eax@@6
+	NODE *node; // edx@@14
+	short v5; // ax@@16
+	NODE_1 *N1p; // eax@@16
+	short v9; // [sp+18h] [bp-10h]@@11
+
+printf("_dfetch(Dest : x%08X, DPOS : x%08X, TDptr :x%08X)\n",Dest,dpos,TDptr);
+
+	node = TDptr->TDNodePtr;
+	if ( node && node->PageNo != dpos->PageNo )
+	{
+		relnode(node);
+		TDptr->TDNodePtr = 0;
+	}
+
+	if ( dpos->PageNo )
+		goto LABEL_21;
+	if ( dpos->field_8 )
+	{
+		page = _indexpg(TDptr, dpos->field_8);
+		if ( !dpos->NumEntries )
+			dpos->NumEntries = page->NumEntries + 1;
+		--dpos->NumEntries;
+		dpos->PageNo = mstol(&page->DataStart[4 * dpos->NumEntries]);
+		if ( !dpos->NumEntries )
+			dpos->field_8 = mstol(&page->field_12);
+	}
+
+	if ( dpos->PageNo )
+	{
+LABEL_21:
+		if ( !TDptr->TDNodePtr )
+			TDptr->TDNodePtr = getnode(TDptr, dpos->PageNo, 0);
+		node = TDptr->TDNodePtr;
+
+		if ( !dpos->field_4 )
+			dpos->field_4 = node->NumEntries;
+		v5 = dpos->field_4 - 1;
+		dpos->field_4 = v5;
+		N1p = &node->NODE1ptr[v5];
+		v9 = cpybuf(Dest, N1p->Data, N1p->Size);
+		if ( !dpos->field_4 )
+		{
+			relnode(TDptr->TDNodePtr);
+			TDptr->TDNodePtr = 0;
+			dpos->PageNo = 0;
+		}
+	}
+	else
+	{
+		v9 = 0;
+	}
+	return v9;
+}
+
+
+#endif
+@

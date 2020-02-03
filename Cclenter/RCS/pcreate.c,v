@@ -1,0 +1,391 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.08.26.03.36.53;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.01.15.01.06.25;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.27.10.01.38;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.30.12.08.59;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@tidy-up
+@
+text
+@#ifndef PCREATE_C
+#define PCREATE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+int mktable(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *a5);
+
+int _tdopen(int DBno, TDesc *TTptr)	// Only called by pcreate()
+{
+    int result = 0;					// default to couldn't open table
+
+    short v13; // ax@@2
+    short NumFields; // esi@@6
+    short size; // edx@@6
+    short NameLen; // kr04_4@@16
+    int TDno; // [sp+24h] [bp-2044h]@@8
+    
+	TDef *tdef;
+    TDef *tdef2;
+	FLDdesc *fld;
+
+	char Dest[32];
+    ELEMENTREC Buffer;
+
+	//printf("_tdopen(%d, x%08X)\n", DBno, TTptr);
+    if ( no_ttabs - 1 >= TTptr->TTrtd )
+    {
+        tdef = tblrow(TTptr->TTrtd);
+        if ( tdef )
+        {
+            tdef2 = tdef;
+            
+			NumFields = 0;
+            for ( size = 0; tdef2->TDFentry; tdef2++ )
+            {
+                size += tdef2->TDFsize;
+                NumFields++;
+            }
+            TTptr->TDworkarea1	= (char *)mmalloc(size + 1);
+            TTptr->NumFields	= NumFields;
+            TTptr->TTfields		= (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));	// null terminated array
+
+            TDno = identify(DBno, "elements");
+            if ( TDno >= 0 || (TDno = identify(DBno, "domains"), TDno >= 0) )	 // "domains" in pre-v4 dbases?
+            {
+                tdef2 = tdef;
+                for ( fld = TTptr->TTfields; tdef2->TDFentry; ++tdef2 )
+                {
+                    Dest[0] = 0;
+                    if ( TDno > 0 )
+                    {
+                        itoms(&Buffer.TDFentry, tdef2->TDFentry);
+                        v13 = getr(TDno, (char *)&Buffer, 0);
+                        if ( v13 <= 0 )
+                        {
+                            Dest[0] = 0;	// error, or couldn't find. blank name buffer.
+                            if ( v13 < 0 )
+                                dberror(v13, 0, TDno);
+                        }
+                        else
+                        {
+                            Buffer.FLDlen = 0; // ensure FieldName string terminated
+                            cdbcpystr(Dest, Buffer.FieldName, 0);
+                        }
+
+                        NameLen = strlen(Dest) + 1;
+                        if ( NameLen != 1 )	// true if not a blank string (should always be true in clenter)
+                        {
+                            fld->FLDname = (char *)mmalloc(NameLen);
+                            cpybuf(fld->FLDname, Dest, NameLen);
+                        }
+                    }
+                    
+					fld->FLDtype = gettype(tdef2->TDFtype, tdef2->TDFsize);
+					switch (fld->FLDtype)
+					{
+					case 'C':
+                        fld->FLDdata = mmalloc(tdef2->TDFsize + 1);			// strings are variable length
+						break;
+					case 'S':				// do nothing. Keys and Subrecs have no data field
+					case 'K':
+						break;
+					default:
+						fld->FLDdata = mmalloc(sizeof(double));		//mmalloc(8)	// all other var types stored as doubles internally
+						break;
+					}
+
+                    fld->FLDstat |= fld_ZERO;				// 0x0004;	quick zero flag
+					if ( tdef2->TDFtype & tdf_KEY )			// Key field
+                        fld->FLDstat |= fld_KEY;			// 0x8000u;
+                    else
+                        fld->FLDstat &= ~fld_KEY;			// 0x7FFFu;
+
+                    fld->FLDelemID	= tdef2->TDFentry;
+                    fld->FLDlen		= tdef2->TDFsize;
+                    fld->TDFtype	= tdef2->TDFtype;
+                    ++fld;
+                }
+                v13 = release(TDno);
+                if ( v13 < 0 )
+                    dberror(v13, 0, TDno);
+                result = 1;									// exit_success
+            }
+        }
+    }
+    else
+    {
+        fwrite("too many tables open\n", 1u, 0x15u, stderr);
+        v13 = release(TTptr->TTrtd);
+        if ( v13 < 0 )
+            dberror(v13, 0, TTptr->TTrtd);
+    }
+    return result;
+}
+
+
+void pcreate(KXTAB *kxtab)
+{
+    int		*TTnos;
+	void	*ptr;
+	TDesc	*TTptr; // [sp+24h] [bp-14h]@@1
+    TDesc	*a2a; // [sp+24h] [bp-14h]@@7
+    EXPR	*expr;
+	
+	int		DBno;
+	int		v9;
+    short	v2;
+	short	v4;
+	short	v7;
+	
+    tdclose(kxtab->TTno);                       // close if already open!
+    TTptr = &ttab[kxtab->TTno];
+    cdbcpystr(TTptr->TableName, kxtab->TableName, 0);
+    TTnos = (int *)mmalloc(4 * kxtab->NumTTs);
+
+	v2 = kxtab->NumTTs - 1;
+    while ( v2 >= 0 )
+    {
+		TTnos[v2] = rtdget(&ttab[kxtab->TTlist[v2]]);
+        v2--;
+    }
+
+    v4 = mktable(TTnos, kxtab->NumTTs, kxtab->KeyElemIDs, kxtab->DataElemIDs, kxtab->TkeyTy);
+    if ( v4 >= 0 )
+    {
+        TTptr->TTrtd = v4;
+        DBno = rdbget(TTptr->DBnumber);
+        if ( _tdopen(DBno, TTptr) )		// _tdopen(), *not* tdopen()!!
+        {
+            a2a = &ttab[kxtab->TTno];
+            a2a->TDlocked |= 0xA00u;	// ttl_OPEN | ttl_CREATE  0800|0200
+            kxtab->KXFlags |= 0x800u;
+			// 0x1000 == "empty" flag
+            if ( kxtab->KXFlags & 0x1000 || ((expr = getexpr(ENARR(kxtab->WhereEXP), 0), ptr = mmalloc(_ldsize), (kxtab->KXFlags & 0x0400)) 
+					? (v7 = compose(ptr, _ldsize, a2a->TTrtd, TTnos, kxtab->NumTTs, expr)) 
+					: (v7 = reorder(ptr, _ldsize, a2a->TTrtd, TTnos, kxtab->NumTTs, expr)),
+					mfree_0(ptr), fretre(expr, 0), v7 >= 0) )
+				v9 = 0;
+            else
+                v9 = ((kxtab->KXFlags & 0x0400) != 0) + 13;		// 0x400 == "unique" flag
+            setvar(v_ERROR, v9);
+        }
+        else
+        {
+            setvar(v_ERROR, 12);
+        }
+        mfree_0(TTnos);						// memory leak if mktable() fails?
+    }
+    else
+    {
+        setvar(v_ERROR, 11);
+    }
+}
+
+#endif
+
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d123 12
+a134 12
+    short v2; // esi@@1
+    short v4; // eax@@3
+    int DBno; // eax@@5
+    //ENTAB *v6; // eax@@9
+    short v7; // ax@@12
+    int v9; // esi@@15
+    int *TTnos; // [sp+1Ch] [bp-1Ch]@@1
+    void *ptr; // [sp+20h] [bp-18h]@@11
+    TDesc *TTptr; // [sp+24h] [bp-14h]@@1
+    TDesc *a2a; // [sp+24h] [bp-14h]@@7
+    EXPR *expr; // [sp+28h] [bp-10h]@@11
+
+d155 1
+a155 1
+            a2a->TDlocked |= 0xA00u;
+d165 1
+a165 1
+            setvar(v_ERROR, v9);            // "ERROR" 1
+d169 1
+a169 1
+            setvar(v_ERROR, 12);            // "ERROR" 1
+d175 1
+a175 1
+        setvar(v_ERROR, 11);                // "ERROR" 1
+@
+
+
+1.2
+log
+@prior to ENARR() fixes
+@
+text
+@d38 1
+a38 1
+            for ( size = 0; tdef2->TDFentry; ++tdef2 )
+d45 1
+a45 1
+            TTptr->TTfields		= (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));
+d48 1
+a48 1
+            if ( TDno >= 0 || (TDno = identify(DBno, "domains"), TDno >= 0) )
+d69 1
+d126 1
+a126 1
+    ENTAB *v6; // eax@@9
+d156 1
+a156 1
+            kxtab->field_0 |= 0x800u;
+d158 1
+a158 2
+            if ( kxtab->field_0 & 0x1000 || ((v6 = kxtab->WhereEXP ? &enarr.TableAddr[kxtab->WhereEXP - 1] : 0),
+					(expr = getexpr(v6, 0), ptr = mmalloc(_ldsize), (kxtab->field_0 & 0x0400)) 
+d164 1
+a164 1
+                v9 = ((kxtab->field_0 & 0x0400) != 0) + 13;		// 0x400 == "unique" flag
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 3
+a16 2
+    short v2; // ax@@2
+    int result; // eax@@4
+d18 2
+a19 6
+    short i; // edx@@6
+    short v6; // ax@@12
+    short v7; // kr04_4@@16
+    short v8; // cx@@16
+    short v13; // ax@@30
+    int v9; // esi@@17
+d29 1
+a29 2
+	//printf("_tdopen(%d, %08X)\n", DBno, TTptr);
+
+a32 1
+        result = 0;
+d38 1
+a38 1
+            for ( i = 0; tdef2->TDFentry; ++tdef2 )
+d40 1
+a40 1
+                i += tdef2->TDFsize;
+d43 1
+a43 1
+            TTptr->TDworkarea1	= (char *)mmalloc(i + 1);
+d45 1
+a45 1
+            TTptr->TTfields		= (FLDdesc *)mmalloc(24 * (NumFields + 1));
+d48 1
+a48 1
+            if ( TDno >= 0 || (TDno = identify(DBno, "domains"), result = 0, TDno >= 0) )
+d57 2
+a58 2
+                        v6 = getr(TDno, (char *)&Buffer, 0);
+                        if ( v6 <= 0 )
+d60 3
+a62 3
+                            Dest[0] = 0;
+                            if ( v6 < 0 )
+                                dberror(v6, 0, TDno);
+d69 2
+a70 3
+                        v7 = strlen(Dest) + 1;
+                        v8 = v7 - 1;
+                        if ( v7 != 1 )	// true if not a blank string
+d72 2
+a73 3
+                            v9 = v8 + 1;
+                            fld->FLDname = (char *)mmalloc(v8 + 1);
+                            cpybuf(fld->FLDname, Dest, v9);
+d105 1
+a105 1
+                result = 1;
+d112 3
+a114 4
+        v2 = release(TTptr->TTrtd);
+        if ( v2 < 0 )
+            dberror(v2, 0, TTptr->TTrtd);
+        result = 0;
+a121 1
+    short v1; // ax@@1
+a122 1
+    short v3; // ax@@2
+a127 1
+    void *v10; // [sp+0h] [bp-38h]@@6
+d138 3
+a140 3
+    v1 = kxtab->NumTTs - 1;
+    v2 = v1;
+    if ( v1 >= 0 )
+d142 2
+a143 7
+        do
+        {
+            TTnos[v2] = rtdget(&ttab[kxtab->TTlist[v2]]);
+            v3 = v2 - 1;
+            v2--;
+        }
+        while ( v3 >= 0 );
+d145 1
+d156 1
+a156 4
+
+//            if ( kxtab->field_0 & 0x1000 || (!kxtab->WhereEXP ? (v6 = 0) : (v6 = &enarr.TableAddr[kxtab->WhereEXP - 1]),
+//                  (expr = getexpr(v6, 0), ptr = mmalloc(_ldsize), !(kxtab->field_0 & 0x0400)) ? (v7 = reorder(ptr, _ldsize, a2a->TTrtd, TTnos, kxtab->NumTTs, expr)) : (v7 = compose(ptr, _ldsize, a2a->TTrtd, TTnos, kxtab->NumTTs, expr)),
+//                  mfree_0(ptr), fretre(expr, 0), v7 >= 0) )
+d158 3
+a160 1
+					(expr = getexpr(v6, 0), ptr = mmalloc(_ldsize), (kxtab->field_0 & 0x0400)) ? (v7 = compose(ptr, _ldsize, a2a->TTrtd, TTnos, kxtab->NumTTs, expr)) : (v7 = reorder(ptr, _ldsize, a2a->TTrtd, TTnos, kxtab->NumTTs, expr)),
+a165 1
+            v10 = TTnos;
+a169 1
+            v10 = TTnos;
+d171 1
+a171 1
+        mfree_0(v10);
+@

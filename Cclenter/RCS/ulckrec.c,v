@@ -1,0 +1,100 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.08.26.01.47.31;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2016.01.22.05.19.20;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.2
+log
+@clean-up
+@
+text
+@#ifndef UNLOCK_RECORD_C
+#define UNLOCK_RECORD_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+int _ulckrec2(int TTno)		// name conflict in libcl4 with public function
+{
+	TDesc	*TDptr;
+	int		v2;
+	short	v4;
+	
+	//printf("_ulckrec2(TTno = %3d)\n" ,TTno);
+	TDptr = &ttab[TTno];	
+	v2 = 0;
+	if ( TDptr->TDlocked & tdp_LOCK ) // 0x0001
+	{
+		fix_buf(TTno, TDptr->TDworkarea2);
+		v4 = ulockr(rtdget(TDptr), TDptr->TDworkarea2, 0);
+		v2 = v4;
+		if ( v4 < 0 )
+			dberror(v2, 0, rtdget(TDptr));
+		TDptr->TDlocked &= tdp_LOCK; // 0xFFFEu;                    // clear locked flag
+	}
+	return v2;
+}
+
+int ulckrec(int TTno)
+{
+	int v1; // edx@@1
+	int i; // esi@@2
+
+	//printf("ulckrec(TTno = %3d)\n" ,TTno);
+	v1 = 0;
+	if ( TTno > 0 )
+		v1 = _ulckrec2(TTno);
+	else	
+	{
+		for ( i = 0; i < no_ttabs; ++i )	// pass -1 in TTno to unlock all TT's
+			v1 = _ulckrec2(i);
+	}
+	return v1;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 4
+a17 4
+	TDesc *TDptr; // esi@@1
+	int v2; // edi@@1
+	short v4; // ax@@2
+
+d21 1
+a21 1
+	if ( TDptr->TDlocked & 0x0001 )
+d28 1
+a28 1
+		TDptr->TDlocked &= 0xFFFEu;                    // clear locked flag
+@

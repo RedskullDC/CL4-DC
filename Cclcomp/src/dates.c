@@ -2,6 +2,7 @@
 #define DATES_C
 
 #include <langinfo.h>		// for nl_langinfo functions
+#include <locale.h>			// setlocale, LC_MONETARY, struct lconv, localeconv
 #include <time.h>			// for struct tm
 #include <string.h>
 #include <ctype.h>          // for islower() and toupper() functions
@@ -47,12 +48,13 @@ void loadMonthArrays(bool SetAvars)
 	int		Day;
 	int		Month;
 	int		v16;
+	struct	lconv *lc;
 
 	// see  <langinfo.h> for constants
 	strcpy(THOU_SEP, nl_langinfo(THOUSEP));
 	strcpy(RADIX_CHAR, nl_langinfo(RADIXCHAR));
 
-	wday = mmalloc(28u);	// 4 * 7
+	wday = mmalloc(7 * sizeof(char*));	// for compatibility with x86 & x64
 
 	for (Day = 0; Day < 7 ; Day++)
 	{
@@ -64,8 +66,8 @@ void loadMonthArrays(bool SetAvars)
 		}
 	}
 
-	fmth = mmalloc(52u);	// 4 * 13
-	mth = mmalloc(52u);
+	fmth = mmalloc(13 * sizeof(char*));		// for compatibility with x86 & x64
+	mth = mmalloc(13 * sizeof(char*));
 
 	for ( Month = 0; Month < 12 ; Month++ )
 	{
@@ -78,7 +80,12 @@ void loadMonthArrays(bool SetAvars)
 		}
 	}
 
-	localeconv();
+	setlocale (LC_MONETARY,"");
+	//localeconv();
+	lc = localeconv();
+	//printf ("Local Currency Symbol: %s\n",lc->currency_symbol);
+	//printf ("International Currency Symbol: %s\n",lc->int_curr_symbol);
+
 	if ( !*_YL && !_DF )	// ***ERROR*** DF is ignored if no second language set!
 	{
 		v15 = nl_langinfo(D_FMT);	// 131113
@@ -262,7 +269,7 @@ int clgetdate(const char *src)
 	//printf("clgetdate(%s)\n" ,src);
 
 	v48 = 1;
-	zap(s, 30u);
+	memset(s, 0, sizeof(s));
 	strncpy(s, src, 29u);
 	sysdate(v52);	//sysdate returns string like [23 Jan 2013]
 	DateAlias = 0;
@@ -900,11 +907,10 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 	unsigned int v15;
 	int j;
 	unsigned int v18;
-	unsigned int v31;
 	int v23;
 	int v24;
 	int v25;
-	int v28;
+	long v28;
 	
 	signed int State = 0;
 	int YearChars = 0;
@@ -1103,7 +1109,7 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 								v15 = 1;
 								for ( j = MonthChars; j; --j )
 									v15 *= 10;
-								sprintf(Dest, "%0*ld", MonthChars, (darr[1] % v15));
+								sprintf(Dest, "%0*ld", MonthChars, (long)(darr[1] % v15));
 							}
 							else
 							{
@@ -1134,8 +1140,7 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 							v18 = 1;
 							for ( j = YearChars; j; --j )
 								v18 *= 10;
-							v31 = darr[2] % v18;
-							sprintf(Dest, "%0*ld", YearChars, v31);
+							sprintf(Dest, "%0*ld", YearChars, (long)(darr[2] % v18));
 						}
 						Dest += YearChars;
 						YearChars = 0;

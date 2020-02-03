@@ -1,0 +1,265 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.05.09.03.25.14;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.27.09.35.44;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.25.08.11.41;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef GETTDFNO_C
+#define GETTDFNO_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+int gettdfno(ENTAB *entab, int *TTno, char *FLDtype, int UpdateTT)		// returns FieldNo
+{
+    ENTAB *entb; // eax@@5
+    FLDdesc *fld;
+    TDesc *TTptr;
+    short Subscript;
+    int fno;
+    bool AllArray = false;	//	Set to true when no subscript, or [0] selected
+
+    if ( !entab )
+        __assert_fail("0", "gettdfno.c", 0x52u, "gettdfno");
+	//assert(entab);
+
+    if ( entab->entype == 2 && (unsigned short)(entab->TTno & 0xFC00) == 0xAC00 )	// Array variable. can be field in a table
+    {
+        entb = ENARR(entab->enleft);
+        *TTno	= entb->TTno;			// 0 = Variable, non-zero = Field in a Table		** update caller mem **
+        fno		= entb->RecNo;		// destination field no
+        TTptr	= &ttab[*TTno];
+        rtdget(TTptr);				// seems pointless, but rtdget() will throw _asserts if TTptr->rtd invalid
+        fld = &TTptr->TTfields[fno];
+
+		Subscript = evalint(ENARR(entab->enright));	// 1 based at this point
+        AllArray = (Subscript == 0);		// If Subscript is ZERO, set *all* elements to this value
+ 		if ( Subscript <= 0 )
+            Subscript = 1;
+ 
+		if ( *TTno )	// Is this a table variable? (normal variables hang off TDno 0)
+        {
+            if ( TTptr->NumFields < fno + Subscript )	// range check on fno
+                Subscript = 1;
+            fno = (fno + Subscript - 1);
+        }
+		else
+		{
+			if ( fld->FLDelemID < Subscript )
+			    Subscript = 1;
+			Subscript--;	// now ZERO based
+			
+			if ( fld->FLDtype == 'C' )
+				fld->FLDdata = &fld->FLDname[Subscript * (fld->FLDlen + 1)];	// Allow for terminating \0
+			else										// Everything else stored internally as a double
+				fld->FLDdata = &fld->FLDname[Subscript * sizeof(double)];
+
+			if ( fld->FLDtype == 'C' )					// set quick-zero flag
+			{
+			    if ( *(char *)fld->FLDdata )
+					fld->FLDstat &= ~fld_ZERO;	// not-zero
+				else
+			        fld->FLDstat |= fld_ZERO;	// zero
+			}
+			else
+			{
+			    if ( *(double *)fld->FLDdata == 0.0 )
+			        fld->FLDstat |= fld_ZERO;	// zero
+				else
+					fld->FLDstat &= ~fld_ZERO;	// not-zero
+			}
+		}
+		*FLDtype = fld->FLDtype;				// ** update caller mem **
+    }
+	else if ( entab->entype == 1 )				// Return a variable value. Can be field in a table.
+	{
+		*TTno	= entab->TTno;		// TTno is a multi-use field depending on entab->entype
+		fno		= entab->RecNo;
+		TTptr	= &ttab[*TTno];
+		rtdget(TTptr);							// seems pointless, but rtdget() will throw _asserts if TTptr invalid
+		*FLDtype = TTptr->TTfields[fno].FLDtype;
+		if ( !*TTno )							// True if this is a normal variable, Array variables can't exist in DBase tables
+		{
+			fld = &TTptr->TTfields[fno];
+			if ( fld->FLDelemID )				// FLDelemID used as "Number of Elements" for Array variables
+			{									// No subscript specified, so we are setting *all* values !!
+			    AllArray = true;				// All array elements set to single value.
+			    fld->FLDdata = fld->FLDname;	// Array hangs off FLDname
+			}
+		}
+	}
+	else
+		return -1;	// err_exit
+
+	fld = &TTptr->TTfields[fno];
+    if ( AllArray && !*TTno && fld->FLDelemID )	// Array variables can't exist in DBase tables
+        fld->FLDstat |= fld_ARRAY;	// $0002		// flag indicates this is an array variable that needs *all* values set to default
+    else
+        fld->FLDstat &= ~fld_ARRAY;	// $FFFD
+
+    if ( UpdateTT && *TTno && !(fld->FLDstat & fld_DATA_AVAIL))	// update TT Workarea if this is a field in a Table, and data_avail flag not set
+		rectott(*TTno, fno);	// Update data in TT Workarea
+    
+	return fno;
+}
+
+#endif
+@
+
+
+1.2
+log
+@prior to ENARR() fix
+@
+text
+@d6 1
+d10 1
+a10 1
+    ENTAB *v4; // eax@@5
+d23 3
+a25 3
+        v4 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+        *TTno	= v4->TTno;			// 0 = Variable, non-zero = Field in a Table		** update caller mem **
+        fno		= v4->RecNo;		// destination field no
+d30 1
+a30 1
+		Subscript = evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0);	// 1 based at this point
+d91 1
+a91 1
+        fld->FLDstat |= 0x0002;					// flag indicates this is an array variable that needs *all* values set to default
+d93 1
+a93 1
+        fld->FLDstat &= 0xFFFD;
+d96 1
+a96 1
+		rectott(*TTno, fno);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 1
+a7 1
+int gettdfno(ENTAB *entab, int *TTno, char *FLDtype, int UpdateTT)
+d10 5
+a14 9
+    FLDdesc *fld; // esi@@10
+    TDesc *TTptr; // [sp+10h] [bp-18h]@@10
+    short v9; // ecx@@13
+    char v10; // zf@@13
+    signed int v11; // eax@@13
+    int Subscript; // ecx@@20
+    int v13; // eax@@21
+    int RecNo; // [sp+14h] [bp-14h]@@10
+    bool IsArray; // [sp+18h] [bp-10h]@@1
+a15 2
+
+    IsArray = false;
+d17 1
+a17 1
+        __assert_fail("0", "gettdfno.c", 0x52u, "gettdfno");	// assert condition looks wrong?!?
+d20 1
+a20 4
+//printf("gettdfno() - entab->entype = %d, OpCode = x%04X, UpdateTT = %d\n",entab->entype,(entab->TTno & 0xFC00), UpdateTT);
+
+	// Assign a value to a single Array element : Array[3] = 'string'
+    if ( entab->entype == 2 && (unsigned short)(entab->TTno & 0xFC00) == 0xAC00 )
+d23 12
+a34 17
+        *TTno = v4->TTno;		// 0 = Variable, non-zero = Field in a Table		** update caller mem **
+        RecNo = v4->RecNo;		// destination rec no
+        TTptr = &ttab[*TTno];
+        rtdget(TTptr);			// seems pointless, but rtdget() will throw _asserts if TTptr->rtd invalid
+        fld = &TTptr->TTfields[RecNo];
+
+		v9 = evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0);
+		//printf("gettdfno #935 - entab->entype = %d, TTno = %d, RecNo = %d, v9 = %d\n",entab->entype,v4->TTno,v4->RecNo,v9);
+        v10 = v9 == 0;		// v9 = 1-Based Subscript value
+        v11 = 1;
+        if ( !v10 )
+            v11 = 0;
+        IsArray = v11;
+        
+		if ( v9 <= 0 )
+            v9 = 1;
+        if ( *TTno )	// Is this a table variable? (normal variables hang off TDno 0)
+d36 3
+a38 3
+            if ( TTptr->NumFields < RecNo + v9 ) // range check on RecNo
+                v9 = 1;
+            RecNo = (RecNo + v9 - 1);
+d42 3
+a44 3
+			if ( fld->FLDelemID < v9 )
+			    v9 = 1;
+			Subscript = v9 - 1;
+d47 3
+a49 4
+			    v13 = Subscript * (fld->FLDlen + 1);	// Allow for terminating \0
+			else
+			    v13 = Subscript * sizeof(double);		// Everything else stored internally as a double
+			fld->FLDdata = &fld->FLDname[v13];			// pointer to array offset
+d51 1
+a51 1
+			if ( fld->FLDtype == 'C' )
+d70 3
+a72 4
+		//printf("gettdfno #941 - entab->entype = %d, entab->TTno = %d, entab->RecNo = %d\n",entab->entype,entab->TTno,entab->RecNo);
+		*TTno = entab->TTno;	// TTno is a multi-use field depending on entab->entype
+		RecNo = entab->RecNo;
+		TTptr = &ttab[*TTno];
+d74 1
+a74 1
+		*FLDtype = TTptr->TTfields[RecNo].FLDtype;
+d77 4
+a80 4
+			fld = &TTptr->TTfields[RecNo];
+			if ( fld->FLDelemID )				// True if this is an Array variable type
+			{
+			    IsArray = true;					// Set array flag for below.
+d88 3
+a90 3
+	fld = &TTptr->TTfields[RecNo];
+    if ( IsArray && !*TTno && fld->FLDelemID )	// Array variables can't exist in DBase tables
+        fld->FLDstat |= 0x0002;					// flag indicates this is an array variable
+a92 1
+//printf("gettdfno #1006 TTno = %d, IsArray = %d, fld->FLDelemID %d, fld->FLDstat = x%04X\n",*TTno,IsArray,fld->FLDelemID, fld->FLDstat);
+d95 1
+a95 1
+		rectott(*TTno, RecNo);
+d97 1
+a97 1
+	return RecNo;
+@

@@ -1,0 +1,54 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.09.09.03.31.29;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef LEMSG_C
+#define LEMSG_C
+
+int lemsg(PTAB *pt)
+{
+     short v1; // si@@1
+     short v3; // di@@2
+     short ENTno; // ecx@@3
+     ENTAB *ent; // eax@@3
+
+     symbol = getsym();
+     v1 = loadexp(0, 1);
+     if ( v1 )
+     {
+          v3 = loadexp(0, 1);
+          if ( v3 )
+          {
+               ENTno		= getenmem();
+               ent			= ENTno ? (ENTAB *)&enarr.TableAddr[12 * (ENTno - 1)] : 0;
+               ent->Dest	= v1;
+               ent->Src		= v3;
+               pt->TABno	= ENTno;
+               return 1;	// exit success
+          }
+     }
+     return 0;	// error_exit
+}
+
+#endif
+@

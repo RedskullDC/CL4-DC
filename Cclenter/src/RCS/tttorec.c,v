@@ -1,0 +1,206 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.08.31.05.58.19;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.06.13.02.48.20;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Copy data from TTptr->Fields back into the WorkArea in preparation to write DBase
+@
+
+
+1.2
+log
+@clean up
+@
+text
+@#ifndef TTTOREC_C
+#define TTTOREC_C
+
+#include <ctype.h>		// for islower() and toupper() functions
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"	// for bit field values
+
+void DumpBlock(char* Buffer, int NumBytes);
+
+// Copy data from *fld->FLDdata to WorkArea in preparation for writing to DBase.
+// Optionally: Only update the Key fields, and convert strings to uppercase
+
+// Makes assumption that the WorkArea has already been cleared!!
+
+void tttorec(int TTno, char *WorkArea, int KeysOnly)
+{
+	FLDdesc *fld;
+	char	*buff_src;
+	char	*v10;
+	char	*v11;
+	
+	double	tmpDouble;
+	int		tmpInt;
+	short	tmpShort;
+
+	int		v8;
+	short	FLDstat;
+	char	v14[8206];	// not sure why not 8192??
+
+	//printf("tttorec(TTno = %d, Workarea = x%08X, KeysOnly = %d)\n" ,TTno,WorkArea, KeysOnly);
+
+	// KeysOnly == 0 : copy all fields
+	// KeysOnly == 1 : copy only *Key* fields, *and* convert and TEXT fields [C] to uppercase
+	// KeysOnly == 2 : copy only *Key* fields, no case conversion.
+
+	for ( fld = ttab[TTno].TTfields; fld->FLDelemID; fld++ )
+	{
+		if ( KeysOnly && fld->FLDstat >= 0 )  // high bit set (<0) means key field
+			break;
+		if ( fld->FLDlen )
+		{
+			FLDstat = fld->FLDstat;
+			//if ( FLDstat & 0x0010 || (FLDstat & 0x0005) == 0x0004 )
+			if ( FLDstat & fld_DATA_AVAIL || (FLDstat & (fld_REC_LOADED|fld_ZERO)) == fld_ZERO )
+			{
+				if ( fld->FLDtype != 'C' )
+					tmpDouble = *(double*)fld->FLDdata;
+				
+				switch ( fld->FLDtype )
+				{
+					case 'B':
+					case 'I':
+						tmpShort = (short)tmpDouble;
+						buff_src = (char*)&tmpShort;
+						break;
+					case 'D':
+					case 'N':
+						tmpInt = (int)tmpDouble;
+						buff_src = (char *)&tmpInt;
+						break;
+					case 'C':
+						if ( KeysOnly == 1 )	// KeysOnly == 1, convert string data to upper case
+						{
+							v10 = v14;		// 8192 0x2000 buffer
+							v11 = (char *)fld->FLDdata;
+							v8 = *v11++;
+							while ( v8 )
+							{
+								if (islower(v8))
+									v8 = toupper(v8);
+								*v10++ = v8;
+								v8 = *v11++;
+							}	
+							*v10 = 0;			// terminate dest string
+							buff_src = v14;
+							//printf("tttorec: Src = %s, Dest = %s\n",(char *)i->FLDdata, buff_src);
+						}
+						else
+							buff_src = (char *)fld->FLDdata;
+						break;
+					default:
+						buff_src = (char *)&tmpDouble;
+						break;
+				}
+				
+				xtodom(WorkArea, fld->FLDlen, fld->TDFtype, buff_src);
+				
+				fld->FLDstat |= fld_REC_LOADED;		// 0x0001u data is now in TTptr->Workarea for this field	
+			}		
+		}
+		WorkArea += fld->FLDlen;          // Bump workarea pointer to next field
+	}
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 2
+d11 6
+a16 1
+void tttorec(int TTno, char *WorkArea, int Mode)
+d18 12
+a29 11
+	char *v3;
+	FLDdesc *FLDptr;
+	short v5;
+	char *v6;
+	int v8;
+	char *v10;
+	char *v11;
+	double v12;
+	int v13;
+	char v14[8206];	// not sure why not 8192??
+	short Src;
+d31 1
+a31 1
+	printf("tttorec(TTno = %d, Workarea = x%08X, Mode = %d)\n" ,TTno,WorkArea, Mode);
+d33 5
+a37 2
+	v3 = WorkArea;
+	for ( FLDptr = ttab[TTno].TTfields; FLDptr->FLDelemID; ++FLDptr )
+d39 1
+a39 1
+		if ( Mode && FLDptr->FLDstat >= 0 )  // high bit set (<0) means key field
+d41 1
+a41 1
+		if ( FLDptr->FLDlen )
+d43 3
+a45 2
+			v5 = FLDptr->FLDstat;
+			if ( v5 & 0x0010 || (v5 & 0x0005) == 0x0004 )
+d47 2
+a48 2
+				if ( FLDptr->FLDtype != 'C' )
+					v12 = *(double*)FLDptr->FLDdata;
+d50 1
+a50 1
+				switch ( FLDptr->FLDtype )
+d54 2
+a55 2
+						Src = (short)v12;
+						v6 = (char*)&Src;
+d59 2
+a60 2
+						v13 = (int)v12;
+						v6 = (char *)&v13;
+d63 1
+a63 1
+						if ( Mode == 1 )	// Mode == 1, convert string data to upper case
+d66 1
+a66 1
+							v11 = (char *)FLDptr->FLDdata;
+d76 2
+a77 2
+							v6 = v14;
+							//printf("tttorec: Src = %s, Dest = %s\n",(char *)i->FLDdata, v6);
+d80 1
+a80 1
+							v6 = (char *)FLDptr->FLDdata;
+d83 1
+a83 1
+						v6 = (char *)&v12;
+d86 4
+a89 2
+				xtodom(v3, FLDptr->FLDlen, FLDptr->TDFtype, v6);
+				FLDptr->FLDstat |= 0x0001u;	
+d92 1
+a92 1
+		v3 += FLDptr->FLDlen;          // Bump workarea pointer to next field
+@

@@ -1,0 +1,93 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.07.16.06.17.39;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GUNAME_C
+#define GUNAME_C
+
+#include <sys/types.h>	// for user calls
+#include <pwd.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+
+// ****  Different functionality to libcl4 ***
+
+char* gelogin()
+{
+	//__uid_t v0;
+	struct passwd *pwd;	// not typedef'ed in pwd.h
+	char *UserName;
+	//char *v3;
+
+	eprint("gelogin()\n");
+	//v0 = geteuid();
+	//pwd = getpwuid(v0);
+	pwd = getpwuid(geteuid());
+
+	UserName = "";
+	if ( pwd )
+	{
+		//v3 = (char*)mstrcpy(pwd->pw_name, 0);	// Copy to Global mem.
+		//UserName = ftrim(v3);
+		UserName = ftrim(mstrcpy(pwd->pw_name, 0));
+
+	}
+	eprint("gelogin: %s\n",UserName);
+	return UserName;
+}
+
+// same functionality?, doesn't exist in libcl4 
+void glogin(char *Buffer)
+{
+    __uid_t v1; // eax@@1
+    struct passwd *pwd; // eax@@1
+
+    v1 = getuid();
+    pwd = getpwuid(v1);
+    if ( pwd )
+        cdbcpystr(Buffer, pwd->pw_name, 0);
+    else
+        *Buffer = 0;
+    ftrim(Buffer);
+}
+
+// doesn't exist in libcl4 
+void guname(char *Dest)
+{
+    __uid_t v1; // eax@@1
+    struct passwd *pwd; // eax@@1
+
+    v1 = getuid();
+    pwd = getpwuid(v1);
+    if ( pwd )
+        cdbcpystr(Dest, pwd->pw_gecos, 0);
+    else
+        *Dest = 0;
+    ftrim(Dest);
+}
+
+// guserdir() not called in clenter
+
+#endif
+@

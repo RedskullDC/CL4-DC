@@ -1,0 +1,302 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.11.12.04.41.22;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.06.18.04.48.59;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@update changes to a TDptr back to the DBase
+@
+
+
+1.2
+log
+@significant re-factoring
+@
+text
+@#ifndef UPDATE_C
+#define UPDATE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// #define	upd_delete		0	// delete record
+// #define	upd_put			1	// put record
+// #define	upd_lock		2	// lock record	( create a lock record in TD2 )
+
+
+bool _update(TDinfo *TDptr, char *WorkArea, POS *Pos, short UpdateMode, short *a5)
+{
+	short Depth; // ax@@2
+	NODE *NodePtr;
+	int PID;
+	int v10;
+	short v11;
+	bool result; // bool?
+	char *RecBuffer; // [sp+2Ch] [bp-5Ch]@@1
+	int TableLocked; // [sp+30h] [bp-58h]@@1
+	bool RecExists; // [sp+34h] [bp-54h]@@1
+	int PageList[6];
+	short N1_2idx;
+
+	printf("_update(TDptr: x%08X,WorkArea: x%08X,POS: x%08X, UpdateMode: x%02X, a5: x%08X)\n" ,TDptr,WorkArea,Pos,UpdateMode,a5);
+
+	TableLocked = 0;
+	RecExists = false;
+
+	RecBuffer = ealloc(TDptr->TDRecSize, 0);
+	TDptr->KeyDefSize = rtokey(TDptr->TDKeyDefs, WorkArea, Pos, TDptr->TableDefs);
+	printf("_update : KeyDefSize = %d\n",TDptr->KeyDefSize);
+	while ( 1 )
+	{
+		while ( 1 )
+		{
+			emark(TDptr->TDDBinfo, TDptr->TDindexOff);
+			Depth = _getpath(PageList, TDptr);				// getpath updates PageList array. PageList[Depth -1] is where record belongs (may not exist);
+			//printf("_update : _getpath returned = %d\n",Depth);
+			if ( Depth )
+				break;
+
+			if ( !UpdateMode )		// 0  == delete, and Depth == 0 [table is empty]
+				goto LABEL_33;
+
+			if ( TableLocked )
+				break;
+
+			TableLocked = _locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 1);
+			if ( !TableLocked )
+				goto LABEL_32;
+		}
+		if ( Depth <= 0 || _lockpg(TDptr->TDDBinfo, PageList[Depth - 1], 2) )
+			break;
+LABEL_32:
+		ewait(TDptr->TDDBinfo, TDptr->TDindexOff);
+	}
+  
+	if ( Depth )	// Depth != 0 means Table contains entries
+	{
+		NodePtr = getnode(TDptr, PageList[Depth - 1], 0);
+		RecExists = _scanpg((PAGE*)NodePtr, TDptr, &N1_2idx, 1);	// scanpg takes NODE or PAGE structure. [ "1" signifies NODE structure]
+		//printf("_update : RecExists = %s\n", RecExists ? "true":"false");
+	}
+	else	// Depth == 0 means Table is empty?
+	{
+		NodePtr = freshnode(TDptr, 0);		// Skip scanning for where record should be.
+		N1_2idx = 0;						// first record in new Node
+	}
+	
+	if ( UpdateMode != upd_put )		// 0 == delete or 2 == lock
+	{
+		if ( RecExists )
+		{
+			if ( UpdateMode == upd_delete )		// 0  == delete
+			{
+				delpage(NodePtr, N1_2idx);
+				goto LABEL_22;
+			}
+			if ( RecExists )	// 2  == lock
+				goto LABEL_18;
+		}
+		if ( UpdateMode == upd_delete )			// 0  == delete
+		{
+			if ( RecExists )
+			{
+LABEL_18:
+				if ( UpdateMode == upd_lock )	// 2  == lock
+				{
+					PID = mstol((int *)(NodePtr->NODE1ptr[N1_2idx].Data + 129));	// Data points at a TD2REC structure.
+					if ( PID == getpid() )				// Does the PID in the existing lock record belong to us?
+						RecExists = RecExists == false;		// "flip" value of RecExists
+				}
+			}
+			_lockpg(TDptr->TDDBinfo, NodePtr->PageNo, 0);	// unlock page
+			relnode(NodePtr);
+			goto LABEL_33;
+		}
+	}
+
+LABEL_22:
+//-------------------
+	if ( UpdateMode == upd_lock )		// 2  == lock
+	{
+		//printf("_update: calling rtotup()\n");
+		v10 = rtotup(RecBuffer, WorkArea, Pos, TDptr->TableDefs);
+		addpage(NodePtr, N1_2idx,RecBuffer, v10);
+	}
+	else	// UpdateMode == 1
+	{
+		if ( RecExists )
+		{
+			if ( UpdateMode == upd_put )		// 1  == put
+			{
+				v11 = _uptuple(RecBuffer, NodePtr->NODE1ptr[N1_2idx].Data, WorkArea, Pos, TDptr->TableDefs, a5);
+				modpage(NodePtr, N1_2idx, RecBuffer, v11);
+			}
+		}
+		else
+		{
+			if ( UpdateMode )	// 
+			{
+				v10 = rtotup(RecBuffer, WorkArea, Pos, TDptr->TableDefs);
+				addpage(NodePtr, N1_2idx,RecBuffer, v10);
+			}
+		}
+	}
+//-------------------
+	if ( !_balance(TDptr, NodePtr, PageList, Depth) )
+		goto LABEL_32;
+
+	if ( TableLocked )
+		_locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 0);	// Free the table entry before exiting
+
+LABEL_33:
+	ewake(TDptr->TDDBinfo, TDptr->TDindexOff);
+	nfree(RecBuffer, 0);
+	
+	result = RecExists;
+	if ( UpdateMode == upd_lock )	// 2  == lock
+		result = RecExists == false;
+	return result;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 6
+a12 1
+bool _update(TDinfo *TDptr, char *WorkArea, POS *Pos, short a4, short *a5)
+d14 1
+a14 2
+	short v5; // ax@@2
+	int v6; // esi@@2
+a15 1
+	int v8;
+d21 2
+a22 3
+	int v14; // [sp+30h] [bp-58h]@@1
+	bool v15; // [sp+34h] [bp-54h]@@1
+	short PutMode; 
+d26 4
+a29 1
+	//printf("_update(TDptr: x%08X,WorkArea: x%08X,POS: x%08X, a4: x%02X, a5: x%08X)\n" ,TDptr,WorkArea,Pos,a4,a5);
+a30 5
+	// bitfields in a4.
+	// ZERO = delete record
+	PutMode = a4;
+	v14 = 0;
+	v15 = 0;
+d33 1
+a33 1
+	//printf("_update : KeyDefSize = %d\n",TDptr->KeyDefSize);
+d39 3
+a41 4
+			v5 = _getpath(PageList, TDptr);
+			v6 = v5;
+			//printf("_update : _getpath returned = %d\n",v5);
+			if ( v5 )
+d43 2
+a44 1
+			if ( !PutMode )
+d46 2
+a47 1
+			if ( v14 )
+d49 3
+a51 2
+			v14 = _locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 1);
+			if ( !v14 )
+d54 1
+a54 1
+		if ( v5 <= 0 || _lockpg(TDptr->TDDBinfo, PageList[v5 - 1], 2) )
+a58 1
+//----------------
+d60 1
+a60 1
+	if ( !v6 )
+d62 3
+a64 3
+		NodePtr = freshnode(TDptr, 0);
+		N1_2idx = 0;
+		goto LABEL_22;
+d66 7
+a72 7
+
+//----------------
+
+	NodePtr = getnode(TDptr, PageList[v6 - 1], 0);
+	v8 = _scanpg((PAGE*)NodePtr, TDptr, &N1_2idx, 1);	// scanpg takes NODE or PAGE structure.
+	v15 = v8;
+	if ( PutMode != 1 )
+d74 1
+a74 1
+		if ( v8 )
+d76 1
+a76 1
+			if ( PutMode == 0 )
+d81 1
+a81 1
+			if ( v8 )
+d84 1
+a84 1
+		if ( PutMode == 0 )
+d86 1
+a86 1
+			if ( v8 )
+d89 1
+a89 1
+				if ( PutMode == 2 )
+d91 3
+a93 3
+					PID = mstol((int *)(NodePtr->NODE1ptr[N1_2idx].Data + 129));
+					if ( PID == getpid() )
+						v15 = v15 == 0;
+d96 1
+a96 1
+			_lockpg(TDptr->TDDBinfo, NodePtr->PageNo, 0);
+d101 1
+d104 1
+a104 1
+	if ( PutMode == 2 )
+d110 1
+a110 1
+	else
+d112 1
+a112 1
+		if ( v15 )
+d114 1
+a114 1
+			if ( PutMode == 1 )
+d122 1
+a122 1
+			if ( PutMode )
+d130 1
+a130 1
+	if ( !_balance(TDptr, NodePtr, PageList, v6) )
+d132 3
+a134 2
+	if ( v14 )
+		_locktbl(TDptr->TDDBinfo, TDptr->TDindexOff, 0);
+d139 4
+a142 3
+	result = v15;
+	if ( PutMode == 2 )
+		result = v15 == 0;
+@

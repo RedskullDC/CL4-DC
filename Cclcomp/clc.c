@@ -112,7 +112,7 @@
 #include "round.c"		// OK to 7 decimal places, then gets stuffed up!
 #include "compare.c"
 #include "typedp.c"
-#include "zap.c"
+//#include "zap.c"
 #include "getflags.c"
 #include "closedb.c"
 #include "cmpbuf.c"
@@ -274,7 +274,7 @@ char	ename[128];
 //char	_ebuf[8192];
 //char	_obuf[8192];
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	FLDdesc	*fld;
 	char	v55[144];
@@ -294,7 +294,8 @@ main(int argc, char **argv)
 	_pname = (char *)*argv;
 	if (!getflags(&argc, &argv,	"D,y,I*,n,v,C,r*,s,x,E", &codeb, &yflag, &incl_dir, &noWarnings, &Verbose, &notabchks, &dbrename, &tpenc, &exact, &extendDC, 0) || !argc)
 	{
-		printf("usage: %s (%s) [options] ent_file[.ent]\n", clbasename(_pname), getclver());
+		printf("build: %s (%s)\n\n", clbasename(_pname), getclver());
+		printf("usage: %s [options] ent_file[.ent]\n", clbasename(_pname));
         printf("options:\n");
         printf("  -D               debug mode\n");
         printf("  -I {dir}         find include files in directory {dir}\n");
@@ -318,7 +319,7 @@ main(int argc, char **argv)
 	v7 = getenv("LANG");
 	if (!v7 || !*v7)
 		putenv("LANG=en_AU");	// default to en_AU if no locale info found
-	getcwd(cwd, 128);
+	getcwd(cwd, PATH_MAX);
 	termcap();
     loadMonthArrays(0);			// load months, but don't init CLvars
     dateCheck(0);
@@ -337,7 +338,7 @@ main(int argc, char **argv)
 	ename[strlen(ename) - 4] = 0;
 
 	if ( !yflag )	// display width of 'D' fields
-		eprint("cl (%s) compiling %s:\n", getclver(), *ename ? ename : *argv);
+		eprint("cl (%s)\ncompiling %s:\n", getclver(), *ename ? ename : *argv);
 
 	// ensure all mandatory table pointers are initialised.
 	ttab = (TDesc *)mmalloc(0);
@@ -431,17 +432,19 @@ void prentab()
 			switch (entab->entype)
 			{
 			case 1:
+				print("   x%04X %4d ",entab->Enun.Enref.TTno, entab->Enun.Enref.VarNum);
+				break;
 			case 2:
-				print("   x%04X %4d ",(unsigned short)entab->TTno, entab->RecNo);
+				print("   x%04X %4d ",entab->Enun.Enop.Enoper, entab->Enun.Enop.RecNo);
 				break;
 			case 4:
-				print ("   [%8f] ",*(float *)&entab->TTno);		// DC extension!
+				print ("   [%8f] ",entab->Enun.float4);		// DC extension!
 				break;
 			case 8:
-				print ("   [%8d] ",*(int *)&entab->TTno);
+				print ("   [%8d] ",entab->Enun.long8);			// 4 on X86, 8 on X64
 				break;
 			case 16:
-				print ("   [%8s] ",(char *)&entab->TTno);
+				print ("   [%8s] ",entab->Enun.char16);
 				break;
 			default:
 				print("              ");

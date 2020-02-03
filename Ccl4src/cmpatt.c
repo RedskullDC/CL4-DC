@@ -62,7 +62,7 @@ short _cmpattrib(char *src, short TDFsize, char *Buffer, short TDFsize2, short T
 				v9 = *src;
 				v10 = *Buffer;
 				v18 = (v9 - v10);
-				//printf("cmpattr_1: TDF1 %d , TDF2 %d, v9 = %d, v10 = %d, v18 = %d\n",TDFsize,TDFsize2,v9,v10,v18);
+				//printf("cmpattr_1: TDF1 %d , TDF2 %d, v9 = %d [%c], v10 = %d [%c], v18 = %d\n",TDFsize,TDFsize2,v9,v9,v10,v10,v18);
 				if ( v9 != v10 )
 				{
 					if ( !(TDFtype & tdf_NOCASE))		// & x0008 means allow case-insentive match

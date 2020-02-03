@@ -623,7 +623,7 @@ form_entry *_cgiGetDataFromStream(int length, FILE *fp)
 		--length;
 		v3 = -1;
 		if ( length != -1 )
-			v3 = _IO_getc(fp);
+			v3 = getc(fp);
 	}
 	while ( isspace(v3) || v3 == '&' );
 
@@ -648,12 +648,12 @@ form_entry *_cgiGetDataFromStream(int length, FILE *fp)
 					length--;
 					v6 = -1;
 					if ( length != -1 )
-						v6 = _IO_getc(fp);
+						v6 = getc(fp);
 
 					length--;
 					v7 = -1;
 					if ( length != -1 )
-						v7 = _IO_getc(fp);
+						v7 = getc(fp);
 
 					frm->name[v14] = dd2c(v6, v7);
 				}
@@ -670,7 +670,7 @@ form_entry *_cgiGetDataFromStream(int length, FILE *fp)
 				--length;
 				v3 = -1;
 				if ( length != -1 )
-					v3 = _IO_getc(fp);
+					v3 = getc(fp);
 			}
 			frm->name[v14] = 0;
 
@@ -691,7 +691,7 @@ form_entry *_cgiGetDataFromStream(int length, FILE *fp)
 					length--;
 					v9 = -1;
 					if ( length != -1 )
-						v9 = _IO_getc(fp);
+						v9 = getc(fp);
 
 					for ( ; v9 != -1 && v9 != '&'; ++v14 )
 					{
@@ -700,12 +700,12 @@ form_entry *_cgiGetDataFromStream(int length, FILE *fp)
 							length--;
 							v6 = -1;
 							if ( length != -1 )
-								v6 = _IO_getc(fp);
+								v6 = getc(fp);
 	
 							length--;
 							v7 = -1;
 							if ( length != -1 )
-								v7 = _IO_getc(fp);
+								v7 = getc(fp);
 
 							frm->val[v14] = dd2c(v6, v7);
 						}
@@ -722,7 +722,7 @@ form_entry *_cgiGetDataFromStream(int length, FILE *fp)
 						--length;
 						v9 = -1;
 						if ( length != -1 )
-							v9 = _IO_getc(fp);
+							v9 = getc(fp);
 					}
 					
 					frm->val[v14] = 0;
@@ -745,7 +745,7 @@ int getbuf_0(char *Buffer, int MaxLen)
 	
 	for ( length = 0; length < MaxLen; length++ )		// read byte at a time, return at end of line
 	{
-		c = _IO_getc(stdin);
+		c = getc(stdin);
 		if ( c == '\n' || c == -1 )			// -1 EOF or IO_ERROR, \n == EOL
 			break;
 		Buffer[length] = c;

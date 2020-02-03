@@ -11,6 +11,8 @@ void _chkitems(NODE *NodeP, short RequiredEntries)
 	NODE_2	*N2p;
 	short	NewRecsInPage;
 
+	//printf("_chkitems (NODE*: %08X, Required Entries: %04X\n",NodeP,RequiredEntries);
+
 	if ( NodeP->RecsInPage < RequiredEntries + NodeP->NumEntries ) // do we need more space than currently allocated?
 	{
 		NewRecsInPage = (short)(NodeP->RecsInPage + RequiredEntries + 2);

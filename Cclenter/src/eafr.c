@@ -110,7 +110,7 @@ int eafr(int TDno, short PT_Start, short PT_End, char *a4)
     fnum		= 0;
     pt_occ		= 0;
 
-    zap(Buffer, sizeof(Buffer));	// 22u);
+	memset(Buffer, 0, sizeof(Buffer));
     if ( fld_nbrs == 1 )
     {
         prerr("Enter field ", 0, 0);

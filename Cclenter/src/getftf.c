@@ -25,37 +25,37 @@ FLDdesc *getftf(ENTAB *ent, bool UpdateTT, FLDdesc *fld)
 
 	// fld is provided by caller, in case necessary. Not always returned. Routine assumes that ent is correctly set.
 
-    zap((char*)fld, sizeof(FLDdesc));
+	memset((char*)fld, 0, sizeof(FLDdesc));
 	if ( ent->entype == 0x04 )					// Float Literal - RVALUE only - **clcomp doesn't create these!**
     {
         fld->FLDdata = (void*)&dbl_0;
         fld->FLDtype = '6';
-        if ( *(float *)&ent->TTno == 0.0 )		//ent->TTno should be an enum field ?!?
+        if ( ent->Enun.float4 == 0.0 )		//ent->TTno should be an enum field ?!?
             fld->FLDstat |= fld_ZERO;
-        dbl_0 = *(float *)&ent->TTno;
+        dbl_0 = ent->Enun.float4;
         return fld;
     }
-    else if ( ent->entype == 0x08 )				// Integer literal - RVALUE only
+    else if ( ent->entype == 0x08 )				// Long Integer literal - RVALUE only   ** 8 bytes on X64 **
     {
         fld->FLDdata = (void*)&dbl_1;
         fld->FLDtype = 'N';
-        if ( !*(int *)&ent->TTno )
+        if ( !ent->Enun.long8 )
             fld->FLDstat |= fld_ZERO;
-        dbl_1 = (double)*(int *)&ent->TTno;
+        dbl_1 = (double)ent->Enun.long8;
         return fld;
     }
-    else if ( ent->entype == 0x10 )				// String Literal (3chars or less) - RVALUE only
+    else if ( ent->entype == 0x10 )				// String Literal (3chars or less) - RVALUE only  ** could be 8 on X64 **
     {
-        fld->FLDdata = (void*)&ent->TTno;
+        fld->FLDdata = (void*)&ent->Enun.char16;
         fld->FLDtype = 'C';
-        if ( !*(char*)&ent->TTno )
+        if ( !ent->Enun.char16[0] )
             fld->FLDstat |= fld_ZERO;
         return fld;
     }
-    else if ( ent->entype == 0x01 )				// Retrieve variable or field data - LVALUE or RVALUE
+    else if ( ent->entype == 0x01 )				// Retrieve variable data - LVALUE or RVALUE
     {
-        fno		= ent->RecNo;
-        TDno	= ent->TTno;
+        fno		= ent->Enun.Enref.VarNum;
+        TDno	= ent->Enun.Enref.TTno;
         TTptr	= &ttab[TDno];
         rtdget(TTptr);							// appears pointless, but throws exceptions on TTptr sanity checks.
         if ( !TDno )							// Is this a normal variable? (Hangs off TD0)
@@ -68,12 +68,12 @@ FLDdesc *getftf(ENTAB *ent, bool UpdateTT, FLDdesc *fld)
             }
         }
     }
-    else if ( ent->entype == 2 && (unsigned short)(ent->TTno & 0xFC00) == 0xAC00 )	// 0xAC00 == Array operation - LVALUE or RVALUE
+    else if ( ent->entype == 2 && (ent->Enun.Enop.Enoper & 0xFC00) == 0xAC00 )	// 0xAC00 == Array operation - LVALUE or RVALUE
 	{
 		v6 = ENARR(ent->enleft);
 
-		fno		= v6->RecNo;				// FieldNo
-		TDno	= v6->TTno;
+		fno		= v6->Enun.Enref.VarNum;				// FieldNo
+		TDno	= v6->Enun.Enref.TTno;
 		TTptr	= &ttab[TDno];
 		rtdget(TTptr);						// appears pointless, but throws exceptions on TTptr sanity checks.
 		fld2	= &TTptr->TTfields[fno];

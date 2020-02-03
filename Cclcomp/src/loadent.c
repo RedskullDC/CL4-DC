@@ -80,6 +80,7 @@ int loadent(char *FullPathName)
 	
 	char	FileName[168];
 	
+	//printf("Full pathname = %s\n",FullPathName);
 	cdbcpystr(FileName, FullPathName, ".ent", 0);
 	
 	v1 = &FileName[lenstr(FileName) - 1];	// start at end of path
@@ -116,8 +117,10 @@ int loadent(char *FullPathName)
 		{
 			if ( symbol == 660 )		// include directive. Only valid item outside of a block construct.
 				leincl();				// leincl() returns pointing at last <CR> after the include statement
+			
 			if ( symbol != 930 )		// <CR>
 				loaderr(33, sym);		// unexpected symbol
+			
 			symbol = getsym();
 		}
 		if ( symbol && !comp_abort)
@@ -195,7 +198,7 @@ LABEL_91:
 				if ( btb->StartLine || btb->EndLine )
 				{
 					v53				= &btb->Screens;
-					btb->Screens	= (SCR*)mmalloc(sizeof(SCR));	//(8u);
+					btb->Screens	= (SCR*)mmalloc(sizeof(SCR));
 					LineNo			= btb->StartLine;
 					NumScreens		= 0;
 					NumFormats		= 0;
@@ -203,7 +206,7 @@ LABEL_91:
 					while ( PTARR(getptabp(LineNo))->OpCode != 999 )	// 999 == end
 					{
 						if ( !*v53 )
-							*v53 = (SCR*)mmalloc(8u);
+							*v53 = (SCR*)mmalloc(sizeof(SCR));
 						(*v53)->PT_start = LineNo;
 						
 						while ( (ptb2 = PTARR(getptabp(LineNo)), ptb2->OpCode != 950)) // break;

@@ -9,20 +9,20 @@ int _getpath(int *PageList, TDinfo *TDptr)
 
 	short i;
 	int Depth; // Depth - Level into the tree structure
-	PAGE *PageBuffer;
+	PAGE *pg;
 	short N1_2idx;
 
 	//printf("_getpath(PagePtr: %08X,TDptr: %08X) Called - ",PageList,TDptr);
 	Depth = _rhead(TDptr->TDDBinfo, TDptr->TDindexOff, PageList);	// Updates PageList[0] with Master index PageNo
 	for ( i = Depth; i > 1; --i )
 	{
-		PageBuffer = _indexpg(TDptr, *PageList);		// Descend down tree till we find target PageNo that matches TDptr->TDKeyDefs data
+		pg = _indexpg(TDptr, *PageList);		// Descend down tree till we find target PageNo that matches TDptr->TDKeyDefs data
 		
-		if ( _scanpg(PageBuffer, TDptr, &N1_2idx, 9))	// 9 indicates PAGE structure being passed (&8)
+		if ( _scanpg(pg, TDptr, &N1_2idx, 9))	// 9 indicates PAGE structure being passed (&8)
 			++N1_2idx;
 
 		PageList++;
-		*PageList = mstol((int *)&PageBuffer->DataStart[4 * N1_2idx]);	// Update rest of PageList array as required.
+		*PageList = mstol((int *)&pg->header.DataStart[4 * N1_2idx]);	// Update rest of PageList array as required.
 		//printf("Pagelist[%d] = x%04X (%4d) \n",i,*PageList2,*PageList2);
 	}
 	//printf("Returning %d\n",Depth);

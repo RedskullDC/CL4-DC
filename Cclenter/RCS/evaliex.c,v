@@ -1,0 +1,996 @@
+head	1.7;
+access;
+symbols;
+locks
+	leslie:1.7; strict;
+comment	@ * @;
+
+
+1.7
+date	2016.09.05.07.02.04;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2016.08.12.06.13.52;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2016.03.23.00.54.04;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.03.18.05.17.11;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.27.05.23.51;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.08.28.03.17.56;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.28.03.17.28;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial checkin
+@
+
+
+1.7
+log
+@more refinement
+@
+text
+@#ifndef EVALIEX_C
+#define EVALIEX_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+// only called from _ploop() : if (300) /while (310) handlers
+
+bool evaliex(ENTAB *entab, bool Skip)			// Evaluate an expression for true/false
+{
+
+	ENTAB	*entb;
+    char	*v23;
+	FLDdesc *fldp;
+    
+	double	v27;
+	double	v29;
+	double	v30;
+	double	v51;
+	double	v31;
+	
+    int		OpCode;
+	//int		v10;
+	//int		v15;
+	int		v18;
+	signed int v24;
+	unsigned int v33;
+	
+    short	entTTno;
+	short	OpBits; 
+    
+	//short	v14;
+	//short	v17;
+	
+    bool	v32;
+	FLDdesc fld;
+	
+	char	Buf1[1008];
+    char	Buf2[1008];
+    char	ExprType;
+	
+    if ( !entab )
+        return 0;
+
+	entTTno = entab->TTno;
+	OpCode = entTTno & 0xFC00;		// Integer calc flag masked out 0x0200
+	
+	//printf("evaliex(x%08X, %d) : entab->entype == %d, entab->TTno = x%04X\n",entab,Skip,entab->entype,entTTno);
+
+	if ( entab->entype == 2 )
+	{
+		if ( entTTno & 0x0100 )		// reserved word flag
+			return *evalstr(entab, Buf2) != 0;
+
+		if ( entTTno & 0x3F )		// normal relational operators
+		{
+			OpBits = entTTno & 0x1FF;		// 0001 1111 1111
+			switch ( OpBits )				//      **          = invalid bits - trapped at end of block
+			{
+				case 0x01:		// OR of two expressions
+					if ( evaliex(ENARR(entab->enleft), Skip))	// recursion here
+						return true;
+					return evaliex(ENARR(entab->enright), Skip);
+				
+				case 0x02:		// AND of two expressions
+					if ( !evaliex(ENARR(entab->enleft), Skip))	// recursion here
+						return false;
+					return evaliex(ENARR(entab->enright), Skip);
+		
+				// 3 Operators bits: 
+				//                   GE L  
+				//                   TQ T
+				// operator bits : 0011 1000
+				
+				case 0x08:		// 0x08 == less than				'<'
+				case 0x10:		// 0x10 == equal to					'='
+				case 0x20:		// 0x20 == greater than				'>'
+				case 0x14:		// 0x14 == equal to/wildcard test?	'like'	0x04 == regex/wildcard test?
+
+				// Mixed bit tests:
+				case 0x18:		// 0x18 == less than or equal		'<='
+				case 0x30:		// 0x30 == greater than or equal	'>='
+				case 0x28:		// 0x28 == not equal to				'<>'
+
+					ExprType = getetype(ENARR(entab->enleft));
+					//printf("evaliex - ExprType = %C\n",ExprType);
+
+					if ( entTTno & 0x0200 && ExprType != 'C' )	// 0200 == int calc flag
+					{
+						//v14 = evalint(ENARR(entab->enleft));
+						//v15 = v14;
+						//v17 = evalint(ENARR(entab->enright));
+						//v18 = v15 - v17;
+						v18 = evalint(ENARR(entab->enleft)) - evalint(ENARR(entab->enright));
+	LABEL_82:
+						switch ( OpBits )
+						{
+							case 0x08:				// <  less than
+								//v33 = v18;
+								//return v33 >> 31;										// check high bit. neg value?
+								return v18 < 0;
+							case 0x10:				// =  equal to
+							case 0x14:				// =  equalt to, with wildcard
+								return v18 == 0;
+							case 0x18:				// <= less than or equal
+								return v18 <= 0;
+							case 0x20:				// >  greater than
+								return v18 > 0;		
+							case 0x28:				// != not equal to
+								return v18 != 0;
+							case 0x30:				// >= greater than or equal
+								v33 = ~v18;
+								return v33 >> 31;
+							default:				// no-op, shouldn't be reachable
+								return 0;
+						}
+					}
+					if ( !(entTTno & 0x0100) )		// 0100 == reserved word flag. always true? tested above
+					{
+						// ucase(), lcase(), day(), getarg(), chr(), getenv(), sdel(), sword(), getxml(), getcgi(), substr(), sconv(), srep(), scat()
+						
+						// smult() 0x7800 should be in here???
+
+						if ( OpCode != 0x1C00 && OpCode != 0x2000 && OpCode != 0x2800 && OpCode != 0x2C00 && OpCode != 0x3800
+							  && OpCode != 0x4000 && OpCode != 0x7400 && OpCode != 0x7C00 && OpCode != 0x8C00
+							  && OpCode != 0xA000 && OpCode != 0xCC00 && OpCode != 0xD400 && OpCode != 0xD000
+							  && OpCode != 0xF400 && ExprType != 'C' )
+						{
+							v27 = evalnum(ENARR(entab->enleft), ExprType);
+							v51 = clround(v27, ExprType);
+							
+							v29 = evalnum(ENARR(entab->enright), ExprType);
+							v30 = clround(v29, ExprType);
+							
+							v31 = clround(v51 - v30, ExprType);		// numeric compare
+							v18 = (v31 < 0.0) ? -1 : (v31 > 0.0);	// sign(v31)  -1, 0, 1
+							goto LABEL_82;
+						}
+					}
+
+					evalstr(ENARR(entab->enleft), Buf2);
+					evalstr(ENARR(entab->enright), Buf1);
+					//printf("evaliex - left = \"%s\", right = \"%s\"\n",Buf2,Buf1);
+					
+					if ( OpBits != 0x14 || (v23 = Buf1, !*v23) )	// 0x14 == regex/like test 
+					{
+						v18 = compare(Buf2, Buf1);
+						goto LABEL_82;
+					}
+					while ( 1 )	// test for a regex
+					{
+						v24 = (unsigned char)*v23;
+						//if ( v24 == '[' || v24 == '*' || v24 == '?')
+						if ( v24 == 0x5Bu || v24 == 0x2Au || v24 == 0x3Fu)
+							*v23 |= 0x80u;
+						//else if ( v24 == '+' || v24 == '¦' || v24 == '¬')
+						else if ( v24 == 0xBFu || v24 == 0xDBu || v24 == 0xAAu)
+							*v23 &= 0x7Fu;
+						
+						++v23;
+						if ( !*v23 )
+						{
+							v18 = compare(Buf2, Buf1);
+							goto LABEL_82;
+						}
+					}
+					break;
+				default:
+					__assert_fail("0", "evaliex.c", 154, "evaliex");
+			}
+		}
+
+	//===================================
+		switch (OpCode)
+		{
+		case 0x0000:
+			__assert_fail("0", "evaliex.c", 159, "evaliex");
+			//assert(0);
+			break;
+		
+		case 0x0400:								// not()
+			return (evaliex(ENARR(entab->enleft), Skip) == false);		// *** recursive ***
+			break;
+
+		case 0x0800:								// sqrt()	
+		case 0x0C00:								// log()
+		case 0x1000:								// sin()
+		case 0x1400:								// cos()
+		case 0x1800:								// tan()
+		case 0x4400:								// log10()
+		case 0x4800:								// asin()
+		case 0x4C00:								// acos()
+		case 0x5000:								// atan()
+		case 0x5C00:								// exp()	** power()
+		case 0x9000:								// degrees()
+		case 0x9400:								// radians()
+		case 0x9800:								// exp()
+			return 0.0 != evalnum(entab, 'F');
+			break;
+
+		case 0xA400:								// name()
+			evalstr(ENARR(entab->enleft), Buf2);
+			return (isfname(Buf2) == 0);
+			break;
+		
+		case 0x2400:								// slen()
+		case 0x3400:								// asc()
+		case 0x3800:								// chr()
+			Buf2[0] = 0;	// evaluate as string, and check for non-zero string
+			return *evalstr(ENARR(entab->enleft), Buf2) != 0;
+			break;
+
+		case 0x6C00:								// match()
+			evalstr(ENARR(entab->enleft), Buf2);
+			evalstr(ENARR(entab->enright), Buf1);
+			return (smatch(Buf1, Buf2) != 0);
+			break;
+
+		case 0xAC00:								// Array subscript operation [] - check ZERO flag
+			return ((unsigned char)((unsigned int)getftf(entab, 1, &fld)->FLDstat >> 2) ^ 1) & 1;
+			break;
+
+		case 0xBC00:								// keyready()
+			return Skip ? Skip : Tty_KeyIsReady();
+			break;
+
+		default:
+			entb = ENARR(entab->enleft);			// drill down the left tree to the end
+				while (entb && entb->enleft)
+					entb = ENARR(entb->enleft);
+
+			fldp = getftf(entb, 0, &fld);
+			
+			if ( entab->entype == 2 && entab->TTno & 0x0200 )		// 0x0200 == int calc flag	move this up?
+				return (evalint(entab) != 0);
+			
+			else if ( fldp->FLDtype == 'C' )
+				return (*evalstr(entab, Buf2) != 0);
+
+			else
+				return evalnum(entab, fldp->FLDtype) != 0.0;
+			break;
+		}
+	}
+	else if ( entab->entype == 8 )				// literal int value
+		return *(int *)&entab->TTno != 0;
+	else										// test ZERO flag on other types
+		return ((unsigned char)((unsigned int)getftf(entab, 1, &fld)->FLDstat >> 2) ^ 1) & 1;
+}
+#endif
+@
+
+
+1.6
+log
+@tidy-up
+@
+text
+@d27 1
+a27 1
+	int		v15;
+d34 3
+a36 2
+    short	v14;
+	short	v17;
+a38 1
+	
+d43 2
+a44 2
+    char	ExprType; // al@@27
+
+d93 5
+a97 4
+						v14 = evalint(ENARR(entab->enleft));
+						v15 = v14;
+						v17 = evalint(ENARR(entab->enright));
+						v18 = v15 - v17;
+d102 3
+a104 2
+								v33 = v18;
+								return v33 >> 31;										// check high bit. neg value?
+d138 1
+a138 5
+							v31 = clround(v51 - v30, ExprType);
+							
+							//v18 = -1;
+							//if ( v31 >= 0.0 )
+							//	v18 = v31 > 0.0;
+d148 1
+a148 1
+					if ( OpBits != 0x14 || (v23 = Buf1, !Buf1[0]) )	// 0x14 == regex/like test 
+a226 4
+			//v10 = Skip;
+			//if ( !Skip )
+			//	v10 = Tty_KeyIsReady();
+			//return v10;
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d12 1
+a12 1
+bool evaliex(ENTAB *entab, int Skip)			// Evaluate an expression for true/false
+d26 1
+a26 1
+	int		v10;
+d37 5
+a41 5
+    bool	v2; // zf@@4
+    bool	v32; // zf@@83
+
+	FLDdesc fld; // [sp+20h] [bp-818h]@@128
+    char	Buf1[1008];
+d49 1
+a49 1
+	OpCode = entTTno & 0xFC00;
+d51 1
+a51 1
+	printf("evaliex(x%08X, %d) : entab->entype == %d, entab->TTno = x%04X\n",entab,Skip,entab->entype,entTTno);
+a55 4
+		{
+			//v2 = *evalstr(entab, Buf2) == 0;
+			//printf("evaliex rvword v2 = %d, Buf2 = %s\n",v2,Buf2);
+			//return !v2;
+d57 1
+a57 1
+		}
+d65 1
+a65 1
+						return 1;
+d70 1
+a70 1
+						return 0;
+d89 2
+a90 1
+					
+d100 1
+a100 1
+							case 0x08:
+d102 3
+a104 3
+								return v33 >> 31;	// check high bit. neg value?
+							case 0x10:
+							case 0x14:
+d106 5
+a110 5
+							case 0x18:
+								return v18 <= 0;	// less than or equal
+							case 0x20:
+								return v18 > 0;		// greater than?
+							case 0x28:
+d112 1
+a112 1
+							case 0x30:
+d138 4
+a141 3
+							v18 = -1;
+							if ( v31 >= 0.0 )
+								v18 = v31 > 0.0;
+d148 2
+d158 2
+a159 1
+						if ( v24 == '[' || v24 == '*' || v24 == '?')
+d161 2
+a162 1
+						else if ( v24 == '+' || v24 == '¦' || v24 == '¬')
+d164 1
+a164 1
+		
+d187 1
+a187 1
+			return (evaliex(ENARR(entab->enleft), Skip) == 0);		// *** recursive ***
+a211 5
+			Buf2[0] = 0;
+			v2 = *evalstr(ENARR(entab->enleft), Buf2) == 0;
+			return !v2;
+			break;
+
+d214 2
+a215 3
+			Buf2[0] = 0;
+			evalstr(ENARR(entab->enleft), Buf2);
+			return (Buf2[0] != 0);
+d224 1
+a224 1
+		case 0xAC00:								// Array subscript operation []
+d229 5
+a233 4
+			v10 = Skip;
+			if ( !Skip )
+				v10 = Tty_KeyIsReady();
+			return v10;
+d237 1
+a237 8
+			//entb = ENARR(entab->enleft);
+			//for ( ; entb; entb = &enarr.TableAddr[entb->enleft - 1] )
+			//{
+			//	if ( !entb->enleft )	// entb now points at last expression in the chain
+			//		break;
+			//}
+
+			entb = ENARR(entab->enleft);	// drill down the left tree to the end
+d246 1
+a246 1
+			if ( fldp->FLDtype == 'C' )
+d254 1
+a254 1
+	else if ( entab->entype == 8 )		//	 literal int value
+d256 1
+a256 1
+	else								// test ZERO flag on other types
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d51 1
+a51 1
+	//printf("evaliex(x%08X, %d) : entab->entype == %d, entab->TTno = x%04X\n",entab,Skip,entab->entype,entTTno);
+d53 1
+a53 10
+	if ( entab->entype != 2 )
+    {
+        if ( entab->entype == 8 )	//	 embedded int value
+        {
+            v2 = *(int *)&entab->TTno == 0;
+            return !v2;
+        }
+        return ((unsigned char)((unsigned int)getftf(entab, 1, &fld)->FLDstat >> 2) ^ 1) & 1;
+    }
+    if ( entTTno & 0x0100 )		// reserved word flag
+d55 68
+a122 69
+        v2 = *evalstr(entab, Buf2) == 0;
+        return !v2;
+	}
+    if ( entTTno & 0x3F )
+    {
+        OpBits = entTTno & 0x1FF;
+        switch ( OpBits )
+        {
+            case 0x01:		// OR of two expressions
+                if ( evaliex(ENARR(entab->enleft), Skip))	// recursion here
+					return 1;
+				return evaliex(ENARR(entab->enright), Skip);
+            
+			case 0x02:		// AND of two expressions
+                if ( !evaliex(ENARR(entab->enleft), Skip))	// recursion here
+                    return 0;
+				return evaliex(ENARR(entab->enright), Skip);
+	
+			// 3 Operators bits: 
+			//                   GE L  
+			//                   TQ T
+			// operator bits : 0011 1000
+			
+			case 0x08:		// 0x08 == less than				'<'
+			case 0x10:		// 0x10 == equal to					'='
+			case 0x20:		// 0x20 == greater than				'>'
+			case 0x14:		// 0x14 == equal to/wildcard test?	'like'	0x04 == regex/wildcard test?
+
+			// Mixed bit tests:
+			case 0x18:		// 0x18 == less than or equal		'<='
+			case 0x30:		// 0x30 == greater than or equal	'>='
+			case 0x28:		// 0x28 == not equal to				'<>'
+
+                ExprType = getetype(ENARR(entab->enleft));
+                
+				if ( entTTno & 0x0200 && ExprType != 'C' )	// 0200 == int calc flag
+                {
+                    v14 = evalint(ENARR(entab->enleft));
+                    v15 = v14;
+                    v17 = evalint(ENARR(entab->enright));
+                    v18 = v15 - v17;
+LABEL_82:
+                    switch ( OpBits )
+                    {
+                        case 0x08:
+                            v33 = v18;
+                            return v33 >> 31;	// check high bit. neg value?
+                        case 0x10:
+                        case 0x14:
+                            return v18 == 0;
+                        case 0x18:
+                            return v18 <= 0;	// less than or equal
+                        case 0x20:
+                            return v18 > 0;		// greater than?
+                        case 0x28:
+                            return v18 != 0;
+                        case 0x30:
+                            v33 = ~v18;
+                            return v33 >> 31;
+                        default:				// no-op, shouldn't be reachable
+                            return 0;
+                    }
+                }
+                if ( !(entTTno & 0x0100) )		// 0100 == reserved word flag. always true? tested above
+                {
+                    if ( OpCode != 0x2800 && OpCode != 0x1C00 && OpCode != 0x2000 && OpCode != 0x2C00 && OpCode != 0xA000
+                          && OpCode != 0x8C00 && OpCode != 0x4000 && OpCode != 0x3800 && OpCode != 0xF400
+                          && OpCode != 0x7400 && OpCode != 0xD400 && OpCode != 0xD000 && OpCode != 0x7C00
+                          && OpCode != 0xCC00 && ExprType != 'C' )
+d124 22
+a145 9
+						v27 = evalnum(ENARR(entab->enleft), ExprType);
+                        v51 = clround(v27, ExprType);
+                        v29 = evalnum(ENARR(entab->enright), ExprType);
+                        v30 = clround(v29, ExprType);
+                        v31 = clround(v51 - v30, ExprType);
+                        v18 = -1;
+                        if ( v31 >= 0.0 )
+							v18 = v31 > 0.0;
+						goto LABEL_82;
+a146 1
+                }
+d148 3
+a150 17
+                evalstr(ENARR(entab->enleft), Buf2);
+                evalstr(ENARR(entab->enright), Buf1);
+                if ( OpBits != 0x14 || (v23 = Buf1, !Buf1[0]) )	// 0x14 == regex/like test 
+                {
+                    v18 = compare(Buf2, Buf1);
+                    goto LABEL_82;
+                }
+				while ( 1 )	// test for a regex
+				{
+					v24 = (unsigned char)*v23;
+					if ( v24 == '[' || v24 == '*' || v24 == '?')
+						*v23 |= 0x80u;
+					else if ( v24 == '+' || v24 == '¦' || v24 == '¬')
+						*v23 &= 0x7Fu;
+	
+					++v23;
+				    if ( !*v23 )
+d155 95
+a249 6
+				}
+                break;
+            default:
+				__assert_fail("0", "evaliex.c", 154, "evaliex");
+        }
+    }
+d251 7
+a257 73
+//===================================
+	switch (OpCode)
+	{
+	case 0x0000:
+		__assert_fail("0", "evaliex.c", 159, "evaliex");
+		//assert(0);
+		break;
+	case 0x0800:								// sqrt()	
+	case 0x0C00:								// log()
+	case 0x1000:								// sin()
+	case 0x1400:								// cos()
+	case 0x1800:								// tan()
+	case 0x4400:								// log10()
+	case 0x4800:								// asin()
+	case 0x4C00:								// acos()
+	case 0x5000:								// atan()
+	case 0x5C00:								// exp()	** power()
+	case 0x9000:								// degrees()
+	case 0x9400:								// radians()
+	case 0x9800:								// exp()
+        return 0.0 != evalnum(entab, 'F');
+		break;
+
+	case 0x0400:								// not()
+		return (evaliex(ENARR(entab->enleft), Skip) == 0);		// *** recursive ***
+		break;
+
+	case 0xA400:								// name()
+        evalstr(ENARR(entab->enleft), Buf2);
+		return (isfname(Buf2) == 0);
+		break;
+	
+	case 0x2400:								// slen()
+        Buf2[0] = 0;
+        v2 = *evalstr(ENARR(entab->enleft), Buf2) == 0;
+        return !v2;
+		break;
+
+	case 0x3400:								// asc()
+	case 0x3800:								// chr()
+        Buf2[0] = 0;
+        evalstr(ENARR(entab->enleft), Buf2);
+		return (Buf2[0] != 0);
+		break;
+
+	case 0x6C00:								// match()
+        evalstr(ENARR(entab->enleft), Buf2);
+        evalstr(ENARR(entab->enright), Buf1);
+		return (smatch(Buf1, Buf2) != 0);
+		break;
+
+	case 0xAC00:								// Array subscript operation []
+        return ((unsigned char)((unsigned int)getftf(entab, 1, &fld)->FLDstat >> 2) ^ 1) & 1;
+		break;
+
+	case 0xBC00:								// keyready()
+		v10 = Skip;
+		if ( !Skip )
+		    v10 = Tty_KeyIsReady();
+	    return v10;
+		break;
+
+	default:
+		//entb = ENARR(entab->enleft);
+        //for ( ; entb; entb = &enarr.TableAddr[entb->enleft - 1] )
+        //{
+		//	if ( !entb->enleft )	// entb now points at last expression in the chain
+		//		break;
+		//}
+
+		entb = ENARR(entab->enleft);	// drill down the left tree to the end
+			while (entb && entb->enleft)
+				entb = ENARR(entb->enleft);
+d259 4
+a262 11
+		fldp = getftf(entb, 0, &fld);
+		
+		if ( entab->entype == 2 && entab->TTno & 0x0200 )		// 0x0200 == int calc flag	move this up?
+			return (evalint(entab) != 0);
+        
+		if ( fldp->FLDtype == 'C' )
+			return (*evalstr(entab, Buf2) != 0);
+
+		else
+			return evalnum(entab, fldp->FLDtype) != 0.0;
+		break;
+d264 4
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d14 30
+a43 29
+    ENTAB *v26; // eax@@75
+    ENTAB *v28; // eax@@78
+    ENTAB *v41; // eax@@148
+    ENTAB *v43; // edx@@158
+    FLDdesc *v44; // eax@@163
+
+    int OpCode; // eax@@91
+    short entTTno; // ax@@36
+    short v52; 
+    bool v2; // zf@@4
+    char ExprType; // al@@27
+    int v10; // eax@@23
+    short v14; // eax@@32
+    int v15; // esi@@32
+    short v17; // eax@@35
+    int v18; // esi@@35
+    char *v23; // edx@@59
+    signed int v24; // eax@@60
+    double v27; // fst7@@77
+    double v29; // fst7@@80
+    double v30; // fst7@@80
+    double v51; // [sp+10h] [bp-828h]@@77
+    double v31; // fst7@@80
+    bool v32; // zf@@83
+    unsigned int v33; // edx@@86
+    //short v38; // eax@@138
+    FLDdesc fld; // [sp+20h] [bp-818h]@@128
+    char Buf1[1008];
+    char Buf2[1008];
+d55 1
+a55 1
+        if ( entab->entype == 8 )	//??????
+d69 2
+a70 2
+        v52 = entTTno & 0x1FF;
+        switch ( v52 )
+d73 1
+a73 1
+                if ( evaliex(entab->enleft  ? &enarr.TableAddr[entab->enleft - 1] : 0, Skip))	// recursion here
+d75 1
+a75 1
+				return evaliex(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, Skip);
+d78 1
+a78 1
+                if ( !evaliex(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Skip))	// recursion here
+d80 1
+a80 1
+				return evaliex(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, Skip);
+d97 1
+a97 1
+                ExprType = getetype(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0);
+d101 1
+a101 1
+                    v14 = evalint(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0);
+d103 1
+a103 1
+                    v17 = evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0);
+d106 1
+a106 1
+                    switch ( v52 )
+d134 1
+a134 1
+						v27 = evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, ExprType);
+d136 1
+a136 1
+                        v29 = evalnum(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, ExprType);
+d146 3
+a148 3
+                evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Buf2);
+                evalstr(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, Buf1);
+                if ( v52 != 0x14 || (v23 = Buf1, !Buf1[0]) )	// 0x14 == regex/like test 
+d198 1
+a198 1
+		return (evaliex(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Skip) == 0);		// *** recursive ***
+d202 1
+a202 1
+        evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Buf2);
+d208 1
+a208 1
+        v2 = *evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Buf2) == 0;
+d215 1
+a215 1
+        evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Buf2);
+d220 2
+a221 2
+        evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, Buf2);
+        evalstr(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, Buf1);
+d237 12
+a248 7
+		v43 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+        for ( ; v43; v43 = &enarr.TableAddr[v43->enleft - 1] )
+        {
+			if ( !v43->enleft )	// v43 now points at last expression in the chain
+				break;
+		}
+		v44 = getftf(v43, 0, &fld);
+d250 1
+a250 1
+		if ( entab->entype == 2 && entab->TTno & 0x0200 )		// 0x0200 == int calc flag
+d253 1
+a253 1
+		if ( v44->FLDtype == 'C' )
+d257 1
+a257 1
+			return evalnum(entab, v44->FLDtype) != 0.0;
+@
+
+
+1.2
+log
+@Fixed OpCode 0x6C00, re-ordered case values
+@
+text
+@d6 1
+d12 1
+a12 1
+int evaliex(ENTAB *entab, int a2)
+d23 1
+a23 1
+    char v2; // zf@@4
+a31 2
+    char v25; // zf@@67
+    char v35; // zf@@100
+d37 1
+a37 1
+    unsigned char v32; // zf@@83
+d39 1
+a39 3
+    short v38; // eax@@138
+    char *v47; // [sp+4h] [bp-834h]@@6
+    int v48; // [sp+4h] [bp-834h]@@156
+d50 1
+a50 1
+	//printf("evaliex(x%08X, %d) : entab->entype == %d, entab->TTno = x%04X\n",entab,a2,entab->entype,entTTno);
+d61 1
+a61 1
+    if ( entTTno & 0x0100 )
+d72 1
+a72 1
+                if ( evaliex(entab->Dest  ? &enarr.TableAddr[entab->Dest - 1] : 0, a2))	// recursion here
+d74 4
+a77 3
+				return evaliex(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, a2);
+            case 0x02:		// AND of two expressions
+                if ( !evaliex(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2))
+d79 20
+a98 10
+				return evaliex(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, a2);
+            case 0x08:
+            case 0x10:
+            case 0x14:
+            case 0x18:
+            case 0x20:
+            case 0x28:
+            case 0x30:
+                ExprType = getetype(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0);
+                if ( entTTno & 0x0200 && ExprType != 'C' )
+d100 1
+a100 1
+                    v14 = evalint(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0);
+d102 1
+a102 1
+                    v17 = evalint(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0);
+d126 1
+a126 1
+                if ( !(entTTno & 0x0100) ) // should always be true. 0x0100 tested above
+d133 1
+a133 1
+						v27 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, ExprType);
+d135 1
+a135 1
+                        v29 = evalnum(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, ExprType);
+d144 4
+a147 4
+				// This code should be unreachable?  entTTno & 0x0100 which is tested above.
+                evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, Buf2);
+                evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, Buf1);
+                if ( v52 != 0x14 || (v23 = Buf1, !Buf1[0]) )
+d152 1
+a152 1
+				while ( 1 )
+d178 1
+d180 13
+a192 13
+	case 0x0800:
+	case 0x0C00:
+	case 0x1000:
+	case 0x1400:
+	case 0x1800:
+	case 0x4400:
+	case 0x4800:
+	case 0x4C00:
+	case 0x5000:
+	case 0x5C00:
+	case 0x9000:
+	case 0x9400:
+	case 0x9800:
+d196 2
+a197 3
+	case 0x0400:
+        v32 = evaliex(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2) == 0;
+        return v32;
+d200 3
+a202 4
+	case 0xA400:
+        evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, Buf2);
+        v32 = isfname(Buf2) == 0;
+        return v32;
+d205 1
+a205 1
+	case 0x2400:
+d207 1
+a207 1
+        v2 = *evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, Buf2) == 0;
+d211 2
+a212 2
+	case 0x3400:
+	case 0x3800:
+d214 2
+a215 3
+        evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, Buf2);
+        v2 = Buf2[0] == 0;
+        return !v2;
+d218 4
+a221 6
+	case 0x6C00:
+        evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, Buf2);
+        evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, Buf1);
+        v38 = smatch(Buf1, Buf2);
+        v2 = v38 == 0;
+        return !v2;
+d224 1
+a224 1
+	case 0xAC00:
+d228 3
+a230 3
+	case 0xBC00:
+		v10 = a2;
+		if ( !a2 )
+d236 2
+a237 2
+		v43 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+        for ( ; v43; v43 = &enarr.TableAddr[v43->Dest - 1] )
+d239 1
+a239 1
+			if ( !v43->Dest )
+d243 7
+a249 11
+		if ( entab->entype == 2 && entab->TTno & 0x0200 )
+        {
+			v38 = evalint(entab);
+            v2 = v38 == 0;
+            return !v2;
+		}
+        if ( v44->FLDtype == 'C' )
+        {
+			v2 = *evalstr(entab, Buf2) == 0;
+            return !v2;
+		}
+d251 1
+a251 1
+			return 0.0 != evalnum(entab, v44->FLDtype);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d52 2
+a53 1
+printf("evaliex(x%08X, %d) : entab->entype == %d, entab->TTno = x%04X\n",entab,a2,entab->entype,entTTno);
+d171 2
+a172 1
+	case 0x4400:
+d175 4
+a178 2
+	case 0x0800:
+	case 0x9000:
+d181 1
+a181 1
+	case 0x4800:
+a182 3
+	case 0x1800:
+	case 0x0C00:
+	case 0x4C00:
+d212 1
+a212 1
+	case 0x6C000:
+@

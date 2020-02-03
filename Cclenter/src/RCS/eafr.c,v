@@ -1,0 +1,324 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2017.01.18.05.36.05;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.27.09.33.16;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.24.11.12.36;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@tidy-up
+@
+text
+@#ifndef EAFR_C
+#define EAFR_C
+
+#include <math.h>	// for fmod in time functions
+#include <ctype.h>	// for isdigit() in gettime()
+#include <stdlib.h>			// for strtol()
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+// eafr() is used to find a specific field number pointer when fnum is set to "on"
+
+void _getfnum(char *Buffer, int TDno, short PT_Start, short PT_End)
+{
+    PTAB	*ptab;
+	PTAB	*ptab_end;
+	BTAB	*btb;
+	XTAB	*xtb;
+	
+	int		TDno2;
+    short	FieldNo;
+	FLDdesc fld;
+	char	FLDtype;
+
+    ptab	 = PTARR(getptabp(PT_Start));
+    ptab_end = PTARR(getptabp(PT_End));
+
+    while (!found_name && ptab <= ptab_end )	// careful!  global found_name variable
+    {
+        srclineno = ptab->SrcLineNo;
+        if ( ptab->OpCode == 720 )				// do {block_name}
+        {
+            btb = &btab[ptab->Operand];
+            _getfnum(Buffer, TDno, btb->Screens->PT_start, btb->Screens->PT_end);	// nice recursion here
+        }
+        else if ( ptab->OpCode == 1 )           // accept field
+		{
+			xtb = XTARR(ptab->TABno);
+            FieldNo = gettdfno(ENARR(xtb->VarExpNo), &TDno2, &FLDtype, 1);
+			assert(FieldNo >= 0);
+
+			//v11 = &ttab[TDno2].TTfields[FieldNo];
+            ////if ( !(xtb->Flags & 0x0004) && (TDno2 != TDno || v11->FLDstat >= 0) )
+            //if ( !(xtb->Flags & xtb_DISPLAY) && (TDno2 != TDno || v11->FLDstat >= 0) )	// not display only
+
+			if ( !(xtb->Flags & xtb_DISPLAY) && (TDno2 != TDno || ttab[TDno2].TTfields[FieldNo].FLDstat >= 0))	// not display only, not Key field
+            {
+				++fnum;
+				//v13 = getftf(ENARR(xtb->Prompt_exp), 0, &fld);
+				//if (compare((char *)v13->FLDdata, Buffer) == 0)
+				if (compare((char *)getftf(ENARR(xtb->Prompt_exp), 0, &fld)->FLDdata, Buffer) == 0)
+					found_name = true;
+			}
+        }
+		ptab++;
+    }
+}
+
+void _ugetfnum(int TDno, short PT_Start, short PT_End)
+{
+    PTAB	*ptab;
+	BTAB	*btb;
+	XTAB	*xtb;
+	PTAB	*ptab_end;
+	
+	signed int FieldNo;
+	int		TTno;
+	short	Column;
+	short	Line;
+	char	FLDtype;
+	
+    ptab	 = PTARR(getptabp(PT_Start));
+	ptab_end = PTARR(getptabp(PT_End));
+
+	while ( fnum && ptab <= ptab_end )		// careful!! global fnum variable
+    {
+        if ( ptab->OpCode == 720 )                // 720 = do {block_name}
+        {
+            btb = &btab[ptab->Operand];
+            _ugetfnum(TDno, btb->Screens->PT_start, btb->Screens->PT_end);	// recursion!
+        }
+        else if ( ptab->OpCode == 1 )              // accept field
+        {
+			xtb = XTARR(ptab->TABno);
+            FieldNo = gettdfno(ENARR(xtb->VarExpNo), &TTno, &FLDtype, 0);
+			assert(FieldNo >= 0);
+			
+			//fld = &ttab[TTno].TTfields[FieldNo];
+            //if ( !(xtb->Flags & 0x0004) && (TTno != TDno || fld->FLDstat >= 0) ) // >=0 means NON-key fields
+            if ( !(xtb->Flags & xtb_DISPLAY) && (TTno != TDno || ttab[TTno].TTfields[FieldNo].FLDstat >= 0) ) // >=0 means NON-key fields
+            {
+				--fnum;
+                if ( fnum )
+                {
+					clgetyx(XTARR(ptab->TABno), &Column, &Line, yx_answer);	// position of answer field
+                    whereat(Column, Line, true, 0);							// true == allow mask bits
+				}
+                pt_occ = ptab - PTARR(getptabp(0));   // ptab arithmetic!! ugghh!!!
+			}
+        }
+	ptab++;
+    }
+}
+
+int eafr(int TDno, short PT_Start, short PT_End, char *a4)
+{
+    char	*v9;
+    signed int v6;
+    short	v4;
+    bool	Numeric;
+    char	v7;
+    char	Buffer[22];
+
+    found_name	= false;	// all globals
+    fnum		= 0;
+    pt_occ		= 0;
+
+    zap(Buffer, sizeof(Buffer));	// 22u);
+    if ( fld_nbrs == 1 )
+    {
+        prerr("Enter field ", 0, 0);
+        linput(Buffer, 21, 0);
+        prerr(0, 0, 0);               // This is a quick way of clearing the Message line area
+    }
+    v4 = lenstr(Buffer);
+    v6 = 0;
+    if ( v4 )	// Can only be true if fnum is set to "on"
+    {
+		v4--;
+        if ( Buffer[v4] == '.' )					// points at last char in Buffer[]
+            Buffer[v4] = '+';
+        v7 = Buffer[v4];
+        *a4 = v7;									// pass value back to caller
+			
+		if ( v7 == '*' || v7 == '+' )
+            Buffer[v4] = 0;
+		
+		// look for a 3 digit number!
+        Numeric = false;
+        v9 = Buffer;
+        if ( v4 <= 3 )
+        {
+            while ( *v9 && isdigit(*v9))
+                ++v9;
+            Numeric = *v9 == 0;						// true if all chars in the string were numbers
+        }
+//------------------------------        
+		if ( Numeric )								// User entered a valid field number 
+            fnum = strtol(Buffer, 0, 10);
+        else
+        {
+            cdbcpystr(Buffer, Buffer, "*", 0);		// User didn't enter a valid field number, do a wild card search
+            _getfnum(Buffer, TDno, PT_Start, PT_End);
+            if ( !found_name )						// global var
+                fnum = -1;							// global var
+        }
+//------------------------------        
+		if ( fnum > 0 )
+        {
+            _ugetfnum(TDno, PT_Start, PT_End);
+            if ( fnum )
+                v6 = -1;
+            else
+                v6 = pt_occ;
+        }
+        else
+            v6 = fnum;
+    }
+    return v6;
+}
+
+
+#endif
+@
+
+
+1.2
+log
+@prior to ENARR() fix
+@
+text
+@d16 9
+a24 11
+    PTAB *ptab; // edi@@1
+    PTAB *ptab_end; // [sp+24h] [bp-44h]@@1
+    BTAB *btb; // eax@@4
+    FLDdesc *v11; // eax@@14
+    FLDdesc *v13; // eax@@20
+    XTAB *xtb; // [sp+20h] [bp-48h]@@7
+
+    short FieldNo; // ax@@12
+    FLDdesc fld; // [sp+2Fh] [bp-39h]@@12
+    int TDno2; // [sp+28h] [bp-40h]@@12
+	char FLDtype;
+d35 1
+a35 1
+            _getfnum(Buffer, TDno, btb->TYPE24->PT_start, btb->TYPE24->PT_end);	// nice recursion here
+d39 3
+a41 2
+			xtb = ptab->TABno ? &xtarr.TableAddr[ptab->TABno - 1] : 0;
+            FieldNo = gettdfno(xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0, &TDno2, &FLDtype, 1);
+d43 3
+a45 3
+			//if ( FieldNo < 0 )
+			//	__assert_fail("fno >= 0", "eafr.c", 0x61u, "_getfnum");
+			assert(FieldNo >= 0);
+d47 1
+a47 2
+			v11 = &ttab[TDno2].TTfields[FieldNo];
+            if ( !(xtb->Flags & 0x0004) && (TDno2 != TDno || v11->FLDstat >= 0) )
+d50 4
+a53 5
+                    
+				v13 = getftf(xtb->Prompt_exp ? &enarr.TableAddr[xtb->Prompt_exp - 1] : 0, 0, &fld);
+                
+				if (compare((char *)v13->FLDdata, Buffer) == 0)
+					found_name = 1;
+d56 1
+a56 1
+	ptab++;
+d62 11
+a72 12
+    PTAB *ptab; // edi@@1
+    BTAB *btb; // eax@@4
+    FLDdesc *fld; // eax@@14
+    XTAB *v13; // [sp+14h] [bp-24h]@@7
+    PTAB *ptab_end; // [sp+18h] [bp-20h]@@1
+
+	signed int FieldNo; // eax@@12
+    int Column; // [sp+1Ch] [bp-1Ch]@@21
+    int Line; // [sp+20h] [bp-18h]@@21
+    int TTno; // [sp+24h] [bp-14h]@@12
+    char FLDtype; // [sp+2Bh] [bp-Dh]@@12
+
+d76 1
+a76 1
+	while (  fnum && ptab <= ptab_end )		// careful!! global fnum variable
+d81 1
+a81 1
+            _ugetfnum(TDno, btb->TYPE24->PT_start, btb->TYPE24->PT_end);	// recursion!
+d85 2
+a86 5
+			v13 = ptab->TABno ? &xtarr.TableAddr[ptab->TABno - 1] : 0;
+            FieldNo = gettdfno(v13->VarExpNo ? &enarr.TableAddr[v13->VarExpNo - 1] : 0, &TTno, &FLDtype, 0);
+                
+			//if ( FieldNo < 0 )
+			//	__assert_fail("fno >= 0", "eafr.c", 0x85u, "_ugetfnum");
+d89 3
+a91 2
+			fld = &ttab[TTno].TTfields[FieldNo];
+            if ( !(v13->Flags & 0x0004) && (TTno != TDno || fld->FLDstat >= 0) ) // >=0 means NON-key fields
+d96 2
+a97 2
+					clgetyx(ptab->TABno ? &xtarr.TableAddr[ptab->TABno - 1] : 0, &Column, &Line, yx_answer);	// position of answer field
+                    whereat(Column, Line, 1, 0);
+d108 1
+a108 1
+    short v4;
+d110 4
+a113 5
+    char v7;
+    bool Numeric;
+    char *v9;
+    char v13;
+    char Buffer[22];
+d115 1
+a115 1
+    found_name	= 0;	// all globals
+d140 1
+a140 1
+        Numeric = 0;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 1
+d44 3
+a46 2
+			if ( FieldNo < 0 )
+				__assert_fail("fno >= 0", "eafr.c", 0x61u, "_getfnum");
+d92 3
+a94 2
+			if ( FieldNo < 0 )
+				__assert_fail("fno >= 0", "eafr.c", 0x85u, "_ugetfnum");
+@

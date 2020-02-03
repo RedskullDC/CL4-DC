@@ -1,0 +1,321 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.07.04.07.07.58;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.04.08.04.04.59;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.27.09.30.28;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.28.01.16.04;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@clean up
+@
+text
+@#ifndef DISPLAY_REC_C
+#define DISPLAY_REC_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"	// for bit field values
+
+void _disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, bool show)
+{
+    PTAB	*ptb_start;
+	PTAB	*ptb_end;
+	BTAB	*bt2;
+	XTAB	*xt;
+	RTAB	*rt;
+	
+	int		fno;
+	int		MaxLen;
+	int		Column;
+    int		Line;
+    int		TTno;
+    short	OpCode;
+	char	FLDtype;
+    char	a3[1032];
+
+    ptb_start	= PTARR(getptabp(PT_start));
+	ptb_end		= PTARR(getptabp(PT_end));
+
+	for ( ; ptb_start <= ptb_end; ptb_start++ )
+    {
+        srclineno	= ptb_start->SrcLineNo;
+        OpCode		= ptb_start->OpCode;
+		switch (OpCode)
+		{
+		
+		case 684:						// "ALIGN"
+            pset(ptb_start);
+			break;
+		
+		case 720:						// do {blockname}
+			bt2 = &btab[ptb_start->Operand];
+            _disprec(bt, TDNo, bt2->TYPE24->PT_start, bt2->TYPE24->PT_end, show);	// Some nice recursion possible here
+			break;
+		
+		case 884:						// exit_do
+			return;
+		
+		case 1:							// accept field
+			xt = XTARR(ptb_start->TABno);
+			
+            if ( (xt->Flags & 0x0008) )
+				fdf_found = true;		// **global var **
+            
+            if ( (xt->Flags & 0x0040) )
+				lkf_found = true;		// **global var **
+                    
+            fno = gettdfno(ENARR(xt->VarExpNo), &TTno, &FLDtype, 1);
+			assert(fno >= 0);
+            
+			if ( TTno )	// Field in a record
+            {
+				dispfld(xt, &ttab[TTno].TTfields[fno], show, 0, 1, 0);
+                if ( xt->Flags & 0x0010 )
+                {
+					rt = RTARR(xt->RangeID);
+                    rfree(rt->TTno, 0);
+                }
+			}
+            else	// This is a variable (system or user)
+            {
+				MaxLen = getwid(xt);
+                fillbuf(a3, MaxLen, ' ');
+                a3[MaxLen] = 0;
+                clgetyx(xt, &Column, &Line, yx_answer);					// position to answer field
+                toscreen(Column, Line, 1, MaxLen, a3, xt->Attr, 1, 0);
+			}
+			break;
+		case 4:				// 4 = "text"
+			if (!show && fdf_found )
+				dhdtxt(XTARR(ptb_start->TABno), 0, 1);	
+			break;
+		}
+    }
+}
+
+void disprec(BTAB *btb, int TDno, int ScreenNum, bool show, int PT_st)
+{
+    SCR *scr;
+	short PT_start;
+	
+    scr = (SCR*)btb->TYPE24;
+	while (ScreenNum--)
+		scr = scr->NextSCR;	// no sanity check on validity of scr pointer!
+
+    lkf_found = false;
+    fdf_found = false;
+	PT_start = PT_st ? scr->PT_start : PT_st;
+
+	_disprec(btb, TDno, PT_start, scr->PT_end, show);
+}
+
+#endif
+
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d10 1
+d12 1
+a12 1
+void _disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, int arg8a)
+d14 14
+a27 15
+    PTAB *ptb_start; // edi@@1
+    PTAB *ptb_end; // [sp+2Ch] [bp-41Ch]@@1
+    BTAB *v9; // eax@@10
+    XTAB *xt; // [sp+28h] [bp-420h]@@18
+    XTAB *xtb; // eax@@14
+    RTAB *rt; // eax@@32
+    short OpCode; // edx@@2
+    int fno; // eax@@27
+    int MaxLen; // esi@@35
+    
+	int Column;
+    int Line;
+    int TTno;
+	char FLDtype;
+    char a3[1032];
+d44 2
+a45 2
+			v9 = &btab[ptb_start->Operand];
+            _disprec(bt, TDNo, v9->TYPE24->PT_start, v9->TYPE24->PT_end, arg8a);	// Some nice recursion possible here
+d54 1
+a54 1
+            if ( (xt->Flags & 0x08) )
+d57 1
+a57 1
+            if ( (xt->Flags & 0x40) )
+d65 2
+a66 2
+				dispfld(xt, &ttab[TTno].TTfields[fno], arg8a, 0, 1, 0);
+                if ( xt->Flags & 0x10 )
+d82 1
+a82 1
+			if (!arg8a && fdf_found )
+d89 1
+a89 1
+void disprec(BTAB *btb, int TDno, int a3, int a4, int PT_st)
+d91 3
+a93 3
+    SCR *scr; // edx@@1
+    short PT_start; // ax@@3
+
+d95 2
+a96 2
+	while (a3--)
+		scr = scr->NextSCR;
+d102 1
+a102 1
+	_disprec(btb, TDno, PT_start, scr->PT_end, a4);
+@
+
+
+1.2
+log
+@prior to ENARR() fix
+@
+text
+@d52 1
+a52 1
+			xt = ptb_start->TABno ? &xtarr.TableAddr[ptb_start->TABno - 1] : 0;
+d60 1
+a60 3
+            fno = gettdfno(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, &TTno, &FLDtype, 1);
+            //if ( fno < 0 )
+			//	__assert_fail("fno >= 0", "disprec.c", 0x4Cu, "_disprec");
+d68 1
+a68 1
+					rt = xt->RangeID ? &rtarr.TableAddr[xt->RangeID - 1] : 0;
+d83 1
+a83 1
+				dhdtxt(ptb_start->TABno ? &xtarr.TableAddr[ptb_start->TABno - 1] : 0, 0, 1);	
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 1
+d19 2
+a20 4
+    signed int OpCode; // edx@@2
+    signed int v11; // eax@@20
+    signed int v12; // eax@@22
+    signed int v14; // eax@@27
+d22 4
+a25 3
+    int Column; // [sp+30h] [bp-418h]@@35
+    int Line; // [sp+34h] [bp-414h]@@35
+    int TTno; // [sp+38h] [bp-410h]@@27
+d27 1
+a27 1
+    char a3[1032]; // [sp+3Fh] [bp-409h]@@27
+d32 1
+a32 1
+	for ( ; ptb_start <= ptb_end; ++ptb_start )
+d34 2
+a35 2
+        srclineno = ptb_start->SrcLineNo;
+        OpCode = ptb_start->OpCode;
+d38 1
+d42 1
+d45 1
+a45 1
+            _disprec(bt, TDNo, v9->TYPE24->PT_start, v9->TYPE24->PT_end, arg8a);	// Some nice recursion here
+d47 2
+a48 1
+		case 884:			//????
+d50 2
+a51 1
+		case 1:				// accept field
+d53 6
+d60 4
+a63 12
+			v11 = 1;
+            if ( !(xt->Flags & 8) )
+				v11 = fdf_found;
+			fdf_found = v11;
+            v12 = 1;
+            if ( !(xt->Flags & 0x40) )
+				v12 = lkf_found;
+			lkf_found = v12;
+                    
+            v14 = gettdfno(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, &TTno, &FLDtype, 1);
+            if ( v14 < 0 )
+				__assert_fail("fno >= 0", "disprec.c", 0x4Cu, "_disprec");
+d67 1
+a67 1
+				dispfld(xt, &ttab[TTno].TTfields[v14], arg8a, 0, 1, 0);
+d79 1
+a79 1
+                clgetyx(xt, &Column, &Line, 1);
+d91 1
+a91 1
+void disprec(BTAB *btab, int TDno, int a3, int a4, int PT_st)
+a93 1
+    //int v6; // eax@@1
+d96 2
+a97 13
+    scr = (SCR*)btab->TYPE24;
+    /*v6 = a3 - 1;
+    if ( a3 )
+    {
+        do
+        {
+            scr = scr->NextSCR;
+            --v6;
+        }
+        while ( v6 != -1 );
+    }
+	*/
+	while (a3)
+d100 2
+a101 2
+    lkf_found = 0;
+    fdf_found = 0;
+d103 2
+a104 4
+    //PT_start = PT_st;
+    //if ( !PT_st )
+    //    PT_start = scr->PT_start;
+    _disprec(btab, TDno, PT_start, scr->PT_end, a4);
+@

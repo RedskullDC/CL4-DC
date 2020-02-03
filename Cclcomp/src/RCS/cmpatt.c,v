@@ -1,0 +1,246 @@
+head	1.3;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.06.21.02.51.16;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.06.28.09.07.02;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.07.03.27.20;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@old version
+@
+
+
+1.3
+log
+@move to common code
+@
+text
+@#ifndef CMPATTRIBUTE_C
+#define CMPATTRIBUTE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+short _cmpattrib(char *src, short TDFsize, char *Buffer, short TDFsize2, short TDFtype)
+{
+	char *v5; // eax@@2
+	short v6; // eax@@2
+	short v7; // ax@@11
+	unsigned char v9; // esi@@17
+	unsigned char v10; // ecx@@17
+	unsigned char v11; // eax@@19
+	short v13; // esi@@30
+	short v14; // ax@@30
+	signed int v16; // [sp+14h] [bp-424h]@@1
+	bool isNum; // [sp+18h] [bp-420h]@@1
+	short v18; // [sp+1Ch] [bp-41Ch]@@8
+	char dest[1048]; // [sp+20h] [bp-418h]@@12
+	char v12; // edx@@21
+
+	//printf("_cmpattrib(src = x%08X, TDFsize = %2d, Buffer = x%08X, TDFsize2 = %2d, TDFtype = x%04X)\n",src,TDFsize,Buffer,TDFsize2,TDFtype );
+
+	v16 = 0;
+	isNum = false;
+	if ( TDFtype & 0x4000 )
+	{
+		v5 = src;			// swap src<->dest values , sizes
+		src = Buffer;
+		Buffer = v5;
+		
+		v6 = TDFsize;
+		TDFsize = TDFsize2;
+		TDFsize2 = v6;
+	}
+
+	if ( TDFtype & 4 && TDFsize && TDFsize2 && (*Buffer ^ *src) < 0 )		// 0x0004 means can hold a negative value
+	{
+		if ( *src >= 0 )
+			v18 = 1;
+		else
+			v18 = -1;
+		//printf("_cmpattrib: v18 = %d\n",v18);
+	}
+	else
+	{
+		if ( TDFtype & 2 && (v7 = getwpos(Buffer, TDFsize2), v7 >= 0) )		// &x02 = string value, and with a wildcard char
+		{
+			//printf("_cmpattrib[51]: \n");
+			strncpy(dest, src, TDFsize);
+			dest[TDFsize] = 0;
+			v18 = owildmat(dest, Buffer, TDFtype);
+			return v18;
+		}
+		else
+		{
+			//printf("_cmpattrib[59]: \n");
+			v18 = 0;
+			while ( TDFsize && TDFsize2 )
+			{
+				v9 = *src;
+				v10 = *Buffer;
+				v18 = (v9 - v10);
+				//printf("cmpattr_1: TDF1 %d , TDF2 %d, v9 = %d, v10 = %d, v18 = %d\n",TDFsize,TDFsize2,v9,v10,v18);
+				if ( v9 != v10 )
+				{
+					if ( !(TDFtype & 8) )		// & x08 means allow case-insentive match
+						break;
+					
+					v11 = v9;
+					if ((v9 - 0x41u) <= 0x19)
+						v11 = v9 + 0x20;		// tolower()
+					//printf("cmpattr_1: v11 = %d x%02X [%c]\n",v11,v11,v11);
+					
+					v12 = v10;
+					if ((v10 - 0x41u) <= 0x19)
+						v12 = v10 + 0x20;		// tolower()
+					//printf("cmpattr_1: v12 = %d x%02X [%c]\n",v12,v12,v12);
+					
+					v12 = v11 - v12;
+					//printf("cmpattr_1: v11 - v12 = %d\n",v12);
+					v18 = v12;
+					if ( v12 )	// ZERO if they match
+						break;
+				}
+				if ( TDFtype & 2 && !v9 )
+					break;
+				isNum = (v9 - 48) <= 9;		// 48 = '0'
+				++src;
+				++Buffer;
+				TDFsize2--;
+				TDFsize--;
+			}
+		}
+	}
+	
+	if ( TDFtype & 0x10 )
+	{
+		//printf("_cmpattrib[97]: \n");
+		v13 = numsz(src, TDFsize);
+		v14 = numsz(Buffer, TDFsize2);
+		if ( v13 != v14 )
+		{
+			if ( isNum || v13 && v14 )
+				v18 = v13 - v14;
+		}
+	}
+	//printf("_cmpattrib[105]: returning %d\n",v18);
+	return v18;
+}
+
+#endif
+@
+
+
+1.2
+log
+@intermediate
+,
+@
+text
+@a12 1
+	//unsigned int v8; // esi@@11
+a15 1
+	char v12; // edx@@21
+d19 1
+a19 1
+	bool v17; // [sp+18h] [bp-420h]@@1
+d22 1
+d27 1
+a27 1
+	v17 = 0;
+d30 1
+a30 1
+		v5 = src;			// swap src<->dest values 
+d33 1
+d49 1
+a49 1
+		if ( TDFtype & 2 && (v7 = getwpos(Buffer, TDFsize2), v7 >= 0) )
+d69 1
+a69 1
+					if ( !(TDFtype & 8) )
+d72 3
+a74 3
+					v11 = v9 + 0x20;
+					if ((v9 - 0x41u) > 0x19)
+						v11 = v9;
+d77 3
+a79 3
+					v12 = v10 + 0x20;
+					if ((v10 - 0x41u) > 0x19)
+						v12 = v10;
+d85 1
+a85 1
+					if ( v12 )
+d90 1
+a90 1
+				v17 = (v9 - 48) <= 9;
+d98 1
+d106 1
+a106 1
+			if ( v17 || v13 && v14 )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 1
+d13 1
+a13 1
+	unsigned int v8; // esi@@11
+d25 1
+a25 1
+	//printf("_cmpattrib(src = x%08X, TDFsize = %d, Buffer = x%08X, TDFsize2 = %d, TDFtype = x%04X)\n",src,TDFsize,Buffer,TDFsize2,TDFtype );
+d39 1
+a39 1
+	if ( TDFtype & 4 && TDFsize && TDFsize2 && (*Buffer ^ *src) < 0 )
+d49 1
+a49 1
+		if ( TDFtype & 2 && (v7 = getwpos(Buffer, TDFsize2), v8 = v7, v7 >= 0) )
+d51 1
+a53 4
+			if ( TDFsize2 <= v8 )
+				v8 = TDFsize2;
+			TDFsize2 = v8;
+			v16 = 1;
+d55 1
+d59 1
+d71 1
+d76 1
+d81 1
+d98 1
+a98 1
+	if ( !v16 )
+d100 4
+a103 1
+		if ( TDFtype & 0x10 )
+d105 2
+a106 7
+			v13 = numsz(src, TDFsize);
+			v14 = numsz(Buffer, TDFsize2);
+			if ( v13 != v14 )
+			{
+				if ( v17 || v13 && v14 )
+					v18 = v13 - v14;
+			}
+d109 1
+@

@@ -1,0 +1,85 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.27.06.14.25;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef PPAUSE_C
+#define PPAUSE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+void ppause(ENTAB *entab)
+{
+    char *Prompt; // edi@@2
+    size_t v4; // esi@@21
+    char Buffer[2]; // allow for 1 char + \0 terminator
+    char s[1008]; // [sp+30h] [bp-7F8h]@@2
+    char Dest[1008]; // [sp+420h] [bp-408h]@@14
+
+// ppause assumes entab enright/enleft fields are valid!!
+
+    if ( isatty(0) )	// Don't pause if we are not talking to a terminal!!
+    {
+        s[0] = 0;
+        Prompt = (char *)ttab->TTfields[v_PAUSE_PROMPT].FLDdata;	// 58 = "PAUSE_PROMPT"
+        
+		if ( !Prompt || !*Prompt )
+            Prompt = _YP;			// Prompt not set, use default: "<CR> to continue"	see CLINFO file
+        
+		if ( !entab )
+            cdbcpystr(s, Prompt, 0);
+
+		else if ( entab->enleft )	// Does entab point to multiple params?
+        {
+            exptobuf(s, &enarr.TableAddr[entab->enleft - 1], 0);
+            if ( entab->enright )
+            {
+                exptobuf(Dest, &enarr.TableAddr[entab->enright - 1], 0);
+			    cdbcpystr(s, s, " ", Dest, 0);
+            }
+        }
+        else		// only a single parameter
+        {
+            exptobuf(s, entab, 0);
+			cdbcpystr(Dest, Prompt, 0);
+			cdbcpystr(s, s, " ", Dest, 0);
+        }
+
+		prerr(s, 0, 0);					// print message on MLINE
+        while ( linput(Buffer, 0, 0) )	// wait for a keypress
+			;
+		v4 = (short)lenstr(s);
+        fillbuf(s, v4, ' ');
+        s[v4] = 0;
+        prerr(s, 0, 0);					// clear the message line
+        return;
+    }
+}
+
+
+#endif
+
+@

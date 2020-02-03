@@ -56,14 +56,13 @@ void dispjoin(PTAB *ptb, FLDdesc *fld, int TDno, bool show)
 bool jcheck(PTAB *ptb, FLDdesc *fld, int wchar, int a4)
 {
     RTAB	*rt;
-	ENTAB	*v10;
-	ENTAB	*v11;
+	//ENTAB	*v10;
+	//ENTAB	*v11;
 	ENTAB	*v12;
 	XTAB	*xt;
 	TDesc	*TTptr;
 	FLDdesc *v37;
 
-	int		v9;
 	int		fno;
 	bool	NOJOIN;
 	bool	Forward;
@@ -105,38 +104,33 @@ bool jcheck(PTAB *ptb, FLDdesc *fld, int wchar, int a4)
         fldtobuf(v46, fld, 0);			// are 64 chars really enough for some string fields?
     }
     
-	zap((char*)&ent, sizeof(ENTAB));	// 12 - Fudge our own local ENTAB record. :o)
+	memset((char*)&ent, 0, sizeof(ENTAB));		// Fudge our own local ENTAB record. :o)
     ent.enleft	= rt->enleft;
     ent.entype	= 2;
-    ent.TTno	= 0xA800u;				// insert '=' OpCode
+    ent.Enun.Enop.Enoper	= 0xA800u;			// insert '=' OpCode
     ent.enright	= rt->enright;
     calculate(&ent);
     
 	TTptr = &ttab[TTno];
     TTptr->TTselect = (EXPR *)fretre(TTptr->TTselect, 0);
-    
-	if ( rt->WhereEXP )	// Has a "where" selection been specified in join command?
+     
+	short WhereEXP = rt->WhereEXP;
+    if ( WhereEXP )	// Has a "where" selection been specified in join command?
     {
-        v9	= rt->WhereEXP;
-        v10 = enarr.TableAddr;
-		//DumpBlock(&v10[v9],20);
-		//DumpBlock(&v10[v9 - 1],20);
-
-        if ( *((short *)&v10[v9] - 2) )		// ***** wrong *****
-        {
-            v11 = rt->WhereEXP ? &v10[v9 - 1] : 0;
-            v12 = &enarr.TableAddr[v11->enleft - 1];
-        }
+		short enleft = ENARR(WhereEXP)->enleft;
+		if ( enleft )
+			v12 = ENARR(enleft);
         else
             v12 = 0;									// error, will throw nil pointer exception
+		
 		v12->entype = 2;
 
 		if ( fld->FLDtype != 'C' )						// override expression constraints
         {
             if ( WildChar )
-				v12->TTno = Forward ? 0x30u : 0x18u;	// 0x30 == greater than or equal '>=', 0x18 == less than or equal '<='
+				v12->Enun.Enop.Enoper = Forward ? 0x30u : 0x18u;	// 0x30 == greater than or equal '>=', 0x18 == less than or equal '<='
             else
-                v12->TTno = 0x10u;						// 0x10 == equal to	'='
+                v12->Enun.Enop.Enoper = 0x10u;						// 0x10 == equal to	'='
         }
         TTptr->TTselect = getexpr(ENARR(rt->WhereEXP), TTno);	// "Where" expression specified in the join command. Use it!
     }

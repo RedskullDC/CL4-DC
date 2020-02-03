@@ -75,7 +75,7 @@ void rectott(int TTno, int FieldNo)
 		else	// *NO* data in TTptr->Workarea for this field, just zap the fld data area
 		{
 			if ( FLDtype == 'C' )
-				zap(fld->FLDdata, fld->FLDlen);
+				memset(fld->FLDdata, 0,fld->FLDlen);
 			else
 				*(double *)fld->FLDdata = 0.0;
 				//tmpDouble = 0.0;	// *** doesn't look right *** Isn't updating workarea!

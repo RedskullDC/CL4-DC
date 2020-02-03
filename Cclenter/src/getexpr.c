@@ -27,7 +27,7 @@ short getlit(FLDdesc *fld, ENTAB *entab, char *Dest, short *OpCode)
     FLDlen = 0;
     if ( fld->FLDtype == 'C' )
     {
-        zap(s, 1001u);
+		memset(s, 0, 1001u);
         evalstr(ENARR(entab->enright), s);
 
 		if ( *OpCode & 0x0004 )		// 0004 is the 'like' bit. do wildcard search
@@ -50,7 +50,7 @@ short getlit(FLDdesc *fld, ENTAB *entab, char *Dest, short *OpCode)
     }
     else
     {
-        if ( entab->entype == 0x02 && entab->TTno & 0x0200 )		// Integer calc flag 0x200
+        if ( entab->entype == 0x02 && entab->Enun.Enop.Enoper & 0x0200 )		// Integer calc flag 0x200
             v21 = (double)evalint(ENARR(entab->enright));
         else
             v21 = clround(evalnum(ENARR(entab->enright), fld->FLDtype), fld->FLDtype);
@@ -133,7 +133,7 @@ EXPR *getexpr(ENTAB *entab, int TDno)
 
     if ( entab && entab->entype == 2 )
     {
-        Operator = entab->TTno & 0x1FF;
+        Operator = entab->Enun.Enop.Enoper & 0x1FF;
         switch ( Operator )
         {
 
@@ -158,12 +158,12 @@ EXPR *getexpr(ENTAB *entab, int TDno)
 				if ( TDno && TTno != TDno )
                     return 0;
                 
-				entab->TTno &= 0xFDFFu;		// 1111 1101 1111 1111     clear the integer calc bit 0x0200
+				entab->Enun.Enop.Enoper &= 0xFDFFu;		// 1111 1101 1111 1111     clear the integer calc bit 0x0200
 
                 fld = &ttab[TTno].TTfields[FieldNo];
                 
-				zap(a3, 1000u);
-                OpCode = entab->TTno & 0x003C;	// mask all but relative operator bits
+				memset(a3, 0, 1000u);
+                OpCode = entab->Enun.Enop.Enoper & 0x003C;	// mask all but relative operator bits
                 v9 = getlit(fld, entab, a3, &OpCode);
 
                 return v9 ? newexpr(fld->FLDelemID, OpCode, a3, v9) : 0;

@@ -82,7 +82,7 @@ int eaddkey(BTAB *bt, PTAB *pt, FLDdesc *fld, int TDno)
         }
         else
         {
-            sprintf(format, "%snot unique", getkerr(Src, bt, fld), pt);
+            sprintf(format, "%snot unique", getkerr(Src, bt, fld));
             prerr(format, 0, 1);
         }
         ulckrec(TDno);
@@ -97,14 +97,13 @@ int egetkey(BTAB *bt, PTAB *ptb, XTAB *xtb, FLDdesc *fld, int TDno, int fno, sho
 {
     RTAB	*rtb; // ecx@4
     RTAB	*v26; // ecx@4
-    ENTAB	*v10; // edx@8
+    //ENTAB	*v10; // edx@8
     ENTAB	*v11; // eax@10
     ENTAB	*v12; // eax@12
     FLDdesc *j; // edx@40
     void	*i; // edx@37
 
     signed int v7; // edi@2
-    int		v9; // eax@8
     int		v15; // eax@26
     int		ErrorCode; // [sp+2Ch] [bp-9Ch]@1
     signed int v31; // [sp+30h] [bp-98h]@1
@@ -135,28 +134,25 @@ int egetkey(BTAB *bt, PTAB *ptb, XTAB *xtb, FLDdesc *fld, int TDno, int fno, sho
             if ( TDno == rtb->TTno )
             {
                 v31 = 1;
-                if ( rtb->WhereEXP )
+				short WhereEXP = rtb->WhereEXP;
+                if ( WhereEXP )
                 {
-                    v9 = rtb->WhereEXP;
-                    v10 = enarr.TableAddr;
-					if ( *((short *)&v10[v9] - 2) )
-                    {
-                        v11 = rtb->WhereEXP ? &v10[v9 - 1] : 0;
-                        v12 = &enarr.TableAddr[v11->enleft - 1];
-                    }
+					short enleft = ENARR(WhereEXP)->enleft;
+					if ( enleft )
+						v12 = ENARR(enleft);
                     else
                         v12 = 0;		// error.
 
 					if ( bt->SrchMode )					
                     {											// 3 Operators bits: 
                         if ( bt->SrchMode == '-' )				// 0x08 == less than				'<'
-                            v12->TTno = 0x18u;					// 0x10 == equal to					'='
+                            v12->Enun.Enop.Enoper = 0x18u;		// 0x10 == equal to					'='
                         else									// 0x20 == greater than				'>'
-                            v12->TTno = 0x30u;					// Mixed bit tests:
+                            v12->Enun.Enop.Enoper = 0x30u;		// Mixed bit tests:
                     }											// 0x30 == greater than or equal	'>='
                     else										// 0x18 == less than or equal		'<='
                     {											// 0x28 == not equal to				'<>'
-                        v12->TTno = 0x10u;
+                        v12->Enun.Enop.Enoper = 0x10u;
                     }
 
                     v12->entype = 2;

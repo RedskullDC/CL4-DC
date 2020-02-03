@@ -29,7 +29,7 @@ void redisp(RDTAB *rdtab, short Start, short End)
             if ( v14 <= 0 )
             {
                 entb = ENARR(rdtab->field_2);	// Only re-displaying a single field/variable
-                v14 = entb->TTno;
+                v14 = entb->Enun.Enref.TTno;
             }
             ptabStart	= PTARR(getptabp(Start));			// Look for redisplay records between program Start and End instructions
 			ptabEnd		= PTARR(getptabp(End));
@@ -37,17 +37,19 @@ void redisp(RDTAB *rdtab, short Start, short End)
             for ( ; ptabStart != ptabEnd; ptabStart++ )
             {
                 OpCode = ptabStart->OpCode;
-                if ( OpCode == 1 )              // accept field
+                if ( OpCode == 1 )						// accept field
                 {
-                    xtb = XTARR(ptabStart->TABno);
-                    if ( *(int *)&xtb->C_X )	// check for C_X and C_Y together. Means field has been shown on screen already
-                    {
+					xtb = XTARR(ptabStart->TABno);
+					//if ( *(int *)&xtb->C_X )			// check for C_X and C_Y together. Means field has been shown on screen already
+					if ( xtb->C_X || xtb->C_Y )			// ** int* = 8 bytes in X64 == ERROR! **
+					{
                         v9 = ENARR(xtb->VarExpNo);
-                        if ( v9->TTno == v14 )
+                        if ( v9->Enun.Enref.TTno == v14 )
                         {
-							RecNo = v9->RecNo;
+							RecNo = v9->Enun.Enref.VarNum;
                             //if ( rdtab->TTno > 0 || (v11 = ENARR(rdtab->field_2), v11->RecNo == RecNo) )
-                            if ( rdtab->TTno > 0 || ( ENARR(rdtab->field_2)->RecNo == RecNo) )
+
+                            if ( rdtab->TTno > 0 || ( ENARR(rdtab->field_2)->Enun.Enref.VarNum == RecNo) )
                                 dispfld(xtb, &ttab[v14].TTfields[RecNo], 1, 0, 1, 1);		// Last 1 means use C_X, C_Y values
                         }
                     }

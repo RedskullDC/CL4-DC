@@ -1,0 +1,99 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.10.02.05.35.04;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef RELEASE_C
+#define RELEASE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// *** not public in libcl4() ***
+void mfree(TDinfo *TDptr, SALLOCBUF *ptr)
+{
+	SA30 *i; // esi@@1
+	short v3; // edi@@2
+
+	//printf("mfree( TDptr: x%08X ,SALLOCBUF x%08X)\n", TDptr,ptr);
+
+	for ( i = ptr->field_30; i; i = nfree(i, i->NextSA30) )
+	{
+		v3 = 0;
+		while ( i->field_4 > v3 )
+		{
+			_sparetree(TDptr, (int)i[v3 + 1].NextSA30, i[v3 + 1].field_4);
+			v3++;
+		}
+	}
+	nfree(ptr, 0);
+}
+
+// *** not public in libcl4() ***
+void sfree(TDinfo *TDptr, SALLOCBUF *ptr)
+{
+	SALLOCBUF *i; // esi@@1
+
+	//printf("sfree( TDptr: x%08X ,SALLOCBUF x%08X)\n", TDptr,ptr);
+	for ( i = ptr; i; i = nfree(i, i->NextSA) )
+		_sparetree(TDptr, i->field_4, i->field_8);
+}
+
+signed int _release(int TDno)
+{
+	TDinfo *TDptr; // esi@@1
+	signed int result; // eax@@1
+	DBinfo *DBptr; // edi@@2
+
+	TDptr = _rmtd(TDno);
+	result = -1;
+	if ( TDptr )
+	{
+		DBptr = TDptr->TDDBinfo;
+		if ( TDptr->TDSallocBuf )
+		{
+			if ( TDptr->field_0 & 2 )
+				sfree(TDptr, TDptr->TDSallocBuf);
+			else
+				mfree(TDptr, TDptr->TDSallocBuf);
+		}
+		if ( !(TDptr->field_0 & 1) )
+		{
+			close(DBptr->DBfilehandle);
+			nfree(DBptr, 0);
+		}
+		nfree(TDptr->TableDefs, 0);
+		relseq(TDptr);
+		nfree(TDptr, 0);
+		result = TDno;
+	}
+	return result;
+}
+
+int release(int TDno)
+{
+	//return xenter(release, TDno, 0);
+	return _release(TDno);
+
+}
+#endif
+@

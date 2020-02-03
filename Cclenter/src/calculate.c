@@ -51,7 +51,7 @@ void calculate(ENTAB *ent)
 	FLDdesc fld1;
     FLDdesc fld2;
 																// true for xD800 - xF000 Math+assign operators (Updates TTptr area)
-	fno = (short)gettdfno(ENARR(ent->enleft), &TTno, &FLDtype,(unsigned short)(ent->TTno & 0xFC00) - 0xD401u <= 0x1BFF);
+	fno = (short)gettdfno(ENARR(ent->enleft), &TTno, &FLDtype,(unsigned short)(ent->Enun.Enop.Enoper & 0xFC00) - 0xD401u <= 0x1BFF);
 
 	assert(ent->entype == 0x02);	// quick sanity checks
 	assert(fno >= 0);
@@ -67,12 +67,12 @@ void calculate(ENTAB *ent)
     {
 		//printf("calculate : String Routine [dest = C]\n");
         sv_wid = fld_dest->FLDlen;
-        zap(result, 1001u);
+		memset(result, 0, 1001u);
         evalstr(ENARR(ent->enright), result);
         
 		assert(fld_dest->FLDlen < sizeof(result));			// shouldn't be possible? clcomp won't allow strings > 1000 bytes in length
 
-		OpCode = ent->TTno & 0xFC00;
+		OpCode = ent->Enun.Enop.Enoper & 0xFC00;
 		switch (OpCode)
 		{					// math+assignment operators
 		case f_ADDEQ:		//	+=
@@ -102,8 +102,8 @@ void calculate(ENTAB *ent)
 			case f_POWEQ:					// '**=' -> '**'
 				OpCodeMap = f_POW;				// Exponent
 				break;
-			//default:							// unreachable due to switch block above
-			//	OpCodeMap = ent->TTno;			// default == don't remap opcode	*** should be unreachable ***
+			//default:										// unreachable due to switch block above
+			//	OpCodeMap = ent->Enun.Enop.Enoper;			// default == don't remap opcode	*** should be unreachable ***
 			//	break;
 			}
 
@@ -143,7 +143,7 @@ void calculate(ENTAB *ent)
 	{	
 		sv_wid = 99;
 
-		if ( ent->TTno & 0x0200 )				// Integer calc flag
+		if ( ent->Enun.Enop.Enoper & 0x0200 )				// Integer calc flag
 		    v45 = (double)evalint(ENARR(ent->enright));
 		else
 			v45 = clround(evalnum(ENARR(ent->enright), fld_dest->FLDtype), fld_dest->FLDtype);
@@ -151,7 +151,7 @@ void calculate(ENTAB *ent)
 		fld_dest = getftf(ENARR(ent->enleft), 0, &fld2);	// get destination fld
 		DestType = fld_dest->FLDtype;
 
-		OpCode = ent->TTno & 0xFC00;
+		OpCode = ent->Enun.Enop.Enoper & 0xFC00;
 		if ( OpCode )							// Can OpCode ever be ZERO?
 		{
 			switch (OpCode)
@@ -286,18 +286,18 @@ double evalnum(ENTAB *entab, int VarType)
 	    return 0.0;
 
 	//printf("evalnum : entab->entype = %d, entab->TTno  = x%04X\n",entab->entype,(unsigned short)entab->TTno);
-	//if (entab->TTno & 0x0200)
+	//if (entab->Enun.Enop.Enoper & 0x0200)
 	//	printf("evalnum: Integer Calc flag detected\n");
 
 	if ( entab->entype == 0x02 )
 	{
-		if ( entab->TTno & 0x0200 )			// 0x0200 == Integer calc flag
+		if ( entab->Enun.Enop.Enoper & 0x0200 )			// 0x0200 == Integer calc flag
 			return (double)evalint(entab);
 		
-		if ( entab->TTno & 0x0100 )			// 0x0100 == Reserved name flag
-			return (double)getnresv(entab->RecNo);
+		if ( entab->Enun.Enop.Enoper & 0x0100 )			// 0x0100 == Reserved name flag
+			return (double)getnresv(entab->Enun.Enop.RecNo);
 
-		OpCode = entab->TTno & 0xFC00;		// 1111 11-- ---- ----
+		OpCode = entab->Enun.Enop.Enoper & 0xFC00;		// 1111 11-- ---- ----
 
 		switch (OpCode)
 		{
@@ -444,14 +444,15 @@ int evalint(ENTAB *entab)
     if ( !entab )
         return 0;
 
-	//if (entab->TTno & 0x0200)
+	//if (entab->Enun.Enop.Enoper & 0x0200)
 	//	printf("evalint: Integer Calc flag detected\n");
 
     if ( entab->entype == 0x02 )			
 	{
-		if ( entab->TTno & 0x0100 )											// reserved value flag, try to interpret as numeric value
-			return getnresv(entab->RecNo);
-		else if ( entab->TTno & 0x0200 )									// Integer calc flag
+		if ( entab->Enun.Enop.Enoper & 0x0100 )											// reserved value flag, try to interpret as numeric value
+			return getnresv(entab->Enun.Enop.RecNo);
+		
+		else if ( entab->Enun.Enop.Enoper & 0x0200 )									// Integer calc flag
 		{
 			val_left = (int)evalint(ENARR(entab->enleft));
 			val_right = (int)evalint(ENARR(entab->enright));
@@ -462,7 +463,7 @@ int evalint(ENTAB *entab)
 			val_right = (int)evalnum(ENARR(entab->enright),'N');
 		}
 
-		OpCode = entab->TTno & 0xFC00;
+		OpCode = entab->Enun.Enop.Enoper & 0xFC00;
 		switch (OpCode)
 		{
 		case f_ADD   :												// "+" operator. 
@@ -558,23 +559,25 @@ char *evalstr(ENTAB *entab, char *OutBuffer)
     char	dest[21];
     char	FLDtype;
 
+	//printf("evalstr : entab->entype = %d, entab->Enun.Enop.Enoper  = x%04X, entab->Enun.Enop.RecNo = %d \n",entab->entype, entab->Enun.Enop.Enoper, entab->Enun.Enop.RecNo);
+
     if ( !entab )
         return OutBuffer;				// Don't alter buffer, just return to caller
 
 	if ( entab->entype != 0x02 )
 	{
-        if ( entab->entype == 0x10 )				// 3 char (or less) string stored directly in entab
-			cdbcpystr(OutBuffer, (char *)&entab->TTno, 0);	// Simple copy operation
+        if ( entab->entype == 0x10 )						// 3 char (or less) string stored directly in entab
+			cdbcpystr(OutBuffer, entab->Enun.char16, 0);	// Simple copy operation
 		else
-            doDefault = true;			// fall through to default operation
+            doDefault = true;								// fall through to default operation
 	}
-    else if ( entab->TTno & 0x0100 )	// get a reserved variable. Takes no params 
+    else if ( entab->Enun.Enop.Enoper & 0x0100 )			// get a reserved variable. Takes no params 
     {	// entab->entype == 2
-        cdbcpystr(OutBuffer, getresv(entab->RecNo), 0);
+        cdbcpystr(OutBuffer, getresv(entab->Enun.Enop.RecNo), 0);
     }
 	else
 	{
-		OpCode = entab->TTno & 0xFC00;
+		OpCode = entab->Enun.Enop.Enoper & 0xFC00;
 		if ( OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
 		{
 			switch (OpCode)
@@ -656,7 +659,7 @@ char *evalstr(ENTAB *entab, char *OutBuffer)
 		}
 
 		//set up StrRight, StrLeft for following routines
-		if ( entab->TTno & 0xFDFF ) // 1111-1101-1111-1111	// mask out integer calc flag 0x0200
+		if ( entab->Enun.Enop.Enoper & 0xFDFF ) // 1111-1101-1111-1111	// mask out integer calc flag 0x0200
 		{
 			if ( entab->enleft )
 			{
@@ -744,10 +747,6 @@ char *evalstr(ENTAB *entab, char *OutBuffer)
 			chr_ptr = StrLeft;
 			while ( *chr_ptr )
 			{
-				//v60 = *chr_ptr;
-				//if (isupper(v60))
-				//	*chr_ptr = tolower(v60);
-				//chr_ptr++;
 				*chr_ptr++ = tolower(*chr_ptr);
 			}
 			cdbcpystr(OutBuffer, StrLeft, 0);
@@ -757,10 +756,6 @@ char *evalstr(ENTAB *entab, char *OutBuffer)
 			chr_ptr = StrLeft;
 			while ( *chr_ptr )
 			{
-				//v60 = *chr_ptr;
-				//if (islower(v60))
-				//	*chr_ptr = toupper(v60);
-				//chr_ptr++;
 				*chr_ptr++ = toupper(*chr_ptr);
 			}
 			cdbcpystr(OutBuffer, StrLeft, 0);
@@ -868,7 +863,7 @@ char *evalstr(ENTAB *entab, char *OutBuffer)
 				sprintf(OutBuffer, "%.f",exp(num));
 				break;
 			default:
-				doDefault = !stroper(entab->TTno, OutBuffer, StrLeft, StrRight);	// doDefault set true if stroper can't handle instruction
+				doDefault = !stroper(OpCode, OutBuffer, StrLeft, StrRight);	// doDefault set true if stroper can't handle instruction
 				break;
 			}
 			break;
@@ -902,6 +897,7 @@ char *evalstr(ENTAB *entab, char *OutBuffer)
         else
             *OutBuffer = 0;	// default == blank string
 	}
+	//printf("evalstr : OutBuffer = %s\n", OutBuffer);
     if ( StrLeft )
         free(StrLeft);
     if ( StrRight )

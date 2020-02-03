@@ -7,7 +7,7 @@
 
 // get default display width of a field for a given variable type
 
-int getdwid(FLDdesc *FLDptr)
+short getdwid(FLDdesc *FLDptr)
 {
 	//printf("getdwid(FLDptr = %08X)\n" ,FLDptr);
 	if ( FLDptr->FLDqlen && FLDptr->FLDqlen->Qdeflen)

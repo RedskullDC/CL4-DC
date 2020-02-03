@@ -278,7 +278,7 @@ int rdbget(int DBno)
 	 int	DBnoa;
 	 
      DTptr = &dtab[DBno];
-     if ( DTptr->DBno >= 0 )	// This DBases already opened?
+     if ( DTptr->DBno >= 0 )	// This DBase already opened?
           return DTptr->DBno;
      
 	 DBname = mstrcpy(chkpath(DTptr->FullDBname, 0, "CLDPATH", 0, 0x180), 0);	// 0x180 mode read_write  permission bits '-rw-------'

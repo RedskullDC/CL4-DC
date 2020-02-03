@@ -12,9 +12,9 @@ void putucount(unsigned short a1);
 void puttext(char *ptr, size_t len);
 void dumpoe(ONESC *ptr);
 void putdouble(double a1, short TDFtype);
-void putbits(short a1);
+void putbits(unsigned short a1);
 void putfloat(float a1, short TDFtype);
-void putLong(int ptr);
+void putLong(long ptr);
 
 void putptabs(PTAB_ArrPtr *a1);
 void putrdtabs(RDTAB_ArrPtr *a1);
@@ -406,19 +406,22 @@ void putenodes(ENTAB_ArrPtr *a1)
 				putucount(entab->extOpCode);	// unused in real CL4 - used for extended opcodes in DC version
 			switch ( entab->entype )
 			{
-				case 1:
-				case 2:
-					putcount(entab->TTno);
-					putcount(entab->RecNo);
+				case 1:										// expression describing variable/table
+					putcount(entab->Enun.Enref.TTno);
+					putcount(entab->Enun.Enref.VarNum);
+					break;
+				case 2:										// expression describing function/assignment
+					putcount(entab->Enun.Enop.Enoper);
+					putcount(entab->Enun.Enop.RecNo);
 					break;
 				case 4:
-					putfloat(*(float *)&entab->TTno, 0x104u);	// *real* clcomp doesn't create these
+					putfloat(entab->Enun.float4, 0x104u);	// inline float, *real* clcomp doesn't create these
 					break;
 				case 8:
-					putLong(*(int *)&entab->TTno);
+					putLong(entab->Enun.long8);				// long integer literal		** 8 bytes on X64, 4 on X86  **
 					break;
-				case 16:
-					putbuf(&entab->TTno, 4u);
+				case 16:									// short string literal : 3 chars or less + \0
+					putbuf(entab->Enun.char16, 4u);			// ** could be 7 bytes or less on X64 **
 					break;
 			}
 			putucount(entab->enleft);
@@ -531,45 +534,45 @@ void putbuf(const void *ptr, size_t len)
 void putbool(int ptr)	// only called from putbtabs(). Expects 4 byte value, *NOT* a 1 byte boolean!!
 {
 	if ( tpenc )
-		xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);	// allow signed value
-	putbuf(&ptr, 4u);
+		xtodom((char *)&ptr, sizeof(int), 0x44u, (char *)&ptr);	// allow signed value
+	putbuf(&ptr, sizeof(int));
 }
 
 void puttable(int ptr)
 {
      if ( tpenc )
-          xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);		// allowed signed value
+          xtodom((char *)&ptr, sizeof(int), 0x44u, (char *)&ptr);		// allowed signed value
 
-	 putbuf(&ptr, 4u);
+	 putbuf(&ptr, sizeof(int));
 }
 
 void putdouble(double ptr, short TDFtype)
 {
 	if ( tpenc )
-		xtodom((char *)&ptr, 8u, TDFtype, (char *)&ptr);
-	putbuf(&ptr, 8u);
+		xtodom((char *)&ptr, sizeof(double), TDFtype, (char *)&ptr);
+	putbuf(&ptr, sizeof(double));
 }
 
-void putbits(short ptr)
+void putbits(unsigned short ptr)
 {
     if ( tpenc )
-		xtodom((char *)&ptr, 2u, 0x40u, (char *)&ptr);		// unsigned allowed
-	putbuf(&ptr, 2u);
+		xtodom((char *)&ptr, sizeof(unsigned short), 0x40u, (char *)&ptr);		// unsigned allowed
+	putbuf(&ptr, sizeof(unsigned short));
 }
 
-void putLong(int ptr)
+void putLong(long ptr)
 {
 	if ( tpenc )
-		xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);	// signed value
-	putbuf(&ptr, 4u);
+		xtodom((char *)&ptr, sizeof(long), 0x44u, (char *)&ptr);	// signed value    ** 4 bytes on X86, 8 bytes on X64 **
+	putbuf(&ptr, sizeof(long));
 }
 
 void putfloat(float Src, short TDFtype)
 {
 	int ptr;
 	if ( tpenc )
-		xtodom((char *)&ptr, 4u, TDFtype, (char *)&Src);
-	putbuf(&ptr, 4u);									// float stored in 4 bytes
+		xtodom((char *)&ptr, sizeof(float), TDFtype, (char *)&Src);
+	putbuf(&ptr, sizeof(float));									// float stored in 4 bytes
 }
 
 void puttext(char *ptr, size_t len)
@@ -585,15 +588,15 @@ void puttext(char *ptr, size_t len)
 void putcount(short ptr)
 {
 	if ( tpenc )
-		xtodom((char *)&ptr, 2u, 0x44u, (char *)&ptr);
-	putbuf(&ptr, 2u);
+		xtodom((char *)&ptr, sizeof(short), 0x44u, (char *)&ptr);
+	putbuf(&ptr, sizeof(short));
 }
 
 void putucount(unsigned short ptr)
 {
 	if ( tpenc )
-		xtodom((char *)&ptr, 2u, 0x40u, (char *)&ptr);
-	putbuf(&ptr, 2u);
+		xtodom((char *)&ptr, sizeof(unsigned short), 0x40u, (char *)&ptr);
+	putbuf(&ptr, sizeof(unsigned short));
 }
 
 

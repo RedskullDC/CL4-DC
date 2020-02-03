@@ -1,0 +1,79 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.11.27.09.37.44;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.18.05.32.32;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@prior to ENARR()
+@
+text
+@#ifndef GETWIDTH_C
+#define GETWIDTH_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <termcap.h>
+#include <stdlib.h>		// for srand48()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+int getwid(XTAB *xt)	// get width in chars required to display a field
+{
+    short result; // eax@@2
+    //FLDdesc *fld2; // eax@@7
+    FLDdesc fld; // [sp+10h] [bp-28h]@@7
+
+    if ( xt->WidthEXP )
+        result = evalint(&enarr.TableAddr[xt->WidthEXP - 1]);
+    else
+    {
+        result = xt->width;
+        if ( result == 0x400 )          // flag bit to get default width
+        {
+            //fld2 = getftf(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, 1, &fld);
+            //result = getdwid(fld2);     // get defult width for this vartype
+            result = getdwid(getftf(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, 1, &fld));     // get defult width for this vartype
+        }
+    }
+    return result;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d16 1
+a16 1
+    FLDdesc *fld2; // eax@@7
+d26 3
+a28 2
+            fld2 = getftf(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, 1, &fld);
+            result = getdwid(fld2);     // get defult width for this vartype
+@

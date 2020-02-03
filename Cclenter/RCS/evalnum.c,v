@@ -1,0 +1,319 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.08.27.12.37.49;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef EVALNUM_C
+#define EVALNUM_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+double power(double a1, double a2)
+{
+    return pow(a1, a2);
+}
+
+void setblock(int fd, int a2)
+{
+    int v2; // ecx@@2
+    int v4; // eax@@5
+
+    if ( first_2 )
+    {
+        first_2 = 1;
+        v2 = fcntl(fd, 3, 0);
+        if ( v2 == -1 )
+        {
+            perror("setblock(.. fcntl");
+            return;
+        }
+        blockf_0 = v2 & ~ndelay_3;
+        nonblockf_1 = v2 | ndelay_3;
+    }
+    v4 = blockf_0;
+    if ( !a2 )
+        v4 = nonblockf_1;
+    if ( fcntl(fd, 4, v4) == -1 )
+    {
+        perror("setblock fcntl2");
+        return;
+    }
+}
+
+bool Tty_KeyIsReady(void)
+{
+    int v0; // eax@@1
+    int v1; // esi@@1
+    int v2; // eax@@3
+
+    v0 = fileno(stdin);
+    setblock(v0, 0);
+    v1 = _IO_getc(stdin);
+    if ( v1 != -1 )
+        ungetc(v1, stdin);
+    v2 = fileno(stdin);
+    setblock(v2, 1);
+    return v1 != -1;
+}
+
+double clatof(const char *nptr)
+{
+    double result; // st7@@4
+
+    //result = __strtod_internal(nptr, 0, 0);
+    result = strtod(nptr, 0);
+	//printf("clatof : nptr = %s, result = %G\n",nptr, result);     
+    if ( !finite(result) )
+        result = 0.0;
+    return result;
+}
+
+double evalnum(ENTAB *entab, int VarType)
+{
+    FLDdesc *v7;  // eax@@36
+    FLDdesc *v12; // eax@@108
+    FLDdesc *v16; // eax@@120
+    FLDdesc *fld; // eax@@128
+    
+    double v5; // fst7@@31
+    double v13; // fst7@@111
+    int OpCode; // eax@@48
+    char v3; // zf@@10
+    short v4; // eax@@30
+    char v14; // al@@115
+    char v17; // dl@@120
+    double v19; // ST1C_8@@123
+    double _FST7; // fst7@@134
+    double _FST6; // fst6@@137
+    double result; // st7@@142
+    double v25; // [sp+10h] [bp-2468h]@@45
+    double v26; // [sp+10h] [bp-2468h]@@122
+    double v27; // [sp+18h] [bp-2460h]@@42
+    double v28; // [sp+18h] [bp-2460h]@@117
+    char nptr[8192]; // [sp+30h] [bp-2448h]@@110
+    FLDdesc s; // [sp+2030h] [bp-448h]@@32
+    FLDdesc v31; // [sp+2050h] [bp-428h]@@120	//** doesn't look right **
+    FLDdesc fld2; // [sp+2420h] [bp-58h]@@128
+    char src[21]; // [sp+2440h] [bp-38h]@@132
+
+    if ( !entab )
+	    return 0.0;
+printf("evalnum : entab->entype = %d, entab->TTno  = x%04X\n",entab->entype,entab->TTno);
+
+	if ( entab->entype != 2 )
+        goto LABEL_128;
+// *** Order here is incorrect ***
+	if ( entab->TTno & 0x0200 )
+        return (double)evalint(entab);
+	if ( entab->TTno & 0x0100 )
+        return (double)getnresv(entab->RecNo);
+
+    OpCode = entab->TTno & 0xFC00;
+printf("evalnum 110: OpCode  = x%04X\n",OpCode);
+
+	switch (OpCode)
+	{
+	case 0xAC00:
+        goto LABEL_128;
+	case 0xBC00:
+        return (double)Tty_KeyIsReady();
+	case 0xB800:
+		return drand48();				// random()
+	case 0xD400:
+	case 0xF400:
+ 	case 0xD000:
+	case 0xCC00:
+	case 0xA000:
+	case 0x9C00:
+	case 0x2000:
+	case 0x2C00:
+	case 0x1C00:
+	case 0x8C00:
+	case 0x4000:
+	case 0x7800:
+	case 0x7C00:
+	case 0x7400:
+printf("evalnum : 0x7400\n");
+
+		evalstr(entab, (char *)&s);
+        if ( VarType == 'D' )
+            v5 = (double)clgetdate((const char *)&s);	// returns int
+        else if ( VarType == 'T' )
+            v5 = gettime((const char *)&s);	// returns double anyway
+		else
+			v5 = clatof((const char *)&s);
+        return v5;
+	}
+
+// Remaining batch of Opcodes require Src/Dest parameters:
+
+	v27 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, VarType);
+printf("evalnum : v27 = %G, VarType = %C\n",v27,VarType);
+	v25 = evalnum(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, VarType);
+printf("evalnum : v25 = %G, VarType = %C\n",v25,VarType);
+printf("evalnum : OpCode = x%04X\n",OpCode);     
+	switch (OpCode)
+	{
+	case 0x5000:
+        return atan(v27);
+	case 0x1400:
+	    return cos(v27);
+	case 0x4400:
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = log10(v27);
+		return v5;
+	case 0x4800:
+		if ( v27 <= 1.0 )
+			v5 = asin(v27);
+		else
+			v5 = 0.0;
+		return v5;
+	case 0x4C00:
+		if ( v27 <= 1.0 )
+			v5 = acos(v27);
+		else
+			v5 = 0.0;
+        return v5;
+	case 0x1800:
+		return tan(v27);
+	case 0xC00:
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = log(v27);
+		return v5;
+	case 0x800:
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = sqrt(v27);
+		return v5;
+	case 0x1000:
+		return sin(v27);
+	case 0x6400:									// "/" divide operator
+        if ( v25 != 0.0 )	// avoid divide by zero error
+			v5 = v27 / v25;
+		else
+			v5 = 0.0;
+        return v5;
+	case 0x5800:									// - subtract operator
+        if ( entab->Src )
+			v5 = v27 - v25;
+		else
+			v5 = -v27;
+		return v5;
+	case 0x5C00 :									// ** exponent operator
+		return power(v27, v25);
+	case 0x6000 :									// * multiply operator
+        v5 = v27 * v25;
+		return v5;
+	case 0x5400 :									// + add operator
+		v5 = v27 + v25;
+		return v5;
+	case 0x9000:									// degrees()
+        v5 = 0.0;
+        if ( v27 > 0.0 )
+            v5 = v27 * 180.0 / 3.141592653589793;
+		return v5;
+	case 0x9400:									// radians()
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = v27 / 180.0 * 3.141592653589793;
+		return v5;
+	case 0x9800 :									// exp() operator
+	    return exp(v27);
+	case 0x6800:									// % MOD operator
+		v12 = getftf(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 0, &s);
+		if ( v12 )
+		    v14 = v12->FLDtype;
+		else
+			v14 = 'N';	// default to Integer
+		if ( v14 == 'C' )
+		{
+		    evalstr(entab, nptr);
+		    if ( VarType == 'D' )
+		        v5 = (double)clgetdate(nptr);
+		    else
+		        v5 = clatof(nptr);
+		    return v5;
+		}
+		else
+		{
+			v28 = clround(v27, v14);
+			v16 = getftf(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, 0, &v31);
+			v17 = 'N';              // default to 'N' long integer
+			if ( v16 )
+			    v17 = v16->FLDtype;
+			v5 = clround(v25, v17);
+			v26 = v5;
+			if ( v5 != 0.0 )
+			{
+				// *** TO DO ***
+				// _FST7 = clround(v28 / v26, '9');	// looks like MOD operator?
+				// v19 = _FST7;
+				// __asm { frndint }
+				// v5 = (v19 - (double)_FST7) * v26;
+				//
+			}
+			return v5;
+		}
+		break;
+
+	default :
+LABEL_128:
+printf("evalnum : Label128 default handler\n");
+
+        fld = getftf(entab, 1, &fld2);
+        if ( fld )
+        {
+            if ( fld->FLDtype != 'C' )
+			{
+				printf("evalnum : Label128 (!C) returning %G\n",*(double *)fld->FLDdata);
+                return *(double *)fld->FLDdata;
+			}
+
+            if ( VarType == 'D' || VarType == 'T' )
+            {
+                strncpy(src,(char *)fld->FLDdata, 20u);
+                src[20] = 0;
+				printf("evalnum : Label128 src = %s\n",src);
+                if ( VarType == 'D' )
+		            v5 = (double)clgetdate(src);	// returns int
+				else
+					v5 = gettime(src);	// returns double value anyway
+            }
+			else // fld->FLDtype == 'C'
+				v5 = clatof((const char *)fld->FLDdata);
+			printf("evalnum : Label128 returning %G\n",v5);
+			DumpBlock((char *)fld->FLDdata, 8);
+
+		    return v5;
+        }
+        return 0.0;
+	}
+}
+
+#endif
+@

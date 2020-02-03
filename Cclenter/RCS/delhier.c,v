@@ -1,0 +1,153 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.21.01.43.31;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.27.06.28.44;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin. Split off from abcd.c and DBASE.c
+@
+
+
+1.2
+log
+@tidy-up
+@
+text
+@#ifndef DELHIER_C
+#define DELHIER_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int delset(int TDno, int DBno, char *TableName, int Key)
+{
+    signed int result; // eax@@1
+    TDesc *TTptr; // edi@@2
+    int v6; // eax@@4
+    short v7; // ax@@6
+    FLDdesc *fld; // esi@@9
+    short v9; // ax@@16
+    int TTno; // [sp+10h] [bp-18h]@@1
+    int TDnoa; // [sp+14h] [bp-14h]@@2
+    EXPR *expr; // [sp+18h] [bp-10h]@@6
+
+    TTno = findtd(TableName, DBno);
+    result = 0;
+    if ( TTno >= 0 )
+    {
+        TTptr = &ttab[TTno];
+        TDnoa = rtdget(TTptr);
+        if ( Key )							// Key == 1 if we are deleting a Key Field, 0 if a SUBrecord
+            tdtotd(TTno, TDno, 1, 2);		// copy current key fields from parent record. 
+        v6 = TTno;
+        if ( !Key )
+            v6 = TDno;
+
+        expr = bldexpr(v6, -1, 0);				// -1 creates a "match all" expression
+        v7 = cdbrestrict(TDnoa, expr);
+        if ( v7 < 0 )
+            dberror(v7, 0, TDnoa);
+        
+		while ( 1 )
+        {
+            if ( rdnxt(TTno, expr, 0, 0) <= 0 )
+            {
+                fretre(expr, 0);
+                return 1;				// exit_success
+            }
+            if ( TTptr->TDlocked & 0x4010 )	// Do we have any sub recs?
+            {
+                fld = TTptr->TTfields;
+				while (fld->FLDelemID)
+				{
+					if ( fld->FLDtype = 'S' )
+						delset(TTno, DBno, (char *)fld->FLDdata, 0);	// recursive behaviour
+					else if ( fld->FLDtype == 'K' )
+						delset(TTno, DBno, (char *)fld->FLDdata, 1);	// recursive behaviour
+					++fld;
+				}
+            }
+            
+			tttorec(TTno, TTptr->TDworkarea1, 1);
+            v9 = cldelr(TDnoa, TTptr->TDworkarea1, 0, TTptr);
+            if ( v9 < 0 )
+                dberror(v9, 0, TDnoa);
+
+            rfree(TTno, 0);
+            TTptr->TDlocked &= 0xFFDFu;	// clear 1111 1111 1101 1111	== bit 0x0020u
+        }
+        
+    }
+    return result;
+}
+
+int delhier(int TTno, int a2)
+{
+    TDesc *TTptr; // edi@@1
+    FLDdesc *fld; // esi@@3
+    short ErrCode; // ax@@10
+    int TDno; // [sp+14h] [bp-14h]@@1
+    int v11; // [sp+18h] [bp-10h]@@1
+
+    v11 = 1;
+    TTptr = &ttab[TTno];
+    TDno = rtdget(TTptr);
+    tttorec(TTno, TTptr->TDworkarea1, 1);
+    if ( a2 && TTptr->TDlocked & 0x4010 )	// indicates we have Key/Sub tables
+    {
+		fld = TTptr->TTfields;
+        while ( fld->FLDelemID )
+        {
+			if ( fld->FLDtype == 'S' )
+				delset(TTno, TTptr->DBnumber, (char *)fld->FLDdata, 0);
+            else if ( fld->FLDtype == 'K' )
+			    delset(TTno, TTptr->DBnumber, (char *)fld->FLDdata, 1);
+			++fld;
+        }
+    }
+
+	ErrCode = cldelr(TDno, TTptr->TDworkarea1, 0, TTptr);
+    if ( ErrCode <= 0 )
+    {
+        if ( ErrCode < 0 )
+            dberror(ErrCode, 0, TDno);
+        v11 = 0;
+    }
+    ulckrec(TTno);
+    rfree(TTno, 0);
+    TTptr->TDlocked &= 0xFFDFu;	// clears 0x0040
+    return v11;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d30 1
+d55 2
+a56 1
+            tttorec(TTno, TTptr->TDworkarea1, 1);
+d60 1
+d62 1
+a62 1
+            TTptr->TDlocked &= 0xFFDFu;	// clear bit 0x0040u
+@

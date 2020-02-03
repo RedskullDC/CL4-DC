@@ -1,0 +1,408 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2015.11.05.05.49.23;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.08.26.13.54.38;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.08.25.04.07.56;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.23.11.57.09;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@#ifndef PFORK_C
+#define PFORK_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void pfork(PTAB *ptab)
+{
+    char **v8; // esi@@26
+    __pid_t v9; // eax@@32
+    __pid_t child_PID; // eax@@5
+    signed int v6; // esi@@22
+    int v10;
+	int v11;
+	short prout_save;
+	char tab_save;
+    
+	__sighandler_t hnd15_sve;
+	__sighandler_t hnd3_sve;
+	__sighandler_t hnd2_sve;
+	int stat_loc;
+	char a1[8192];
+	
+    fflush(stdout);
+    fflush(stderr);
+    fflush(op);
+    
+	if ( ptab->OpCode )
+    {
+        if ( !ptab->TABno )
+        {
+            if ( !have_forked_0 )
+            {
+                if ( cllock(getpid()))		// cllock(self)
+                {
+                    child_PID = fork();
+                    if ( child_PID )		// parent process
+                    {
+                        if ( child_PID != -1 )
+                        {
+                            flagcdb(0, child_PID);		// mark all DB's as belonging to the child PID
+                            longjmp(sjbuf, 1);			// jump back up to main() and exit
+                        }
+                    }
+                    else					// this is the child process
+                    {
+                        cllock(0);			// stop the parent trying to fork() twice?
+                        clunlock();
+                        flagcdb(1, 0);		// clear the Pagelist1 table on all our DB's
+                        
+						signal(SIGINT, SIG_IGN);	// default sig handlers to ignore
+                        signal(SIGQUIT, SIG_IGN);
+                        signal(SIGHUP, SIG_IGN);
+                        have_forked_0 = true;
+                        
+						if ( isatty(2) )
+                            freopen64("/dev/null", "w", stderr);
+                        if ( isatty(0) )
+                            freopen64("/dev/null", "r", stdin);
+                        if ( isatty(1) )
+                            freopen64("/dev/null", "w", stdout);
+                    }
+                }
+            }
+            return;	// exit_success
+        }
+        goto LABEL_17;
+    }
+    
+	if ( ptab->TABno )	// fork 'do this command' or fork variable_name
+    {
+LABEL_17:
+        exptobuf(a1, ENARR(ptab->TABno), 0);	// get the fork expression
+    }
+	else
+		cdbcpystr(a1, "sh", 0);
+
+	prout_save = pr_out;	// save values in case child modifies, restore below
+    tab_save = TAB;
+
+    child_PID = fork();
+    if ( !child_PID )				// 0 == this is the child process handler.
+    {
+        closescr();
+        v6 = 3;						// not sure what these FD's are for....
+        do
+            close(v6++);
+        while ( v6 <= 19 );
+        
+		chklt(a1);
+        if ( isalist(a1) )
+        {
+            execlp("/bin/sh", "sh", "-c", a1, 0);	// *** does not return on success ***
+			syserror("pfork:execlp[%s]", a1);
+        }
+        else
+        {
+            v8 = camake(a1, 32);	// split on space chars
+			execvp(v8[0], v8);		// *** does not return on success ***
+			syserror("pfork:execvp[%s]", *v8);
+        }
+		_exit(127);
+    }
+	else if ( child_PID == -1 )	// error! We couldn't fork() for some reason
+    {
+        stat_loc = *__errno_location() << 8;
+    }
+    else					// parent process handler
+    {
+        hnd2_sve = signal(SIGINT, SIG_IGN);		// replace sig handlers with ignore
+        hnd3_sve = signal(SIGQUIT, SIG_IGN);
+        hnd15_sve = signal(SIGTERM, SIG_IGN);
+        
+		do
+        {
+            v9 = wait(&stat_loc);				// wait for the child started above to complete
+        }
+        while ( v9 != child_PID && v9 != -1 );	// v9 == 1 means parent received a signal
+
+		//printf("pfork() v9 = %d, stat_loc = %d\n",v9,stat_loc);
+		signal(SIGINT, hnd2_sve);					// restore sig handlers and tab/screen state
+        signal(SIGQUIT, hnd3_sve);
+        signal(SIGTERM, hnd15_sve);
+        openscr();
+        pr_out = prout_save;
+        TAB = tab_save;
+    }
+    
+	//printf("pfork - stat_loc = x%08X\n",stat_loc);
+	v10 = (unsigned char)stat_loc;
+    v11 = 0;
+
+    if ( !v10 )
+    {
+        v11 = (unsigned char)((stat_loc >> 8) & 0xFF);
+        if ( v11 & 0x80 )
+        {
+            v10 = (unsigned char)(~v11 + 1);	// *** not sure this is correct ***
+            v11 = 0;
+        }
+    }
+    
+	setvar(v_ERROR, v10);	// "ERROR"
+    setvar(v_EXIT, v11);	// "EXIT"
+}
+
+#endif
+
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d9 1
+d22 3
+a24 3
+	void (*hnd15_sve)(int);
+	void (*hnd3_sve)(int);
+	void (*hnd2_sve)(int);
+d55 3
+a57 3
+						signal(2, (__sighandler_t)1);	// default sig handlers
+                        signal(3, (__sighandler_t)1);
+                        signal(1, (__sighandler_t)1);
+d114 3
+a116 3
+        hnd2_sve = signal(2, (__sighandler_t)1);	// replace sig handlers with "do nothing" defaults
+        hnd3_sve = signal(3, (__sighandler_t)1);
+        hnd15_sve = signal(15, (__sighandler_t)1);
+d125 3
+a127 3
+		signal(2, hnd2_sve);					// restore sig handlers and tab/screen state
+        signal(3, hnd3_sve);
+        signal(15, hnd15_sve);
+d147 2
+a148 2
+	setvar(1, v10);                             // "ERROR"
+    setvar(6, v11);                             // "EXIT"
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@a11 7
+    __pid_t v1; // eax@@4
+    int v2; // eax@@5
+    ENTAB *v3; // eax@@18
+    __pid_t v4; // eax@@21
+    __pid_t v5; // esi@@21
+    signed int v6; // esi@@22
+    char *v7; // eax@@25
+d14 13
+a26 12
+    int v10; // eax@@35
+    int v11; // esi@@35
+    char *v12; // [sp+4h] [bp-2054h]@@25
+    char v13; // [sp+27h] [bp-2031h]@@21
+    short v14; // [sp+28h] [bp-2030h]@@21
+    void (*v15)(int); // [sp+2Ch] [bp-202Ch]@@31
+    void (*v16)(int); // [sp+30h] [bp-2028h]@@31
+    void (*handler)(int); // [sp+34h] [bp-2024h]@@31
+    int stat_loc; // [sp+38h] [bp-2020h]@@30
+    int *v19; // [sp+3Ch] [bp-201Ch]@@32
+    char a1[8192]; // [sp+40h] [bp-2018h]@@16
+
+d37 1
+a37 2
+                v1 = getpid();
+                if ( cllock(v1) )
+d39 2
+a40 2
+                    v2 = fork();
+                    if ( v2 )
+d42 1
+a42 1
+                        if ( v2 != -1 )
+d44 2
+a45 2
+                            flagcdb(0, v2);
+                            longjmp(&sjbuf, 1);
+d48 1
+a48 1
+                    else
+d50 1
+a50 1
+                        cllock(0);
+d52 3
+a54 2
+                        flagcdb(1, 0);
+                        signal(2, (__sighandler_t)1);
+d57 1
+a57 1
+                        have_forked_0 = 1;
+d68 1
+a68 1
+            return;
+d73 1
+a73 1
+	if ( ptab->TABno )
+d76 10
+a85 16
+        if ( ptab->TABno )
+            v3 = &enarr.TableAddr[ptab->TABno - 1];
+        else
+            v3 = 0;
+        exptobuf(a1, v3, 0);
+        goto LABEL_21;
+    }
+    cdbcpystr(a1, "sh", 0);
+
+LABEL_21:
+
+	v14 = pr_out;
+    v13 = TAB;
+    v4 = fork();
+    v5 = v4;
+    if ( !v4 )
+d88 1
+a88 1
+        v6 = 3;
+d96 2
+a97 3
+            execlp("/bin/sh", "sh", "-c", a1, 0);
+            v12 = a1;
+            v7 = "pfork:execlp[%s]";
+d101 3
+a103 4
+            v8 = camake(a1, 32);
+            execvp(*v8, v8);
+            v12 = *v8;
+            v7 = "%s";
+d105 1
+a105 2
+        syserror(v7, v12);
+        _exit(127);
+d107 1
+a107 3
+    
+	
+	if ( v4 == -1 )
+d111 1
+a111 1
+    else
+d113 3
+a115 3
+        handler = signal(2, (__sighandler_t)1);
+        v16 = signal(3, (__sighandler_t)1);
+        v15 = signal(15, (__sighandler_t)1);
+d119 1
+a119 2
+            v19 = &stat_loc;		// ******
+            v9 = wait(&stat_loc);
+d121 6
+a126 5
+        while ( v9 != v5 && v9 != -1 );
+        
+		signal(2, handler);
+        signal(3, v16);
+        signal(15, v15);
+d128 2
+a129 2
+        pr_out = v14;
+        TAB = v13;
+d131 2
+a132 1
+    	
+d135 2
+a136 1
+    if ( !(_BYTE)stat_loc )
+d138 2
+a139 2
+        v11 = BYTE1(stat_loc);
+        if ( SBYTE1(stat_loc) < 0 )
+d141 1
+a141 1
+            v10 = (unsigned char)~BYTE1(stat_loc) + 1;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d36 2
+a37 1
+    if ( ptab->OpCode )
+d64 2
+a65 1
+                        if ( isatty(2) )
+d78 2
+a79 1
+    if ( ptab->TABno )
+d90 1
+d92 2
+a93 1
+    v14 = pr_out;
+d104 2
+a105 1
+        chklt(a1);
+d122 3
+a124 1
+    if ( v4 == -1 )
+d133 2
+a134 1
+        do
+d136 1
+a136 1
+            v19 = &stat_loc;
+d140 2
+a141 1
+        signal(2, handler);
+d148 2
+a149 1
+    v10 = (unsigned char)stat_loc;
+d160 2
+a161 1
+    setvar(1, v10);                             // "ERROR"
+@

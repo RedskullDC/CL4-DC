@@ -1,0 +1,273 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.08.18.04.20.21;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.14.00.13.41;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@tidy-up
+@
+text
+@#ifndef ESCAPE_C
+#define ESCAPE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+int disp_esc(ONESC *a1, int a2)
+{
+    BTAB	*btb; // [sp+38h] [bp-B0h]@@5
+
+    char	*v3; // eax@@5
+    char	*v6; // edi@@6
+    char	*v7; // esi@@6
+    char	*v11; // eax@@18
+    char	*v17; // [sp+0h] [bp-E8h]@@12
+    char	*v21; // [sp+8h] [bp-E0h]@@12
+    char	*v23; // [sp+Ch] [bp-DCh]@@10
+    char	*v24; // [sp+10h] [bp-D8h]@@10
+    const char *v19; // [sp+4h] [bp-E4h]@@12
+
+    int		v2; // eax@@1
+    int		v13; // eax@@24
+    signed int v14; // edx@@24
+    int		v15; // eax@@28
+    signed int v8; // ecx@@6
+
+    unsigned char v4;
+	unsigned char v5;
+	char	Buffer;
+	char	v28[32];
+	char	Dest[128];
+	
+    v2 = 0;
+    if ( !a2 )
+        v2 = found_0;
+    found_0 = v2;
+    if ( a1 )
+    {
+        while ( !a1->OESCFlags )
+        {
+            if ((*__ctype_b_loc())[a1->KeyNumber] & 0x0400 )
+            {
+                found_0 = 1;
+                btb = &btab[a1->BlockNo];
+                v11 = Key_GetEscMacroName(a1->KeyNumber);
+                if ( v11 )
+                    sprintf(v28, "(%s) ", v11);
+                else
+                    v28[0] = 0;
+                
+                sprintf(Dest, "%s field: escape '%c' %s%s <CR>", (a2 ? "this" : "any"), a1->KeyNumber, v28, btb->BlockName);
+LABEL_24:
+                prerr(Dest, 0, 0);
+                at();
+                Buffer = ' ';
+                v13 = linput(&Buffer, -1, 0);
+                v14 = 0;
+                if ( v13 == -27 )
+                    return v14;
+            }
+            a1 = a1->NextESC;
+            if ( !a1 )
+                goto LABEL_26;
+        }
+
+        btb = &btab[a1->BlockNo];
+        found_0 = 1;
+        v3 = KeyToName(a1->KeyNumber);
+        v4 = 0;
+        v5 = v3 == 0;
+        if ( !v3 )
+            goto LABEL_33;
+		// inline strncmp()
+        v6 = "No such";
+        v7 = v3;
+        v8 = 7;
+        do
+        {
+            if ( !v8 )
+                break;
+            v4 = *v7 < (unsigned char)*v6;
+            v5 = *v7++ == *v6++;
+            --v8;
+        }
+        while ( v5 );
+        if ( !(v4 | v5) != v4 )
+        {
+	        sprintf(Dest, "%s field: on_key %s %s <CR>", (a2 ? "this" : "any"), v3, btb->BlockName);
+        }
+        else
+        {
+LABEL_33:
+			sprintf(Dest, "%s field: on_key %c %s <CR>", (a2 ? "this" : "any"), (char)a1->KeyNumber, btb->BlockName);
+			//sprintf(Dest, "%s field: on_key %c %s <CR>", v10, (char *)a1->KeyNumber, btb->BlockName);
+        }
+        goto LABEL_24;
+    }
+LABEL_26:
+    if ( a2 || found_0 || (cdbcpystr(Dest, "no escapes available <CR>", 0), prerr(Dest, 0, 0), at(), Buffer = ' ', v15 = linput(&Buffer, -1, 0), v14 = 0, v15 != -27) )
+		v14 = 1;
+    return v14;
+}
+
+int _chkesc(ONESC *onesc, short KeyNumber)
+{
+    ONESC	*v2;
+	BTAB	*btb;
+	int		v5;
+	int		result;
+	short	v4;
+	
+    v2 = onesc;
+    if ( onesc )
+    {
+        while ( v2->KeyNumber != KeyNumber )
+        {
+            v2 = v2->NextESC;
+            if ( !v2 )
+                return 0;
+        }
+        btb = &btab[v2->BlockNo];
+        btb->Curr_Mode = 's';
+        dscreen(btb, 0, 0);
+        do
+        {
+            v4 = ploop(btb, 0, btb->StartLine, btb->EndLine, btb->StartLine, btb->EndLine, 0);
+            v5 = v4;
+        }
+        while ( v4 == -22 );
+        result = 1;
+        if ( v5 )
+            result = v5;
+    }
+    else
+    {
+        result = 0;
+    }
+    return result;
+}
+
+int chkesc(ONESC *onesc, int a2, char *a3)
+{
+    int result;
+	char v4;
+	
+    v4 = *a3;
+    if ( a2 == 32 )	// if the user types <ESC><SPC> , display a list of possible escape sequences
+    {
+        if ( disp_esc(onesc, 1) )
+            disp_esc(oelist, 0);
+        prerr(0, 0, 0);
+        result = 1;
+    }
+    else
+    {
+        if ( !onesc || (result = _chkesc(onesc, a2)) == 0 )
+            result = _chkesc(oelist, a2);
+    }
+    *a3 = v4;
+    return result;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 16
+a26 6
+    int v2; // eax@@1
+    char *v3; // eax@@5
+    unsigned char v4; // cf@@5
+    unsigned char v5; // zf@@5
+    char *v6; // edi@@6
+    char *v7; // esi@@6
+a27 17
+    char *v9; // eax@@10
+    char *v10; // eax@@13
+    char *v11; // eax@@18
+    char *v12; // eax@@21
+    int v13; // eax@@24
+    signed int v14; // edx@@24
+    int v15; // eax@@28
+    char *v17; // [sp+0h] [bp-E8h]@@12
+    const char *v19; // [sp+4h] [bp-E4h]@@12
+    char *v21; // [sp+8h] [bp-E0h]@@12
+    char *v23; // [sp+Ch] [bp-DCh]@@10
+    char *v24; // [sp+10h] [bp-D8h]@@10
+    BTAB *btb; // [sp+38h] [bp-B0h]@@5
+    BTAB *btba; // [sp+38h] [bp-B0h]@@18
+    char Buffer; // [sp+3Fh] [bp-A9h]@@24
+    char v28[32]; // [sp+40h] [bp-A8h]@@19
+    char Dest[128]; // [sp+60h] [bp-88h]@@12
+d29 6
+d41 1
+a41 1
+        while ( !a1->field_0 )
+d46 1
+a46 1
+                btba = &btab[a1->BlockNo];
+d53 1
+a53 4
+				v12 = "any";
+                if ( a2 )
+                    v12 = "this";
+                sprintf(Dest, "%s field: escape '%c' %s%s <CR>", v12, a1->KeyNumber, v28, btba->BlockName);
+d67 1
+d75 1
+d90 1
+a90 4
+            v9 = "any";
+            if ( a2 )
+                v9 = "this";
+	        sprintf(Dest, "%s field: on_key %s %s <CR>", v9, v3, btb->BlockName);
+d95 1
+a95 4
+            v10 = "any";
+            if ( a2 )
+                v10 = "this";
+			sprintf(Dest, "%s field: on_key %c %s <CR>", v10, (char)a1->KeyNumber, btb->BlockName);
+d105 1
+d108 6
+a113 6
+    ONESC *v2; // edx@@1
+    BTAB *btb; // esi@@3
+    short v4; // ax@@4
+    int v5; // edx@@4
+    int result; // eax@@5
+
+d145 3
+a147 3
+    int result; // eax@@4
+    char v4; // [sp+1Bh] [bp-Dh]@@1
+
+d149 1
+a149 1
+    if ( a2 == 32 )
+@

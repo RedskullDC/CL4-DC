@@ -1,0 +1,159 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.12.23.06.13.44;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETCHAR_C
+#define GETCHAR_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+int getch(void)
+{
+  int NextChar; // ecx@@1
+  signed int result; // eax@@1
+  int v2; // ecx@@3
+  char v3; // zf@@11
+  int v4; // eax@@24
+  int v5; // edi@@35
+  signed int v6; // esi@@35
+
+  esc_char = 0;
+  NextChar = _IO_getc(MainFile);
+  result = -1;
+  if ( NextChar == -1 || (result = NextChar, NextChar != '\\') || (v2 = _IO_getc(MainFile), result = -1, v2 == -1) )
+    return result;                              // Normal next char exit
+  esc_char = 1;
+  if ( v2 == 'f' )                              // Go sifiting through any control chars
+    return '\f';                                // Formfeed
+  if ( v2 > 'f' )
+  {
+    if ( v2 == 'r' )
+    {
+      v2 = '\r';                                // carriage return
+    }
+    else
+    {
+      if ( v2 > 'r' )
+      {
+        if ( v2 != 't' )
+          goto LABEL_35;
+        v2 = '\t';                              // Tab
+      }
+      else
+      {
+        if ( v2 != 'n' )
+          goto LABEL_35;
+        v2 = '\n';                              // NewLine
+      }
+    }
+    return v2;
+  }
+  if ( v2 == 'b' )
+    return 8;                                   // \b = ?
+  if ( v2 > 'b' )
+  {
+    if ( v2 != 'e' )
+      goto LABEL_35;
+    return '\x1B';                              // ESC
+  }
+  if ( v2 == '?' )
+    return v2 | 0x80;                           // \? == ????
+  if ( v2 > '?' )
+  {
+    v3 = v2 == '[';
+  }
+  else
+  {
+    if ( v2 == '\n' )
+    {
+      ++ll;
+      ++lla;
+      do
+      {
+        do
+        {
+          v4 = _IO_getc(MainFile);
+          v2 = v4;
+        }
+        while ( v4 == ' ' );
+      }
+      while ( v4 == '\t' );
+      if ( v4 == '\n' )
+      {
+        ++ll;
+        ++lla;
+      }
+      return v2;
+    }
+    v3 = v2 == '*';
+  }
+  if ( v3 )
+    return v2 | 0x80;
+LABEL_35:
+  v5 = 0;
+  v6 = 0;
+  if ( (unsigned int)(v2 - 48) > 7 )
+  {
+LABEL_39:
+    if ( v6 )
+    {
+      ungetc(v2, MainFile);
+      v2 = v5;
+    }
+    return v2;
+  }
+  while ( 1 )
+  {
+    v5 = v2 + 8 * v5 - 48;
+    v2 = _IO_getc(MainFile);
+    result = -1;
+    if ( v2 == -1 )
+      return result;
+    ++v6;
+    if ( (unsigned int)(v2 - 48) > 7 || v6 > 2 )
+      goto LABEL_39;
+  }
+}
+
+void gotonl()
+{
+     int v0; // eax@@2
+
+     if ( c != '\n' )
+     {
+          do
+          {
+               v0 = getch();
+               c = v0;
+          }
+          while ( v0 != -1 && v0 != '\n' );
+     }
+     symbol = 930;
+     cdbcpystr(sym, "\n", 0);
+}
+
+#endif
+@

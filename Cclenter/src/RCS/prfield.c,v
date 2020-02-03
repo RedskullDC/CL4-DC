@@ -1,0 +1,1402 @@
+head	1.9;
+access;
+symbols;
+locks
+	leslie:1.9; strict;
+comment	@ * @;
+
+
+1.9
+date	2015.10.29.04.52.19;	author leslie;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2015.08.20.11.36.05;	author leslie;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2015.07.16.14.10.03;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2015.04.13.05.51.52;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2014.11.28.02.29.43;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2014.11.28.01.21.21;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.28.00.25.24;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.27.05.34.01;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.04.04.08.52;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.9
+log
+@intermediate
+@
+text
+@#ifndef PRFIELD_C
+#define PRFIELD_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include <errno.h>		// for __errno_location()
+#include <ctype.h>		// isspace() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+short _prfield(FILE *stream, PRTAB *prtab, FLDdesc *fld, char *Buffer, int fld_width, int align_centre, int align_left, int align_right)
+{
+    PRTAB *v23;
+    char *v10;
+    char *j;
+    char *v19;
+    char *MessageString;
+
+    signed int v20;
+    int MsgLen;
+    short LeadingSpaces;
+    bool addQuotes;
+    char src[2];
+    char v24;
+    char v34[16408];
+
+	//printf("\n_prfield : Buffer = %s, fld_width = %d, align_left = %d, align_centre = %d, align_right = %d\n",Buffer,fld_width,align_left, align_centre,align_right);
+    if ( rawprint )
+        MessageString = Buffer;
+    else
+        MessageString = convstr(Buffer, 1);
+
+//------------------------------------------------------
+
+	if (align_left || align_centre || align_right)	// ensure data fills the field, and pad with spaces as required
+	{
+		if (align_left)					// align_left
+			LeadingSpaces = 0;
+		else if (align_centre || align_right)
+		{
+			LeadingSpaces = fld_width - strOnPaperLen(MessageString);	// align right
+			if ( LeadingSpaces < 0 )
+				LeadingSpaces = 0;
+
+			if ( align_centre )			// align_centre
+				LeadingSpaces /= 2;
+		}
+
+		v10 = v34;
+		for ( ; LeadingSpaces ; LeadingSpaces-- )			// fill start spaces
+			*v10++ = ' ';
+		
+		j = MessageString;
+		while ( *j )		// copy message into buffer
+			*v10++ = *j++;
+		
+		j = &v34[strOffPaperLen(MessageString, fld_width)];
+		while ( v10 < j )	// fill trailing spaces
+			*v10++ = ' ';
+
+		*v10 = 0;
+		MessageString = v34;
+	}
+//-----------------------------------------------------
+    if ( pr_out & 1 ) // true if output stream is going to the screen (not a file).
+    {
+        if ( TAB )		// Add a TAB seperator char if we are the last print element *OR* <CR> doesn't follow us
+        {
+			if (!prtab || !prtab->NextPR || ((v23 = PRARR(prtab->NextPR)) && v23->ReservedFlags != 0x04))
+            {
+                src[0] = TAB;
+                src[1] = 0;
+                strcat(MessageString, src);
+            }
+        }
+        toscreen(_cx, _cy, 0, lenstr(MessageString), MessageString, 0, 64, 1);
+    }
+	else	// we are sending output to a file!
+	{
+		if ( *MessageString )
+		{
+			if ( csv )
+			{
+				MsgLen = strlen(MessageString);
+				if (isspace(*MessageString) || isspace(MessageString[MsgLen - 1]) || strchr(MessageString, '"') || strchr(MessageString, ',')	|| strchr(MessageString, '\n') )
+				{
+					addQuotes = true;
+					if ( fputc('"', stream) == -1 )
+						return *(int*)__errno_location();
+				}
+				else
+					addQuotes = false;
+				
+				v19 = MessageString;				// output the string.  Any " double quote chars are shown as *two* double quotes ""
+				for (v20 = 0 ; MsgLen > v20 ; v19++, v20++)
+				{
+					if ( (*v19 == '"' && fputc('"', stream) == -1) || fputc(*v19, stream) == -1 )
+						return *(int*)__errno_location();
+				}
+				if ( addQuotes )
+				{
+					if ( fputc('"', stream) == -1 )
+						return *(int*)__errno_location();
+				}
+			}
+			else
+			{
+				if ( fputs(MessageString, stream) == -1 )
+					return *(int*)__errno_location();
+			}
+		}
+
+		if ( csv )
+		{
+			// if next print item is a <CR>, return without printing seperator char
+			if ( prtab && prtab->NextPR && (v23 = PRARR(prtab->NextPR)) && v23->ReservedFlags == 0x04)
+				return 0;
+
+			if ( TAB && TAB != ' ')
+				v24 = TAB;	// if TAB set, use it as the separator, otherwise
+			else
+				v24 = ',';	// use comma
+
+			if ( fputc(v24, stream) == -1 )
+				return *(int*)__errno_location();
+		}
+		else
+		{
+			// if TAB is not set, *or* next print item is a <CR>, return without printing seperator char
+			if ( !TAB || prtab && prtab->NextPR && (v23 = PRARR(prtab->NextPR)) && v23->ReservedFlags == 0x04)
+				return 0;
+			if ( fputc(TAB, stream) == -1 )
+				return *(int*)__errno_location();
+		}
+	}
+
+	return 0;	// exit_success
+}
+
+short prfield(PRTAB *prtab)
+{
+    PRTAB *prtb;
+	ENTAB *entb;
+	FILE *stream;
+	char *v34;
+	FLDdesc *fld;
+
+    double v27;
+	
+    unsigned int v4;
+	unsigned int v38;
+	int FLDlen;
+	int width_save;
+	int v12;
+	
+	short Repeat_Width;
+	short Repeat_Count;
+    short v3;
+	short elemno;
+	
+    bool pr4_bit_11;	// flag bits in prtab->WIDTH_FLAGS
+    bool align_centre;
+    bool align_right;
+    bool align_left;
+    bool varPrinted;
+    bool eop_checked;
+	
+	char WidthVarType;
+	char VarType;
+	
+    FLDdesc fld2;
+    char fmt_mask[112];		// space to store any string mask for variable formatting
+	char StrBuffer[8216];
+	
+	//char debugbuff[20];
+
+    prtb = prtab;
+    eop_checked = false;
+
+	if ( pr_out & 1 )		// console out, save to screen buffer
+        stream = stderr;
+    else if ( pr_out & 2 )	// Output is being re-directed to a file, don't save screen output
+		stream = stdout;
+    else
+		stream = op;		// Assume this is piped output?
+
+    while ( prtb )			// prtab can define multiple items. Chains on prtb->NextPR
+    {
+        v4 = prtb->WIDTH_FLAGS;
+										// 0000-0100-0000-0000   0x0400	// signifies numeric value?
+        pr4_bit_11   = (v4 >> 11) & 1;	// 0000-1000-0000-0000   0x0800	// default?
+        align_centre = (v4 >> 12) & 1;	// 0001-0000-0000-0000   0x1000	// centre aligned: ,c
+        align_right  = (v4 >> 13) & 1;	// 0010-0000-0000-0000   0x2000	// right aligned:  ,r or ,$ 
+        align_left   = (v4 >> 14) & 1;	// 0100-0000-0000-0000   0x4000 // left aligned:   ,l or ,^
+
+//-------------------------------
+        if ( prtb->ReservedFlags )		// is this PRTAB trying to output a 'reserved' value?
+            fld = 0;
+        else							// if not, get the variable data pointers
+            fld = getftf(ENARR(prtb->VAR_ENTno), 1, &fld2);
+		
+		//printf("\n_prfield 280: v4 = %s\n",DumpShortBits(v4, debugbuff));
+		//printf("_prfield 285: (VAR_ENTno = %3d, WIDTH_ENTno = %3d, WIDTH_FLAGS = x%04X, ReservedFlags = x%04X\n",prtb->VAR_ENTno,prtb->WIDTH_ENTno,prtb->WIDTH_FLAGS,prtb->ReservedFlags);
+//----------------------------
+		// find the expression which defines what we are outputting.
+		//if ( prtb->VAR_ENTno && (entb = &enarr.TableAddr[prtb->VAR_ENTno - 1]) != 0 )
+		if ( (entb = ENARR(prtb->VAR_ENTno)) != 0 )
+            VarType = getetype(entb);
+        else
+            VarType = 0;
+//-----------------------------
+		// Find the expression which defines the required width, or number of times to repeat (\n)
+        //if ( prtb->WIDTH_ENTno && (entb = &enarr.TableAddr[prtb->WIDTH_ENTno - 1]) != 0 )
+        if ( (entb = ENARR(prtb->WIDTH_ENTno)) != 0 )
+            WidthVarType = getetype(entb);
+        else
+            WidthVarType = 0;
+//------------------------------        
+		if ( WidthVarType == 'C' )				// string variable (or static) usually means a "mask" type
+        {
+            //exptobuf(fmt_mask, ENARR(prtb->WIDTH_ENTno), 0);
+            exptobuf(fmt_mask, entb , 0);
+            Repeat_Width = 0;
+        }
+        else
+        {
+            if ( prtb->WIDTH_ENTno )			// variable describes the width, evaluate as integer
+                Repeat_Width = evalint( entb );
+                //Repeat_Width = evalint(&enarr.TableAddr[prtb->WIDTH_ENTno - 1]);
+            else
+                Repeat_Width = prtb->WIDTH_FLAGS & 0xFFFF83FF;       // 1000-0011-1111-1111	mask out bits 14 downto 10
+            
+			if ( !Repeat_Width && prtb->WIDTH_FLAGS & 0x0400 && fld )
+                Repeat_Width = getdwid(fld);
+        }
+//----------------------------
+        width_save = Repeat_Width;
+        if ( align_centre || align_left || align_right || !justify && pr4_bit_11 )
+            Repeat_Width = 0;
+
+//----------------------------
+        varPrinted = false;
+        v12 = prtb->ReservedFlags;
+		switch (v12)
+		{
+		// These are all reserved name special flags:
+		case 0x0008:	// 'date'				= sysdate()
+		case 0x0010:	// 'time'				= systime()
+		case 0x0020:	// 'pname'
+		case 0x0040:	// 'uname'
+		case 0x0080:	// 'pid'
+		case 0x0100:	// 'uid'
+		case 0x0200:	// 'login'
+		case 0x0400:	// 'tty'
+		case 0x0800:	// 'nname'				= getnodename()
+		case 0x4000:	//          ?????
+            if ( Repeat_Width )
+                sprintf(StrBuffer, "%-*.*s", Repeat_Width, Repeat_Width, getresv(v12));
+            else
+                cdbcpystr(StrBuffer, getresv(v12), 0);
+			break;
+
+		case 0x0001:				// 'cl' or clear line	*** doesn't trigger end of page processing ***
+            erase_line();
+            for ( Repeat_Count = Repeat_Width - 1; Repeat_Count > 0; --Repeat_Count )	// in this case, Repeat_Width is a repeat counter
+            {
+                _cx = 1;
+                ++_cy;
+                if ( _li < _cy )	// ran off the end of the page, reset to start of screen.  *** should stay on last line instead?? ***
+                    _cy = 1;
+                erase_line();
+            }
+            fflush(stderr);
+            varPrinted = true;
+			break;
+
+		case 0x0002:				//	"\f" <Form Feed> 
+			if ( pr_out & 1 )						// ignore form feed if we are talking to a console
+				varPrinted = true;
+			else if ( fputc('\f', stream) == -1 )
+			    return *(int*)__errno_location();	// error_exit
+			break;
+
+		case 0x0004:				// "\n" <New Line>
+			if ( !eop_checked )
+				chkeop();
+
+			if ( pr_out & 1 )		// output is a console
+			{
+				
+				++_cy;				// bump current line number
+				_cx = 1;			// reset column to left hand side of screen
+
+				incvar(v_LCOUNT, 1);		// LCOUNT 19
+				for ( Repeat_Count = Repeat_Width - 1; Repeat_Count > 0; --Repeat_Count )
+				{
+					chkeop();
+					++_cy;
+					if ( _li <= _cy )
+						_cy = 1;
+					incvar(v_LCOUNT, 1);	// "LCOUNT"
+				}
+				eop_checked = false;
+				if ( _li <= _cy )
+				    _cy = 1;
+			    at();
+			    varPrinted = true;
+			}
+			else					// output is a file or piped
+			{
+				if ( dos && fputc('\r', stream) == -1 || fputc('\n', stream) == -1 )	// dos mode. \n == (\r + \n)
+					return *(int*)__errno_location();
+				incvar(v_LCOUNT, 1);	// "LCOUNT"
+				
+				Repeat_Count = Repeat_Width - 1;		// Repeat_Width == number of times to repeat here. ZERO if not specified
+				if ( Repeat_Count <= 0 )
+				{
+					eop_checked = false;
+					varPrinted = true;
+					goto LABEL_188;
+				}
+				while ( 1 )
+				{
+					chkeop();
+					
+					if ( dos && fputc('\r', stream) == -1 || fputc('\n', stream) == -1)	// <cr> and <\n> for dos, only <\n> for Linux/unix/osx
+						return *(int*)__errno_location();	// error exit
+					incvar(v_LCOUNT, 1);	// "LCOUNT"
+					
+					--Repeat_Count;
+					if ( Repeat_Count <= 0 )
+					{
+						eop_checked = false;
+						varPrinted = true;
+						goto LABEL_188;
+					}
+				}
+			}
+			break;
+
+		case 0x1000:			// = 'cr' Carriage return sequence
+            fflush(stream);
+            if ( !eop_checked )
+            {
+                chkeop();
+                eop_checked = true;
+            }
+            if ( pr_out & 1 )						// talking to a console, move cursor to left hand side of screen
+            {
+                _cx = 1;
+			    at();
+            }
+			else if ( fputc('\r', stream) == -1 )	// talking to file/pipe
+				return *(int*)__errno_location();	// error_exit
+            
+			varPrinted = true;
+			break;
+		
+		case 0x2000:
+            return 0x2000u;	// ?????????????? Presumably reserved for expansion?
+			break;
+
+		default:
+			if ( fld && fld->FLDstat & fld_ARRAY )	// $0002; Trying to print whole Array (no subscript entered)
+			{
+				FLDlen = (fld->FLDtype == 'C') ? fld->FLDlen + 1 : sizeof(double);
+				
+				fld->FLDdata = fld->FLDname;	// Array vars hang off FLDname
+				elemno = 0;
+				while (fld->FLDelemID > elemno)	// fld->FLDelemID == size of array
+				{
+					switch (VarType)
+					{
+					case 'D':
+					    if ( WidthVarType == 'C' )		// format mask
+					        dfmt(StrBuffer, fmt_mask, *(double *)fld->FLDdata);
+					    else
+					        fldtobuf(StrBuffer, fld, Repeat_Width);
+					    if ( csv )
+					        trim(StrBuffer);
+						break;
+
+					case 'T':
+				        if ( WidthVarType == 'C' )		// format mask
+				            tfmt(StrBuffer, fmt_mask, *(double *)fld->FLDdata);
+						else
+							fldtobuf(StrBuffer, fld, Repeat_Width);
+						break;
+
+					case 'C':
+						fldtobuf(StrBuffer, fld, strOffPaperLen(fld->FLDdata, Repeat_Width));
+						break;
+
+					default:
+				        if ( !csv && WidthVarType == 'C' )		// **** this means that you can't use a format mask with csv files ****!!!
+							nfmt(StrBuffer, fmt_mask, *(double *)fld->FLDdata);
+						else
+							fldtobuf(StrBuffer, fld, Repeat_Width);
+						break;
+					}
+
+					if ( !eop_checked )
+				    {
+						chkeop();
+				        eop_checked = true;
+					}
+				    v3 = _prfield(stream, 0, fld, StrBuffer, Repeat_Width, align_centre, align_left, align_right);
+				    if ( v3 )
+						return v3;
+				    elemno++;
+				    fld->FLDdata = (char *)fld->FLDdata + FLDlen;	// bump to next array element's data area
+				}
+				varPrinted = true;
+			}
+			else	// Normal variable or Table field
+			{
+				switch (VarType)
+				{
+				case 'D':
+				    if ( WidthVarType == 'C' )
+				        dfmt(StrBuffer, fmt_mask, evalnum(ENARR(prtb->VAR_ENTno), VarType));
+				    else
+				        exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), Repeat_Width);
+
+					if ( csv )
+				        trim(StrBuffer);
+					break;
+				
+				case 'T':
+				    if ( WidthVarType == 'C' )
+				        tfmt(StrBuffer, fmt_mask, evalnum(ENARR(prtb->VAR_ENTno), VarType));
+					else
+						exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), Repeat_Width);
+					break;
+
+				case 'C':
+					if ( csv )
+					{
+					    exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), 0);
+					    break;
+					}
+					if ( !Repeat_Width )
+					{
+						if ( csv )//*********  shouldn't be reachable?
+							v38 = 0;
+						else
+							v38 = Repeat_Width;
+						exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), v38);
+					}
+					else
+					{
+						v38 = 3 * Repeat_Width;
+						if ( v38 >= 8192 )	// ensure we don't overrun buffer!
+						    v38 = 8191 ;
+						exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), v38);
+						StrBuffer[strOffPaperLen(StrBuffer, Repeat_Width)] = 0;
+					}
+					break;
+				default:					// all other variable types
+					if ( csv )				// **** this means that you can't use a format mask with csv files ****!!!
+					{
+					    exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), 0);
+					    break;
+					}
+					if ( WidthVarType == 'C' )	// format mask
+					{
+						v27 = evalnum(ENARR(prtb->VAR_ENTno), VarType);
+						nfmt(StrBuffer, fmt_mask, clround(v27, VarType));
+					}
+					else
+					{
+					    if ( csv ) //*********  shouldn't be reachable?
+					        v38 = 0;
+					    else
+					        v38 = Repeat_Width;
+					    exptobuf(StrBuffer, ENARR(prtb->VAR_ENTno), v38);
+					}
+					break;
+				}
+			}
+			break;
+		}
+
+LABEL_188:
+        if ( !varPrinted )
+        {
+            if ( !eop_checked )
+            {
+                chkeop();
+                eop_checked = true;
+            }
+            v3 = _prfield(stream, prtb, fld, StrBuffer, width_save, align_centre, align_left, align_right);
+            if ( v3 )
+                return v3;	// error_exit. normally -1
+        }
+        prtb = PRARR(prtb->NextPR);
+    } // end while(prtb)
+	fflush(stream);
+	return 0;			// exit_success!
+}
+
+#endif
+
+@
+
+
+1.8
+log
+@intermediate
+@
+text
+@d13 1
+a13 1
+short _prfield(FILE *stream, PRTAB *prtab, FLDdesc *fld, char *a4, int fld_width, int align_centre, int align_left, int align_right)
+d29 1
+a29 1
+	//printf("\n_prfield : a4 = %s, fld_width = %d, align_left = %d, align_centre = %d, align_right = %d\n",a4,fld_width,align_left, align_centre,align_right);
+d31 1
+a31 1
+        MessageString = a4;
+d33 1
+a33 1
+        MessageString = convstr(a4, 1);
+d144 18
+a161 13
+    PRTAB *prtb; // esi@@1
+    ENTAB *entb; // eax@@15
+    FILE *stream; // [sp+44h] [bp-20D4h]@@7
+    char *v34; // [sp+0h] [bp-2118h]@@132
+    FLDdesc *fld;
+
+    double v27; // fst7@@179
+
+    unsigned int v4; // edx@@8
+    unsigned int v38; // [sp+8h] [bp-2110h]@@130
+    int v12; // eax@@46
+    int FLDlen; // [sp+48h] [bp-20D0h]@@114
+    int width_save; // [sp+4Ch] [bp-20CCh]@@40
+a162 7
+    short v3; // edx@@5
+    short Repeat_Width; // edi@@32
+    short j; // di@@76
+    short v15; // di@@87
+    short i; // di@@99
+    short v45; // [sp+50h] [bp-20C8h]@@116
+
+d170 3
+a172 3
+	char WidthVarType; // [sp+42h] [bp-20D6h]@@26
+    char VarType; // [sp+43h] [bp-20D5h]@@19
+
+d175 1
+a175 1
+	char v55[8216];
+d249 2
+a250 2
+		case 0x0008:	// 'date'
+		case 0x0010:	// 'time'
+d257 1
+a257 1
+		case 0x0800:	//          ?????
+d260 1
+a260 1
+                sprintf(v55, "%-*.*s", Repeat_Width, Repeat_Width, getresv(v12));
+d262 1
+a262 1
+                cdbcpystr(v55, getresv(v12), 0);
+d265 1
+a265 1
+		case 0x0001:				// 'cl' or clear line
+d267 1
+a267 1
+            for ( i = Repeat_Width - 1; i > 0; --i )	// in this case, Repeat_Width is a repeat counter
+d271 1
+a271 1
+                if ( _li < _cy )	// ran off the end of the page, reset to start of screen.
+d280 4
+a283 6
+			if ( !(pr_out & 1) )	// ignore form feed if we are talking to a console
+			{
+			    if ( fputc('\f', stream) == -1 )
+				    return *(int*)__errno_location();	// error_exit
+			}
+			varPrinted = true;
+d287 4
+a290 1
+			if ( pr_out & 1 )
+a291 2
+				if ( !eop_checked )
+					chkeop();
+d293 2
+a294 2
+				++_cy;		// bump current line number
+				_cx = 1;	// reset column to left hand side of screen
+d296 2
+a297 2
+				incvar(v_LCOUNT, 1);			// LCOUNT 19
+				for ( j = Repeat_Width - 1; j > 0; --j )
+a309 1
+			    goto LABEL_188;
+d311 1
+a311 9
+			if ( !eop_checked )
+			    chkeop();
+			
+			if ( dos && fputc('\r', stream) == -1 || fputc('\n', stream) == -1 )	// dos mode. \n == (\r + \n)
+			    return *(int*)__errno_location();
+
+			incvar(v_LCOUNT, 1);	// "LCOUNT"
+			v15 = Repeat_Width - 1;
+			if ( v15 <= 0 )
+d313 2
+a314 14
+				eop_checked = false;
+				varPrinted = true;
+				goto LABEL_188;
+			}
+			while ( 1 )
+			{
+				chkeop();
+				if ( dos )	// <cr> and <\n> for dos, only <\n> for Linux/unix/osx
+				{
+					if ( fputc('\r', stream) == -1 )
+					    break;
+				}
+				if ( fputc('\n', stream) == -1 )
+					break;
+d316 3
+a318 2
+				--v15;
+				if ( v15 <= 0 )
+d324 16
+a340 1
+		    return *(int*)__errno_location();
+d350 1
+a350 1
+            if ( pr_out & 1 )	// talking to a console, move cursor to left hand side of screen
+d355 4
+a358 6
+			else
+			{
+				if ( fputc('\r', stream) == -1 )
+				    return *(int*)__errno_location();	// error_exit
+			}
+            varPrinted = true;
+d366 1
+a366 1
+			if ( fld && fld->FLDstat & 0x0002 )	// Trying to print whole Array (no subscript entered)
+d371 2
+a372 2
+				v45 = 0;
+				while (fld->FLDelemID > v45)
+d378 1
+a378 1
+					        dfmt(v55, fmt_mask, *(double *)fld->FLDdata);
+d380 1
+a380 1
+					        fldtobuf(v55, fld, Repeat_Width);
+d382 1
+a382 1
+					        trim(v55);
+d387 1
+a387 1
+				            tfmt(v55, fmt_mask, *(double *)fld->FLDdata);
+d389 1
+a389 1
+							fldtobuf(v55, fld, Repeat_Width);
+d393 1
+a393 1
+						fldtobuf(v55, fld, strOffPaperLen(fld->FLDdata, Repeat_Width));
+d398 1
+a398 1
+							nfmt(v55, fmt_mask, *(double *)fld->FLDdata);
+d400 1
+a400 1
+							fldtobuf(v55, fld, Repeat_Width);
+d409 1
+a409 1
+				    v3 = _prfield(stream, 0, fld, v55, Repeat_Width, align_centre, align_left, align_right);
+d412 1
+a412 1
+				    v45++;
+d422 2
+a423 2
+				    if ( WidthVarType == 'C' )					// format mask
+				        dfmt(v55, fmt_mask, evalnum(ENARR(prtb->VAR_ENTno), VarType));
+d425 1
+a425 1
+				        exptobuf(v55, ENARR(prtb->VAR_ENTno), Repeat_Width);
+d428 1
+a428 1
+				        trim(v55);
+d432 2
+a433 2
+				    if ( WidthVarType == 'C' )					// format mask
+				        tfmt(v55, fmt_mask, evalnum(ENARR(prtb->VAR_ENTno), VarType));
+d435 1
+a435 1
+						exptobuf(v55, ENARR(prtb->VAR_ENTno), Repeat_Width);
+d441 1
+a441 1
+					    exptobuf(v55, ENARR(prtb->VAR_ENTno), 0);
+d450 1
+a450 1
+						exptobuf(v55, ENARR(prtb->VAR_ENTno), v38);
+d457 2
+a458 2
+						exptobuf(v55, ENARR(prtb->VAR_ENTno), v38);
+						v55[strOffPaperLen(v55, Repeat_Width)] = 0;
+d464 1
+a464 1
+					    exptobuf(v55, ENARR(prtb->VAR_ENTno), 0);
+d470 1
+a470 1
+						nfmt(v55, fmt_mask, clround(v27, VarType));
+d478 1
+a478 1
+					    exptobuf(v55, ENARR(prtb->VAR_ENTno), v38);
+d494 1
+a494 1
+            v3 = _prfield(stream, prtb, fld, v55, width_save, align_centre, align_left, align_right);
+@
+
+
+1.7
+log
+@intermediate
+@
+text
+@a15 1
+    short LeadingSpaces;
+d19 2
+d22 2
+a23 1
+    char v24;
+a24 2
+    int MsgLen;
+    char *MessageString;
+d26 1
+d36 1
+a36 1
+// 
+d69 1
+a69 1
+        if ( TAB )
+a70 1
+			// Add a TAB seperator char if we are the last print element *OR* <CR> doesn't follow us
+a78 1
+        return 0;
+a83 1
+
+d138 1
+d147 2
+d150 8
+a158 1
+    unsigned int v4; // edx@@8
+a159 1
+    int v12; // eax@@46
+a162 10
+    double v27; // fst7@@179
+    double v28; // fst7@@179
+    char *v34; // [sp+0h] [bp-2118h]@@132
+    unsigned int v37; // [sp+8h] [bp-2110h]@@130
+    unsigned int v38; // [sp+8h] [bp-2110h]@@130
+    unsigned int v39; // [sp+8h] [bp-2110h]@@170
+    char v40; // [sp+42h] [bp-20D6h]@@26
+    char v41; // [sp+43h] [bp-20D5h]@@19
+    int v43; // [sp+48h] [bp-20D0h]@@114
+    int a5; // [sp+4Ch] [bp-20CCh]@@40
+a163 2
+    signed int v46; // [sp+54h] [bp-20C4h]@@1
+    signed int v47; // [sp+58h] [bp-20C0h]@@46
+d169 5
+a174 1
+    FLDdesc *fld;
+d176 3
+a178 3
+    char v54[112]; // [sp+90h] [bp-2088h]@@32
+    char v55[8216]; // [sp+100h] [bp-2018h]@@109
+
+d182 1
+a182 1
+    v46 = 0;
+d191 1
+a191 1
+    while ( prtb )
+d212 1
+a212 1
+            v41 = getetype(entb);
+d214 1
+a214 1
+            v41 = 0;
+d219 1
+a219 1
+            v40 = getetype(entb);
+d221 1
+a221 1
+            v40 = 0;
+d223 1
+a223 1
+		if ( v40 == 'C' )
+d225 2
+a226 1
+            exptobuf(v54, ENARR(prtb->WIDTH_ENTno), 0);
+d231 3
+a233 2
+            if ( prtb->WIDTH_ENTno )
+                Repeat_Width = evalint(&enarr.TableAddr[prtb->WIDTH_ENTno - 1]);
+d241 1
+a241 1
+        a5 = Repeat_Width;
+d244 1
+a244 1
+        v47 = 0;
+d246 1
+d278 1
+a278 1
+            v47 = 1;
+d287 1
+a287 1
+			v47 = 1;
+d293 1
+a293 1
+				if ( !v46 )
+d305 1
+a305 1
+					_cy = 1;
+d308 1
+a308 1
+				v46 = 0;
+d312 1
+a312 1
+			    v47 = 1;
+d315 1
+a315 1
+			if ( !v46 )
+d325 2
+a326 2
+				v46 = 0;
+				v47 = 1;
+d343 2
+a344 2
+					v46 = 0;
+					v47 = 1;
+d353 1
+a353 1
+            if ( !v46 )
+d356 1
+a356 1
+                v46 = 1;
+d368 1
+a368 1
+            v47 = 1;
+d378 1
+a378 1
+				v43 = (fld->FLDtype == 'C') ? fld->FLDlen + 1 : sizeof(double);
+d384 1
+a384 1
+					switch (v41)
+d387 2
+a388 2
+					    if ( v40 == 'C' )
+					        dfmt(v55, v54, *(double *)fld->FLDdata);
+d396 2
+a397 2
+				        if ( v40 == 'C' )
+				            tfmt(v55, v54, *(double *)fld->FLDdata);
+d407 2
+a408 2
+				        if ( !csv && v40 == 'C' )
+							nfmt(v55, v54, *(double *)fld->FLDdata);
+d414 1
+a414 1
+					if ( !v46 )
+d417 1
+a417 1
+				        v46 = 1;
+d422 2
+a423 2
+				    ++v45;
+				    fld->FLDdata = (char *)fld->FLDdata + v43;
+d425 1
+a425 1
+				v47 = 1;
+d429 1
+a429 1
+				switch (v41)
+d432 2
+a433 2
+				    if ( v40 == 'C' )
+				        dfmt(v55, v54, evalnum(ENARR(prtb->VAR_ENTno), v41));
+d442 2
+a443 2
+				    if ( v40 == 'C' )
+				        tfmt(v55, v54, evalnum(ENARR(prtb->VAR_ENTno), v41));
+d456 1
+a456 1
+						if ( csv )//*********
+d464 4
+a467 4
+						v39 = 3 * Repeat_Width;
+						if ( v39 >= 8192 )	// ensure we don't overrun buffer!
+						    v39 = 8191 ;
+						exptobuf(v55, ENARR(prtb->VAR_ENTno), v39);
+d472 1
+a472 1
+					if ( csv )
+d477 6
+a482 1
+					if ( v40 != 'C' )
+d484 1
+a484 1
+					    if ( csv ) //*********
+a489 5
+					else
+					{
+						v27 = evalnum(ENARR(prtb->VAR_ENTno), v41);
+						nfmt(v55, v54, clround(v27, v41));
+					}
+d497 1
+a497 1
+        if ( !v47 )
+d499 1
+a499 1
+            if ( !v46 )
+d502 1
+a502 1
+                v46 = 1;
+d504 1
+a504 1
+            v3 = _prfield(stream, prtb, fld, v55, a5, align_centre, align_left, align_right);
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@d315 1
+d376 1
+a376 4
+				if ( fld->FLDtype == 'C' )
+				    v43 = (fld->FLDlen + 1);
+				else
+				    v43 = sizeof(double);	// 8;
+a434 1
+					
+@
+
+
+1.5
+log
+@major tidy-up, logic minimisation
+@
+text
+@d8 1
+d13 1
+a13 1
+short _prfield(FILE *stream, PRTAB *prtab, FLDdesc *fld, char *a4, int a5, int align_centre, int align_left, int align_right)
+d15 12
+a26 19
+    //PRTAB *v15; // eax@@24
+    //PRTAB *v16; // eax@@26
+    PRTAB *v23; // eax@@55
+    short v8; // edx@@8
+    short v9; // ax@@9
+    char *v10; // edi@@13
+    short i; // dx@@13
+    char *j; // esi@@15
+    char *k; // esi@@17
+    const unsigned short **v18; // eax@@33
+    char *v19; // esi@@41
+    signed int v20; // edi@@41
+    //int v21; // eax@@47
+    char v24; // eax@@60
+    bool addQuotes; // [sp+20h] [bp-4028h]@@33
+    int v31; // [sp+24h] [bp-4024h]@@33
+    char *MessageString; // [sp+28h] [bp-4020h]@@2
+    char src[2]; // [sp+2Eh] [bp-401Ah]@@29
+    char v34[16408]; // [sp+30h] [bp-4018h]@@13
+d28 1
+a28 1
+	//printf("_prfield\n");
+a32 21
+    
+	if ( !align_centre )
+    {
+        if ( align_left )
+            goto LABEL_8;
+        if ( !align_right )
+            goto LABEL_20;	// no alignment specified
+    }
+    if ( !align_left )
+    {
+        v9 = a5 - strOnPaperLen(MessageString);
+        v8 = v9;
+        if ( v9 < 0 )
+            v8 = 0;
+
+        if ( align_centre )
+            v8 /= 2;
+        goto LABEL_13;
+    }
+LABEL_8:
+    v8 = 0;
+d34 11
+a44 4
+LABEL_13:
+    v10 = v34;
+    for ( i = v8 - 1; i != -1; --i )
+        *v10++ = ' ';
+d46 3
+a48 2
+    for ( j = MessageString; *j; ++v10 )
+        *v10 = *j++;
+d50 11
+a60 8
+    for ( k = &v34[strOffPaperLen(MessageString, a5)]; v10 < k; ++v10 )
+        *v10 = ' ';
+
+    *v10 = 0;
+    
+	MessageString = v34;
+
+LABEL_20:
+d62 4
+d88 2
+a89 3
+				v31 = strlen(MessageString);
+				v18 = __ctype_b_loc();					// 0x2000 == isspace()
+				if ((*v18)[*MessageString] & 0x2000 || (*v18)[MessageString[v31 - 1]] & 0x2000 || strchr(MessageString, '"') || strchr(MessageString, ',')	|| strchr(MessageString, '\n') )
+d98 2
+a99 15
+				v19 = MessageString;
+				/*v20 = 0;
+				if ( v31 > v20 )
+				{
+					while ( (*v19 != '"' || fputc('"', stream) != -1) && fputc(*v19, stream) != -1 )
+					{
+						++v19;
+						++v20;
+						if ( v20 >= v31 )
+							goto LABEL_46;
+					}
+					return *(int*)__errno_location();
+				}*/
+
+				for (v20 = 0 ; v31 > v20 ; v19++, v20++)
+a103 2
+
+		LABEL_46:
+d190 1
+a190 1
+		stream = op;		// Not sure if this reachable?
+d196 1
+a196 1
+        pr4_bit_11 = (v4 >> 11) & 1;	// 0000-1000-0000-0000   0x0800	// default?
+d198 3
+a200 2
+        align_right = (v4 >> 13) & 1;	// 0010-0000-0000-0000   0x2000	// right aligned:  ,r or ,$ 
+        align_left = (v4 >> 14) & 1;	// 0100-0000-0000-0000   0x4000 // left aligned:   ,l or ,^
+d367 1
+d379 1
+d437 1
+a496 1
+//----------------------------------------
+d507 1
+a507 1
+                return v3;
+d512 1
+a512 1
+	return 0;
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d14 2
+a15 3
+    PRTAB *v15; // eax@@24
+    PRTAB *v16; // eax@@26
+    PRTAB *v22; // eax@@53
+a16 2
+    PRTAB *v25; // eax@@66
+    PRTAB *v26; // eax@@68
+a22 1
+    int v17; // eax@@30
+d28 2
+a29 2
+    bool v30; // [sp+20h] [bp-4028h]@@33
+    unsigned int v31; // [sp+24h] [bp-4024h]@@33
+d78 1
+a78 3
+
+//-----------------------------------------
+    if ( pr_out & 1 ) // true if output stream is a srceen (not a file).
+d82 2
+a83 2
+			// ******* this is wrong ********     (PRTAB*) 10
+            if ( !prtab || !prtab->NextPR || (v15 = &prarr.TableAddr[prtab->NextPR], v15 == (PRTAB *)10) || (!prtab->NextPR ? (v16 = 0) : (v16 = v15 - 1), v16->ReservedFlags != 4) )
+d90 1
+a90 2
+        v17 = lenstr(MessageString);
+        toscreen(_cx, _cy, 0, v17, MessageString, 0, 64, 1);
+d93 31
+a123 3
+//-----------------------------------------
+    if ( !*MessageString )
+        goto LABEL_50;
+d125 5
+a129 26
+    if ( csv )
+    {
+        v31 = strlen(MessageString);
+        v18 = __ctype_b_loc();					// 0x2000 == isspace()
+        if ((*v18)[*MessageString] & 0x2000 || (*v18)[MessageString[v31 - 1]] & 0x2000 || strchr(MessageString, '"') || strchr(MessageString, ',')	|| strchr(MessageString, '\n') )
+		{
+            v30 = true;
+			if ( fputc('"', stream) == -1 )
+				return *(int*)__errno_location();
+		}
+		else
+			v30 = false;
+        
+		v19 = MessageString;
+        v20 = 0;
+        if ( (signed int)v31 > v20 )
+        {
+            while ( (*v19 != '"' || fputc('"', stream) != -1) && fputc(*v19, stream) != -1 )
+            {
+                ++v19;
+                ++v20;
+                if ( v20 >= (signed int)v31 )
+                    goto LABEL_46;
+            }
+            return *(int*)__errno_location();
+        }
+d131 2
+a132 20
+LABEL_46:
+        if ( v30 )
+        {
+            //v21 = fputc('"', stream);
+		    //if ( v21 != -1 )
+			//	goto LABEL_50;
+			//return *(int*)__errno_location();
+		    if ( fputc('"', stream) == -1 )
+				return *(int*)__errno_location();
+        }
+//-------------------------------
+LABEL_50:
+        if ( csv )
+        {
+			printf("_prfield csv end tag, prtab = x%08X\n",prtab);
+            if ( prtab && prtab->NextPR)
+            {
+				printf("prtab->NextPR = %d\n",prtab->NextPR);
+				v22 = &prarr.TableAddr[prtab->NextPR];
+				if ( v22 != (PRTAB *)10 )   // some hokey GCC optimisation here
+d134 2
+a135 3
+					v23 = prtab->NextPR ? &v22[-1] : 0;
+					if ( v23->ReservedFlags == 0x04 )
+						return 0;
+d137 18
+a154 5
+            }
+            if ( TAB != ' ' && TAB )
+                v24 = TAB;	// if TAB set, use it as the separator, otherwise
+            else
+                v24 = ',';	// use comma
+d158 6
+a163 6
+			return 0;	// exit_success
+        }
+        else
+        {
+            if ( !TAB || prtab && prtab->NextPR && (v25 = &prarr.TableAddr[prtab->NextPR], v25 != (PRTAB *)10) && (!prtab->NextPR ? (v26 = 0) : (v26 = v25 - 1), v26->ReservedFlags == 4) )
+                return 0;
+d166 3
+a168 10
+			return 0;
+        }
+    }
+    //v21 = fputs(MessageString, stream);
+    //if ( v21 != -1 )
+    //    goto LABEL_50;
+    //return *(int*)__errno_location();
+    if ( fputs(MessageString, stream) == -1 )
+	    return *(int*)__errno_location();
+	goto LABEL_50;
+@
+
+
+1.3
+log
+@after TableAddr fixes.
+@
+text
+@d107 1
+a107 1
+        v18 = __ctype_b_loc();
+d119 1
+a119 1
+        if ( (signed int)v31 > 0 )
+d145 2
+a146 1
+            if ( prtab )
+d148 8
+a155 10
+                if ( prtab->NextPR )
+                {
+                    v22 = &prarr.TableAddr[prtab->NextPR];
+                    if ( v22 != (PRTAB *)10 )   // some hokey GCC optimisation here
+                    {
+                        v23 = prtab->NextPR ? &v22[-1] : 0;
+                        if ( v23->ReservedFlags == 4 )
+                            return 0;
+                    }
+                }
+d164 1
+a164 1
+			return 0;
+d168 1
+a168 2
+            if ( !TAB || prtab && prtab->NextPR && (v25 = &prarr.TableAddr[prtab->NextPR], v25 != (PRTAB *)10)
+              && (!prtab->NextPR ? (v26 = 0) : (v26 = v25 - 1), v26->ReservedFlags == 4) )
+d251 2
+a252 1
+		if ( prtb->VAR_ENTno && (entb = &enarr.TableAddr[prtb->VAR_ENTno - 1]) != 0 )	// v6 can only be 0 if enarr uninitialised!!
+d258 2
+a259 1
+        if ( prtb->WIDTH_ENTno && (entb = &enarr.TableAddr[prtb->WIDTH_ENTno - 1]) != 0 )// v8 can only be 0 if enarr uninitialised!!
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d247 1
+a247 1
+            fld = getftf(prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, 1, &fld2);
+d266 1
+a266 1
+            exptobuf(v54, prtb->WIDTH_ENTno ? &enarr.TableAddr[prtb->WIDTH_ENTno - 1]: 0, 0);
+d471 1
+a471 1
+				        dfmt(v55, v54, evalnum(prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, v41));
+d473 1
+a473 1
+				        exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, Repeat_Width);
+d481 1
+a481 1
+				        tfmt(v55, v54, evalnum(prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1]: 0, v41));
+d483 1
+a483 1
+						exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1]: 0, Repeat_Width);
+d489 1
+a489 1
+					    exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, 0);
+d498 1
+a498 1
+						exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, v38);
+d505 1
+a505 1
+						exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, v39);
+d512 1
+a512 1
+					    exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, 0);
+d521 1
+a521 1
+					    exptobuf(v55, prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, v38);
+d525 1
+a525 1
+						v27 = evalnum(prtb->VAR_ENTno ? &enarr.TableAddr[prtb->VAR_ENTno - 1] : 0, v41);
+d547 1
+a547 1
+        prtb = prtb->NextPR ? &prarr.TableAddr[prtb->NextPR - 1] : 0;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a24 1
+    char v13; // al@@16
+d30 1
+a30 1
+    int v21; // eax@@47
+d32 1
+a32 1
+    signed int v30; // [sp+20h] [bp-4028h]@@33
+d38 1
+d49 1
+a49 1
+            goto LABEL_20;
+d71 1
+a71 4
+    {
+        v13 = *j++;
+        *v10 = v13;
+    }
+d81 2
+d110 1
+a110 1
+            v30 = 1;
+d115 1
+a115 3
+		{
+			v30 = 0;
+		}
+d130 1
+d134 6
+a139 4
+            v21 = fputc('"', stream);
+		    if ( v21 != -1 )
+				goto LABEL_50;
+			return *(int*)__errno_location();
+d177 7
+a183 4
+    v21 = fputs(MessageString, stream);
+    if ( v21 != -1 )
+        goto LABEL_50;
+    return *(int*)__errno_location();
+a195 1
+    char v13; // zf@@58
+@

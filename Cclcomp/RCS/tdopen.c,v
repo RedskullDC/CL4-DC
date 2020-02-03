@@ -1,0 +1,594 @@
+head	1.5;
+access;
+symbols;
+locks
+	leslie:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2016.07.27.03.44.04;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.07.27.02.30.24;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.06.24.05.08.46;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2016.01.19.03.08.40;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.09.13.11.27;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.5
+log
+@split findtd off to common code
+@
+text
+@#ifndef TDOPEN_C
+#define TDOPEN_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"                 // for bit field values
+
+int tdopen(int TDno, char *TableName)
+{
+	DOMAINR *v21;
+	TDesc	*TTptr;
+	TDef	*tdef;
+	TDef	*v22;
+	TDef	*v9;
+	Qlen	*v11;
+	char	*j;
+	char	*v6;
+	FLDdesc *fld;
+	
+	int		result;
+	int		TDnoa;
+	int		TDno2;
+	unsigned int v12;
+	short	CRC;
+	short	NumFields;
+	short	v7;
+	size_t	v13;
+	short	v18;
+	
+	ELEMENTREC v26;
+	ELEMENTREC v27;
+	
+	//printf("tdopen() - sizeof(Qlen) = %d\n",sizeof(Qlen));
+
+	result = identify(TDno, TableName);
+	TDnoa = result;
+	if ( result >= 0 )
+	{
+		TTptr = &ttab[result];
+		TTptr->TTrtd = result;
+		v22 = tblrow(result);
+		result = -1;
+		if ( v22 )
+		{
+			CRC = 0;
+			tdef = v22;
+			for ( NumFields = 0; tdef->TDFentry; tdef++ )
+			{
+				CRC = pcrc(CRC, tdef, 2, 0x44u, 3u);	// allow signed value
+				NumFields++;
+			}
+			if ( !CRC )
+				CRC = 1;
+
+			TTptr->TableCRC		= CRC;
+			TTptr->TDworkarea1	= (char *)mmalloc(129u);
+			TTptr->NumFields	= NumFields;
+			TTptr->TTfields		= (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));	// Null terminated list, sizeof(FLDdesc) == 24
+			
+			TDno2 = identify(TDno, "elements");
+			if ( TDno2 < 0 )
+				TDno2 = identify(TDno, "domains");
+			if ( TDno2 > 0 )
+				tblrow(TDno2);              // dead code
+
+			tdef = v22;
+			for ( fld = TTptr->TTfields; tdef->TDFentry; tdef++ )
+			{
+				fld->FLDtype = gettype(tdef->TDFtype, tdef->TDFsize);
+				if ( TDno2 > 0 )
+				{
+					v6 = (char *)&v26;
+					zap((char*)&v26, sizeof(ELEMENTREC));		 // = 76 bytes
+					zap((char*)&v27, sizeof(ELEMENTREC));
+					itoms(&v26.TDFentry, tdef->TDFentry);
+					
+					v7 = retrieve(TDno2, (char *)&v26, (char *)&v26);
+					if ( v7 <= 0 )
+					{
+						sprintf(v27.FieldName, "%d", tdef->TDFentry);
+						if ( v7 < 0 )
+							dberror(v7, 0, TDno2);
+					}
+					else
+					{
+						v9 = tblrow(TDno2);
+						v21 = domsfp;
+						for ( j = (char *)&v27; v9->TDFentry; j = (char *)&v27 + v21->DomOffset )
+						{
+							domtox(j, v6, v9->TDFsize, v9->TDFtype);
+							v6 += v9->TDFsize;
+							v9++;
+							v21++;
+						}
+						if ( v27.FLDlen > 0 )
+						{
+							v11 = (Qlen *)getmem(sizeof(Qlen));	// sizeof(Qlen) == 16 
+							fld->FLDqlen = v11;
+							v11->Qdeflen = v27.FLDlen;
+							if ( fld->FLDtype == 'D' )
+								v11->Qdeflen = defDateWidth;
+						}
+					}
+					v12 = strlen(v27.FieldName) + 1;
+					v13 = v12 - 1;
+					if ( v12 != 1 )
+					{
+						if ( v13 >= 21 )
+							v13 = 20;
+						fld->FLDname = (char *)mmalloc(v13 + 1);
+						cpybuf(fld->FLDname, v27.FieldName, v13);
+					}
+				}
+					
+				// allocate space for data
+				if ( fld->FLDtype == 'C' )
+					fld->FLDdata = mmalloc(tdef->TDFsize + 1);
+				else if ( fld->FLDtype != 'S' && fld->FLDtype != 'K' )
+					fld->FLDdata = mmalloc(sizeof(double));
+				//else don't alloc any mem for FLDdata
+
+				// set type flags
+				fld->FLDstat |= fld_ZERO;		// set quick zero flag
+
+				if ( tdef->TDFtype & tdf_KEY)	// 0x0001 Key Field
+					 fld->FLDstat |= fld_KEY;	// 0x8000;
+				else
+					 fld->FLDstat &= ~fld_KEY;	// 0x7FFF;
+
+				fld->FLDelemID	= tdef->TDFentry;
+				fld->FLDlen		= tdef->TDFsize;
+				fld->TDFtype	= tdef->TDFtype;
+				fld++;
+			}
+			if ( TDno2 >= 0 )
+			{
+				v18 = release(TDno2);
+				if ( v18 < 0 )
+					 dberror(v18, 0, TDno2);
+			}
+			result = TDnoa;
+		}
+	}
+    return result;
+}
+
+int findtd(char *TableName, int DBno)
+{
+     TDesc	*TTptr;
+	 
+     int	result;
+	 int	TTno;
+	 size_t MaxLen;
+	 
+     result = -1;				// default to not found
+     if ( TableName )
+     {
+          MaxLen = strlen(TableName) + 1;
+          if ( DBno >= 0 )	// If true, allows search of both system *and* user tables
+          {
+               TTptr = ttab;
+               TTno = 0;
+               if ( no_ttabs > 0 )
+               {
+                    while ( TTptr->DBnumber != DBno || !cmpbuf(TableName, TTptr->TableAlias, MaxLen) && compare(TableName, TTptr->TableName) )
+                    {
+                         TTno++;
+                         TTptr++;
+                         if ( TTno >= no_ttabs )
+                              goto LABEL_8;
+                    }
+                    return TTno;		// exit success
+               }
+          }
+
+LABEL_8:
+          TTptr = ttab + 3;	// Only search *USER* tables. Start at TD3. 0,1,2 are sys TD's
+          TTno = 3;
+          if ( no_ttabs > 3 )
+          {
+               while ( !TTptr->TableName[0] || !cmpbuf(TableName, TTptr->TableAlias, MaxLen) && compare(TableName, TTptr->TableName) )
+               {
+                    TTno++;
+                    TTptr++;
+                    if ( TTno >= no_ttabs )
+                         goto LABEL_14;
+               }
+               return TTno;		// exit_success
+          }
+LABEL_14:
+          result = -1;
+     }
+     return result;
+}
+#endif
+@
+
+
+1.4
+log
+@split CRC stuff to crc.c
+@
+text
+@a9 52
+// crc16 pre-defined table
+unsigned short crc16t_[] = {
+0x0000, 0x0C0C1, 0x0C181, 0x140, 0x0C301, 0x3C0, 0x280, 0x0C241, 0x0C601, 0x6C0, 0x780, 0x0C741, 0x500, 0x0C5C1, 0x0C481, 0x440,
+0x0CC01, 0x0CC0, 0x0D80, 0x0CD41, 0x0F00, 0x0CFC1, 0x0CE81, 0x0E40, 0x0A00, 0x0CAC1, 0x0CB81, 0x0B40, 0x0C901, 0x9C0, 0x880, 0x0C841,
+0x0D801, 0x18C0, 0x1980, 0x0D941, 0x1B00, 0x0DBC1, 0x0DA81, 0x1A40, 0x1E00, 0x0DEC1, 0x0DF81, 0x1F40, 0x0DD01, 0x1DC0, 0x1C80, 0x0DC41,
+0x1400, 0x0D4C1, 0x0D581, 0x1540, 0x0D701, 0x17C0, 0x1680, 0x0D641, 0x0D201, 0x12C0, 0x1380, 0x0D341, 0x1100, 0x0D1C1, 0x0D081, 0x1040,
+0x0F001, 0x30C0, 0x3180, 0x0F141, 0x3300, 0x0F3C1, 0x0F281, 0x3240, 0x3600, 0x0F6C1, 0x0F781, 0x3740, 0x0F501, 0x35C0, 0x3480, 0x0F441,
+0x3C00,0x0FCC1,0x0FD81,0x3D40,0x0FF01,0x3FC0,0x3E80,0x0FE41,0x0FA01,0x3AC0,0x3B80,0x0FB41,0x3900,0x0F9C1,0x0F881,0x3840,
+0x2800,0x0E8C1,0x0E981,0x2940,0x0EB01,0x2BC0,0x2A80,0x0EA41,0x0EE01,0x2EC0,0x2F80,0x0EF41,0x2D00,0x0EDC1,0x0EC81,0x2C40,
+0x0E401,0x24C0,0x2580,0x0E541,0x2700,0x0E7C1,0x0E681,0x2640,0x2200,0x0E2C1,0x0E381,0x2340,0x0E101,0x21C0,0x2080,0x0E041,
+0x0A001,0x60C0,0x6180,0x0A141,0x6300,0x0A3C1,0x0A281,0x6240,0x6600,0x0A6C1,0x0A781,0x6740,0x0A501,0x65C0,0x6480,0x0A441,
+0x6C00,0x0ACC1,0x0AD81,0x6D40,0x0AF01,0x6FC0,0x6E80,0x0AE41,0x0AA01,0x6AC0,0x6B80,0x0AB41,0x6900,0x0A9C1,0x0A881,0x6840,
+0x7800,0x0B8C1,0x0B981,0x7940,0x0BB01,0x7BC0,0x7A80,0x0BA41,0x0BE01,0x7EC0,0x7F80,0x0BF41,0x7D00,0x0BDC1,0x0BC81,0x7C40,
+0x0B401,0x74C0,0x7580,0x0B541,0x7700,0x0B7C1,0x0B681,0x7640,0x7200,0x0B2C1,0x0B381,0x7340,0x0B101,0x71C0,0x7080,0x0B041,
+0x5000,0x90C1,0x9181,0x5140,0x9301,0x53C0,0x5280,0x9241,0x9601,0x56C0,0x5780,0x9741,0x5500,0x95C1,0x9481,0x5440,
+0x9C01,0x5CC0,0x5D80,0x9D41,0x5F00,0x9FC1,0x9E81,0x5E40,0x5A00,0x9AC1,0x9B81,0x5B40,0x9901,0x59C0,0x5880,0x9841,
+0x8801,0x48C0,0x4980,0x8941,0x4B00,0x8BC1,0x8A81,0x4A40,0x4E00,0x8EC1,0x8F81,0x4F40,0x8D01,0x4DC0,0x4C80,0x8C41,
+0x4400,0x84C1,0x8581,0x4540,0x8701,0x47C0,0x4680,0x8641,0x8201,0x42C0,0x4380,0x8341,0x4100,0x81C1,0x8081,0x4040
+};
+
+unsigned short acrc(unsigned short CRC, char *a2, unsigned int a3)
+{
+     unsigned int i;
+
+	 for ( i = 1; i <= a3; ++i )
+          CRC = crc16t_[(unsigned char)(CRC ^ *a2++)] ^ (CRC >> 8);
+     
+	 return CRC;
+}
+
+unsigned short pcrc(unsigned short CRC, TDef *tdef, int a3, short TDFtype, unsigned int a5)
+{
+     char *v5;
+	 char *i;
+	 unsigned short v7;
+	 char *a2;
+	 unsigned int v10;
+	 
+     v5 = (char *)tdef;
+     a2 = (char *)mmalloc(a5 * a3);
+     v10 = 0;
+     for ( i = a2; v10 < a5; v5 += a3 )
+     {
+          xtodom(i, a3, TDFtype, v5);
+          v10++;
+          i += a3;
+     }
+     v7 = acrc(CRC, a2, a3 * a5);
+     mfree_0(a2);
+     return v7;
+}
+
+d51 1
+a51 1
+				CRC = pcrc(CRC, tdef, 2, 68, 3u);
+d127 1
+a127 1
+				if ( tdef->TDFtype & 0x0001 )	// Key Field?
+@
+
+
+1.3
+log
+@tidyup
+@
+text
+@d30 1
+a30 1
+short acrc(unsigned short CRC, char *a2, unsigned int a3)
+a31 1
+     char *v3;
+a32 1
+     unsigned short v4;
+d34 4
+a37 5
+     v3 = a2;
+     v4 = CRC;
+     for ( i = 1; i <= a3; ++i )
+          v4 = crc16t_[(unsigned char)(v4 ^ *v3++)] ^ (v4 >> 8);
+     return v4;
+d40 1
+a40 1
+short pcrc(unsigned short CRC, TDef *tdef, int a3, short a4, unsigned int a5)
+d42 6
+a47 6
+     char *v5; // edi@@1
+     char *i; // esi@@1
+     short v7; // ST28_2@@3
+     char *a2; // [sp+1Ch] [bp-1Ch]@@1
+     unsigned int v10; // [sp+20h] [bp-18h]@@1
+
+d53 2
+a54 2
+          xtodom(i, a3, a4, v5);
+          ++v10;
+d64 20
+a83 20
+	DOMAINR *v21; // [sp+30h] [bp-E8h]@@14
+	TDesc *TTptr; // edi@@2
+	TDef *tdef; // [sp+3Ch] [bp-DCh]@@3
+	TDef *v22; // [sp+34h] [bp-E4h]@@2
+	TDef *v9; // esi@@14
+	Qlen *v11; // edx@@17
+	char *j; // edx@@14
+	char *v6; // edi@@13
+	FLDdesc *fld; // [sp+38h] [bp-E0h]@@11
+
+	int result; // eax@@1
+	int TDnoa; // [sp+28h] [bp-F0h]@@1
+	int TDno2; // [sp+2Ch] [bp-ECh]@@7
+	unsigned int v12; // ecx@@21
+	short CRC; // dx@@3
+	short NumFields; // esi@@3
+	short v7; // ax@@13
+	size_t v13; // esi@@21
+	short v18; // ax@@38
+
+d203 6
+a208 7
+     TDesc *v3; // esi@@3
+     TDesc *v5; // esi@@8
+
+     int result; // eax@@1
+     int v4; // edi@@3
+     size_t MaxLen; // [sp+18h] [bp-10h]@@2
+
+d215 2
+a216 2
+               v3 = ttab;
+               v4 = 0;
+d219 1
+a219 1
+                    while ( v3->DBnumber != DBno || !cmpbuf(TableName, v3->TableAlias, MaxLen) && compare(TableName, v3->TableName) )
+d221 3
+a223 3
+                         ++v4;
+                         ++v3;
+                         if ( v4 >= no_ttabs )
+d226 1
+a226 1
+                    return v4;		// exit success
+d229 1
+d231 2
+a232 2
+          v5 = ttab + 3;	// Only search *USER* tables. Start at TD3. 0,1,2 are sys TD's
+          v4 = 3;
+d235 1
+a235 1
+               while ( !v5->TableName[0] || !cmpbuf(TableName, v5->TableAlias, MaxLen) && compare(TableName, v5->TableName) )
+d237 3
+a239 3
+                    ++v4;
+                    ++v5;
+                    if ( v4 >= no_ttabs )
+d242 1
+a242 1
+               return v4;		// exit_success
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d8 1
+d67 66
+a132 100
+     int result; // eax@@1
+     TDesc *TTptr; // edi@@2
+     short CRC; // dx@@3
+     short NumFields; // esi@@3
+     char *v6; // edi@@13
+     short v7; // ax@@13
+     int v8; // esi@@13
+     TDef *v9; // esi@@14
+     char *j; // edx@@14
+     Qlen *v11; // edx@@17
+     unsigned int v12; // ecx@@21
+     size_t v13; // esi@@21
+     size_t v14; // eax@@26
+     short v18; // ax@@38
+     int TDnoa; // [sp+28h] [bp-F0h]@@1
+     int TDno2; // [sp+2Ch] [bp-ECh]@@7
+     DOMAINR *v21; // [sp+30h] [bp-E8h]@@14
+     TDef *v22; // [sp+34h] [bp-E4h]@@2
+     FLDdesc *fld; // [sp+38h] [bp-E0h]@@11
+     TDef *arg4; // [sp+3Ch] [bp-DCh]@@3
+     TDef *tdef; // [sp+3Ch] [bp-DCh]@@11
+     ELEMENTREC v26; // [sp+60h] [bp-B8h]@@13
+     ELEMENTREC v27; // [sp+B0h] [bp-68h]@@13
+
+     result = identify(TDno, TableName);
+     TDnoa = result;
+     if ( result >= 0 )
+     {
+          TTptr = &ttab[result];
+          TTptr->TTrtd = result;
+          v22 = tblrow(result);
+          result = -1;
+          if ( v22 )
+          {
+               CRC = 0;
+               arg4 = v22;
+               for ( NumFields = 0; arg4->TDFentry; ++arg4 )
+               {
+                    CRC = pcrc(CRC, arg4, 2, 68, 3u);
+                    NumFields++;
+               }
+               if ( !CRC )
+                    CRC = 1;
+               TTptr->TableCRC = CRC;
+               TTptr->TDworkarea1 = (char *)mmalloc(129u);
+               TTptr->NumFields = NumFields;
+               TTptr->TTfields = (FLDdesc *)mmalloc(24 * (NumFields + 1));
+               TDno2 = identify(TDno, "elements");
+               if ( TDno2 < 0 )
+                    TDno2 = identify(TDno, "domains");
+               if ( TDno2 > 0 )
+                    tblrow(TDno2);              // dead code
+               tdef = v22;
+               for ( fld = TTptr->TTfields; tdef->TDFentry; ++tdef )
+               {
+                    fld->FLDtype = gettype(tdef->TDFtype, tdef->TDFsize);
+                    if ( TDno2 > 0 )
+                    {
+                         v6 = (char *)&v26;
+                         zap((char*)&v26, 76u);
+                         zap((char*)&v27, 76u);
+                         itoms(&v26.TDFentry, tdef->TDFentry);
+                         v7 = retrieve(TDno2, (char *)&v26, (char *)&v26);
+                         v8 = v7;
+                         if ( v7 <= 0 )
+                         {
+                              sprintf(v27.FieldName, "%d", tdef->TDFentry);
+                              if ( (signed short)v8 < 0 )
+                                   dberror(v8, 0, TDno2);
+                         }
+                         else
+                         {
+                              v9 = tblrow(TDno2);
+                              v21 = domsfp;
+                              for ( j = (char *)&v27; v9->TDFentry; j = (char *)&v27 + v21->DomOffset )
+                              {
+                                   domtox(j, v6, v9->TDFsize, v9->TDFtype);
+                                   v6 += v9->TDFsize;
+                                   ++v9;
+                                   ++v21;
+                              }
+                              if ( v27.FLDlen > 0 )
+                              {
+                                   v11 = (Qlen *)getmem(16);
+                                   fld->FLDqlen = v11;
+                                   v11->Qdeflen = v27.FLDlen;
+                                   if ( fld->FLDtype == 'D' )
+                                        v11->Qdeflen = defDateWidth;
+                              }
+                         }
+                         v12 = strlen(v27.FieldName) + 1;
+                         v13 = v12 - 1;
+                         if ( v12 != 1 )
+                         {
+                              if ( v13 >= 21 )
+                                   v13 = 20;
+                              fld->FLDname = (char *)mmalloc(v13 + 1);
+                              cpybuf(fld->FLDname, v27.FieldName, v13);
+                         }
+                    }
+d134 37
+a170 9
+					// allocate space for data
+                    if ( fld->FLDtype == 'C' )
+                         v14 = (signed short)(tdef->TDFsize + 1);
+                    else if ( fld->FLDtype != 'S' && fld->FLDtype != 'K' )
+						v14 = sizeof(double);	// 8;
+                    else
+                        v14 = 0;
+					if ( v14 )
+                         fld->FLDdata = mmalloc(v14);
+d172 30
+a201 23
+					// set type flags
+                    fld->FLDstat |= 0x0004;		// set quick zero flag
+
+					if ( tdef->TDFtype & 0x0001 )	// Key Field?
+                         fld->FLDstat |= 0x8000;
+                    else
+                         fld->FLDstat &= 0x7FFF;
+                    
+					fld->FLDelemID	= tdef->TDFentry;
+                    fld->FLDlen		= tdef->TDFsize;
+                    fld->TDFtype	= tdef->TDFtype;
+                    ++fld;
+               }
+               if ( TDno2 >= 0 )
+               {
+                    v18 = release(TDno2);
+                    if ( v18 < 0 )
+                         dberror(v18, 0, TDno2);
+               }
+               result = TDnoa;
+          }
+     }
+     return result;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d202 1
+a202 1
+int findtd(char *a1, int a2)
+d204 3
+a207 1
+     TDesc *v3; // esi@@3
+a208 1
+     TDesc *v5; // esi@@8
+d211 2
+a212 2
+     result = -1;
+     if ( a1 )
+d214 2
+a215 2
+          MaxLen = strlen(a1) + 1;
+          if ( a2 >= 0 )
+d221 1
+a221 1
+                    while ( v3->DBnumber != a2 || !cmpbuf(a1, v3->TableAlias, MaxLen) && compare(a1, v3->TableName) )
+d228 1
+a228 1
+                    return v4;
+d232 1
+a232 1
+          v5 = ttab + 3;
+d236 1
+a236 1
+               while ( !v5->TableName[0] || !cmpbuf(a1, v5->TableAlias, MaxLen) && compare(a1, v5->TableName) )
+d243 1
+a243 1
+               return v4;
+@

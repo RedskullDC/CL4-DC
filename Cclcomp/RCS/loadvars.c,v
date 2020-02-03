@@ -1,0 +1,480 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.07.28.05.37.57;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.03.10.05.52.23;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.07.16.08.17.12;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.15.04.33.22;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@tidy-up
+@
+text
+@#ifndef LOADVARS_C
+#define LOADVARS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <assert.h>
+#include "DBdefs.h"
+#include "lvars.h"
+
+VARTREE *mktree(VARTREE *vartree, const char *VarName, int namesize, int VarNo)
+{
+	VARTREE *v4; // esi@@1
+	short v5; // dx@@3
+
+	//eprint("vartree - sizeof(VARTREE) = %d\n", sizeof(VARTREE));
+	v4 = vartree;
+	if ( vartree )
+	{
+		v5 = strncmp(VarName, vartree->VarName, namesize + 1);		// compare all string, including the \0
+		if ( !v5 )
+			__assert_fail("0", "gettnode.c", 0x6Au, "mktree");
+
+		if ( v5 > 0 )
+			vartree->VarNext = mktree(vartree->VarNext, VarName, namesize, VarNo);
+		else // v5 < 0
+			vartree->VarPrev = mktree(vartree->VarPrev, VarName, namesize, VarNo);
+	}
+	else	// vartree node doesn't exist. Create it.
+	{
+		v4 = (VARTREE *)getmem(sizeof(VARTREE));		// 16
+		v4->VarName = getmem(namesize + 1);
+		cpybuf(v4->VarName, (char *)VarName, namesize);
+		v4->VarNo = VarNo;
+	}
+	return v4;
+}
+
+VARTREE *dogettnode(VARTREE *vartree, const char *varname, int namesize, int a4)
+{
+	VARTREE		*v4;
+	short		v6;
+	short		v7;
+	
+	v4 = vartree;
+	if ( vartree )
+	{
+		v7 = strncmp(varname, vartree->VarName, namesize + 1);
+		if ( v7 )
+		{
+			if ( v7 > 0 )
+				vartree->VarNext = dogettnode(vartree->VarNext, varname, namesize, a4);
+			else
+				vartree->VarPrev = dogettnode(vartree->VarPrev, varname, namesize, a4);
+		}
+		else	// match
+		{
+			last_fnd = vartree->VarNo;
+			++tnodewasfound;
+		}
+	}
+	else
+	{
+		if ( !a4 )
+			return 0;
+		v4 = (VARTREE *)getmem(sizeof(VARTREE));		// 16
+		v4->VarName = getmem(namesize + 1);
+		cpybuf(v4->VarName, (char *)varname, namesize);
+		v6 = last_var++;								// global
+		last_fnd = v6;
+		v4->VarNo = v6;
+		if ( last_fnd < res_v_max )
+		{
+			if ( (unsigned char)(*varname - 97) <= 0x19u )
+				__assert_fail("!('a' <= (*w) && (*w) <= 'z')", "gettnode.c", 0x8Eu, "dogettnode");
+			rtroot = mktree(rtroot, varname, namesize, last_fnd);
+		}
+	}
+	return v4;
+}
+
+VARTREE *gettnode(VARTREE *vartree, char *varname, int namesize, int a4)
+{
+	char s1[128];
+
+	tnodewasfound = 0;
+	if ( alllower(varname) && (strcpy(s1, varname), alltoupper(s1), dogettnode(rtroot, s1, namesize, 0), tnodewasfound) )
+	{
+		if ( !noWarnings )
+			eprint("\"%s\", line %4d - warning: [%s] - replace with [%s]\n", FileTree->FileName, (unsigned short)ll, varname, s1);
+		return vartree;
+	}
+	else
+		return dogettnode(vartree, varname, namesize, a4);
+}
+
+char *getmem(int MemSize)
+{
+
+	if ( MemSize & 1 )
+		MemSize++;
+	if ( MemSize & 2 )
+		MemSize += 2;                              // round *up* to nearest 4 bytes
+	return (char *)mmalloc(MemSize);
+}
+
+inline FLDdesc *getvars(int Varnum)
+{
+	//printf("getvars(%d)\n",Varnum);
+	return ( Varnum < Nvars ) ? &ttab->TTfields[Varnum] : 0;
+}
+
+FLDdesc *getvarmem(void)
+{
+	int varno;
+	
+	if ( !Nvars )
+		ttab->TTfields = (FLDdesc *)mmalloc(0);	// avoid a NULL ptr error
+	
+	varno = Nvars++;
+	ttab->TTfields = (FLDdesc *)mrealloc(ttab->TTfields, sizeof(FLDdesc) * varno, sizeof(FLDdesc) * Nvars);	// 24 = sizeof(FLDdesc)
+	
+	return &ttab->TTfields[varno];
+}
+
+void loadvars(void)
+{
+	FLDdesc *fld2;
+	FLDdesc *fld;
+	int reqsize;
+	
+	res_v_max = sizeof(lvars)/sizeof(FLDdesc) - 1;		//res_v_max = 62;
+	//eprint("loadvars(res_v_max = %d)\n",res_v_max);
+
+	fld2 = lvars;				// local pre-defined variables
+	while ( fld2->FLDname )		// ZERO terminated list
+	{
+		assert(getvars(last_var) == ((void*)0));
+		fld = getvarmem();
+		assert(fld == getvars(last_var));
+
+		//if ( fld2->FLDtype == 'C' )
+		//	reqsize = fld2->FLDlen + 1;	// String type
+		//else
+		//	reqsize = sizeof(double);	// all else get 8 bytes, each stored as (double)
+		reqsize = fld2->FLDtype == 'C' ? fld2->FLDlen + 1 : sizeof(double);
+		
+		fld2->FLDdata = getmem(reqsize);
+		cpybuf((char*)fld,(char*)fld2, sizeof(FLDdesc));
+		// **TODO** expand this to allow sysvars to have pre-defined values!
+
+		troot = gettnode(troot, fld2->FLDname, lenstr(fld2->FLDname), 1);
+		fld2++;
+	}
+	assert(last_var == res_v_max);
+}
+#endif
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d10 1
+a10 1
+VARTREE *mktree(VARTREE *a1, const char *s1, int a3, int a4)
+d16 2
+a17 2
+	v4 = a1;
+	if ( a1 )
+d19 1
+a19 1
+		v5 = strncmp(s1, a1->VarName, a3 + 1);		// compare all string, including the \0
+d24 3
+a26 4
+			a1->VarNext = mktree(a1->VarNext, s1, a3, a4);
+		
+		else
+			a1->VarPrev = mktree(a1->VarPrev, s1, a3, a4);
+d28 1
+a28 1
+	else
+d31 3
+a33 3
+		v4->VarName = getmem(a3 + 1);
+		cpybuf(v4->VarName, (char *)s1, a3);
+		v4->field_0 = a4;
+d38 1
+a38 1
+VARTREE *dogettnode(VARTREE *a1, const char *s1, int a3, int a4)
+d40 6
+a45 6
+	VARTREE	*v4; // edi@@1
+	short		v6; // ax@@3
+	short		v7; // dx@@7
+
+	v4 = a1;
+	if ( a1 )
+d47 1
+a47 1
+		v7 = strncmp(s1, a1->VarName, a3 + 1);
+d51 1
+a51 1
+				a1->VarNext = dogettnode(a1->VarNext, s1, a3, a4);
+d53 1
+a53 2
+				a1->VarPrev = dogettnode(a1->VarPrev, s1, a3, a4);
+
+d55 1
+a55 1
+		else
+d57 1
+a57 1
+			last_fnd = a1->field_0;
+d66 3
+a68 3
+		v4->VarName = getmem(a3 + 1);
+		cpybuf(v4->VarName, (char *)s1, a3);
+		v6 = last_var++;
+d70 1
+a70 1
+		v4->field_0 = v6;
+d73 1
+a73 1
+			if ( (unsigned char)(*s1 - 97) <= 0x19u )
+d75 1
+a75 1
+			rtroot = mktree(rtroot, s1, a3, last_fnd);
+d81 1
+a81 1
+VARTREE *gettnode(VARTREE *a1, char *arg, int a3, int a4)
+d83 1
+a83 2
+	VARTREE *result;
+	char s1[128]; // [sp+20h] [bp-88h]@@2
+d86 1
+a86 1
+	if ( alllower(arg) && (strcpy(s1, arg), alltoupper(s1), dogettnode(rtroot, s1, a3, 0), tnodewasfound) )
+d89 2
+a90 6
+		{
+			eprint("\"%s\", line %4d - ", FileTree->FileName, (unsigned short)ll);
+			eprint("warning: [%s] - replace with", arg);
+			eprint(" [%s]\n", s1);
+		}
+		result = a1;
+d93 1
+a93 4
+	{
+		result = dogettnode(a1, arg, a3, a4);
+	}
+	return result;
+a97 1
+  int Required; // eax@@1
+d99 5
+a103 6
+  Required = MemSize;
+  if ( MemSize & 1 )
+    Required = MemSize + 1;
+  if ( Required & 2 )
+    Required += 2;                              // round up to nearest 4 bytes
+  return (char *)mmalloc(Required);
+d106 1
+a106 1
+FLDdesc *getvars(int Varnum)
+d114 1
+a114 2
+	short v0;
+	int v1;
+d118 5
+a122 4
+	v0 = Nvars++;
+	v1 = v0;
+	ttab->TTfields = (FLDdesc *)mrealloc(ttab->TTfields, sizeof(FLDdesc) * v0, sizeof(FLDdesc) * Nvars);	// 24 = sizeof(FLDdesc)
+	return &ttab->TTfields[v1];
+d127 1
+a127 1
+	FLDdesc *v0;
+d134 2
+a135 2
+	v0 = lvars;
+	while ( v0->FLDname )
+d141 5
+a145 4
+		if ( v0->FLDtype == 'C' )
+			reqsize = v0->FLDlen + 1;	// String type
+		else
+			reqsize = sizeof(double);	// all else get 8 bytes, each stored as (double)
+d147 6
+a152 4
+		v0->FLDdata = getmem(reqsize);
+		cpybuf((char*)fld,(char*)v0, sizeof(FLDdesc));
+		troot = gettnode(troot, v0->FLDname, lenstr(v0->FLDname), 1);
+		++v0;
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d15 1
+d19 1
+a19 1
+		v5 = strncmp(s1, a1->VarName, a3 + 1);
+d31 1
+a31 1
+		v4 = (VARTREE *)getmem(16);
+d67 1
+a67 1
+		v4 = (VARTREE *)getmem(16);
+d85 2
+a86 2
+  VARTREE *result; // eax@@5
+  char s1[128]; // [sp+20h] [bp-88h]@@2
+d126 3
+a128 3
+	short v0; // cx@@3
+	int v1; // edi@@3
+
+d133 1
+a133 1
+	ttab->TTfields = (FLDdesc *)mrealloc(ttab->TTfields, 24 * v0, 24 * Nvars);	// 24 = sizeof(FLDdesc)
+d139 6
+a144 3
+	FLDdesc *v0; // esi@@1
+	FLDdesc *fld; // edi@@4
+	int v3; // eax@@7
+a145 2
+	//res_v_max = 62;
+	res_v_max = sizeof(lvars)/sizeof(FLDdesc) - 1;
+a149 3
+		//if ( getvars(last_var) )
+		//	__assert_fail("getvars(last_var) == ((void *)0)", "loadvars.c", 105, "loadvars");
+
+a151 2
+		//if ( fld != getvars(last_var) )
+		//	__assert_fail("vv == getvars(last_var)", "loadvars.c", 107, "loadvars");
+d154 1
+a154 1
+			v3 = v0->FLDlen + 1;	// String type
+d156 1
+a156 1
+			v3 = sizeof(double);	// all else get 8 bytes, each stored as (double)
+d158 1
+a158 1
+		v0->FLDdata = getmem(v3);
+a163 3
+	//if ( last_var != res_v_max )
+	//	__assert_fail("last_var == res_v_max", "loadvars.c", 112, "loadvars");
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 4
+a24 5
+		if ( v5 >= 0 )
+		{
+			if ( v5 > 0 )
+				a1->VarNext = mktree(a1->VarNext, s1, a3, a4);
+		}
+a25 1
+		{
+a26 1
+		}
+d40 40
+a79 46
+  VARTREE	*v4; // edi@@1
+  VARTREE	*result; // eax@@2
+  short		v6; // ax@@3
+  short		v7; // dx@@7
+
+  v4 = a1;
+  if ( a1 )
+  {
+    v7 = strncmp(s1, a1->VarName, a3 + 1);
+    if ( v7 )
+    {
+      if ( v7 >= 0 )
+      {
+        if ( v7 > 0 )
+          a1->VarNext = dogettnode(a1->VarNext, s1, a3, a4);
+      }
+      else
+      {
+        a1->VarPrev = dogettnode(a1->VarPrev, s1, a3, a4);
+      }
+    }
+    else
+    {
+      last_fnd = a1->field_0;
+      ++tnodewasfound;
+    }
+  }
+  else
+  {
+    result = 0;
+    if ( !a4 )
+      return result;
+    v4 = (VARTREE *)getmem(16);
+    v4->VarName = getmem(a3 + 1);
+    cpybuf(v4->VarName, (char *)s1, a3);
+    v6 = last_var++;
+    last_fnd = v6;
+    v4->field_0 = v6;
+    if ( last_fnd < res_v_max )
+    {
+      if ( (unsigned char)(*s1 - 97) <= 0x19u )
+        __assert_fail("!('a' <= (*w) && (*w) <= 'z')", "gettnode.c", 0x8Eu, "dogettnode");
+      rtroot = mktree(rtroot, s1, a3, last_fnd);
+    }
+  }
+  return v4;
+d125 2
+a126 2
+  short v0; // cx@@3
+  int v1; // edi@@3
+d128 6
+a133 6
+  if ( !Nvars )
+    ttab->TTfields = (FLDdesc *)mmalloc(0);	// avoid a NULL ptr error
+  v0 = Nvars++;
+  v1 = v0;
+  ttab->TTfields = (FLDdesc *)mrealloc(ttab->TTfields, 24 * v0, 24 * Nvars);
+  return &ttab->TTfields[v1];
+d147 3
+a149 2
+		if ( getvars(last_var) )
+			__assert_fail("getvars(last_var) == ((void *)0)", "loadvars.c", 105, "loadvars");
+d152 3
+a154 2
+		if ( fld != getvars(last_var) )
+			__assert_fail("vv == getvars(last_var)", "loadvars.c", 107, "loadvars");
+@

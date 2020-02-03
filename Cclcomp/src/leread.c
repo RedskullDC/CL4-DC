@@ -32,8 +32,8 @@ short leread(bool isPipe)
         dallsfpt(&sftab);
         return 0;
 	}
-	if (symbol == 2220 && !strncmp(sym,"tables",7))	// look for the 'tables' specifier in case this 
-	{												// is a "CLOSE" instruction
+	if (symbol == 2220 && !strncmp(sym,"tables",7))	// look for the 'tables' specifier in case this is a "CLOSE" instruction
+	{
 		cls_tbls = true;
 	}
 	else
@@ -41,7 +41,7 @@ short leread(bool isPipe)
 		cls_tbls = false;
         expno = loadexp(0, 1);
         if ( !expno )
-			return 0;			// error_exit		*** doeesn't dallsfpt(&sftab); ***
+			return 0;			// error_exit		*** doesn't dallsfpt(&sftab); ***
 		sftab->AliasEnt = expno;
 	}
 
@@ -76,12 +76,12 @@ short leread(bool isPipe)
 					fld = ttab[TDno].TTfields;
 					for ( FLDno = 0; fld->FLDelemID; fld++ )
 					{
-						ENTno			 = getenmem();
-						entb			 = ENARR(ENTno);
-						entb->TTno		 = TDno;
-						entb->RecNo		 = FLDno;
-						entb->entype	 = 1;
-						prtab->VAR_ENTno = ENTno;
+						ENTno					= getenmem();
+						entb					= ENARR(ENTno);
+						entb->Enun.Enref.TTno	= TDno;
+						entb->Enun.Enref.VarNum = FLDno;
+						entb->entype			= 1;
+						prtab->VAR_ENTno		= ENTno;
 						if ( fld[1].FLDelemID )			// NULL when we get to end of fields
 						{
 							PRno = getprmem();			//*** getprmem() can change prtab! ***

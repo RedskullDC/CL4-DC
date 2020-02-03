@@ -1,0 +1,234 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.11.11.05.30.34;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.02.13.13.49;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@few tidy-ups
+@
+text
+@#ifndef JOIN_C
+#define JOIN_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+short join(unsigned int TDno, int *TTnos, short NumTTs, EXPR *Select)
+{
+    char *v7; // eax@@4
+    short count; // edi@@3
+    short TTidx; // edi@@6
+    short v11; // esi@@12
+    short result;
+
+    char *Buffer;
+    short BuffSize;
+    short NoTTs;
+    char *WorkAreas[8]; // only really need 6
+    short RowSizes[20]; // only really need 6  [0..5]
+
+    NoTTs = NumTTs;
+    if ( NumTTs > 6 )
+        NoTTs = 6;
+
+    count = 0;
+    while ( NoTTs > count )
+    {
+		RowSizes[count] = _rowsize(tblrow(TTnos[count]));
+        v7 = (char *)alloc(RowSizes[count], 0);
+        WorkAreas[count] = v7;
+        fill(v7, RowSizes[count], 0);	// Not necessary. alloc fills buffer with ZEROs anyway.
+        count++;
+    }
+
+    BuffSize = _rowsize(tblrow(TDno));		// Setup dest TT buffer
+    Buffer = (char *)alloc(BuffSize, 0);
+    cdbrestrict(TTnos[0], Select);
+
+    while ( 1 )
+    {
+        result = getnxt(TTnos[0], WorkAreas[0], Select);
+        if ( result <= 0 )				// < 0 == ERROR, 0 == No more data
+            break;
+        
+		fill(Buffer, BuffSize, 0);
+		TTidx = 1;
+        while ( NoTTs > TTidx )
+        {
+			for ( count = 0; count < TTidx && samekey(TTnos[TTidx], WorkAreas[TTidx], TTnos[count], WorkAreas[count]); count++ )
+				;
+
+			if ( count != TTidx )
+            {
+				fill(WorkAreas[TTidx], RowSizes[TTidx], 0);
+
+                v11 = 0;
+                while ( TTidx > v11 )
+                {
+					fldxfer(TTnos[TTidx], WorkAreas[TTidx], TTnos[v11], WorkAreas[v11]);
+                    v11++;
+				}
+				getr(TTnos[TTidx], WorkAreas[TTidx], 0);
+			}
+            fldxfer(TDno, Buffer, TTnos[TTidx], WorkAreas[TTidx]);
+			TTidx++;
+        }
+
+        fldxfer(TDno, Buffer, TTnos[0], WorkAreas[0]);		// Ensure precedence of key fields from TTnos[]	[0 > 1 > 2 > 3 ....] 
+
+		if ( !Select || testr(TDno, Buffer, 0, Select) )	// Select == 0 means match all, testr() checks for a keymatch
+        {
+            result = loadr(TDno, Buffer, 0);					// load record to temp table , POS = 0 use default data layout
+            if ( result < 0 )									// ERROR, couldn't load data for some reason
+                break;
+        }
+    }
+
+	for ( count = 0; count < NoTTs ; count++ )
+	{
+		nfree(WorkAreas[count], 0);
+	}
+
+    nfree(Buffer, 0);
+    return result;				// 0 == success, < 1 == ERROR
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a13 2
+    short v5; // edi@@3
+    TDef *v6; // eax@@4
+d15 4
+a18 12
+    TDef *tdef; // eax@@5
+    short v9; // edi@@6
+    short i; // esi@@7
+    int v11; // esi@@12
+    short v12; // si@@18
+    int v13; // edi@@20
+
+    char *Buffer; // [sp+14h] [bp-54h]@@5
+    int count; // [sp+18h] [bp-50h]@@5
+    short v17; // [sp+1Ch] [bp-4Ch]@@3
+    char *WorkAreas[8]; // [sp+20h] [bp-48h]@@4
+    short RowSizes[20]; // [sp+40h] [bp-28h]@@4
+d20 7
+a26 1
+    v17 = NumTTs;
+d28 1
+a28 1
+        v17 = 6;
+d30 2
+a31 2
+    v5 = 0;
+    if ( v17 > 0 )
+d33 5
+a37 10
+        do
+        {
+            v6 = tblrow(TTnos[v5]);
+            RowSizes[v5] = _rowsize(v6);
+            v7 = (char *)alloc(RowSizes[v5], 0);
+            WorkAreas[v5] = v7;
+            fill(v7, RowSizes[v5], 0);
+            v5 = (signed short)(v5 + 1);
+        }
+        while ( (signed short)v5 < v17 );
+d40 4
+a43 4
+    tdef = tblrow(TDno);
+    count = _rowsize(tdef);
+    Buffer = (char *)alloc(count, 0);
+    cdbrestrict(*TTnos, Select);
+d46 2
+a47 2
+        v12 = getnxt(*TTnos, WorkAreas[0], Select);
+        if ( v12 <= 0 )
+d49 4
+a52 3
+        fill(Buffer, count, 0);
+        v9 = 1;
+        if ( v17 > 1 )
+d54 4
+a57 1
+            do
+d59 4
+a62 3
+                for ( i = 0; i < v9 && samekey(TTnos[v9], WorkAreas[v9], TTnos[i], WorkAreas[i]); i = (signed short)(i + 1) )
+                    ;
+                if ( i != v9 )
+d64 7
+a70 17
+                    fill(WorkAreas[v9], RowSizes[v9], 0);
+                    v11 = 0;
+                    if ( (signed short)v9 > 0 )
+                    {
+                        do
+                        {
+                            fldxfer(TTnos[v9], WorkAreas[v9], TTnos[v11], WorkAreas[v11]);
+                            v11 = (signed short)(v11 + 1);
+                        }
+                        while ( (signed short)v11 < (signed short)v9 );
+                    }
+                    getr(TTnos[v9], WorkAreas[v9], 0);
+                }
+                fldxfer(TDno, Buffer, TTnos[v9], WorkAreas[v9]);
+                v9 = (signed short)(v9 + 1);
+            }
+            while ( (signed short)v9 < v17 );
+d72 4
+a75 2
+        fldxfer(TDno, Buffer, *TTnos, WorkAreas[0]);
+        if ( !Select || testr(TDno, Buffer, 0, Select) )// Select == 0 means match all
+d77 2
+a78 2
+            v12 = loadr(TDno, Buffer, 0);       // POS = 0, use default data layout
+            if ( v12 < 0 )
+d82 6
+a87 10
+    v13 = 0;
+    if ( v17 > 0 )
+    {
+        do
+        {
+            nfree(WorkAreas[v13], 0);
+            v13 = (signed short)(v13 + 1);
+        }
+        while ( (signed short)v13 < v17 );
+    }
+d89 1
+a89 1
+    return v12;
+@

@@ -33,10 +33,10 @@ bool evaliex(ENTAB *entab, bool Skip)			// Evaluate an expression for true/false
     if ( !entab )
         return false;
 
-	entTTno = entab->TTno;
+	entTTno = entab->Enun.Enop.Enoper;
 	OpCode	= entTTno & 0xFC00;				// Integer calc flag masked out 0x0200
 	
-	//printf("evaliex(x%08X, %d) : entab->entype == %d, entab->TTno = x%04X\n",entab,Skip,entab->entype,entTTno);
+	//printf("evaliex(x%08X, %d) : entab->entype == %d, entab->Enun.Enop.Enoper = x%04X\n",entab,Skip,entab->entype,entTTno);
 
 	if ( entab->entype == 2 )
 	{
@@ -193,7 +193,7 @@ bool evaliex(ENTAB *entab, bool Skip)			// Evaluate an expression for true/false
 
 				fldp = getftf(entb, 0, &fld);
 				
-				if ( entab->entype == 2 && entab->TTno & 0x0200 )		// 0x0200 == int calc flag	move this up?
+				if ( entab->entype == 2 && entab->Enun.Enop.Enoper & 0x0200 )		// 0x0200 == int calc flag	move this up?
 					return (evalint(entab) != 0);
 				
 				else if ( fldp->FLDtype == 'C' )
@@ -205,8 +205,8 @@ bool evaliex(ENTAB *entab, bool Skip)			// Evaluate an expression for true/false
 			}
 		}
 	}
-	else if ( entab->entype == 8 )				// literal int value
-		return *(int *)&entab->TTno != 0;
+	else if ( entab->entype == 8 )				// literal long int value
+		return entab->Enun.long8 != 0;
 	else										// test ZERO flag on other types
 		return ((unsigned char)((unsigned int)getftf(entab, 1, &fld)->FLDstat >> 2) ^ 1) & 1;
 }

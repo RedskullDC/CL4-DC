@@ -1,0 +1,163 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.11.17.05.41.11;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.06.18.01.14.35;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Move backwards through a record, according to any select constraint set
+@
+
+
+1.2
+log
+@minor tidy-up
+@
+text
+@#ifndef STEPBACK_C
+#define STEPBACK_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// *not* public
+unsigned int findprev(TDinfo *TDptr)
+{
+	PAGE *PagePtr;
+	int v2;
+	char *v3;
+	int v4;
+	short Depth;
+	int PageNo;
+	short N1_2idx;
+
+	//printf("findprev(TDptr: x%08X)\n" ,TDptr);
+	PageNo = 0;
+	Depth = _rhead(TDptr->TDDBinfo, TDptr->TDindexOff, &PageNo);
+	for ( TDptr->Key2Size = 0; Depth > 1; --Depth )
+	{
+		PagePtr = _indexpg(TDptr, PageNo);
+		_scanpg((PAGE *)PagePtr, TDptr, &N1_2idx, TDptr->field_42 | 8);	// scanpg updates N1_2idx directly
+		
+		PageNo = mstol((int *)&PagePtr->DataStart[4 * N1_2idx--]);
+		if ( N1_2idx >= 0 )
+		{
+			v2 = _itosz(PagePtr, N1_2idx);
+			v3 = _itoptr(PagePtr, N1_2idx);
+			v4 = TDptr->TDKeySize;
+			if ( v4 > (unsigned int)v2 )
+				v4 = v2;
+			TDptr->Key2Size = cpybuf(TDptr->KeyBuf2, v3, v4);
+		}
+	}
+	return PageNo;
+}
+
+NODE_1* _stepbak(TDinfo *TDptr)
+{
+	short v1; // ax@@3
+	int PageNo; // edi@@5
+	NODE_1 *result; // eax@@6
+	NODE *v4; // eax@@7
+	NODE *v5; // eax@@9
+	short N1idx; // dx@@9
+
+	//printf("_stepbak(TDptr: x%08X)\n" ,TDptr);
+	while ( 1 )
+	{
+		if ( TDptr->TDNodePtr && TDptr->N1_2idx > 0 )
+		{
+			v5 = TDptr->TDNodePtr;
+			N1idx = TDptr->N1_2idx - 1;                    // back to previous record
+			TDptr->N1_2idx = N1idx;
+			result = &v5->NODE1ptr[N1idx];
+			return result;
+		}
+		//printf("_stepbak: NodePtr not set, N1_2idx !> 0 \n");
+		v1 = cpybuf(TDptr->TDKeyDefs, TDptr->KeyBuf2, TDptr->Key2Size);
+		TDptr->KeyDefSize = v1;
+		if ( TDptr->TDNodePtr )
+		{
+			if ( !v1 )
+				break;
+		}
+		PageNo = findprev(TDptr);
+		if ( !PageNo )
+			break;
+		relnode(TDptr->TDNodePtr);
+		v4 = getnode(TDptr, PageNo, 0);
+		TDptr->TDNodePtr = v4;
+		_scanpg((PAGE*)v4, TDptr, &TDptr->N1_2idx, TDptr->field_42);
+		TDptr->field_42 = 1;
+	}
+	return 0;
+}
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d24 1
+a24 1
+		_scanpg((PAGE *)PagePtr, TDptr, &N1_2idx, TDptr->field_42 | 8);
+d47 1
+a47 1
+	short v6; // dx@@9
+d50 1
+a50 2
+
+	if ( TDptr->TDNodePtr && TDptr->N1_2idx > 0 )
+d52 12
+a63 9
+LABEL_9:
+		v5 = TDptr->TDNodePtr;
+		v6 = TDptr->N1_2idx - 1;                    // back to previous record
+		TDptr->N1_2idx = v6;
+		result = &v5->NODE1ptr[v6];
+	}
+	else
+	{
+		while ( 1 )
+d65 1
+a65 9
+			v1 = cpybuf(TDptr->TDKeyDefs, TDptr->KeyBuf2, TDptr->Key2Size);
+			TDptr->KeyDefSize = v1;
+			if ( TDptr->TDNodePtr )
+			{
+				if ( !v1 )
+					break;
+			}
+			PageNo = findprev(TDptr);
+			if ( !PageNo )
+a66 7
+			relnode(TDptr->TDNodePtr);
+			v4 = getnode(TDptr, PageNo, 0);
+			TDptr->TDNodePtr = v4;
+			_scanpg((PAGE*)v4, TDptr, &TDptr->N1_2idx, TDptr->field_42);
+			TDptr->field_42 = 1;
+			if ( TDptr->TDNodePtr && TDptr->N1_2idx > 0 )
+				goto LABEL_9;
+d68 8
+a75 1
+		result = 0;
+d77 1
+a77 1
+	return result;
+@

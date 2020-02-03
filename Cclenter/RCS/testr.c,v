@@ -1,0 +1,55 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.12.22.23.50.42;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef TESTR_C
+#define TESTR_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+int testr(int TDno, char *Src, POS *pos, EXPR *expr)
+{
+    TDef *tdef; // eax@@1
+    char *Buffer; // edi@@1
+    int Match; // esi@@1
+
+    tdef = tblrow(TDno);
+    Buffer = (char *)alloc(_rowsize(tdef), 0);	// RowSized buffer
+    rtotup(Buffer, Src, pos, tdef);
+
+    Match = _match(Buffer, expr, tdef);
+    nfree(Buffer, 0);
+
+    return Match;
+}
+
+
+
+#endif
+@

@@ -1,0 +1,95 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.08.28.13.06.05;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef DBRENAME_C
+#define DBRENAME_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+char **camake(char *a1, int Seperator)
+{
+     int NumEntries; // esi@@1
+     char **v3; // esi@@4
+     char *v4; // eax@@6
+     char **v6; // [sp+14h] [bp-14h]@@4
+     char *src; // [sp+18h] [bp-10h]@@1
+
+     NumEntries = 0;
+     src = a1;
+     while ( *(char*)extstr(src, Seperator, &src) )		// First, calc the number of DB renames
+          ++NumEntries;
+     
+	 v6 = (char **)mmalloc(4 * NumEntries + 4);			// null terminated list
+     v3 = v6;
+     src = a1;
+     while ( 1 )
+     {
+          v4 = extstr(src, Seperator, &src);
+          if ( !*v4 )                           // end of the list
+               break;
+          *v3 = mstrcpy(v4, 0);
+          ++v3;
+     }
+     *v3 = 0;
+     return v6;
+}
+
+char *checkdbrename(char *DBname)
+{
+     char **v1; // esi@@1
+     size_t v2; // edi@@2
+     char *v3; // eax@@6
+     char *v5; // [sp+14h] [bp-14h]@@2
+     char *ptr; // [sp+18h] [bp-10h]@@2
+
+     v1 = dbarray;
+     if ( dbarray )
+     {
+          ptr = mstrcpy(DBname, "=",0);           // look for entry with "DBname=XXXX"
+          v2 = strlen(ptr);
+          v5 = 0;
+          if ( *v1 )
+          {
+               while ( strncmp(ptr, *v1, v2) )
+               {
+                    ++v1;
+                    if ( !*v1 )
+                         goto LABEL_6;
+               }
+               v5 = mstrcpy(&(*v1)[v2], 0);
+          }
+LABEL_6:
+          mfree_0(ptr);
+          v3 = v5;
+          if ( !v5 )
+               v3 = DBname;
+          DBname = v3;   // Memory leak on original string that DBname pointed to?
+     }
+     return DBname;
+}
+#endif
+@

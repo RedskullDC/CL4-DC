@@ -1,0 +1,376 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2017.01.11.02.39.33;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.04.12.21.13;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.04.06.01.11;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@cleanup
+@
+text
+@#ifndef DOMTOX_C
+#define DOMTOX_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"		// for bit field values
+
+short domtox(char *Dest, char *Src, short FLDlen, short FLDtype)
+{
+	short v4; // di@@1
+	unsigned short v5;	// unsigned to avoid 1 bits in shifts 
+	short v6; // ax@@5
+	int v8; // eax@@15
+	int v9; // eax@@20
+	
+	double v18 = 0.0;
+	int v17 = 0;
+	int v19 = 0;
+	bool Negative = false;	// default to +ve number
+
+	//printf("domtox(Dest - %s, Src %s, FLDlen %2d, FLDtype x%04X\n",Dest, Src, FLDlen, FLDtype);
+
+	v4 = FLDlen;	// default return value
+
+	if ( FLDtype & 0x01C0 )											// 0000 0001 1100 0000	Numeric type
+		v5 = (FLDtype & 0x01C0u) >> 6;
+	else
+		v5 = (FLDtype & 0x0E00) ? ((FLDtype & 0x0E00) >> 9) : 0 ;	// 0000 1110 0000 0000	Numeric type
+	
+	v6 = v5 - 1;
+	if ( v6 < 0 )													// string type
+	{
+		if ( FLDtype & 2 )	// variable length field. return actual bytes copied
+			v4 = cpyseq(Dest, Src, FLDlen);
+		else
+			cpybuf(Dest, Src, FLDlen);
+		return v4;
+	}
+
+	if ( FLDtype & 0x0004 && *Src < 0 )		// 0x0004 == Allow signed value bit. Check high bit of first src byte
+	{
+		Negative = true;
+		negate(Src, FLDlen);
+	}
+	switch (FLDlen)
+	{
+		case 1 : 
+			v8 = *Src;							// Byte value
+			v19 = v8;
+			//printf("Case:1  - v8 = %d, v19 = %d\n",v8,v19);
+			//DumpBlock(Src,8);
+			break;
+		case 2 :								// Short value
+			v8 = (unsigned char)Src[1]| (unsigned short)(*Src << 8);		
+			v19 = v8;
+			//printf("Case:2  - v8 = %d [x%02X], v19 = %d [x%02X]\n",v8,v8,v19,v19);
+			//DumpBlock(Src,8);
+			break;
+		case 3 :								// ? 3 byte value
+			v9 = mstoxi((int*)Src);
+			v17 = v9;
+			break;
+		case 4:									// Int value (4bytes)
+			//DumpBlock(Src, 8);				
+			v9 = mstol((int*)Src);				
+			//printf("domtox: v9 = %d [x%04X], Neg = %s\n",v9, v9, Negative?"true":"false");
+			v17 = v9;
+			break;
+		case 6 : 
+			v18 = mstoxl((int*)Src);
+			break;
+		case 8 :								// Double value
+			v18 = mstod((double*)Src);
+			break;
+		default:
+			// only reach here if an error. Other cases should catch all
+			break;
+	}
+
+	if ( Negative )
+		negate(Src, FLDlen);
+	
+	if ( v6 > 0 )
+	{
+		if ( FLDlen > 2 && FLDlen <= 4)
+			v18 = (double)v17;
+		else
+			v18 = (double)v19;
+		if ( FLDtype & 0x1C0 )
+			v18 = v18 / _dbias[v6];
+		else
+			v18 = _addexp(v18, -8 * v6);
+		*(double*)Dest = Negative ? -v18 : v18 ;
+	}
+	else if ( FLDlen > 4 )
+		*(double*)Dest = Negative ? -v18 : v18 ;
+	
+	else if ( FLDlen <= 2 )
+		*(short*)Dest = (short)(Negative ? -v19 : v19) ;
+	
+	else	// FLDlen == 4 
+		*(int*)Dest = Negative ? -v17 : v17 ;
+	
+	return v4;
+}
+
+#endif
+@
+
+
+1.2
+log
+@mainly done
+@
+text
+@d8 1
+d13 1
+a13 1
+	unsigned short v5; // esi@@2
+d21 1
+a21 1
+	bool Negative;
+d23 1
+a23 1
+	printf("domtox(Dest - %s, Src %s, FLDlen %2d, FLDtype x%04X\n",Dest, Src, FLDlen, FLDtype);
+d27 1
+a27 1
+	if ( FLDtype & 0x01C0 )											// 0000 0001 1100 0000
+d30 2
+a31 7
+	{
+		//v5 = FLDtype & 0x0E00;	
+		//if ( FLDtype & 0x0E00 )
+		//	v5 = (FLDtype & 0xE00u) >> 9;
+		//v5 = v5 ? v5 >> 9 : 0 ;
+		v5 = (FLDtype & 0x0E00) ? ((FLDtype & 0x0E00) >> 9) : 0 ;	// 0000 1110 0000 0000
+	}
+d33 1
+a33 2
+	printf("domtox: v5 = x%04X, v6 = %d\n",v5,v6);
+	if ( v6 < 0 )
+a34 1
+		//printf("Ldomtox: v6 < 0\n");
+d42 2
+a43 2
+	Negative = false;
+	if ( FLDtype & 4 && *Src < 0 )		//*** need to check this ***
+a44 2
+	
+	if ( Negative )
+d46 1
+a46 3
+
+//printf("Ldomtox: switch(FLDlen = %d)\n", FLDlen);
+
+d50 1
+a50 1
+			v8 = *Src;	// Byte value
+d55 2
+a56 2
+		case 2 : 
+			v8 = (unsigned char)Src[1]| (unsigned short)(*Src << 8);		// Short value
+d61 1
+a61 1
+		case 3 :							// ? 3 byte value
+d65 2
+a66 2
+		case 4:
+			//DumpBlock(Src, 8);				// Int value (4bytes)
+d68 1
+a68 1
+			//printf("Ldomtox: v9 = %d\n", v9);
+d74 1
+a74 1
+		case 8 : 
+d88 1
+a88 1
+			v18 = v17;
+d90 1
+a90 3
+			v18 = v19;
+
+		//printf("Ldomtox: #37 FLDlen = %d v18 = %G\n",FLDlen, v18);
+a91 2
+		{
+			//printf("Ldomtox: #37a _dbias[%d] = %G\n",v6,_dbias[v6]);
+a92 1
+		}
+a93 2
+		{
+			//printf("Ldomtox: #37b _addexp(%G, %d)\n",v18, -8*v6);
+a94 2
+			//printf("Ldomtox: #37b v18 = %G\n",v18);
+		}
+a97 5
+	{
+		//if (Negative)
+		//	*(double*)Dest = -v18;
+		//else
+		//	*(double*)Dest = v18;
+d99 1
+a99 1
+	}
+a100 7
+	{
+		//v15 = v19;
+		//if ( Negative )
+		//	v15 = -v19;
+		//v15 = Negative ? -v19 : v19 ;
+		//printf("Ldomtox: #2 v15 = %d\n", v15);
+		//*(short*)Dest = v15;
+d102 1
+a102 2
+
+	}
+a103 7
+	{
+		//v14 = v17;
+		//if ( Negative )
+		//	v14 = -v17;
+		//v14 = Negative ? -v17 : v17 ;
+		//printf("Ldomtox: #4 v14 = %d\n", v14);
+		//*(int*)Dest = v14;
+d105 1
+a105 2
+
+	}
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a13 1
+	int v7; // esi@@5
+d16 5
+a20 6
+	int v14; // eax@@44
+	short v15; // eax@@47
+	int v17; // [sp+1Ch] [bp-2Ch]@@1
+	double v18; // [sp+20h] [bp-28h]@@1
+	int v19; // [sp+2Ch] [bp-1Ch]@@1
+	signed int Negative; // [sp+30h] [bp-18h]@@9
+d22 1
+a22 1
+	////printf("Ldomtox(Dest - %s, Src %s, FLDlen %d, FLDtype x%02X\n",Dest, Src, FLDlen, FLDtype);
+a24 4
+	v19 = 0;
+	v18 = 0.0;
+	v17 = 0;
+	////printf("Ldomtox: FLDtype = x%04X\n",FLDtype);
+d26 2
+a27 5
+	if ( FLDtype & 0x1C0 )
+	{
+		////printf("Ldomtox: v5 & 01C0 = x%04X\n",v5 & 0x1C0);
+		v5 = (FLDtype & 0x1C0u) >> 6;
+	}
+d30 5
+a34 4
+		v5 = FLDtype & 0xE00;
+		//printf("Ldomtox: v5 & 0E00 = x%04X\n",v5 & 0x0E00);
+		if ( FLDtype & 0xE00 )
+			v5 = (FLDtype & 0xE00u) >> 9;
+a35 1
+	//printf("Ldomtox: v5 = x%04X\n",v5);
+d37 1
+a37 1
+	v7 = (v5 - 1);
+d48 1
+a48 1
+	Negative = 0;
+d50 1
+a50 1
+		Negative = 1;
+d94 2
+a95 11
+	if ( v7 <= 0 )
+		goto LABEL_41;
+
+//-----------------------------  
+	if ( FLDlen > 2 && FLDlen <= 4)
+		v18 = v17;
+	else
+		v18 = v19;
+
+	//printf("Ldomtox: #37 FLDlen = %d v18 = %G\n",FLDlen, v18);
+	if ( FLDtype & 0x1C0 )
+d97 4
+a100 16
+		//printf("Ldomtox: #37a _dbias[%d] = %G\n",v7,_dbias[v7]);
+		v18 = v18 / _dbias[v7];
+	}
+	else
+	{
+		//printf("Ldomtox: #37b _addexp(%G, %d)\n",v18, -8*v7);
+		v18 = _addexp(v18, -8 * v7);
+		//printf("Ldomtox: #37b v18 = %G\n",v18);
+	}
+//-----------------------
+
+	if ( v7 > 0 )
+		goto LABEL_42;
+
+LABEL_41:
+	//printf("Ldomtox: #41 FLDlen = %d\n", FLDlen);
+d102 6
+a107 5
+	if ( FLDlen > 4 )
+	{
+LABEL_42:
+		if (Negative)
+			*(double*)Dest = -v18;
+d109 21
+a129 8
+			*(double*)Dest = v18;
+		return v4;
+	}
+	if ( FLDlen <= 2 )
+	{
+		v15 = v19;
+		if ( Negative )
+			v15 = -v19;
+d131 3
+a133 1
+		*(short*)Dest = v15;
+d135 1
+a135 1
+	else
+d137 4
+a140 3
+		v14 = v17;
+		if ( Negative )
+			v14 = -v17;
+d142 3
+a144 1
+		*(int*)Dest = v14;
+@

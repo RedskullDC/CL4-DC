@@ -1,0 +1,125 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.06.13.00.53.41;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Copy data from the WorkArea to TTptr-Fields.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef RECTOTT_C
+#define RECTOTT_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+void rectott(int TTno, int FieldNo)
+{
+	TDesc *TTptr; // eax@@1
+	FLDdesc *fld; // esi@@1
+	char *buffptr; // ecx@@1
+	double tmpDouble;
+	int tmpInt;
+	short tmpShort;
+	int v5;
+
+	//printf("rectott(TTno = %2d, FieldNo = %2d) - " ,TTno,FieldNo);
+
+	TTptr = &ttab[TTno];
+	fld = TTptr->TTfields;
+	buffptr = TTptr->TDworkarea1;
+	v5 = FieldNo - 1;	// Fields are zero based internally, 1 based externally
+	if ( FieldNo )
+	{
+		do
+		{
+			buffptr += fld->FLDlen;
+			++fld;
+			--v5;
+		}
+		while ( v5 != -1 );
+	}
+	//printf("FLDlen = %2d, FLDstat = %04X , FLDtype = %c\n",fld->FLDlen,(unsigned short)fld->FLDstat, fld->FLDtype);
+//-------------
+
+	if ( fld->FLDlen )
+	{
+		if ( fld->FLDstat & fld_REC_LOADED)	// 0x0001 data in TTptr->Workarea for this field
+		{
+			switch ( fld->FLDtype )
+			{
+				case 'B':
+				case 'I':
+					domtox((char*)&tmpShort, buffptr, fld->FLDlen, fld->TDFtype);
+					tmpDouble = (double)tmpShort;		// Keep all variables as double internally
+					break;
+				case 'D':
+				case 'N':
+					domtox((char*)&tmpInt, buffptr, fld->FLDlen, fld->TDFtype);
+					tmpDouble = (double)tmpInt;
+					break;
+				case 'C':
+					domtox(fld->FLDdata, buffptr, fld->FLDlen , fld->TDFtype);
+					break;
+				default:
+					//printf("rectott: def Calling domtox(FLDlen: %d, FLDtype: x%04X\n",fld->FLDlen, fld->TDFtype);  
+					domtox((char*)&tmpDouble, buffptr, fld->FLDlen , fld->TDFtype);
+					break;
+			}
+		}
+		else	// *NO* data in TTptr->Workarea for this field, just zap the fld data area
+		{
+			if ( fld->FLDtype == 'C' )
+				zap(fld->FLDdata, fld->FLDlen);
+			else
+				tmpDouble = 0.0;
+		}
+
+//----------------
+
+		if ( fld->FLDtype == 'G' || fld->FLDtype == 'R' || fld->FLDtype == 'T' )
+		{
+			tmpDouble = clround(tmpDouble, fld->FLDtype);
+		}
+//----------------
+		if ( fld->FLDtype == 'C' )
+		{
+			if ( !*(char *)fld->FLDdata )	// String == null?
+			{
+				fld->FLDstat |= (fld_DATA_AVAIL|fld_ZERO);	// 0x0014u; set ZERO & DATA_AVAIL flags
+				return;
+			}
+		}
+		else
+		{
+			*(double *)fld->FLDdata = tmpDouble;
+			if ( tmpDouble == 0.0 )
+			{
+				fld->FLDstat |= (fld_DATA_AVAIL|fld_ZERO);	// 0x0014u; set ZERO & DATA_AVAIL flags
+				return;
+			}
+		}
+		fld->FLDstat &= ~fld_ZERO;			// 0xFFFB;  clear ZERO flag (bit 2)
+		fld->FLDstat |= fld_DATA_AVAIL;		// 0x0010u; set DATA_AVAIL flag
+		return;
+	}
+}
+
+
+#endif
+@

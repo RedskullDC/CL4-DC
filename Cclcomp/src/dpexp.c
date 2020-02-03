@@ -26,14 +26,14 @@ short dpexp(short ENTno)		// Return the number of decimal places expected for th
         gettf(ENTno, &TDno, &FLDtype);
         return typedp(FLDtype);
 	}
-    if ( ((unsigned short)entb->TTno >> 8) & 3 )    // bit 9 signifies Integer calcs, 8 = reserved string flag    0x0300
+    if ( ((unsigned short)entb->Enun.Enop.Enoper >> 8) & 3 )    // bit 9 signifies Integer calcs, 8 = reserved string flag    0x0300
     //if ( entb->un.s.OpCode & 0x0300 )    // bit 9 signifies Integer calcs, 8 = reserved string flag    0x0300
 	{
 		dallenpt(&entb);
         return 0;		// Integer Calcs, *NO* decimal places
 	}
     
-	OpCode = entb->TTno & 0xFC00;
+	OpCode = entb->Enun.Enop.Enoper & 0xFC00;
 	//OpCode = entb->un.s.OpCode & 0xFC00;
 	switch (OpCode)
 	{

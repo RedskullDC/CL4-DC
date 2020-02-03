@@ -1,0 +1,874 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.06.19.13.05.40;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Routines used to load an 'enc' file into memory. see also: loadenc.c
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef LOADROUTINES_C
+#define LOADROUTINES_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+SCR *getscr(void)
+{
+    SCR *v0; // esi@@1
+
+    v0 = (SCR *)mmalloc(8u);
+    if ( tpenc )
+    {
+        v0->PT_start = getcount();
+        v0->PT_end = getcount();
+        v0->NextSCR = (SCR *)(int)getcount();
+    }
+    else
+        getbuf((char *)v0, 8u);
+
+	return v0;
+}
+
+SCR *loadscr(void)
+{
+    SCR *v0; // esi@@1
+    SCR *v1; // edi@@1
+    SCR *v2; // eax@@2
+
+    v0 = getscr();	// always one, as there always has to be at least one block
+    v1 = v0;
+//printf("loadscr : PT_Start = %d, PT_end = %d \n",v0->PT_start, v0->PT_end);
+    while ( v0->NextSCR )
+    {
+		v2 = getscr();
+        v0->NextSCR = v2;
+        v0 = v2;
+//printf("loadscr : PT_Start = %d, PT_end = %d \n",v0->PT_start, v0->PT_end);
+    }
+    return v1;
+}
+
+float getfloat(short count)
+{
+    long double v1; // fst7@@2
+    double Dest; // [sp+10h] [bp-18h]@@2
+    float ptr; // [sp+18h] [bp-10h]@@1
+    float v5; // [sp+1Ch] [bp-Ch]@@2
+
+    getbuf((char *)&ptr, 4u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 4, count);
+        v5 = Dest;
+    }
+    else
+    {
+        v5 = ptr;
+    }
+    return v5;
+}
+bool getbool()
+{
+    bool result; // eax@@2
+    bool Dest; // [sp+1Ch] [bp-Ch]@@2
+    bool ptr; // [sp+20h] [bp-8h]@@1
+
+    getbuf((char *)&ptr, 4u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 4, 68);
+        result = Dest;
+    }
+    else
+    {
+        result = ptr;
+    }
+    return result;
+}
+
+ENTAB *gettabs(unsigned int NumENTABs) // expressions table
+{
+    ENTAB *entb; // esi@@2
+    short v3; // ax@@4
+    ENTAB *ptr; // [sp+14h] [bp-14h]@@2
+    unsigned int i; // [sp+18h] [bp-10h]@@3
+
+	ptr = 0;
+    if ( NumENTABs )	// optional
+    {
+        ptr = (ENTAB *)mmalloc(sizeof(ENTAB) * NumENTABs);
+        entb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumENTABs; ++entb )
+            {
+                v3 = getbits();
+                entb->entype = v3;
+                switch ( v3 )
+                {
+					case 1:
+					case 2:
+						entb->TTno = getcount();
+						entb->RecNo = getcount();
+						break;
+					case 4:
+						*(float *)&entb->TTno = getfloat(0x104u);
+                        break;
+                    case 8:
+						*(int *)&entb->TTno = getlong();
+                        break;
+					case 16:
+						getbuf((char *)&entb->TTno, 4u);
+                        break;
+				}
+                entb->Dest = getucount();
+                entb->Src = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)entb, sizeof(ENTAB) * NumENTABs);
+			//DumpBlock((char *)entb, 12 * NumENTABs);
+        }
+    }
+    return ptr;	// ptr == start of ENTAB array
+}
+
+void moveptptrs(PTAB *a1, PTAB *a2)
+{
+     signed int v2; // ecx@@1
+     PTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( ptptrs[v2] )
+          {
+               v3 = ptptrs[v2];
+               *v3 = (PTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+short getptmem()
+{
+	PTAB_ArrPtr	*v0; // edi@@1
+	short v1; // ax@@3
+	short v2; // edx@@4
+	short v3; // ax@@4
+	PTAB	*v4; // esi@@4
+	PTAB	*v5; // eax@@4
+
+	v0 = &ptarr + curptarr;
+	if ( !v0->MaxAvail )
+		v0->TableAddr = (PTAB *)mmalloc(0);
+	v1 = v0->NextElement;
+//printf("getptmem 139 v1 = %d, MaxAvail = %d\n",v1, v0->MaxAvail);
+	if ( v1 == v0->MaxAvail )
+	{
+		//printf("getptmem 144 v1(%d) == MaxAvail(%d)\n",v1, v0->MaxAvail);
+		v2 = v0->MaxAvail;
+		v3 = v1 + 1500;                             // alloc in blocks of 1500
+		v0->MaxAvail = v3;
+		v4 = v0->TableAddr;
+		v5 = (PTAB*)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);
+		v0->TableAddr = v5;
+		moveptptrs(v4, v5);
+	}
+	v0->NextElement++;
+//printf("getptmem 154 MaxAvail = %d, NextElement = %d\n", v0->MaxAvail,v0->NextElement);
+	return v0->NextElement;
+}
+
+short getptabp(short a1)
+{
+	PTAB_ArrPtr *PTarr; // edx@@1
+	unsigned short v3; // edx@@4
+
+	PTarr = &ptarr + (unsigned short)curptarr;
+	
+	if ( a1 > PTarr->NextElement )
+		__assert_fail("seq <= pt->nextel", "getpt.c", 35, "getptabp");
+
+	if ( a1 == PTarr->NextElement )
+	{
+		v3 = getptmem();
+
+		if ( a1 + 1 != v3 )
+			__assert_fail("seq+1 == ptidx", "getpt.c", 45, "getptabp");
+	}
+	else
+	{
+		v3 = a1 + 1;
+	}
+	//printf("getptabp(%d) returned %d\n",a1, v3);
+	return v3;
+}
+
+int *getarrtds(unsigned int count)
+{
+    int *v1; // edi@@1
+    unsigned int i; // esi@@2
+
+    v1 = (int *)mmalloc(4 * (count + 1));
+    if ( tpenc )
+    {
+        for ( i = 0; i < count; v1[i++] = gettable() )
+            ;
+    }
+    else
+    {
+        getbuf((char *)v1, 4 * count);
+    }
+    return v1;
+}
+
+short getstrmem(int a1)
+{
+     CLStrArray *v1; // esi@@3
+     int v2; // edx@@6
+     size_t v3; // eax@@6
+     short v4; // ax@@7
+
+     if ( a1 > 199 )
+          __assert_fail("amt < 200", "getmem.c", 0x203u, "getstrmem");
+     v1 = &strarr + curstrarr;
+     if ( !v1->StrMaxSize )
+          v1->StringTable = (char *)mmalloc(0);
+     if ( v1->StrTableSize + a1 >= v1->StrMaxSize )
+     {
+          v2 = v1->StrMaxSize;
+          v3 = v1->StrMaxSize + 200;            // blocks of 200bytes at a time
+          v1->StrMaxSize = v3;
+          v1->StringTable = (char *)mrealloc(v1->StringTable, v2, v3);
+     }
+     v4 = v1->StrTableSize;
+     v1->StrTableSize += a1;
+     return v4 + 1;
+}
+
+BTAB *getbtabs(unsigned int NumBtabs)
+{
+    BTAB *v1; // esi@@1
+    unsigned int i; // edi@@2
+    BTAB *ptr; // [sp+8h] [bp-10h]@@1
+
+// always has to be at least one block in a program.
+
+//printf("getbtabs : sizeof(BTAB) = %d\n",sizeof(BTAB));  // 72
+
+    ptr = (BTAB *)mmalloc(sizeof(BTAB) * (NumBtabs + 1));
+    v1 = ptr;
+    if ( tpenc )
+    {
+        for ( i = 0; i < NumBtabs; ++v1 )
+        {
+            v1->field_0 = getbool();
+            v1->EndLine = getcount();
+            v1->fmts = getcount();
+            v1->StartLine = getcount();
+            v1->TTno = getcount();
+            v1->Scrs = getcount();
+            v1->EXPR = (EXPR *)(int)getcount();
+            v1->On_delete = (ONESC *)(int)getcount();
+            v1->On_exit = (ONESC *)(int)getcount();
+            v1->On_excep = (ONESC *)(int)getcount();
+            v1->On_entry = (ONESC *)(int)getcount();
+            getbuf(v1->Maintain, 7u);
+            getbuf(v1->BlockName, 21u);
+            ++i;
+        }
+    }
+    else
+    {
+        getbuf((char *)v1, sizeof(BTAB) * NumBtabs);
+    }
+    return ptr;
+}
+
+int getlong()
+{
+    int result; // eax@@2
+    int Dest; // [sp+1Ch] [bp-Ch]@@2
+    int ptr; // [sp+20h] [bp-8h]@@1
+
+    getbuf((char *)&ptr, 4u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 4, 68);
+        result = Dest;
+    }
+    else
+    {
+        result = ptr;
+    }
+    return result;
+}
+
+void getstrarr(CLStrArray *clst)
+{
+    int StringSpace; // eax@@1
+    char *v2; // eax@@1
+    int i; // edi@@1
+    size_t v4; // esi@@2
+    char *ptr; // [sp+8h] [bp-10h]@@1
+
+    StringSpace = getlong();                    // 4 bytes of string table size
+//printf("getstrarr : StringSpace = %d \n",StringSpace);
+
+    clst->StrTableSize = StringSpace;
+    clst->StrMaxSize = StringSpace;	// shouldn't grow as all string space pre-allocated?
+    v2 = (char *)mmalloc(StringSpace);
+    clst->StringTable = v2;
+    ptr = v2;
+    for ( i = clst->StrTableSize; i; i -= v4 )
+    {
+        v4 = 15000;                             // Read max 15000 bytes at a time
+        if ( i < 15001 )
+            v4 = i;
+        getbuf(ptr, v4);
+//printf("getstrarr : StringSpace = %s \n",ptr);
+        ptr += v4;
+    }
+}
+
+KXTAB *getkxtabs(int NumKxtabs)
+{
+    KXTAB *kxtb; // esi@@2
+    unsigned int i; // edi@@3
+    short v4; // ax@@4
+    char *v5; // eax@@4
+    KXTAB *ptr; // [sp+18h] [bp-10h]@@2
+
+//printf("getkxtabs : sizeof(KXTAB) = %d\n",sizeof(KXTAB));  // 64
+    ptr = 0;
+    if ( NumKxtabs )
+    {
+        ptr = (KXTAB *)mmalloc(NumKxtabs << 6);	// *64.
+        kxtb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumKxtabs; ++kxtb )
+            {
+                kxtb->field_0 = getbits();
+                kxtb->WhereEXP = getucount();
+                kxtb->NumTTs = getcount();
+                kxtb->NumKeyFields = getcount();
+                kxtb->NumDataFields = getcount();
+                kxtb->KeySize = getcount();
+                kxtb->RecSize = getcount();
+                kxtb->TTno = gettable();
+                v4 = getcount(); // variable length block name
+                v5 = _gettext(v4);
+                cdbcpystr(kxtb->TableName, v5, 0);
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)kxtb, NumKxtabs << 6);
+        }
+    }
+    return ptr;
+}
+
+int gettable()
+{
+    int result; // eax@@2
+    int Dest; // [sp+1Ch] [bp-Ch]@@2
+    int ptr; // [sp+20h] [bp-8h]@@1
+
+    getbuf((char *)&ptr, 4u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 4, 68);
+        result = Dest;
+    }
+    else
+    {
+        result = ptr;
+    }
+    return result;
+}
+
+
+RDTAB *getrdtabs(int NumRDTABs)
+{
+    RDTAB *rdtb; // esi@@2
+    unsigned int i; // edi@@3
+    RDTAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getrdtabs : sizeof(RDTAB) = %d\n",sizeof(RDTAB));  // 12
+    ptr = 0;
+    if ( NumRDTABs )	// optional table
+    {
+        ptr = (RDTAB *)mmalloc( sizeof(RDTAB) * NumRDTABs);
+        rdtb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumRDTABs; ++rdtb )
+            {
+                rdtb->field_0 = getcount();
+                rdtb->field_2 = getucount();
+                rdtb->TTno = gettable();
+                rdtb->NextRD = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)rdtb, sizeof(RDTAB) * NumRDTABs);
+        }
+    }
+    return ptr;
+}
+
+PRTAB *getprtabs(int NumPRTABs)
+{
+    PRTAB *prtb; // esi@@2
+    unsigned int i; // edi@@3
+    PRTAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getprtabs : sizeof(PRTAB) = %d\n",sizeof(PRTAB));  // 10
+	ptr = 0;
+    if ( NumPRTABs )	// optional table
+    {
+        ptr = (PRTAB *)mmalloc(sizeof(PRTAB) * NumPRTABs);
+        prtb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumPRTABs; ++prtb )
+            {
+                prtb->field_0 = getucount();
+                prtb->field_2 = getucount();
+                prtb->field_4 = getcount();
+                prtb->field_6 = getcount();
+                prtb->NextPR = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)prtb, sizeof(PRTAB) * NumPRTABs);
+        }
+    }
+    return ptr;
+}
+
+SFTAB *getsftabs(int NumSFTABs)
+{
+    SFTAB *sftb; // esi@@2
+    unsigned int i; // edi@@3
+    SFTAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getsftabs : sizeof(SFTAB) = %d\n",sizeof(SFTAB));  // 8
+    ptr = 0;
+    if ( NumSFTABs )	// optional table
+    {
+        ptr = (SFTAB *)mmalloc( sizeof(SFTAB) * NumSFTABs);
+        sftb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumSFTABs; ++sftb )
+            {
+                sftb->field_0 = getucount();
+                sftb->field_2 = getucount();
+                sftb->field_4 = getucount();
+                sftb->field_6 = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)sftb, sizeof(SFTAB) * NumSFTABs);
+        }
+    }
+    return ptr;
+}
+
+XFTAB *getxftabs(int NumXFTABs)
+{
+    XFTAB *xftb; // esi@@2
+    int i; // edi@@3
+    XFTAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getxftabs : sizeof(XFTAB) = %d\n",sizeof(XFTAB));  // 8
+    ptr = 0;
+    if ( NumXFTABs )	// optional tables
+    {
+        ptr = (XFTAB *)mmalloc( sizeof(XFTAB) * NumXFTABs);
+        xftb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumXFTABs; ++xftb )
+            {
+                xftb->TTno_to = gettable();
+                xftb->TTno_from = gettable();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)xftb, sizeof(XFTAB) * NumXFTABs);
+        }
+    }
+    return ptr;
+}
+
+RATAB *getratabs(int NumRATABs)	// Range specifiers
+{
+    RATAB *ratb; // esi@@2
+    unsigned int i; // edi@@3
+    RATAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getratabs : sizeof(RATAB) = %d\n",sizeof(RATAB));  // 12
+	ptr = 0;
+	if ( NumRATABs )
+    {
+        ratb = (RATAB *)mmalloc(sizeof(RATAB) * NumRATABs);
+        ptr = ratb;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumRATABs; ++ratb )
+            {
+                ratb->RangeType = getcount();
+                ratb->RangeFrom = getucount();
+                ratb->RangeTo = getucount();
+                ratb->StringOffset = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)ratb, sizeof(RATAB) * NumRATABs);
+        }
+    }
+    return ptr;
+}
+
+RTAB *getrtabs(int NumRTABs)
+{
+    RTAB *rtb; // esi@@2
+    unsigned int i; // edi@@3
+    RTAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getrtabs : sizeof(RTAB) = %d\n",sizeof(RTAB));  // 20
+	ptr = 0;
+    if ( NumRTABs )
+    {
+        rtb = (RTAB *)mmalloc(sizeof(RTAB) * NumRTABs);
+        ptr = rtb;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumRTABs; ++rtb )
+            {
+                rtb->field_0 = getbits();
+                rtb->field_2 = getbits();
+                rtb->WhereEXP = getucount();
+                rtb->TTno = gettable();
+                rtb->field_C = getucount();
+                rtb->field_E = getucount();
+                rtb->NextRT = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)rtb, sizeof(RTAB) * NumRTABs);
+        }
+    }
+    return ptr;	// Error exit
+}
+
+XTAB *getxtabs(int NumXTABs)	// screent accept field defs
+{
+    XTAB *xtb; // esi@@2
+    XTAB *ptr; // [sp+14h] [bp-14h]@@2
+    int i; // [sp+18h] [bp-10h]@@3
+
+//printf("getxtabs : sizeof(XTAB) = %d\n",sizeof(XTAB));  // 52
+    ptr = 0;
+    if ( NumXTABs ) // optional table. Don't always need accept fields
+    {
+        ptr = (XTAB *)mmalloc( sizeof(XTAB) * NumXTABs);
+        xtb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumXTABs; ++xtb )
+            {
+                xtb->Flags = getbits();
+                xtb->Attr = getbits();
+                xtb->ScrAttrib = getbits();
+                xtb->field_32 = getbits();
+                xtb->FLDnum = getcount();
+                xtb->Width = getcount();
+                xtb->width = getcount();
+                xtb->PCol = getcount();
+                xtb->PLine = getcount();
+                xtb->ACol = getcount();
+                xtb->ALine = getcount();
+                xtb->C_X = getcount();
+                xtb->C_Y = getcount();
+                xtb->onesc = (ONESC *)(int)getcount();	// adjusted by caller
+                xtb->RangeID = getucount();
+                xtb->VarExpNo = getucount();
+                xtb->WidthEXP = getucount();
+                xtb->PCol_exp = getucount();
+                xtb->PLine_exp = getucount();
+                xtb->ACol_exp = getucount();
+                xtb->ALine_exp = getucount();
+                xtb->Prompt_exp = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)xtb, sizeof(XTAB) * NumXTABs);
+        }
+    }
+    return ptr;
+}
+
+PTAB *getptabs(unsigned int NumPTABs)
+{
+    PTAB *ptb; // esi@@2
+    unsigned int i; // edi@@3
+    PTAB *ptr; // [sp+8h] [bp-10h]@@2
+
+//printf("getptabs : sizeof(PTAB) = %d\n",sizeof(PTAB));  // 8
+
+	ptr = 0;
+    if ( NumPTABs ) // optional, but makes no sense to have a program with no statements :o( ??
+    {
+        ptr = (PTAB *)mmalloc(sizeof(PTAB) * NumPTABs);
+        ptb = ptr;
+        if ( tpenc )
+        {
+            for ( i = 0; i < NumPTABs; ++ptb )
+            {
+                ptb->SrcLineNo = getucount();
+                ptb->OpCode = getcount();
+                ptb->Operand = getucount();
+                ptb->TABno = getucount();
+                ++i;
+            }
+        }
+        else
+        {
+            getbuf((char *)ptb, sizeof(PTAB) * NumPTABs);
+        }
+    }
+    return ptr;
+}
+
+FLDdesc *getftabs(int NumVariables)
+{
+    FLDdesc *fld; // esi@@1
+    int i; // edi@@2
+    FLDdesc *ptr; // [sp+8h] [bp-10h]@@1
+
+//printf("getftabs : sizeof(FLDdesc) = %d\n",sizeof(FLDdesc));  // 24
+
+// not optional. Program always has system variables
+    ptr = (FLDdesc *)mmalloc( sizeof(FLDdesc) * NumVariables);
+    fld = ptr;
+    if ( tpenc )
+    {
+        for ( i = 0; i < NumVariables; ++fld )
+        {
+            fld->TDFtype = getbits();
+            fld->FLDstat = getbits();
+            fld->FLDelemID = getcount();        // not used in the normal way here!
+            fld->FLDlen = getcount();
+            fld->FLDtype = getcount();
+            fld->field_15 = getcount();
+            ++i;
+        }
+    }
+    else
+    {
+        getbuf((char *)fld, sizeof(FLDdesc) * NumVariables);
+    }
+    return ptr;
+}
+
+double *getdouble(short Encoding)
+{
+    double *v1; // esi@@1
+    double *Dest; // [sp+14h] [bp-14h]@@2
+
+    v1 = (double *)mmalloc(8u);
+    getbuf((char *)v1, 8u);
+    if ( tpenc )
+    {
+        Dest = (double *)mmalloc(8u);
+        domtox((char *)Dest, (char *)v1, 8, Encoding);
+        mfree_0(v1);
+        return Dest;
+    }
+    else
+    {
+        return v1;
+    }
+}
+
+short *getarrcount(unsigned int a1)
+{
+    short *v1; // edi@@1
+    unsigned int i; // esi@@2
+
+    v1 = (short *)mmalloc(2 * (a1 + 1));	// +1 so that last entry is NULL
+    if ( tpenc )
+    {
+        for ( i = 0; i < a1; v1[i++] = getcount() )
+            ;
+    }
+    else
+    {
+        getbuf((char *)v1, 2 * a1);
+    }
+    return v1;
+}
+
+short getbits()
+{
+    short result; // ax@@2
+    short ptr; // [sp+10h] [bp-8h]@@1
+    short Dest; // [sp+12h] [bp-6h]@@2
+
+    getbuf((char *)&ptr, 2u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 2, 64);
+        result = Dest;
+    }
+    else
+    {
+        result = ptr;
+    }
+    return result;
+}
+
+ONESC *getonesc()
+{
+    ONESC *v0; // esi@@1
+
+    v0 = (ONESC *)mmalloc(0x10u);
+    if ( tpenc )
+    {
+        v0->field_0 = getcount();
+        v0->BlockNo = getcount();
+        v0->KeyNumber = getcount();
+        v0->NextESC = (ONESC *)(int)getcount();		// wrong size. Adjusted by caller?
+    }
+    else
+    {
+        getbuf((char *)v0, 0x10u);
+    }
+    return v0;
+}
+
+ONESC *loadoe()
+{
+    ONESC *v0; // esi@@1
+    ONESC *v1; // edi@@1
+    ONESC *v2; // eax@@2
+
+    v0 = getonesc();
+    v1 = v0;
+    if ( v0->NextESC )
+    {
+        do
+        {
+            v2 = getonesc();
+            v0->NextESC = v2;
+            v0 = v2;
+        }
+        while ( v2->NextESC );
+    }
+    return v1;
+}
+
+short getcount()
+{
+    short result; // ax@@2
+    short ptr; // [sp+10h] [bp-8h]@@1
+    short Dest; // [sp+12h] [bp-6h]@@2
+
+    getbuf((char *)&ptr, 2u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 2, 0x44u);
+        result = Dest;
+    }
+    else
+    {
+        result = ptr;
+    }
+    return result;
+}
+unsigned short getucount()
+{
+    unsigned short result; // ax@@2
+    unsigned short ptr; // [sp+10h] [bp-8h]@@1
+    unsigned short Dest; // [sp+12h] [bp-6h]@@2
+
+    getbuf((char *)&ptr, 2u);
+    if ( tpenc )
+    {
+        domtox((char *)&Dest, (char *)&ptr, 2, 64);
+        result = Dest;
+    }
+    else
+    {
+        result = ptr;
+    }
+    return result;
+}
+
+size_t getbuf(char *ptr, size_t arg)
+{
+    size_t result; // eax@@1
+
+    *(int*)__errno_location() = 0;
+    result = fread(ptr, 1u, arg, fp);
+    if ( result != arg )
+    {
+        syserror("loadenc: fread wanted %u, got %u", arg, result);
+        mexit(1);
+    }
+    return result;
+}
+
+char *_gettext(int arg)
+{
+    char *v1; // edi@@1
+
+    v1 = (char *)mmalloc(arg + 1);
+    getbuf(v1, arg);
+    return v1;
+}
+
+
+#endif
+@

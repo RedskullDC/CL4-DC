@@ -1,0 +1,91 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.12.24.11.55.33;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef FINDFNO_C
+#define FINDFNO_C
+
+int findfno(int TDno, char *FieldName)
+{
+     short v2; // dx@@3
+     int FieldNo; // edx@@5
+     FLDdesc *fld; // esi@@6
+     int v5; // edi@@6
+     int v6; // eax@@7
+     int v9; // eax@@11
+     TDesc *TTptr; // [sp+1Ch] [bp-201Ch]@@1
+     char v12[32]; // [sp+20h] [bp-2018h]@@10
+
+     TTptr = &ttab[TDno];
+	 
+	 // if a 3 digit number is the argument, use that as the FieldNo!
+	if ((*__ctype_b_loc())[*FieldName] & 0x0800 && strlen(FieldName) <= 3 && (v2 = __strtol_internal(FieldName, 0, 10, 0), v2 > 0) && TTptr->NumFields >= v2 )
+		FieldNo = v2 - 1;
+	else
+    {
+		fld = TTptr->TTfields;
+        v5 = 0;
+        if ( fld->FLDelemID )
+        {
+			while ( 1 )
+            {
+				v6 = compare(fld->FLDname, FieldName);
+                FieldNo = v5;
+                if ( !v6 )
+					break;
+				v5++;
+                fld++;
+                if ( !fld->FLDelemID )
+					goto LABEL_9;
+			}
+		}
+        else
+        {
+LABEL_9:
+			// look for a possible wildcard match on the name, if 'exact' not set to true
+			if ( exact || (cdbcpystr(v12, FieldName, "*", 0), fld = TTptr->TTfields, v5 = 0, !fld->FLDelemID) )
+            {
+LABEL_13:
+				FieldNo = -1;
+			}
+            else
+            {
+				while ( 1 )
+                {
+					v9 = compare(fld->FLDname, v12);
+                    FieldNo = v5;
+                    if ( !v9 )
+						break;
+					v5++;
+                    ++fld;
+                    if ( !fld->FLDelemID )
+						goto LABEL_13;
+				}
+			}
+		}
+	}
+    return FieldNo;
+}
+
+#endif
+@

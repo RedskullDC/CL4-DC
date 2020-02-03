@@ -1,0 +1,10 @@
+dispfld.c:            fillbuf(a3, MaxLen, ' ');	// fill with <SPC>
+disprec.c:                fillbuf(a3, MaxLen, ' ');								// clear answer area 
+dscreen.c:            fillbuf(head_txt, MaxLen, ' ');			// ensure screen area for text field is clear before displaying
+oformat.c:            fillbuf(NumBuff, NumLen, ' ');
+oformat.c:		fillbuf(a1, v8, '?');
+ppause.c:        fillbuf(s, v4, ' ');
+reply.c:			fillbuf(reply_buff, Column + 1, ' ');
+termcap.c:        fillbuf(&abuf[ScreenOffset], (_li * _co) - ScreenOffset, ' ');	// character buffer
+termcap.c:        fillbuf(&abuf[ScreenOffset], RemainChars, ' ');			// character buffer
+toscreen.c:			fillbuf(AttrBuff, MaxLen + num_glitch, v25);						// Fill attribute buffer with required info

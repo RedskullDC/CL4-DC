@@ -1,0 +1,769 @@
+head	1.7;
+access;
+symbols;
+locks
+	leslie:1.7; strict;
+comment	@ * @;
+
+
+1.7
+date	2020.01.27.15.31.30;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2016.08.24.05.51.54;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2015.08.20.00.43.40;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.07.17.02.10.12;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.27.09.24.54;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.24.11.48.33;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.28.03.39.15;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.7
+log
+@prior to X64 conversion
+@
+text
+@#ifndef DSCREEN_C
+#define DSCREEN_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void gtd(ENTAB *entab, int *TTno)
+{
+    if ( !entab || entab->entype == 2 && entab->TTno & 0x0100 )	// reserved value
+        *TTno = 0;
+    else if ( entab->entype == 1 )
+		*TTno = entab->TTno;
+	else
+		*TTno = 0;
+}
+
+void dhdtxt(XTAB *xtb, bool head, bool allow_glitch)
+{
+    char	*v5;
+
+    int		FieldWidth;
+	int		i;
+	int		MaxLen;
+	int		v10;
+	short	GlitchChars;
+	
+	short	Column;
+	short	Line;
+	char	head_txt[1032];
+	
+    head_txt[0] = 0;
+    clgetyx(xtb, &Column, &Line, yx_prompt);		// prompt position on screen.	yx_prompt = fixed value of 2
+    exptobuf(head_txt, ENARR(xtb->Prompt_exp), 0);
+    
+	FieldWidth = getwid(xtb);
+    if ( FieldWidth > 0 )
+    {
+        v5 = head_txt;
+        for ( i = FieldWidth - 1; i != -1; --i )
+            *v5++ = head_txt[0];
+        *v5 = 0;
+    }
+    MaxLen = lenstr(head_txt);
+    
+	if ( Column == 0x1000 )							// Flag bits? 
+		Column = (_co - MaxLen) / 2;
+    else if ( Column == 0x2000 )					// centre, left and right attributes?
+		Column = (_co - MaxLen);
+
+    if ( MaxLen )									// true if we have text to display
+    {
+        v10 = xtb->ScrAttrib;
+        if ( allow_glitch )							// only used by _disprec()
+        {
+            if ( Line == _li - 1 )
+                return;
+            GlitchChars = getnats(v10, 0x20u);		// get number of 'glitch' chars for TEXT fields
+            
+			v10 = 0x3Fu;
+            Column -= GlitchChars;
+            if ( Column <= 0 )
+                Column = 1;
+            
+			MaxLen += 2 * GlitchChars;				// make room for glitch on/off chars
+            memset(head_txt, ' ', MaxLen);			// ensure screen area for text field is clear before displaying
+            head_txt[MaxLen] = 0;
+        }
+		// head true == head command, false == text
+        toscreen(Column, Line, 0, MaxLen, head_txt, v10, (head ? 0x04u : 0x20u), 0);
+    }
+    else			// nothing to display, position cursor at correct place on screeen anyway
+    {
+        whereat(Column, Line, false, 0);			// don't allow mask bits
+        at();
+    }
+}
+
+void _dscreen(BTAB *bt, short PT_Start, short PT_End, bool allowDelayForm)
+{
+    PTAB	*ptb;
+	PTAB	*ptab_end;
+	
+    BTAB	*btb;
+	RDTAB	*rdtb;
+	XTAB	*xtb;
+	
+    int		OpCode;
+	int		FieldNo;
+	int		TTno;
+    short	Column;
+	short	Line;
+	
+	bool	DelayForm = false; 
+    
+	char	fnum_txt[20];		// used for field numbering when active '>> xx' (xx == 1-99) 
+	char	Prompt[1008];		// Prompt text for a head or accept field
+	char	Dest[1008];			// temp area used to copy previous values prior to screen display
+	
+	char FLDtype;
+
+    ptb		 = PTARR(getptabp(PT_Start));
+	ptab_end = PTARR(getptabp(PT_End));
+
+	while ( ptb <= ptab_end )					// look at all instructions in this block range which affect the screen.
+    {
+        srclineno = ptb->SrcLineNo;
+        OpCode	  = ptb->OpCode;
+		switch (OpCode)
+		{
+			case 265:							// delay_form - should appear before anything else!!
+				if ( allowDelayForm )
+				{
+					DelayForm = true;
+					ptb->Operand = nflds;
+				}
+				else
+					nflds = ptb->Operand;
+				break;
+
+			case 720:							// do {block_name}
+                btb = &btab[ptb->Operand];
+                _dscreen(bt, btb->Screens->PT_start, btb->Screens->PT_end, allowDelayForm);		// recursion. descend into block for screen defs
+				break;
+
+			case 730:							// redisplay {variable/Table element}
+				rdtb = RDARR(ptb->TABno);
+                rdtb->RDTFlags = save_sf;
+				break;
+			
+			case 674:							// set fnum , on|off	( 1 = on, 2 = off)
+				fld_nbrs = ptb->Operand;
+				break;
+			
+			case 1 :	// accept field
+			case 3 :	// head 
+				xtb = XTARR(ptb->TABno);
+				clgetyx(xtb, &Column, &Line, yx_prompt);			// Get "Prompt" position on screen. yx_prompt = fixed value of 2
+				exptobuf(Prompt, ENARR(xtb->Prompt_exp), 0);
+
+				if ( first_fld && Prompt[0] )
+                {
+					if ( !DelayForm )
+                    {
+						whereat(1, Line, false, 0);			// don't allow mask bits
+                        at();
+                        erase_page(true);	// wipe displayed screen, *AND* internal buffers :o)
+					}
+                    first_fld = false;
+				}
+                if ( ptb->OpCode == 3 && !DelayForm)		// head
+                {
+					dhdtxt(xtb, true, 0);					// true == head command
+				}
+                else
+                {
+					//seems pointless. gettdfno() will clobber TTno anyway?
+					gtd(ENARR(xtb->VarExpNo), &TTno);
+
+					FieldNo = gettdfno(ENARR(xtb->VarExpNo), &TTno, &FLDtype, 0);
+					assert(FieldNo >= 0);
+
+                    // Add the >> Field Number nonsense to start of field
+					if ( TTno == bt->TTno && ttab[TTno].TTfields[FieldNo].FLDstat & fld_KEY) //0x8000 Key field
+                    {
+						Column -= 3;
+                        cdbcpystr(fnum_txt, ">> ", 0);
+					}
+					else if ( xtb->Flags & xtb_DISPLAY)		// 0x0004 display only field, zero the buffer
+						fnum_txt[0] = 0;
+                    else
+                    {
+						Column -= 3;
+                        ++nflds;
+                        sprintf(fnum_txt, "%2d ", nflds);	// insert Field Selection number (1-99)
+                        xtb->FLDnum = nflds;				// Number displayed on screen when Field Numbering is *on*
+					}
+					//--------------------------------
+                    if ( fld_nbrs == 2 && fnum_txt[0] )		// fld_nbrs == 2 means fnum set to "off"
+                    {
+						Column += 3;
+						memset(fnum_txt, 0, 10);
+					}
+					//eprint("_dscreen - fnum_txt = %s, Prompt = %s\n",fnum_txt,Prompt);
+                    if ( !DelayForm )
+                    {
+						if ( Column <= 0 )
+							Column = 1;
+						if ( Prompt && Prompt[0] )			// Prompt should always be non-zero, stack variable
+                        {
+							cdbcpystr(Dest, fnum_txt, Prompt, 0);
+                            toscreen(Column, Line, 1, lenstr(Dest), Dest, xtb->ScrAttrib, ft_PROMPT, 0);	// 0x10 == Prompt field type
+						}
+					}
+				}
+				break;
+		}
+	ptb++;
+	}
+}
+
+short dscreen(BTAB *btb, int ScreenNo, short CurrPTno)
+{
+    SCR		*scr;
+	short	PT_start;
+
+    nflds = 0;										// ** global var **
+    if ( !isCGI )	// no screen fields when running as a cgi script. DOH!
+    {
+        first_fld = true;							// ** global var **
+        
+		scr = (SCR*)btb->Screens;
+        for ( --ScreenNo; ScreenNo != -1; --ScreenNo )
+            scr = scr->NextSCR;
+        
+		PT_start = CurrPTno ? CurrPTno : scr->PT_start;	// pass CurrPTno == 0 to layout whole screen
+
+		save_sf = PT_start;							// ** global var **
+
+        _dscreen(btb, PT_start, scr->PT_end, 1);
+    }
+    return nflds;	// ** global var **
+}
+
+#endif
+
+@
+
+
+1.6
+log
+@tidy-up
+@
+text
+@d14 1
+a14 1
+    if ( !entab || entab->entype == 2 && entab->TTno & 0x0100 )
+d22 1
+a22 1
+void dhdtxt(XTAB *xtb, int head, int a3)
+d24 1
+a24 1
+    char	*v5; // ecx@@5
+d26 1
+a26 1
+    int		v4;
+d29 2
+a30 3
+	signed int v10;
+	short	v11;
+	//int		v12;
+d32 2
+a33 2
+	int		Column;
+	int		Line;
+d40 2
+a41 2
+	v4 = getwid(xtb);
+    if ( v4 > 0 )
+d44 1
+a44 1
+        for ( i = v4 - 1; i != -1; --i )
+d50 1
+a50 1
+	if ( Column == 0x1000 )                     // Flag bits? 
+d52 1
+a52 1
+    else if ( Column == 0x2000 )                // centre, left and right attributes?
+d55 1
+a55 1
+    if ( MaxLen )								// true if we have text to display
+d58 1
+a58 1
+        if ( a3 )								// only used by 'text' commands
+d62 1
+a62 1
+            v11 = getnats(v10, 0x20u);			// get number of 'glitch' chars for TEXT fields
+d65 1
+a65 1
+            Column -= v11;
+d69 2
+a70 2
+			MaxLen += 2 * v11;					// make room for glitch on/off chars
+            fillbuf(head_txt, MaxLen, ' ');		// ensure screen area for text field is clear before displaying
+d73 1
+a73 2
+
+		// head == fieldtype, 1 == head,0 == text
+d78 1
+a78 1
+        whereat(Column, Line, 0, 0);
+d85 2
+a86 2
+    PTAB *ptb;
+	PTAB *ptab_end;
+d88 9
+a96 9
+    BTAB *btb;
+	RDTAB *rdtb;
+	XTAB *xtb;
+	
+    int OpCode;
+	int FieldNo;
+	int	TTno;
+    int Column;
+	int Line;
+d98 1
+a98 1
+	bool DelayForm = false; 
+d100 3
+a102 3
+	char fnum_txt[20];		// used for field numbering when active '>> xx' (xx == 1-99) 
+	char Prompt[1008];		// Prompt text for a head or accept field
+	char Dest[1008];		// temp area used to copy previous values prior to screen display
+d112 1
+a112 1
+        OpCode = ptb->OpCode;
+d127 1
+a127 1
+                _dscreen(bt, btb->TYPE24->PT_start, btb->TYPE24->PT_end, allowDelayForm);		// recursion. descend into block for screen defs
+d149 1
+a149 1
+						whereat(1, Line, 0, 0);
+d151 1
+a151 1
+                        erase_page(1);
+d155 1
+a155 1
+                if ( ptb->OpCode == 3 && !DelayForm)	// head OpCode
+d157 1
+a157 1
+					dhdtxt(xtb, 1, 0);
+d173 1
+a173 1
+					else if ( xtb->Flags & xtb_DISPLAY) // 0x0004 display only field, zero the buffer
+d180 1
+a180 1
+                        xtb->FLDnum = nflds;		// Number displayed on screen when Field Numbering is *on*
+d183 1
+a183 1
+                    if ( fld_nbrs == 2 && fnum_txt[0] )	// fld_nbrs == 2 means fnum set to "off"
+d186 1
+a186 1
+                        zap(fnum_txt, 10u);
+d193 1
+a193 1
+						if ( Prompt && Prompt[0] )		// Prompt should always be non-zero, stack variable
+d206 1
+a206 1
+short dscreen(BTAB *btb, int ScreenNo, int CurrPTno)
+d208 2
+a209 4
+    SCR *scr; // ecx@@2
+    int i; // edx@@2
+    short v6; // ax@@6
+
+d211 2
+a212 2
+    nflds = 0;
+    if ( !isCGI )	// no screen fields when running as a cgi script!
+d214 1
+a214 1
+        first_fld = true;			// ** global var **
+d216 2
+a217 2
+		scr = (SCR*)btb->TYPE24;
+        for ( i = ScreenNo - 1; i != -1; --i )
+d220 1
+a220 1
+		v6 = CurrPTno ? CurrPTno : scr->PT_start;
+d222 1
+a222 1
+		save_sf = v6;				// ** global var **
+d224 1
+a224 1
+        _dscreen(btb, v6, scr->PT_end, 1);
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d10 1
+d22 1
+a22 1
+void dhdtxt(XTAB *xtb, int a2, int a3)
+d28 1
+a28 2
+	int		v7;
+	size_t	v8;
+d31 1
+a31 1
+	int		v12;
+d49 1
+a49 2
+    v7 = lenstr(head_txt);
+    v8 = v7;
+d52 1
+a52 1
+		Column = (_co - v7) / 2;
+d54 1
+a54 1
+		Column = (_co - v7);
+d56 1
+a56 1
+    if ( v7 )									// true if we have text to display
+d63 1
+a63 1
+            v11 = getnats(v10, 0x20u);
+d70 3
+a72 3
+			v8 += 2 * v11;
+            fillbuf(head_txt, v8, ' ');			// ensure screen area for text field is clear before displaying
+            head_txt[v8] = 0;
+d75 2
+a76 2
+		v12 = a2 ? 0x04u : 0x20u;
+        toscreen(Column, Line, 0, v8, head_txt, v10, v12, 0);
+d87 9
+a95 10
+    PTAB *ptb; // edi@@1
+    PTAB *ptab_end; // [sp+3Ch] [bp-81Ch]@@1
+
+    BTAB *btb; // eax@@51
+    RDTAB *rdtb; // edx@@57
+    XTAB *xtb; // [sp+38h] [bp-820h]@@14
+    
+    int OpCode; // eax@@2
+    int FieldNo; // eax@@33
+    bool DelayForm = false; 
+d97 4
+a100 2
+    int Column; // [sp+48h] [bp-810h]@@16
+    int Line; // [sp+4Ch] [bp-80Ch]@@16
+d129 1
+a129 1
+                _dscreen(bt, btb->TYPE24->PT_start, btb->TYPE24->PT_end, allowDelayForm);		// recursion here
+d134 1
+a134 1
+                rdtb->field_0 = save_sf;
+d170 1
+a170 1
+					if ( TTno == bt->TTno && ttab[TTno].TTfields[FieldNo].FLDstat & 0x8000 ) // Key field
+d175 1
+a175 1
+					else if ( xtb->Flags & 0x0004 )	// display only field, zero the buffer
+d198 1
+a198 1
+                            toscreen(Column, Line, 1, lenstr(Dest), Dest, xtb->ScrAttrib, 16, 0);
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d11 1
+a11 1
+void gtd(ENTAB *entab, int *a2)
+d14 5
+a18 8
+        *a2 = 0;
+    else
+    {
+        if ( entab->entype == 1 )
+            *a2 = entab->TTno;
+		else
+	        *a2 = 0;
+    }
+d23 1
+a23 1
+    char *v5; // ecx@@5
+d25 15
+a39 15
+    int v4; // eax@@4
+    int i; // edx@@5
+    int v7; // eax@@8
+    size_t v8; // esi@@8
+    signed int v10; // edi@@14
+    short v11; // eax@@16
+    int v12; // eax@@19
+    
+	int Column; // [sp+28h] [bp-410h]@@1
+    int Line; // [sp+2Ch] [bp-40Ch]@@1
+    char s[1032]; // [sp+30h] [bp-408h]@@1
+
+    s[0] = 0;
+    clgetyx(xtb, &Column, &Line, yx_prompt);		// prompt position on screeen
+    exptobuf(s, ENARR(xtb->Prompt_exp), 0);
+d44 1
+a44 1
+        v5 = s;
+d46 1
+a46 1
+            *v5++ = s[0];
+d49 1
+a49 1
+    v7 = lenstr(s);
+d54 1
+a54 1
+    else if ( Column == 0x2000 )                 // centre, left and right attributes?
+d57 1
+a57 1
+    if ( v7 )
+d60 1
+a60 1
+        if ( a3 )
+d72 2
+a73 2
+            fillbuf(s, v8, ' ');
+            s[v8] = 0;
+d77 1
+a77 1
+        toscreen(Column, Line, 0, v8, s, v10, v12, 0);
+d79 1
+a79 1
+    else
+d101 5
+a105 3
+    char Dest[1008]; // [sp+50h] [bp-808h]@@50
+    char v23[1008]; // [sp+440h] [bp-418h]@@19
+    char s[1008]; // [sp+830h] [bp-28h]@@37
+d111 1
+a111 1
+	while ( ptb <= ptab_end )
+d117 1
+a117 1
+			case 265:		// delay_form
+d127 1
+a127 1
+			case 720:		// do {block_name}
+d132 1
+a132 1
+			case 730:		// redisplay {variable/Table element}
+d137 1
+a137 1
+			case 674:	// set fnum , on|off	( 1 = on, 2 = off)
+d144 2
+a145 2
+				clgetyx(xtb, &Column, &Line, yx_prompt);			// Get "Prompt" position on screen
+				exptobuf(v23, ENARR(xtb->Prompt_exp), 0);
+d147 1
+a147 1
+				if ( first_fld && v23[0] )
+d155 1
+a155 1
+                    first_fld = 0;
+a166 2
+                    //if ( FieldNo < 0 )
+					//	__assert_fail("fno >= 0", "dscreen.c", 0x72u, "_dscreen");
+d173 1
+a173 1
+                        cdbcpystr(s, ">> ", 0);
+d176 1
+a176 1
+						s[0] = 0;
+d181 1
+a181 1
+                        sprintf(s, "%2d ", nflds);	// insert Field Selection number (1-99)
+d185 1
+a185 1
+                    if ( fld_nbrs == 2 && s[0] )	// fld_nbrs == 2 means fnum set to "off"
+d188 1
+a188 1
+                        zap(s, 10u);
+d190 1
+d195 1
+a195 1
+						if ( v23 && v23[0] )
+d197 1
+a197 1
+							cdbcpystr(Dest, s, v23, 0);
+d218 1
+a218 1
+        first_fld = 1;				// ** global var **
+@
+
+
+1.3
+log
+@prior to ENARR() fixes
+@
+text
+@d26 2
+a28 1
+    char *v5; // ecx@@5
+d42 1
+a42 1
+    exptobuf(s, xtb->Prompt_exp ? &enarr.TableAddr[xtb->Prompt_exp - 1] : 0, 0);
+d134 1
+a134 1
+				rdtb = ptb->TABno ? &rdarr.TableAddr[ptb->TABno - 1] : 0;
+d144 1
+a144 1
+				xtb = ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0;
+d146 1
+a146 1
+				exptobuf(v23, xtb->Prompt_exp ? &enarr.TableAddr[xtb->Prompt_exp - 1] : 0, 0);
+d165 1
+a165 1
+					gtd(xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0, &TTno);
+d167 1
+a167 1
+					FieldNo = gettdfno(xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0, &TTno, &FLDtype, 0);
+@
+
+
+1.2
+log
+@intermediate. prior to asserts being fixed
+@
+text
+@d7 1
+d167 3
+a169 2
+                    if ( FieldNo < 0 )
+						__assert_fail("fno >= 0", "dscreen.c", 0x72u, "_dscreen");
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d33 2
+a34 1
+    int Column; // [sp+28h] [bp-410h]@@1
+d39 1
+a39 1
+    clgetyx(xtb, &Column, &Line, 2);
+d41 2
+a42 1
+    v4 = getwid(xtb);
+d66 2
+a67 1
+            v10 = '?';
+d71 2
+a72 1
+            v8 += 2 * v11;
+d76 2
+a77 3
+        v12 = 0x20u;
+        if ( a2 )
+            v12 = 0x04u;
+d87 1
+a87 1
+void _dscreen(BTAB *bt, short PT_Start, short PT_End, int a4)
+d98 1
+a98 1
+    int v16; // [sp+34h] [bp-824h]@@1
+a106 1
+    v16 = 0;
+d117 1
+a117 1
+				if ( a4 )
+d119 1
+a119 1
+					v16 = 1;
+d128 1
+a128 1
+                _dscreen(bt, btb->TYPE24->PT_start, btb->TYPE24->PT_end, a4);
+d143 2
+a144 1
+				clgetyx(xtb, &Column, &Line, 2);
+d146 1
+a146 2
+				exptobuf(v23, xtb->Prompt_exp ? &enarr.TableAddr[xtb->Prompt_exp - 1] : 0, 0);
+                if ( first_fld && v23[0] )
+d148 1
+a148 1
+					if ( !v16 )
+d156 1
+a156 1
+                if ( ptb->OpCode == 3 && !v16)	// head OpCode
+d190 1
+a190 1
+                    if ( !v16 )
+d207 1
+a207 1
+short dscreen(BTAB *btptr, int a2, int a3)
+d209 1
+a209 1
+    SCR *v3; // ecx@@2
+a210 1
+    short v5; // ax@@4
+d213 1
+d215 1
+a215 1
+    if ( !isCGI )
+d217 11
+a227 12
+        first_fld = 1;
+        v3 = (SCR*)btptr->TYPE24;
+        for ( i = a2 - 1; i != -1; --i )
+            v3 = v3->NextSCR;
+        v5 = a3;
+        if ( !a3 )
+            v5 = v3->PT_start;
+        save_sf = v5;
+        v6 = a3;
+        if ( !a3 )
+            v6 = v3->PT_start;
+        _dscreen(btptr, v6, v3->PT_end, 1);
+d229 1
+a229 1
+    return nflds;	// global var
+@

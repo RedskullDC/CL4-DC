@@ -1,0 +1,198 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.10.27.05.21.37;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef MSTRINGS_C
+#define MSTRINGS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <string.h>		// for void *memset(void *s, int c, size_t n);
+#include "DBdefs.h"
+#include "cl4.h"
+
+void mexit(int ErrorCode)
+{
+	;	// Do nothing on Linux if we can't find the memory we want. Uh-oh!
+}
+
+void* mfree_0(void *ptr)
+{
+	if ( ptr )
+		free(ptr);
+	return 0;
+}
+
+void* mmalloc(unsigned int a1)
+{
+	unsigned int v1; // esi@@1
+	void *v2; // edi@@3
+
+	v1 = a1;
+	if ( a1 <= 3 )
+		v1 = 4;
+	v2 = malloc(v1);
+	if ( !v2 )
+	{
+		if ( !mbuf )
+		{
+			eprint("was mmalloc_init() called? Not enough memory - bye\n");
+			abort();
+		}
+		mexit(-99);
+	}
+	memset(v2, 0, v1);
+	return v2;
+}
+
+void* mrealloc(void *ptr, int a2, size_t size)
+{
+	void *v3; // esi@@1
+
+	v3 = realloc(ptr, size);
+	if ( !v3 )
+		mexit(-99);
+	if ( size > a2 )
+		memset(v3 + a2, 0, size - a2);
+	return v3;
+}
+
+void* mmalloc_init(void)
+{
+	void *result; // eax@@1
+
+	result = malloc(1000u);
+	mbuf = result;
+	return result;
+}
+
+char *mstrcpy(char *Src, ...)
+{
+	unsigned int NewSize; // ecx@@1
+	char *v4; // edx@@2
+	char *v9; // ecx@@6
+	char *v16; // [sp+8h] [bp-10h]@@6
+	va_list va; // [sp+28h] [bp+10h]@@1
+
+	// first section works out the total length of the new string required.
+
+	va_start(va, Src);
+	NewSize = 0;
+	v4 = Src;
+	while( v4 && *v4 )
+	{
+		NewSize += strlen(v4);
+		v4 = va_arg(va,char*);
+	}
+	// NewSize now equals the buffer size required.
+
+	v16 = mmalloc(NewSize + 1);
+	va_start(va, Src);	// go back to start of the list
+	v9 = v16;
+	v4 = Src;
+	while (v4)
+	{
+		for ( ;*v4; )
+		{
+			*v9++ = *v4++;
+		}
+		v4 = va_arg(va,char*);
+	}
+	va_end(va);	// keep var_arg macros happy
+	*v9 = 0;
+	return v16;
+}
+
+char*	mstrcat(char *a1, char *a2, ...)
+{
+	int v2;
+	char *v4;
+	char *v9;
+	char *v10;
+	size_t v16; 
+	va_list va; 
+
+	//printf("mstrcat(a1 = %s, a2 = %s)\n",a1,a2);
+
+	va_start(va, a2);
+	v2 = 0;
+	v16 = strlen(a1);
+	v4 = a2;
+	// first section works out the total length of the new string required.
+	while (v4)
+	{
+		for ( ;*v4; )
+		{
+			v2++;
+			v4++;
+		}
+		v4 = va_arg(va,char*);
+	}
+
+	v9 = (char*)mrealloc(a1, v16, v2 + v16 + 1);
+	v10 = &v9[v16];	//Start at byte after original string
+	
+	va_start(va, a2);	// go back to start of the list
+	v4 = a2;			// First time through use arg#2, then hit the VA list 
+	while ( v4 )
+	{
+		for ( ;*v4; )
+		{
+			*v10++ = *v4++;
+		}
+		v4 = va_arg(va,char*);
+	}	
+
+	va_end(va);	// keep var_arg macros happy
+	*v10 = 0;
+	return v9;
+}
+
+char* mstrncpy(char *Dest, int MaxLen, char *Src, ...)
+{
+	int BytesRemaining;
+	char *v4;
+	char *v6;
+	va_list va;
+
+	va_start(va, Src);
+	BytesRemaining = MaxLen;
+	v4 = Dest;
+
+	v6 = Src;
+	while (v6 && *v6 && BytesRemaining )
+	{
+		while( *v6 && --BytesRemaining )
+		{
+			*v4++ = *v6++;
+		}
+		v6 = va_arg(va,char*);
+	}
+
+	va_end(va);	// keep var_arg macros happy
+	*v4 = 0;
+	return Dest;
+}
+
+#endif
+@

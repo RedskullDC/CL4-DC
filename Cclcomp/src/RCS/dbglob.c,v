@@ -1,0 +1,111 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.05.16.07;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial version
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef DBGLOG_C
+#define DBGLOG_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+DBinfo* _chkdb(unsigned int DBno)
+{
+
+	//printf("_chkdb(DBno : %d)\n" ,DBno);
+	if ( DBno < 255 )
+		return _dbase[DBno];
+	return 0;
+}
+
+signed int _nxtdb(DBinfo *DBptr)
+{
+	int DBno; // edx@@1
+
+	DBno = 0;
+	while ( _dbase[DBno] )
+	{
+		DBno++;
+		if ( DBno > 254 )
+			return -1;
+	}
+	_dbase[DBno] = DBptr;
+	return DBno;
+}                             // Store DBptr in next available slot
+
+DBinfo* _rmdb(int DBno)
+{
+	DBinfo *DBptr; // eax@@1
+
+	DBptr = _chkdb(DBno);
+	if ( DBptr )
+		_dbase[DBno] = 0;
+	return DBptr;
+}
+
+int fdf2db(DBinfo *DBptr)
+{
+	int DBno; // eax@@1
+
+	DBno = 0;
+	while ( _dbase[DBno] != DBptr )
+	{
+		DBno++;
+		if ( DBno > 254 )
+			return 0;
+	}
+	return DBno;
+}
+
+signed int _chkdbname(char *DBname)
+{
+	DBinfo *DBptr; 
+	signed int DBno; 
+
+	DBno = 0;
+	while ( DBno < 255 )
+	{
+		DBptr = _chkdb(DBno);
+		if ( DBptr )
+		{
+			if ( cmpstr(DBname, DBptr->DBname))
+				return DBno;
+		}
+		DBno++;
+	}
+	return -1;
+}
+
+char* _dbname(int DBno)
+{
+	DBinfo *DBptr; 
+
+	//printf("_dbname(DBno : %d)\n" ,DBno);
+
+	DBptr = _chkdb(DBno);
+	if ( DBptr )
+		return DBptr->DBname;
+	return 0;
+}
+
+#endif
+@

@@ -24,7 +24,7 @@ void _ipos(DPOS *dpos, int PageNo, short Depth, TDinfo *TDptr)
 		page = _indexpg(TDptr, PageNo);
 		dpos->field_8 = PageNo;					// Containing Page
 		
-		PageNo = mstol((int*)page->DataStart);	// Set to first entry in page
+		PageNo = mstol((int*)page->header.DataStart);	// Set to first entry in page
 		dpos->NumEntries = 1;
 		--v5;
 	}

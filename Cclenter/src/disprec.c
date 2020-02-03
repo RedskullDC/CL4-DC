@@ -72,7 +72,7 @@ void _disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, bool show)
             else	// This is a variable (system or user)
             {
 				MaxLen = getwid(xt);
-                fillbuf(a3, MaxLen, ' ');								// clear answer area 
+                memset(a3, ' ', MaxLen);								// clear answer area 
                 a3[MaxLen] = 0;
                 clgetyx(xt, &Column, &Line, yx_answer);					// position to answer field
                 toscreen(Column, Line, 1, MaxLen, a3, xt->Attr, 1, 0);

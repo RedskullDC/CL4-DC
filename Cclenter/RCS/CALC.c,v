@@ -1,0 +1,744 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.08.27.14.05.47;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef CALC_FNS_C
+#define CALC_FNS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void calculate(ENTAB *ent)
+{
+    ENTAB *v18; // eax@@66
+    FLDdesc *fld_src; // [sp+28h] [bp-C50h]@@11
+    FLDdesc *fld_dest; // [sp+2Ch] [bp-C4Ch]@@8
+
+    FLDdesc *v21; // esi@@84
+    FLDdesc *a1a; // [sp+2Ch] [bp-C4Ch]@@44
+    
+	char *v11; // eax@@44
+    char *v36; // esi@@145
+    char *v39; // [sp+4h] [bp-C74h]@@44
+    char *v47; // [sp+24h] [bp-C54h]@@145
+
+    double v45;
+    double v15;
+    double v17;
+    double v22;
+    
+	// range check vars
+	double MaxVal; // fst7@@116
+    double MinVal; // fst6@@124
+    double TestVal; // fst6@@125
+
+    int OpCode; // eax@@17
+    int v30; // eax@@116
+    int MaxLen; // [sp+30h] [bp-C48h]@@143
+    int TTno; // [sp+38h] [bp-C40h]@@4
+
+    short v37; // di@@145
+    short DestFieldNo; // [sp+20h] [bp-C58h]@@4
+    unsigned short v8; // dx@@29
+    short v54; // [sp+4Ch] [bp-C2Ch]@@92
+    short v55; // [sp+4Eh] [bp-C2Ah]@@92
+    char v6; // zf@@23
+    char v9; // zf@@32
+    char v42; // [sp+8h] [bp-C70h]@@83
+    char v43; // [sp+8h] [bp-C70h]@@84
+    char FLDtype; // [sp+3Fh] [bp-C39h]@@4
+    char a2[1008]; // [sp+50h] [bp-C28h]@@29
+    char Src[1008]; // [sp+440h] [bp-838h]@@39
+    char s[1032];
+    
+	FLDdesc fld1;
+    FLDdesc fld2;
+
+    DestFieldNo = (short)gettdfno(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0 , &TTno, &FLDtype,(unsigned short)(ent->TTno & 0xFC00) - 0xD401u <= 0x1BFF);
+    if ( ent->entype != 2 )
+		__assert_fail("((ce)->entype == 0x2)", "calculate.c", 69, "calculate");
+
+	if ( DestFieldNo < 0 )
+    	__assert_fail("fno >= 0", "calculate.c", 70, "calculate");
+    
+	fld_dest = &ttab[TTno].TTfields[DestFieldNo];
+    fld_src = getftf(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, 0, &fld1);
+
+//----------------------------
+    if ( fld_dest->FLDtype == 'C' )			// String destination routines
+    {
+		//printf("calculate : String Routine [dest = C]\n");
+        sv_wid = fld_dest->FLDlen;
+        zap(s, 1001u);
+        evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, s);
+        
+		if ( fld_dest->FLDlen > 1000u )
+			__assert_fail("f->fwid < sizeof(result)", "calculate.c", 81, "calculate");
+
+		OpCode = ent->TTno & 0xFC00;
+		switch (OpCode)
+		{
+		case 0xD800:	// math operators - fall through to next block
+		case 0xDC00:
+		case 0xE000:
+		case 0xE400:
+		case 0xE800:
+		case 0xEC00:
+			break;
+		case 0xA800:				// simple Assignment 
+			s[fld_dest->FLDlen] = 0;
+            a1a = getftf(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, 0, &fld2);
+			cdbcpystr((char *)a1a->FLDdata, s, 0);
+			
+			if ( !TTno && DestFieldNo == v_TAB )	// "TAB"
+			{
+				setcvar(v_TAB, (char *)a1a->FLDdata);  
+				TAB = *(char *)a1a->FLDdata;
+			}
+			if ( *(char *)a1a->FLDdata )
+			    a1a->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+			else
+			    a1a->FLDstat |= fld_ZERO;	// 0x0004u;
+			goto LABEL_112;
+			break;
+		default :					// Invalid OpCode, Crash out!
+			__assert_fail("0", "calculate.c", 113, "calculate");
+			break;
+        }
+
+		cdbcpystr(a2, (char *)fld_dest->FLDdata, 0);
+		//printf("calculate : a2 = %s\n", a2);
+
+		switch (OpCode)				// some hokey OpCode remapping for stroper()
+		{
+		case 0xD800:
+            v8 = 0x5400u;			// Addition
+			break;
+		case 0xDC00:
+			v8 = 0x5800u;			// Subtraction
+			break;
+		case 0xE000:
+			v8 = 0x6000u;			// Multiply
+			break;
+		case 0xE400:
+			v8 = 0x6400u;			// Division
+			break;
+		case 0xE800:
+			v8 = 0x6800u;			// MOD Operator
+			break;
+		case 0xEC00:
+			v8 = 0x5C00u;			// Exponent
+			break;
+		default:
+			v8 = ent->TTno;			// default == don't remap opcode
+			break;
+		}
+                
+        if ( !stroper(v8, Src, a2, s) )
+            Src[0] = 0;
+
+		Src[fld_dest->FLDlen] = 0;
+
+        a1a = getftf(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, 0, &fld2);
+        cdbcpystr((char *)a1a->FLDdata, Src, 0);
+        
+		if ( !TTno && DestFieldNo == v_TAB )		// TTno == 0 if this is a system variable
+        {
+            setcvar(v_TAB, (char *)a1a->FLDdata);  // "TAB"
+            TAB = *(char *)a1a->FLDdata;
+        }
+        if ( *(char *)a1a->FLDdata )	// Quick ZERO flag check
+            a1a->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+        else
+            a1a->FLDstat |= fld_ZERO;	// 0x0004u;
+    }
+	else	//fld_dest->FLDtype != 'C'
+	{	
+		// Numeric calcs follow
+		//printf("calculate : Numeric Routine [dest = %C]\n",fld_dest->FLDtype);
+		sv_wid = 99;
+		if ( ent->TTno & 0x0200 )	// Integer calc flag
+		{
+		    v45 = (double)evalint(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0);
+		}
+		else
+		{
+			v17 = evalnum(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, fld_dest->FLDtype);
+			v45 = clround(v17, fld_dest->FLDtype);
+
+		}
+		a1a = getftf(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, 0, &fld2);
+
+		OpCode = ent->TTno & 0xFC00;
+		if ( OpCode )
+		{
+			switch (OpCode)
+			{
+			case 0xE000:
+			    v22 = v45 * *(double *)a1a->FLDdata;		// Multiply
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xE800:					
+				if ( v45 == 0.0 )
+				    v22 = v45;
+				else
+				{
+				    v22 = *(double *)a1a->FLDdata / v45;	// MOD operator??
+				    v54 = v55 & 0xF3FF | 0x400;
+				    //_FST6 = v25;
+				    //__asm { frndint }
+				    //*(double *)((char *)&a3 + 1) = _FST6;
+				    //v20 = (v25 - (double)_FST6) * v45;
+					v22 = 0.0;								//**** to FIX ***
+				}
+				v45 = clround(v22, a1a->FLDtype);
+				*(double *)a1a->FLDdata = v45;
+				break;
+			case 0xEC00:
+				v22 = power(*(double *)a1a->FLDdata, v45);	// Exponent
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xE400:
+				v22 = *(double *)a1a->FLDdata / v45;		// Division
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xD800:
+			    v22 = v45 + *(double *)a1a->FLDdata;		// Addition
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xDC00:
+			    v22 = *(double *)a1a->FLDdata - v45;		// Subtraction
+			    v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xA800:									// simple assignment?
+				printf("calc - 0xA800 opcode encountered \n");
+				//*(double *)a1a->FLDdata = v45;	//*********************************************
+				break;
+			default:	// Somehow we reached an invalid OpCode!!
+				__assert_fail("0", "calculate.c", 176, "calculate");
+				break;
+
+			}
+			*(double *)a1a->FLDdata = v45;
+		}
+
+		if ( !TTno && DestFieldNo == v_DATEFORM )    // "DATEFORM"
+		    _DF = (short)*(double *)a1a->FLDdata;
+    
+		if ( v45 == 0.0 )				// set quick ZERO flag
+		    a1a->FLDstat |= fld_ZERO;	// 0x0004u;
+		else
+			a1a->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+
+		// special check for Dest Vartype = D, and Src = INT array of size 10
+
+		if ( fld_src && a1a->FLDtype == 'D' && fld_src->FLDstat & fld_ARRAY && fld_src->FLDelemID == 10 && fld_src->FLDtype == 'N' )
+		   arrdate(a1a, fld_src);
+	}
+
+LABEL_112:
+
+// Calc finished, do range limit checks if applicable ...
+	
+	v30 = a1a->FLDtype;
+    if ( v30 == 'B' || v30 == 'I' || v30 == 'N' || v30 == 'L' )
+	{    
+//printf("calculate : range check routines : FLDtype = %C\n",v30);
+		switch (v30)
+		{
+		case 'I':
+		    MaxVal = 32767.0;
+		    MinVal = -32767.0;
+			break;
+		case 'B':
+		    MaxVal = 127.0;
+		    MinVal = -127.0;
+		    break;
+		case 'L':
+		    MaxVal = 1.0e14;
+		    MinVal = -1.0e14;
+		    break;
+		case 'N':
+		    MaxVal = 2147483647.0;
+		    MinVal = -2147483647.0;
+			break;
+		}
+		TestVal = *(double *)a1a->FLDdata;
+//printf("calculate : TestVal = %G, MinVal = %G, MaxVal = %G\n",TestVal,MinVal,MaxVal);
+		if ( TestVal > MaxVal )
+			*(double *)a1a->FLDdata = MaxVal;
+		else if( TestVal < MinVal )
+			*(double *)a1a->FLDdata = MinVal;
+	}
+
+//--------------------
+    if ( a1a->FLDstat & fld_ARRAY )	// Array variable types
+    {
+        if ( fld_src && a1a->FLDelemID == 10 && a1a->FLDtype == 'N' && fld_src->FLDtype == 'D' ) // special check for INT array size = 10, and vartypes D
+        {
+            datearr(a1a);	// convert double value into array hanging off -> FLDname
+        }
+        else
+        {
+            if ( a1a->FLDtype == 'C' )
+                MaxLen = (unsigned short)(a1a->FLDlen + 1);
+            else
+                MaxLen = sizeof(double);	//8;
+
+            v47 = a1a->FLDname;		// Array variables hang of FLDname. 
+            v36 = &v47[MaxLen];
+            v37 = a1a->FLDelemID - 1;
+            if ( a1a->FLDelemID != 1 )
+            {
+                do
+                {
+                    cpybuf(v36, v47, MaxLen);
+                    v36 += MaxLen;
+                    --v37;
+                }
+                while ( v37 );
+            }
+        }
+    }
+    else
+    {
+        if ( !TTno && DestFieldNo == v_INTERRUPT )// "INTERRUPT"
+            cl_intr(0);
+    }
+    a1a->FLDstat |= 0x0018u;	// (fld_DATA_AVAIL|fld_SUBREC) ???
+}
+
+int fcheck(char *a1, XTAB *arg4, int a3)
+{
+    char v3; // al@@3
+    int result; // eax@@4
+    char a2[2]; // [sp+12h] [bp-6h]@@3
+
+//    if ( a3 || SLOBYTE(arg4->Flags) >= 0 || (v3 = isfname(a1), *(short *)a2 = (unsigned char)v3 | *(short *)a2 & 0xFF00, !v3) )
+    if ( a3 || !(arg4->Flags & 0x80) || (v3 = isfname(a1), *(short *)a2 = (unsigned char)v3 | *(short *)a2 & 0xFF00, !v3) )
+    {
+        result = 1;
+    }
+    else
+    {
+        a2[1] = 0;
+        prerr("invalid character [%s]", a2, 1);
+        result = 0;
+    }
+    return result;
+}
+
+int rcheck(XTAB *xtab, FLDdesc *fld, int a5)
+{
+    RATAB *v6; // eax@@7
+    RATAB *v37;
+    ENTAB *v8; // edx@@19
+    FLDdesc *v11; // eax@@31
+    FLDdesc *v14; // eax@@39
+    int RangeType; // eax@@7
+
+    char *v3; // edx@@0
+    char *v4; // edi@@1
+
+    int v5; // eax@@4
+    int v16; // esi@@46
+    int v17; // eax@@47
+    short v18; // eax@@59
+    char v19; // al@@64
+    double v20; // fst6@@74
+    double v21; // fst7@@74
+    char *v22; // edi@@85
+    char *v23; // esi@@85
+    char *v25; // esi@@100
+    char *v26; // eax@@100
+    int DecPlaces; // ST5C_4@@101
+    char *v28; // eax@@104
+    char v32; // [sp+2Bh] [bp-11CDh]@@1
+    char *a2a; // [sp+2Ch] [bp-11CCh]@@1
+    short v34; // [sp+30h] [bp-11C8h]@@1
+    char *v35; // [sp+34h] [bp-11C4h]@@1
+    double v38; // [sp+40h] [bp-11B8h]@@1
+    double v39; // [sp+48h] [bp-11B0h]@@1
+    double v40; // [sp+50h] [bp-11A8h]@@1
+    int Required; // [sp+5Ch] [bp-119Ch]@@46
+    char v42[1008]; // [sp+60h] [bp-1198h]@@27
+    FLDdesc s; // [sp+450h] [bp-DA8h]@@31
+    char v44[32]; // [sp+470h] [bp-D88h]@@62
+    char v45[1008]; // [sp+490h] [bp-D68h]@@100
+    char v46[1008]; // [sp+880h] [bp-978h]@@100
+    char Dest[32]; // [sp+C70h] [bp-588h]@@34
+    char result[1008]; // [sp+C90h] [bp-568h]@@89
+    char format[1008]; // [sp+1080h] [bp-178h]@@113
+
+    v4 = 0;
+    v39 = 0.0;
+    v40 = 0.0;
+    v38 = 0.0;
+    v35 = 0;
+    v32 = 0;
+    v34 = 0;
+    a2a = 0;
+    if ( a5 || !(xtab->Flags & 0x0400) && (v3 = (char *)fld, fld->FLDstat & 4) )
+        return 1;
+    if ( xtab->Flags & 0x110 || !xtab->RangeID )
+    {
+        v39 = 0.0;
+        v38 = 0.0;
+        v40 = 0.0;
+        v37 = 0;
+        goto LABEL_46;
+    }
+    v6 = &raarr.TableAddr[xtab->RangeID - 1];
+    v37 = v6;
+    RangeType = v6->RangeType;
+//----------------------------
+    if ( RangeType == 2 )
+    {
+        v34 = -1;
+        if ( xtab->Flags & 1 )
+            goto LABEL_46;
+        goto LABEL_44;
+    }
+//----------------------------
+    if ( RangeType <= 2 )
+    {
+        if ( RangeType != 1 )
+            goto LABEL_28;		// range type <=0   go to default handler
+        v34 = 1;
+        if ( xtab->Flags & 1 )
+            goto LABEL_46;
+        goto LABEL_44;
+    }
+//----------------------------
+    if ( RangeType == 5 )
+    {
+        v34 = 0;
+        v8 = v37->RangeFrom ? &enarr.TableAddr[v37->RangeFrom - 1] : 0;
+        if ( v8->entype != 2 || v8->TTno != 0x6C00 )
+            __assert_fail("((tf)->entype == 0x2) && tf->enun.Enop.Enoper == ((27) << 10)", "rcheck.c", 0x61u, "rcheck");
+        a2a = evalstr(v8->Dest ? &enarr.TableAddr[v8->Dest - 1] : 0, v42);
+        goto LABEL_46;
+    }
+    if ( RangeType == 6 )
+        goto LABEL_46;
+
+//--------------------------------
+LABEL_28:
+// range type = default handler ??
+    v34 = 0;
+    v11 = getftf(v37->RangeFrom ? &enarr.TableAddr[v37->RangeFrom - 1] : 0, 1, &s);
+    v3 = (char *)v11;
+    v4 = (char *)v11->FLDdata;
+    if ( !(xtab->Flags & 1) )
+    {
+        if ( v11->FLDtype == 'C' && xtab->Flags & 2 )
+        {
+            cdbcpystr(Dest, v4, 0);
+            v40 = (double)clgetdate(Dest);
+        }
+        else
+            v40 = clround(*(double *)v4, v11->FLDtype);
+        
+		v14 = getftf(v37->RangeTo ? &enarr.TableAddr[v37->RangeTo - 1] : 0, 1, &s);
+        if ( v14->FLDtype == 'C' && xtab->Flags & 2 )
+        {
+            cdbcpystr(Dest, (char *)v14->FLDdata, 0);
+            v39 = (double)clgetdate(Dest);
+        }
+        else
+            v39 = clround(*(double *)v14->FLDdata, v14->FLDtype);
+
+LABEL_44:
+        v3 = (char *)fld;
+        v38 = *(double *)fld->FLDdata;
+    }
+
+//---------------------------
+
+LABEL_46:
+    v16 = 0;
+    Required = 0;
+    if ( xtab->Flags & 0x0400 )
+    {
+        v3 = (char *)fld;
+        v17 = 1;
+        if ( !(fld->FLDstat & 4) )
+            v17 = 0;
+        Required = v17;
+    }
+    if ( !v37 )
+        goto LABEL_82;
+    if ( fld->FLDtype != 'C' )
+    {
+        if ( v34 <= 0 )
+        {
+            if ( v34 >= 0 )
+            {
+                if ( v40 > (double)v38 || v38 > (double)v39 )
+					v16 = 1;
+                goto LABEL_82;
+            }
+            goto LABEL_76;
+        }
+        v20 = 0.0;
+        v21 = v38;
+        goto LABEL_77;
+    }
+    if ( !v34 )
+    {
+        if ( v37->RangeType == 6 )
+        {
+            v32 = isfname((char *)fld->FLDdata);
+            if ( !v32 )
+                goto LABEL_82;
+        }
+        else
+        {
+            if ( !a2a )
+            {
+                v35 = v4;
+                v16 = 1;
+                do
+                {
+                    v3 = v44;
+                    if ( *v4 )
+                    {
+                        if ( *v4 == ',' )
+                        {
+LABEL_66:
+                            if ( *v4 )
+                                ++v4;
+                        }
+                        else
+                        {
+                            while ( 1 )
+                            {
+                                v19 = *v4++;
+                                *v3++ = v19;
+                                if ( !*v4 )
+                                    break;
+                                if ( *v4 == ',' )
+                                    goto LABEL_66;
+                            }
+                        }
+                    }
+                    *v3 = 0;
+                    if ( !v44[0] )
+                        break;
+                    if ( !compare((char *)fld->FLDdata, v44) )
+                        v16 = 0;
+                }
+                while ( v16 );
+                goto LABEL_82;
+            }
+            v18 = smatch((char *)fld->FLDdata, a2a);
+            if ( v18 > 0 )
+                goto LABEL_82;
+        }
+        v16 = 1;
+        goto LABEL_82;
+    }
+	//v38 = __strtod_internal((const char *)fld->FLDdata, 0, 0);
+    v38 = strtod((const char *)fld->FLDdata, 0);
+
+//-----------------------------------------------------------------
+    if ( v34 > 0 )
+	{
+        v20 = 0.0;
+        v21 = v38;
+        goto LABEL_77;
+	}
+	else
+	{
+LABEL_76:
+		v21 = 0.0;
+		v20 = v38;
+	}
+//---------------------------------
+LABEL_77:
+    if ( v20 >= v21 )
+        v16 = 1;
+
+//----------------------------
+LABEL_82:
+    if ( !Required )
+    {
+        v5 = 1;
+        if ( !v16 )
+            return v5;
+    }
+//-----------------------------------
+    if ( v37 )
+    {
+        v22 = "";
+        v23 = "";
+        if ( v34 > 0 )
+            sprintf(result, "must be POSITIVE");
+        
+		else if ( v34 < 0 )
+            sprintf(result, "must be NEGATIVE");
+
+		else if ( xtab->Flags & 0x0080 )
+        {
+            sprintf(result, "invalid NAME character [%c]", v32);
+            bncbuf_0[0] = v32;
+            bncbuf_0[1] = 0;
+            v22 = bncbuf_0;
+        }
+		else
+		{
+			switch (fld->FLDtype)
+			{
+			case 'C':
+				if ( a2a )
+				{
+				    sprintf(result, "must match: '%s'", a2a);
+				    v22 = a2a;
+				}
+				else
+				{
+				    sprintf(result, "allowed: '%s'", v35);
+				    v22 = v35;
+				}
+				break;
+
+			case 'D':
+				sprintf(result, "range: %s to %s", makedate(v46, v40), makedate(v45, v39));
+				v22 = v46;
+				v23 = v45;
+				break;
+
+			case 'T':
+				sprintf(result, "range: %s to %s", maketime(v46, v40), maketime(v45, v39));
+				v22 = v46;
+				v23 = v45;
+				break;
+
+			default:
+				DecPlaces = (short)typedp(fld->FLDtype);
+				v22 = v46;
+				sprintf(v46, "%.*f", DecPlaces, v40);
+				v23 = v45;
+				sprintf(v45, "%.*f", DecPlaces, v39);
+				sprintf(result, "range: %s to %s", v46, v45);
+				break;
+			}
+        }
+        if ( v37->StringOffset )
+            putmesg(result, 1001u, &strarr.StringTable[v37->StringOffset - 1], v22, v23);
+    }
+	else
+	{
+		result[0] = 0;
+	}
+
+//========================================
+
+LABEL_108:
+    if ( xtab->Flags & 0x10 )
+        cdbcpystr(result, result, " (try '*' or '+')", 0);
+    if ( xtab->onesc )
+        cdbcpystr(result, result, " (try ESC ' ')", 0);
+
+//------------------------
+	if ( Required )
+    {
+        cdbcpystr(format, "required", 0);
+        if ( result[0] )
+            cdbcpystr(format, format, " - ", result, 0);
+	    prerr(format, 0, 1);
+    }
+    else
+    {
+	    prerr(result, 0, 1);
+    }
+    return 0;
+}
+
+void putmesg(char *a2, unsigned int a3, char *a4, char *a5, char *a6)
+{
+    char *v5; // ecx@@1
+    unsigned int v6; // esi@@1
+    char *v7; // edx@@1
+    char *v8; // edx@@4
+    signed int v9; // eax@@4
+    char *v10; // edi@@8
+    char v11; // al@@12
+    char v12; // al@@18
+
+    v5 = a2;
+    v6 = a3;
+    v7 = a4;
+    if ( *a4 && a3 > 1 )
+    {
+        while ( *v7 != '$' )
+        {
+            v12 = *v7++;
+            *v5++ = v12;
+            --v6;
+LABEL_19:
+            if ( !*v7 || v6 <= 1 )
+			{
+				*v5 = 0;
+				return;
+			}
+        }
+        v8 = v7 + 1;
+        v9 = *v8;
+//------------------------------        
+		if ( v9 == '$' )
+		{
+            *v5++ = *v8;
+		}
+        else if ( v9 >= '$' && (unsigned int)(v9 - 49) <= 1 )
+        {
+            if ( *v8 == '1' )
+                v10 = a5;
+            else
+                v10 = a6;
+            for ( ; *v10 && v6 > 1; --v6 )
+            {
+                v11 = *v10++;
+                *v5++ = v11;
+            }
+        }
+		else
+		{
+			*v5++ = '$';
+			--v6;
+			if ( v6 )
+			    *v5++ = *v8;
+		}
+	    v7 = v8 + 1;
+        goto LABEL_19;
+//---------------------
+    }
+    *v5 = 0;
+}
+
+#endif
+@

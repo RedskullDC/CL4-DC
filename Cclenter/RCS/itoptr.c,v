@@ -1,0 +1,52 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.20.05.21.09;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef ITOPTR_C
+#define ITOPTR_C
+
+char * _itoptr(PAGE *PageBuffer,short N1_2idx)
+{
+	short v2;
+	char *result;
+
+	//printf("_itoptr(PAGE: x%08X, Index: x%02X (%4d)\n" ,PageBuffer,N1_2idx,N1_2idx);
+	if ( PageBuffer->PageType & 0x40 )
+	{
+		result = (char*)PageBuffer->TabEnd;
+		if ( N1_2idx )
+		{
+			v2 = SWAP_SHORT((PageBuffer->TabStart_or_RecSize + 2 * (N1_2idx - 1)));
+			result += v2;
+		}
+	}
+	else
+	{
+		result = &PageBuffer->TabEnd[(int)PageBuffer->TabStart_or_RecSize * N1_2idx];
+	}
+	//printf("_itoptr: returned x%08X\n",result);
+	return result;
+}
+
+#endif
+@

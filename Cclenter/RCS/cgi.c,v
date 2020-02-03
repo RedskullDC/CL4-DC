@@ -1,0 +1,1868 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.11.23.42.18;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2016.07.11.03.50.21;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial working version. cle.cgi now responds to web requests!!!
+@
+
+
+1.2
+log
+@clean-up
+@
+text
+@#ifndef CGI_FNS_C
+#define CGI_FNS_C
+
+#include <string.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+// dummy xl routines. replace with expat later!
+
+char buf_4[8192];
+
+char *xmlInit(char *StreamName)
+{
+	buf_4[0] = 0;
+	return buf_4;	// null string means no error occured
+}
+
+char *xmlGetValue(char *ValueType, int a2)
+{
+	return "dummy";
+}
+
+void xmlPreEncFile(int a1)
+{
+	//preEncFile = a1;
+}
+
+
+//=============================================================
+
+form_entry *_cgiGetCookies(char *a1)
+{
+	char *v3;
+	char *v5;
+	char *v6;
+	char *v7;
+	form_entry *fme;
+	
+	fme = 0;
+	if ( a1 )
+	{
+		v3 = mstrcpy(a1, 0);	// make a local copy in global mem
+		fme = 0;
+		v5 = strchr(v3, '=');
+		if ( v5 )
+		{
+			*v5++ = 0;
+			fme = (form_entry *)mmalloc(12);
+			fme->name = mstrcpy(v3, 0);
+			v6 = strchr(v5, ';');			// look for seperator indicating next cookie
+			v7 = "";
+			if ( v6 )
+			{
+				*v6 = 0;
+				v7 = v6 + 2;
+			}
+			fme->val = mstrcpy(v5, 0);
+			if ( *v7 )
+				fme->next = _cgiGetCookies(v7);           // recursive
+		}
+		mfree_0(v3);
+	}
+	return fme;
+}
+
+bool _cgiGetInfo(CGI_VAR *cgarr)
+{
+	CGI_VAR *i;
+	
+	for ( i = cgarr; i->name; i++ )
+	{
+		i->val = mstrcpy(getenv(i->name), 0);
+		if ( i->val && !strncasecmp(i->name, "HTTP_COOKIE", 12))
+			ck = _cgiGetCookies(i->val);	// get linked list of cookie values
+	}
+	return cgarr[4].val != 0;				// SERVER_NAME != NULL
+}
+
+void soapFault(char *SoapFault, char *SoapFaultStr, char *SoapExtFaultStr)
+{
+  puts("Content-Type: text/xml; charset=\"utf-8\"");
+  puts("Status: 500\n");
+  printf("<SOAP-ENV:Envelope ");
+  puts("xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\">");
+  puts(" <SOAP-ENV:Body>");
+  puts("  <SOAP-ENV:Fault>");
+  printf("   <faultcode>%s</faultcode>\n", SoapFault);
+  printf("   <faultstring>%s", SoapFaultStr);
+  if ( *SoapExtFaultStr )
+    printf(" [%s]", SoapExtFaultStr);
+  puts("</faultstring>");
+  puts("  </SOAP-ENV:Fault>");
+  puts(" </SOAP-ENV:Body>");
+  puts("</SOAP-ENV:Envelope>");
+  fflush(stdout);
+  exit(1);
+}
+
+void xmlRpcFault(char *FaultCode, char *FaultString, char *ExtendedFaultCode)
+{
+  puts("Content-Type: text/plain");
+  puts("Status: 500\n");
+  puts("<XML-ENV:Fault>");
+  printf(" <faultcode>%s</faultcode>\n", FaultCode);
+  printf(" <faultstring>%s", FaultString);
+  if ( *ExtendedFaultCode )
+    printf(" [%s]", ExtendedFaultCode);
+  puts("</faultstring>");
+  puts("</XML-ENV:Fault>");
+  fflush(stdout);
+  exit(1);
+}
+
+//form_entry *_cgiGetFormData(CGI_VAR *a1)
+form_entry *_cgiGetFormData(CGI_VAR *a1)
+{
+	form_entry *v67; // [sp+30h] [bp-2528h]@@73
+	form_entry *v61; // esi@@91
+	int length; // esi@@1
+	char *v3; // eax@@12
+	char *v4; // eax@@12
+	char *v7; // eax@@20
+	__pid_t v9; // ST08_4@@23
+	FILE *v10; // esi@@23
+	size_t v12; // eax@@27
+	char *v13; // eax@@29
+	char *v39; // eax@@51
+	unsigned int v44; // eax@@64
+	char *v47; // eax@@74
+	char *v50; // esi@@76
+	char *ProgramName; // eax@@86
+	char *v59; // edi@@89
+	char *v60; // eax@@90
+	char *v63; // ST3C_4@@93
+	int v64; // [sp+Ch] [bp-254Ch]@@1
+	bool v65; // [sp+28h] [bp-2530h]@@49
+	char *SoapAction; // [sp+2Ch] [bp-252Ch]@@17
+	char *a3; // [sp+34h] [bp-2524h]@@67
+	const char *s; // [sp+38h] [bp-2520h]@@52
+	char *ptr; // [sp+3Ch] [bp-251Ch]@@31
+	char path[128]; // [sp+40h] [bp-2518h]@@51
+	char FileName[128]; // [sp+C0h] [bp-2498h]@@21				// ********************
+	char SrcString[1024]; // [sp+140h] [bp-2418h]@@23
+	char dest[1024]; // [sp+540h] [bp-2018h]@@12
+
+	length = strtol(a1->val, 0, 10);// CONTENT_LENGTH value read
+
+	if ( length && a1[1].val && strstr(a1[1].val, "multipart/form-data") )
+	return _cgiGetMultipartDataFromStream();
+
+	if ( a1[2].val )             // REQUEST_METHOD has been specified
+	{
+		if (!strncasecmp(a1[2].val, "POST", 4u) && a1[1].val && !strncasecmp(a1[1].val, "application/x-www-form-urlencoded", 33u))
+		{
+			return _cgiGetDataFromStream(length, stdin);
+		}
+		if ( !strncasecmp(a1[2].val, "GET", 3u) )
+		{
+			v3 = cnvstr(dest, "url", "de", a1[3].val);		// QUERY_STRING
+			v4 = strcpy(a1[3].val, v3);						// copy decoded string back into array
+			return _cgiGetDataFromString(v4);
+		}
+
+		if ( !strncasecmp(a1[2].val, "POST", 4u) && a1[1].val && !strncasecmp(a1[1].val, "text/xml", 8u) )
+		{
+			SoapAction = getenv("HTTP_SOAPACTION");
+			if ( SoapAction != 0 )
+				isSoap = 1;							// once set, never returns to ZERO
+        
+			xmlPreEncFile(1);
+			if ( isSoap )                           // if HTTP_SOAPACTION enviro variable exists, treat XML as SOAP , else RPC
+			{
+				v7 = getevar("CLTMPDIR");
+				if ( *v7 )
+				{
+					strcpy(FileName, v7);
+					strcat(FileName, "/");
+				}
+				else
+					strcpy(FileName, "/tmp/");
+
+				//-  save XML data to file in case required later
+				sprintf(SrcString, "soap.%d",getpid());				//user pid tacked onto filename to uniqueificate
+				strcat(FileName, SrcString);
+				v10 = fopen64(FileName, "w");
+				if ( v10 )
+				{
+					putenv(mstrcpy("XML_FILENAME=", FileName, 0));
+					while ( 1 )
+					{
+						v12 = read(0, SrcString, 1024u);
+						if ( !v12 )
+							break;
+						fwrite(SrcString, v12, 1u, v10);
+					}
+					fclose(v10);
+				}
+				else
+					strcpy(FileName, "stdin");
+				//--------------------------------------------------------------
+				xml = 1;
+				v13 = xmlInit(FileName);
+				if ( *v13 )					// NULL string means no error occured.
+					soapFault("SOAP-ENV:Client", "SOAP Parse Error", v13);
+
+				ptr = xmlGetValue("elem", 0);
+				if (strncasecmp(ptr, "SOAP-ENV:Envelope", 18) || strncasecmp(ptr, "soap:Envelope", 14))
+					soapFault("SOAP-ENV:Client", "No SOAP Envelope Detected", "");
+				//----------------------------------------------------------------
+				ptr = xmlGetValue("elem", 0);
+				if (strncasecmp(ptr, "SOAP-ENV:Body", 14) || strncasecmp(ptr, "soap:Body", 10))
+					soapFault("SOAP-ENV:Client", "No SOAP Body Detected", "");
+
+				//----------------------------------------------------------------
+				v65 = false;
+				if ( isCGI == 2 )
+				{
+					v39 = getenv("DOCUMENT_ROOT");
+					if ( !v39 )
+						goto LABEL_101;
+					strcpy(path, v39);
+					v39 = getenv("SCRIPT_NAME");
+					if ( v39 )
+					{
+						strcpy(scriptName, v39);
+						s = scriptName;					// char[100]
+						if ( scriptName[1] == '~' )
+						{
+							ptr = strchr(&scriptName[1], '/');
+							if ( ptr )
+							  *ptr = 0;
+
+							strcpy(path, guserdir(&scriptName[2]));
+							strcat(path, "/public_html/");
+
+							if ( ptr )
+								s = ptr + 1;
+							else
+								s = scriptName;
+						}
+						ptr = strrchr(s, '/');
+						if ( ptr )
+						{
+							*ptr = 0;
+							strcat(path, s);
+						}
+					}
+					if ( chdir(path) >= 0 )
+					{
+						setupEnv();
+						strcpy(cwd, path);
+					}
+					else
+					{
+LABEL_101:
+						v65 = true;
+					}
+				}
+				//----------------------------------------------------------------
+				if ( *ptr == 's' )
+				{
+					v44 = strlen(SoapAction);
+					if ( *SoapAction = '"' && SoapAction[v44 - 1] == '"' )
+					{
+						SoapAction[v44 - 1] = 0;	// avoid the quotes
+						a3 = SoapAction + 1;
+					}
+					else
+						a3 = SoapAction;
+				}
+				else
+					a3 = strchr(xmlGetValue("elem", 0), ':') + 1;
+
+				if ( v65 || !chkpath(a3, 0, "CLEPATH", 1, 256) )
+					soapFault("SOAP-ENV:Client", "Method name not found", a3);
+
+				sprintf(SrcString, "E=%s", a3);
+				fe = _cgiGetDataFromString(SrcString);
+				v67 = fe;
+				putenv("RPC_TYPE=SOAP1.1");
+				a1[5].val = mstrcpy("SOAP1.1", 0);	// RPC_TYPE value
+			}
+			else		// not SOAP			XML-RPC handler code
+			{
+				v47 = xmlInit("stdin");
+				if ( *v47 )
+				  xmlRpcFault("XML:Client", "Parse Error", v47);
+
+				v50 = xmlGetValue("elem", 0);
+				//----------------------------------------------------------------
+				if (strncmp(v50, "methodCall", 11))
+					xmlRpcFault("XML:Client", "No <methodCall> Detected", "");
+				//----------------------------------------------------------------
+				v50 = xmlGetValue("elem", 0);
+				if (strncmp(v50, "methodName", 11))
+					xmlRpcFault("XML-RPC:Client", "No <methodName> Detected", "");
+				//----------------------------------------------------------------
+				ProgramName = xmlGetValue("text", 0);
+				sprintf(SrcString, "E=%s", ProgramName);// ".enc" module to call.
+
+				fe = _cgiGetDataFromString(SrcString);
+				v67 = fe;
+				putenv("RPC_TYPE=XML-RPC");
+				a1[5].val = mstrcpy("XML-RPC", 0);		// RPC_TYPE value
+			}
+		
+			//========= common code ============
+			while ( 1 )
+			{
+				do
+				{
+					v59 = xmlGetValue("elem", 0);
+					if ( !*v59 )
+					{
+						xmlPreEncFile(0);
+						return fe;						// exit success?
+					}
+					a3 = xmlGetValue("text", 0);
+				}
+				while ( !a3 );
+
+				if ( !isSoap )
+					v59 = "param";
+
+				if ( !strtol(xmlGetValue("cdata", 0), 0, 10))
+				{
+					v63 = mstrcpy(v59, "=", a3, 0);
+					v61 = _cgiGetDataFromString(v63);		// recursive
+					mfree_0(v63);
+					if ( v61 )
+					{
+						v67->next = v61;
+						v67 = v61;
+					}
+				}
+				else
+				{
+					v61 = (form_entry *)mmalloc(12);
+					if ( v61 )
+					{
+						v61->name = mstrcpy(v59, 0);
+						v61->val = mstrcpy(a3, 0);		// funny GCC opt in real clenter!!!
+						v67->next = v61;
+						v67 = v61;
+					}
+				}
+			}
+		}
+	}
+	return 0;		// error_exit no REQUEST_METHOD value
+}
+
+char *_cgiCleanSSI(char *haystack)
+{
+	char *v1; // eax@@2
+
+	if ( cleanSSI )
+	{
+		v1 = strstr(haystack, "<!--#");
+		if ( v1 )
+		{
+			*(int*)v1 = '--!<';                   // replace instance of "<!--#" with "<!-- "
+			v1[4] = ' ';
+		}
+	}
+	return haystack;
+}
+
+char *_cgiNextCookieValue()
+{
+	if ( !started_0 )
+	{
+		started_0 = 1;
+		pck_1 = ck;				// linked list array
+	}
+
+	if ( pck_1 )
+	{
+		mfree_0(nameval_2);
+		nameval_2 = mstrcpy("Cookie: ", pck_1->name, "=", pck_1->val, 0);
+		pck_1 = pck_1->next;
+		return _cgiCleanSSI(nameval_2);
+	}
+	else
+		return 0;
+}
+
+char *_cgiNextNameValue()
+{
+	char *v0;
+
+	if ( !started_3 )
+	{
+		v0 = _cgiNextCookieValue();
+		if ( v0 )
+			return v0;
+		started_3 = 1;
+		pfe_4 = fe;					// linked array of argumanets
+	}
+	if ( pfe_4 )
+	{
+		mfree_0(nameval_5);
+		nameval_5 = mstrcpy(pfe_4->name, "=", pfe_4->val, 0);
+		pfe_4 = pfe_4->next;
+		return _cgiCleanSSI(nameval_5);
+	}
+	else
+		return 0;
+}
+
+char *_cgiGetPartValue(char *s2, int a2)
+{
+	char *v2;
+	int v3;
+
+	if ( !svName_6 || strcmp(s2, svName_6) )
+	{
+		mfree_0(svName_6);
+		svName_6 = mstrcpy(s2, 0);
+		pfe_7 = fe;
+		lenSeen_8 = 0;
+	}
+	while ( pfe_7 )
+	{
+		if ( !strcasecmp(pfe_7->name, s2) )
+		{
+			if ( pfe_7 )
+			{
+				v2 = pfe_7->val;
+				if ( strlen(pfe_7->val) > lenSeen_8 )
+				{
+					v3 = lenSeen_8;
+					lenSeen_8 += a2;
+					return _cgiCleanSSI(&v2[v3]);
+				}
+			}
+			break;
+		}
+		pfe_7 = pfe_7->next;
+	}
+	svName_6 = (char *)mfree_0(svName_6);
+	return 0;
+}
+
+char *_cgiGetMultiValue(char *s2)
+{
+	form_entry *i;
+	char *v2;
+	
+	if ( svName_9 && !strcmp(s2, svName_9) )
+		goto LABEL_6;
+
+	mfree_0(svName_9);
+	svName_9 = mstrcpy(s2, 0);
+	for ( i = fe; ; i = pfe_10->next )
+	{
+		pfe_10 = i;
+LABEL_6:
+		if ( !pfe_10 )
+			break;
+		if ( !strcasecmp(pfe_10->name, s2) )
+		{
+			if ( pfe_10 )
+			{
+				v2 = pfe_10->val;
+				pfe_10 = pfe_10->next;
+				return _cgiCleanSSI(v2);
+			}
+			break;
+		}
+	}
+	svName_9 = (char *)mfree_0(svName_9);
+	v2 = 0;
+	return _cgiCleanSSI(v2);
+}
+
+char *_cgiGetValue(form_entry *fm, const char *s2)
+{
+	while (fm)		// fm points to env variables list here
+	{
+		if ( !strcasecmp(fm->name, s2))
+			return _cgiCleanSSI(fm->val);			// found a match, return cleaned up version
+		fm = fm->next;
+	}
+	return 0;
+}
+
+char *_cgiGetCookieValue(form_entry *fm, const char *ck_name)
+{
+  	while (fm)		// fm points to cookie list here
+	{
+		if ( !strcasecmp(fm->name, ck_name))
+			return _cgiCleanSSI(fm->val);			// found a match, return cleaned up version
+		fm = fm->next;
+	}
+	return 0;
+}
+
+unsigned char dd2c(char a1, char a2)
+{
+	char v2;
+	unsigned char v3;
+	int v4;
+	
+	if ( a1 <= '@@' )
+		v2 = a1 - '0';
+	else
+		v2 = (a1 & 0xDF) - 55;
+	
+	v3 = 16 * v2;
+	if ( a2 <= '@@' )
+		v4 = a2 + v3 - '0';
+	else
+		v4 = (a2 & 0xDF) + v3 - 55;
+	return v4;
+}
+
+form_entry *_cgiGetDataFromString(char *SrcString)
+{
+	char *v1; // edi@@1
+	form_entry *result; // eax@@1
+	char *v4; // eax@@8
+	int v5; // eax@@13
+	signed int v7; // eax@@23
+	char *v8; // edi@@23
+	int v10; // eax@@31
+	int v12; // eax@@40
+	char *v13; // edi@@40
+	int j; // [sp+10h] [bp-18h]@@29
+	unsigned int asize; // [sp+14h] [bp-14h]@@8
+	form_entry *ptr; // [sp+18h] [bp-10h]@@7
+
+	v1 = SrcString;
+	result = 0;
+	if ( SrcString )
+	{
+		while ( isspace(*v1) || *v1 == '&' ) 
+			++v1;
+		if ( !*v1 )
+			return 0;
+		
+		ptr = (form_entry *)mmalloc(12);
+		result = 0;
+		if ( !ptr )
+			return result;
+		asize = 64;
+		v4 = mmalloc(asize);
+		ptr->name = v4;
+		if ( !v4 )
+		{
+		  free(ptr);
+		  return 0;
+		}
+		for ( j = 0; *v1 && *v1 != '&' && *v1 != '='; ++j )
+		{
+			v5 = *v1;
+			if ( v5 == '%' )
+			{
+				ptr->name[j] = dd2c(v1[1], v1[2]);
+				v1 += 2;
+			}
+			else
+			{
+				ptr->name[j] = v5 == '+' ? ' ' : v5;
+			}
+			if ( j + 1 >= asize )
+			{
+				ptr->name = (char *)mrealloc(ptr->name, asize, 2 * asize);
+				asize *= 2;
+				if ( !ptr->name )
+					return 0;
+			}
+			++v1;
+		}
+		ptr->name[j] = 0;
+		
+		v7 = *v1;
+		v8 = v1 + 1;
+
+		if ( v7 == '&' )
+		{
+			ptr->val = 0;
+		}
+		else if ( v7 > '&' && v7 == '=' )
+		{
+			asize = 64;
+			ptr->val = mmalloc(asize);
+			if (ptr->val)
+			{
+				for ( j = 0; *v8 && *v8 != '&'; j++ )
+				{
+					v10 = *v8;
+					if ( v10 == '%' )
+					{
+						ptr->val[j] = dd2c(v8[1], v8[2]);
+						v8 += 2;
+					}
+					else
+					{
+						ptr->val[j] = v10 == '+' ? ' ' : v10;
+					}
+					if ( j + 1 >= asize )
+					{
+						ptr->val = (char *)mrealloc(ptr->val, asize, 2 * asize);
+						asize *= 2;
+						if ( !ptr->val )
+							return 0;
+					}
+					++v8;
+				}
+				ptr->val[j] = 0;
+				v12 = *v8;
+				v13 = v8 + 1;
+				if ( v12 && v12 == '&' )
+					ptr->next = _cgiGetDataFromString(v13);		// recursive
+				else
+					ptr->next = 0;
+			}
+		}
+		else
+		{
+			ptr->val = 0;
+			ptr->next = 0;
+		}
+		result = ptr;
+	}
+	return result;
+}
+
+form_entry *_cgiGetDataFromStream(int length, FILE *fp)
+{
+	int v3; // edi@@2
+	form_entry *result; // eax@@6
+	
+	char v6;
+	char v7;
+	
+	int v9; // edi@@35
+	
+	int v14; // [sp+10h] [bp-18h]@@35
+	unsigned int asize; // [sp+14h] [bp-14h]@@8
+	form_entry *frm; // [sp+18h] [bp-10h]@@7
+	
+	do
+	{
+		--length;
+		v3 = -1;
+		if ( length != -1 )
+			v3 = _IO_getc(fp);
+	}
+	while ( isspace(v3) || v3 == '&' );
+
+	result = 0;
+	if ( v3 != -1 )
+	{
+		frm = (form_entry *)mmalloc(12);
+		result = 0;
+		if ( frm )
+		{
+			asize = 64;
+			frm->name = mmalloc(asize);
+			if ( !frm->name )			// error
+			{
+				free(frm);
+				return 0;
+			}
+			for ( v14 = 0; v3 != -1 && v3 != '&' && v3 != '='; v14++ )
+			{
+				if ( v3 == '%' )
+				{
+					length--;
+					v6 = -1;
+					if ( length != -1 )
+						v6 = _IO_getc(fp);
+
+					length--;
+					v7 = -1;
+					if ( length != -1 )
+						v7 = _IO_getc(fp);
+
+					frm->name[v14] = dd2c(v6, v7);
+				}
+				else
+				{
+					frm->name[v14] = v3 == '+' ? ' ' : (char)v3;	// replace all '+' with <SPC> 
+				}
+
+				if ( v14 + 1 >= asize )
+				{
+					frm->name = (char *)mrealloc(frm->name, asize, 2 * asize);	// try to double buffer size
+					asize *= 2;
+					if ( !frm->name )
+						return 0;
+				}
+				--length;
+				v3 = -1;
+				if ( length != -1 )
+					v3 = _IO_getc(fp);
+			}
+			frm->name[v14] = 0;
+
+			switch ( v3 )
+			{
+				case -1:			// '\xFF\xFF\xFF\xFF':		EOF error
+					frm->val	= 0;
+					frm->next	= 0;
+					break;
+				case '&':
+					frm->val	= 0;
+					break;
+				case '=':
+					asize = 64;
+					frm->val = mmalloc(asize);
+					
+					v14 = 0;
+					length--;
+					v9 = -1;
+					if ( length != -1 )
+						v9 = _IO_getc(fp);
+
+					for ( ; v9 != -1 && v9 != '&'; ++v14 )
+					{
+						if ( v9 == '%' )
+						{
+							length--;
+							v6 = -1;
+							if ( length != -1 )
+								v6 = _IO_getc(fp);
+	
+							length--;
+							v7 = -1;
+							if ( length != -1 )
+								v7 = _IO_getc(fp);
+
+							frm->val[v14] = dd2c(v6, v7);
+						}
+						else
+						{
+							frm->val[v14] = v9 == '+' ? ' ' : (char)v9;
+						}
+						if ( v14 + 1 >= asize )
+						{
+							frm->val = (char *)mrealloc(frm->val, asize, 2 * asize);
+							asize *= 2;
+							if ( !frm->val )
+								return 0;
+						}
+						--length;
+						v9 = -1;
+						if ( length != -1 )
+							v9 = _IO_getc(fp);
+					}
+					frm->val[v14] = 0;
+					if ( v9 == '&' )
+						frm->next = _cgiGetDataFromStream(length, fp);
+					else
+						frm->next = 0;
+					break;
+			}
+			result = frm;
+		}
+	}
+	return result;
+}
+
+int getbuf_0(char *Buffer, int MaxLen)
+{
+	int		c = 0;
+	int		length;
+	
+	for ( length = 0; length < MaxLen; length++ )		// read byte at a time, return at end of line
+	{
+		c = _IO_getc(stdin);
+		if ( c == '\n' || c == -1 )			// -1 EOF or IO_ERROR, \n == EOL
+			break;
+		Buffer[length] = c;
+	}
+	if ( c != '\n' )
+		return length;
+	Buffer[length++] = '\n';
+	return length;
+}
+
+form_entry *_cgiGetMultipartDataFromStream()
+{
+	form_entry **v0; // edi@@1
+	char *v1; // esi@@1
+	form_entry *result; // eax@@4
+	char *v4; // eax@@5
+	int v6; // edi@@10
+	char *v7; // esi@@10
+	int v8; // eax@@14
+	char *v12; // esi@@26
+	char *v16; // esi@@42
+
+	int k; // edi@@59
+	
+	form_entry *v22; // eax@@86
+	int v23; // [sp+Ch] [bp-409Ch]@@0
+	char *v24; // [sp+38h] [bp-4070h]@@4
+	int v25; // [sp+3Ch] [bp-406Ch]@@1
+	int v26; // [sp+40h] [bp-4068h]@@54
+	int v28; // [sp+44h] [bp-4064h]@@53
+	unsigned int asize; // [sp+48h] [bp-4060h]@@10
+	
+	bool v31; // [sp+4Ch] [bp-405Ch]@@10
+	bool v32; // [sp+50h] [bp-4058h]@@53
+	bool v33; // [sp+54h] [bp-4054h]@@26
+	bool io_err; // [sp+58h] [bp-4050h]@@1
+	
+	const char *needle; // [sp+5Ch] [bp-404Ch]@@5
+	char *arg; // [sp+60h] [bp-4048h]@@1
+	FILE *stream; // [sp+64h] [bp-4044h]@@1
+	
+	form_entry *v38; // [sp+68h] [bp-4040h]@@5
+	form_entry *v39; // [sp+6Ch] [bp-403Ch]@@4
+	
+	char v40[8192]; // [sp+70h] [bp-4038h]@@57
+	char haystack[8232]; // [sp+2080h] [bp-2028h]@@7
+
+	v0 = 0;
+	stream = 0;
+	arg = 0;
+	io_err = false;
+	v25 = 0;
+
+	v1 = getevar("CLTMPDIR");
+	if ( *v1 )
+		v24 = mstrcpy(v1, "/", 0);
+	else
+		v24 = mstrcpy("/tmp/", 0);
+
+	v39 = (form_entry *)mmalloc(12);
+	result = 0;
+	if ( v39 )
+	{
+		v38 = v39;
+		//v4 = strstr(dword_80A466C, "boundary=");		// CONTENT_TYPE value
+		v4 = strstr(ce[1].val, "boundary=");			// CONTENT_TYPE value
+
+		needle = mstrcpy(v4 + 9, 0);					// no sanity check on v4!
+		while ( !strstr(haystack, needle) )
+			getbuf_0(haystack, 0x2000);
+		
+		while ( 1 )
+		{
+      
+			v6 = getbuf_0(haystack, 0x2000);
+			if ( !v6 )
+				break;
+			haystack[v6] = 0;
+			v31 = true;
+			
+			asize = 64;
+			v38->name = mmalloc(asize);
+			
+			v6 = 0;
+			v7 = strstr(haystack, " name=\"");
+			if (v7)
+			{
+				v7 += 7;				// skip past name="
+				while ( *v7 && *v7 != '"' && *v7 != '\n' )
+				{
+					v8 = *v7;
+					if ( v8 == '%' )
+					{
+						v38->name[v6] = dd2c(v7[1], v7[2]);
+						v7 += 2;
+					}
+					else
+						v38->name[v6] = v8 == '+' ? ' ' : v8;		// convert '+' into <SPC> 
+
+					if ( v6 + 1 >= asize )
+					{
+						v38->name = (char *)mrealloc(v38->name, asize, 2 * asize);	// try to double array size
+						asize *= 2;
+						if ( !v38->name )
+							return 0;
+					}
+					v6++;
+					v7++;
+				}
+			}
+			v38->name[v6] = 0;
+			
+			asize = 64;
+			v38->val = mmalloc(asize);
+			v12 = strstr(haystack, "filename=\"");
+			if ( !v12 )
+				goto LABEL_93;
+			
+			v33 = true;
+			v6 = 0;
+			v12 += 10;					// skip past filename="
+			
+			while ( *v12 && *v12 != '"' && *v12 != '\n' )
+			{
+				v8 = *v12;
+				if ( v8 == '%' )
+				{
+					v38->val[v6] = dd2c(v12[1], v12[2]);
+					v12 += 2;
+				}
+				else
+					v38->val[v6] = v8 == '+' ? ' ' : v8;		// convert '+' into <SPC> 
+
+				if ( v6 + 1 >= asize )
+				{
+					v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+					asize *= 2;
+					if ( !v38->val )
+						return 0;
+				}
+				v6++;
+				v12++;
+			}
+			v38->val[v6] = 0;
+
+			if ( *v38->val )
+			{
+				sprintf(&v38->val[v6], ".%d", getpid());	// Tack PID on the end as a string. Guarantee uniqueness
+				if ( arg )
+					mfree_0(arg);
+
+				if ((v16 = strrchr(v38->val, '\\')) != 0 || (v16 = strrchr(v38->val, '/')) != 0 || (v16 = strrchr(v38->val, ':')) != 0 )
+					arg = mstrcpy(v24, v16 + 1, 0);
+				else
+					arg = mstrcpy(v24, v38->val, 0);
+
+				stream = fopen64(arg, "w");
+				if ( !stream )
+				{
+					eprint("CGI: cannot open file [%s]\n", arg);
+					io_err = true;
+				}
+				mfree_0(v38->val);
+				v38->val = mstrcpy(arg, 0);
+			}
+			else
+			{
+LABEL_93:
+				v33 = false;
+			}
+      
+			getbuf_0(haystack, 0x2000);
+			if ( v33 )
+				getbuf_0(haystack, 0x2000);
+			
+			v32 = false;
+			v28 = 0;
+			do
+			{
+				v26 = getbuf_0(haystack, 0x2000);
+				haystack[v26] = 0;
+				if ( strstr(haystack, needle) )				// found needle in a haystack :o)
+				{
+					v32 = true;
+					for ( k = 0; k < v25 - 2; v28++ )
+					{
+						if ( v33 )
+						{
+							if ( !io_err && fputc(v40[k], stream) == -1 )
+								io_err = true;
+						}
+						else
+						{
+							v38->val[v28] = v40[k];
+							if ( v28 + 1 >= asize )
+							{
+								v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+								asize *= 2;
+								if ( !v38->val )
+									return 0;
+							}
+						}
+						k++;
+					}
+					if ( !v33 )
+						v38->val[v28] = 0;
+				}
+				else if ( v31 )
+				{
+					for ( k = 0; k < v26; k++ )
+						v40[k] = haystack[k];
+					
+					v25 = v26;
+					v31 = false;
+				}
+				else
+				{
+					for ( k = 0; k < v25; v28++ )
+					{
+						if ( v33 )
+						{
+							if ( !io_err && fputc(v40[k], stream) == -1 )
+								io_err = true;
+						}
+						else
+						{
+							v38->val[v28] = v40[k];
+							if ( v28 + 1 >= asize )
+							{
+								v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+								asize *= 2;
+								if ( !v38->val )
+									return 0;
+							}
+						}
+						k++;
+					}
+					if ( !v33 )
+						v38->val[v28] = 0;
+					
+					for ( k = 0; k < v26; k++ )
+						v40[k] = haystack[k];
+					
+					v25 = v26;
+				}
+			}
+			while ( !v32 );
+			
+			if ( v33 && !io_err )
+				fclose(stream);
+			
+			v22 = (form_entry *)mmalloc(12);
+			v38->next = v22;
+			v0 = &v38->next;
+			v38 = v22;
+		}
+		*v0 = 0;
+		if ( io_err )
+			eprint("CGI: Error writing to [%s]\n", v24);
+		result = v39;
+	}
+	return result;
+}
+
+char *cgiGetValue(char *StrParam, int MaxLen)
+{
+	unsigned int Len;
+	char *result;
+
+	Len = strlen(StrParam);
+	if ( Len <= 1 || StrParam[Len - 1] != '!' )
+	{
+		cleanSSI = 0;
+	}
+	else
+	{
+		StrParam[Len - 1] = 0;
+		cleanSSI = 1;
+	}
+	if ( *StrParam != '?' || StrParam[1] )
+	{
+		switch ( *StrParam )
+		{
+		case '+':
+			result = _cgiGetPartValue(StrParam + 1, MaxLen);
+			break;
+		case '*':
+			result = _cgiGetMultiValue(StrParam + 1);
+			break;
+		case '%':
+			result = _cgiGetCookieValue(ck, StrParam + 1);
+			break;
+		default:
+			result = _cgiGetValue(fe, StrParam);
+			break;
+		}
+	}
+	else
+	{
+		result = _cgiNextNameValue();
+	}
+	return result;
+}
+
+char *cgiGetEname(void)
+{
+	char	*v2;
+	const char *v5;
+	char	*progname;
+	char	*sa;
+	char	path[256];
+	
+	if (!_cgiGetInfo(ce))				// load all env variables into ce structure
+		return 0;			// error
+
+	fe = _cgiGetFormData(ce);			// load all env variables into linked lists
+
+	progname = _cgiGetValue(fe, "E");				// get CL4 program name to execute
+	if ( !progname )
+		progname = _cgiGetValue(fe, "ename");
+	
+	if ( isCGI == 1 || isSoap && isCGI == 2 )
+		return progname;							// normal exit_success point??
+
+	v2 = getenv("REQUEST_URI");
+	if ( v2 && v2[1] != '?' )
+		progname = 0;
+
+	v2 = getenv("DOCUMENT_ROOT");
+	if ( !v2 )
+		return 0;
+	strcpy(path, v2);
+
+	v2 = getenv("SCRIPT_NAME");
+	if ( !v2 )
+		return 0;
+	strcpy(scriptName, v2);
+
+	v5 = scriptName;
+	if ( v5[1] == '~' )				// user relative. user == apache/www ?
+	{
+		sa = strchr(&scriptName[1], '/');
+		if ( sa )
+			*sa = 0;
+		strcpy(path, guserdir(&scriptName[2]));
+		strcat(path, "/public_html/");
+		if ( sa )
+			v5 = sa + 1;
+	}
+	v2 = strrchr(v5, '/');
+	sa = v2;
+	if ( !v2 )
+		return 0;
+	*v2 = 0;
+	strcat(path, v5);
+
+	if ( chdir(path) < 0 )					// whoops, couldn't get access to that directory
+	{
+		putenv("CLHTTP_ERROR=404");			// not found
+	}
+	else
+	{
+		setupEnv();							// get CL4 specific env variables loaded
+		if ( getenv("CLEPATH") )
+		{
+			sa++;
+			v2 = strchr(sa, '.');
+			if ( v2 )
+			{
+				*v2 = 0;
+				if ( progname )
+					return progname;
+				else
+					return sa;
+			}
+		}
+		else
+			putenv("CLHTTP_ERROR=403");		// forbidden
+	}
+
+	v2 = getenv("DOCUMENT_ROOT");
+	if ( v2 )
+	{
+		if ( chdir(v2) >= 0 )
+		{
+			setupEnv();
+			v2= getenv("CL_DEFAULT");
+			if ( v2 )
+				return v2;
+		}
+	}
+	return 0;
+}
+
+#endif
+
+
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d33 31
+a63 37
+  form_entry *result; // eax@@1
+  char *v2; // eax@@2
+  char *v3; // edi@@2
+  char *v4; // eax@@2
+  char *v5; // esi@@2
+  char *v6; // eax@@3
+  char *v7; // [sp+14h] [bp-14h]@@3
+  form_entry *v8; // [sp+18h] [bp-10h]@@2
+
+  result = 0;
+  if ( a1 )
+  {
+    v2 = mstrcpy(a1, 0);
+    v3 = v2;
+    v8 = 0;
+    v4 = strchr(v2, '=');
+    v5 = v4;
+    if ( v4 )
+    {
+      *v4 = 0;
+      v8 = (form_entry *)mmalloc(12);
+      v8->name = mstrcpy(v3, 0);
+      v6 = strchr(v5 + 1, ';');
+      v7 = "";
+      if ( v6 )
+      {
+        *v6 = 0;
+        v7 = v6 + 2;
+      }
+      v8->val = mstrcpy(v5 + 1, 0);
+      if ( *v7 )
+        v8->next = _cgiGetCookies(v7);           // recursive
+    }
+    mfree_0(v3);
+    result = v8;
+  }
+  return result;
+d136 1
+a136 1
+	signed int v65; // [sp+28h] [bp-2530h]@@49
+d215 1
+a215 1
+				v65 = 0;
+d256 1
+a256 1
+						v65 = 1;
+d355 1
+a355 1
+  char *v1; // eax@@2
+d357 10
+a366 10
+  if ( cleanSSI )
+  {
+    v1 = strstr(haystack, "<!--#");
+    if ( v1 )
+    {
+      *(int*)v1 = '--!<';                   // replace instance of "<!--#" with "<!-- "
+      v1[4] = ' ';
+    }
+  }
+  return haystack;
+d371 5
+a375 1
+  char *result; // eax@@4
+d377 9
+a385 17
+  if ( !started_0 )
+  {
+    started_0 = 1;
+    pck_1 = ck;
+  }
+  if ( pck_1 )
+  {
+    mfree_0(nameval_2);
+    nameval_2 = mstrcpy("Cookie: ", pck_1->name, "=", pck_1->val, 0);
+    pck_1 = pck_1->next;
+    result = _cgiCleanSSI(nameval_2);
+  }
+  else
+  {
+    result = 0;
+  }
+  return result;
+d390 19
+a408 22
+  char *v0;
+  
+  if ( !started_3 )
+  {
+    v0 = _cgiNextCookieValue();
+    if ( v0 )
+      return v0;
+    started_3 = 1;
+    pfe_4 = fe;
+  }
+  if ( pfe_4 )
+  {
+    mfree_0(nameval_5);
+    nameval_5 = mstrcpy(pfe_4->name, "=", pfe_4->val, 0);
+    pfe_4 = pfe_4->next;
+    v0 = _cgiCleanSSI(nameval_5);
+  }
+  else
+  {
+    v0 = 0;
+  }
+  return v0;
+d413 2
+a414 2
+  char *v2; // edx@@8
+  int v3; // eax@@9
+d416 27
+a442 27
+  if ( !svName_6 || strcmp(s2, svName_6) )
+  {
+    mfree_0(svName_6);
+    svName_6 = mstrcpy(s2, 0);
+    pfe_7 = fe;
+    lenSeen_8 = 0;
+  }
+  while ( pfe_7 )
+  {
+    if ( !strcasecmp(pfe_7->name, s2) )
+    {
+      if ( pfe_7 )
+      {
+        v2 = pfe_7->val;
+        if ( strlen(pfe_7->val) > lenSeen_8 )
+        {
+          v3 = lenSeen_8;
+          lenSeen_8 += a2;
+          return _cgiCleanSSI(&v2[v3]);
+        }
+      }
+      break;
+    }
+    pfe_7 = pfe_7->next;
+  }
+  svName_6 = (char *)mfree_0(svName_6);
+  return 0;
+d447 5
+a451 2
+  form_entry *i; // eax@@3
+  char *v2; // edx@@9
+d453 5
+a457 8
+  if ( svName_9 && !strcmp(s2, svName_9) )
+    goto LABEL_6;
+  
+  mfree_0(svName_9);
+  svName_9 = mstrcpy(s2, 0);
+  for ( i = fe; ; i = pfe_10->next )
+  {
+    pfe_10 = i;
+d459 16
+a474 16
+    if ( !pfe_10 )
+      break;
+    if ( !strcasecmp(pfe_10->name, s2) )
+    {
+      if ( pfe_10 )
+      {
+        v2 = pfe_10->val;
+        pfe_10 = pfe_10->next;
+        return _cgiCleanSSI(v2);
+      }
+      break;
+    }
+  }
+  svName_9 = (char *)mfree_0(svName_9);
+  v2 = 0;
+  return _cgiCleanSSI(v2);
+d501 15
+a515 14
+  char v2; // al@@2
+  unsigned char v3; // al@@4
+  int v4; // eax@@5
+
+  if ( a1 <= '@@' )
+    v2 = a1 - '0';
+  else
+    v2 = (a1 & 0xDF) - 55;
+  v3 = 16 * v2;
+  if ( a2 <= '@@' )
+    v4 = a2 + v3 - '0';
+  else
+    v4 = (a2 & 0xDF) + v3 - 55;
+  return v4;
+a523 1
+	char *v6; // esi@@16
+a526 1
+	char *v11; // esi@@34
+a528 1
+	int i; // [sp+10h] [bp-18h]@@10
+d537 1
+a537 1
+		while ( isspace(*v1) || *v1 == '&' )// 
+d541 1
+d554 1
+a554 1
+		for ( i = 0; *v1 && *v1 != '&' && *v1 != '='; ++i )
+d559 1
+a559 2
+				v6 = ptr->name;
+				v6[i] = dd2c(v1[1], v1[2]);
+d564 1
+a564 1
+				ptr->name[i] = v5 == '+' ? ' ' : *v1;
+d566 1
+a566 1
+			if ( i + 1 >= asize )
+d575 2
+a576 1
+		ptr->name[i] = 0;
+d590 1
+a590 1
+				for ( j = 0; *v8 && *v8 != '&'; ++j )
+d595 1
+a595 2
+						v11 = ptr->val;
+						v11[j] = dd2c(v8[1], v8[2]);
+d600 1
+a600 1
+						ptr->val[j] = v10 == '+' ? 32 : *v8;
+d634 4
+a637 3
+	char v6; // di@@16
+	char v7; // al@@18
+	char *v8; // esi@@20
+d639 1
+a639 3
+	char v10; // di@@42
+	char v11; // al@@44
+	char *v12; // esi@@46
+d643 1
+a643 4
+	int lengtha; // [sp+30h] [bp+8h]@@16
+	int lengthb; // [sp+30h] [bp+8h]@@35
+	int lengthc; // [sp+30h] [bp+8h]@@42
+
+d667 1
+a667 1
+			for ( v14 = 0; v3 != -1 && v3 != '&' && v3 != '='; ++v14 )
+d671 1
+a671 1
+					lengtha = length - 1;
+d673 1
+a673 1
+					if ( lengtha != -1 )
+d676 1
+a676 1
+					length = lengtha - 1;
+d681 1
+a681 2
+					v8 = frm->name;
+					v8[v14] = dd2c(v6, v7);
+d701 63
+a763 63
+      
+	  switch ( v3 )
+      {
+        case -1:			// '\xFF\xFF\xFF\xFF':
+          frm->val = 0;
+          frm->next = 0;
+          break;
+        case '&':
+          frm->val = 0;
+          break;
+        case '=':
+          asize = 64;
+          frm->val = mmalloc(64);
+          v14 = 0;
+          lengthb = length - 1;
+          v9 = -1;
+          if ( lengthb != -1 )
+            v9 = _IO_getc(fp);
+          
+		  for ( ; v9 != -1 && v9 != '&'; ++v14 )
+          {
+            if ( v9 == '%' )
+            {
+              lengthc = lengthb - 1;
+              v10 = -1;
+              if ( lengthc != -1 )
+                v10 = _IO_getc(fp);
+              
+			  lengthb = lengthc - 1;
+              v11 = -1;
+              if ( lengthb != -1 )
+                v11 = _IO_getc(fp);
+              
+			  v12 = frm->val;
+              v12[v14] = dd2c(v10, v11);
+            }
+            else
+            {
+              frm->val[v14] = v9 == '+' ? 32 : (char)v9;
+            }
+            if ( v14 + 1 >= asize )
+            {
+              frm->val = (char *)mrealloc(frm->val, asize, 2 * asize);
+              asize *= 2;
+              if ( !frm->val )
+                return 0;
+            }
+            --lengthb;
+            v9 = -1;
+            if ( lengthb != -1 )
+              v9 = _IO_getc(fp);
+          }
+          frm->val[v14] = 0;
+          if ( v9 == '&' )
+            frm->next = _cgiGetDataFromStream(lengthb, fp);
+          else
+            frm->next = 0;
+          break;
+      }
+      result = frm;
+    }
+  }
+  return result;
+d768 14
+a781 18
+  int c; // eax@@1
+  int length; // esi@@1
+
+  c = 0;
+  for ( length = 0; length < MaxLen; ++length )
+  {
+    c = _IO_getc(stdin);
+    if ( c == -1 )
+      break;
+    if ( c == '\n' )
+      goto LABEL_8;
+    Buffer[length] = c;
+  }
+  if ( c != '\n' )
+    return length;
+LABEL_8:
+  Buffer[length++] = '\n';
+  return length;
+d786 61
+a846 102
+  form_entry **v0; // edi@@1
+  char *v1; // esi@@1
+  form_entry *result; // eax@@4
+  char *v4; // eax@@5
+  char *v5; // eax@@10
+  int v6; // edi@@10
+  char *v7; // esi@@10
+  int v8; // eax@@14
+  char *v9; // ST30_4@@17
+  char *v10; // eax@@25
+  int v11; // edi@@26
+  char *v12; // esi@@26
+  int v13; // eax@@29
+  char *v14; // ST28_4@@32
+  char *v16; // esi@@42
+  char *v17; // eax@@45
+  int j; // edi@@56
+  int k; // edi@@59
+  int l; // edi@@69
+  int i; // edi@@72
+  form_entry *v22; // eax@@86
+  int v23; // [sp+Ch] [bp-409Ch]@@0
+  char *v24; // [sp+38h] [bp-4070h]@@4
+  int v25; // [sp+3Ch] [bp-406Ch]@@1
+  int v26; // [sp+40h] [bp-4068h]@@54
+  int v27; // [sp+40h] [bp-4068h]@@87
+  int v28; // [sp+44h] [bp-4064h]@@53
+  unsigned int asize; // [sp+48h] [bp-4060h]@@10
+  signed short v31; // [sp+4Ch] [bp-405Ch]@@10
+  signed short v32; // [sp+50h] [bp-4058h]@@53
+  signed short v33; // [sp+54h] [bp-4054h]@@26
+  signed short io_err; // [sp+58h] [bp-4050h]@@1
+  const char *needle; // [sp+5Ch] [bp-404Ch]@@5
+  char *arg; // [sp+60h] [bp-4048h]@@1
+  FILE *stream; // [sp+64h] [bp-4044h]@@1
+  form_entry *v38; // [sp+68h] [bp-4040h]@@5
+  form_entry *v39; // [sp+6Ch] [bp-403Ch]@@4
+  char v40[8192]; // [sp+70h] [bp-4038h]@@57
+  char haystack[8232]; // [sp+2080h] [bp-2028h]@@7
+
+  v0 = 0;
+  stream = 0;
+  arg = 0;
+  io_err = 0;
+  v25 = 0;
+  
+  v1 = getevar("CLTMPDIR");
+  if ( *v1 )
+    v24 = mstrcpy(v1, "/", 0);
+  else
+    v24 = mstrcpy("/tmp/", 0);
+
+  v39 = (form_entry *)mmalloc(12);
+  result = 0;
+  if ( v39 )
+  {
+    v38 = v39;
+    //v4 = strstr(dword_80A466C, "boundary=");		// CONTENT_TYPE value
+    v4 = strstr(ce[1].val, "boundary=");			// CONTENT_TYPE value
+
+    needle = mstrcpy(v4 + 9, 0);
+    while ( !strstr(haystack, needle) )
+      getbuf_0(haystack, 0x2000);
+    
+	while ( 1 )
+    {
+      v27 = getbuf_0(haystack, 0x2000);
+      if ( !v27 )
+        break;
+      v31 = 1;
+      haystack[v27] = 0;
+      asize = 64;
+      v38->name = mmalloc(asize);
+      v5 = strstr(haystack, " name=\"");
+      v6 = 0;
+      v7 = v5 + 7;
+      if ( v5 != (char *)-7 && *v7 && *v7 != '"' && *v7 != '\n' )
+      {
+        do
+        {
+          v8 = *v7;
+          if ( v8 == '%' )
+          {
+            v9 = v38->name;
+            v9[v6] = dd2c(v7[1], v7[2]);
+            v7 += 2;
+          }
+          else
+          {
+            v38->name[v6] = v8 == '+' ? 32 : *v7;
+          }
+          if ( v6 + 1 >= asize )
+          {
+            v38->name = (char *)mrealloc(v38->name, asize, 2 * asize);
+            asize *= 2;
+            if ( !v38->name )
+              return 0;
+          }
+          ++v6;
+        }
+        while ( ++v7 && *v7 && *v7 != '"' && *v7 != 10 );
+      }
+d848 93
+a940 60
+	  v38->name[v6] = 0;
+      asize = 64;
+      v38->val = mmalloc(asize);
+      v10 = strstr(haystack, "filename=\"");
+      if ( !v10 )
+        goto LABEL_93;
+      v33 = 1;
+      v11 = 0;
+      v12 = v10 + 10;
+      if ( v10[10] && *v12 != '"' && *v12 != 10 )
+      {
+        do
+        {
+          v13 = *v12;
+          if ( v13 == 37 )
+          {
+            v14 = v38->val;
+            v14[v11] = dd2c(v12[1], v12[2]);
+            v12 += 2;
+          }
+          else
+          {
+            v38->val[v11] = v13 == '+' ? 32 : *v12;
+          }
+          if ( v11 + 1 >= asize )
+          {
+            v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+            asize *= 2;
+            if ( !v38->val )
+              return 0;
+          }
+          ++v11;
+        }
+        while ( *++v12 && *v12 != '"' && *v12 != '\n' );
+      }
+      v38->val[v11] = 0;
+      if ( *v38->val )
+      {
+        sprintf(&v38->val[v11], ".%d", getpid());
+        if ( arg )
+          mfree_0(arg);
+        
+		v16 = strrchr(v38->val, '\\');
+        if ( v16 || (v16 = strrchr(v38->val, '/')) != 0 || (v16 = strrchr(v38->val, ':')) != 0 )
+          v17 = v16 + 1;
+        else
+          v17 = v38->val;
+        
+		arg = mstrcpy(v24, v17);
+        stream = fopen64(arg, "w");
+        if ( !stream )
+        {
+          eprint("CGI: cannot open file [%s]\n", arg);
+          io_err = 1;
+        }
+        mfree_0(v38->val);
+        v38->val = mstrcpy(arg, 0);
+      }
+      else
+      {
+d942 94
+a1035 87
+        v33 = 0;
+      }
+      getbuf_0(haystack, 0x2000);
+      if ( v33 )
+        getbuf_0(haystack, 0x2000);
+      v32 = 0;
+      v28 = 0;
+      do
+      {
+        v26 = getbuf_0(haystack, 0x2000);
+        haystack[v26] = 0;
+        if ( strstr(haystack, needle) )
+        {
+          v32 = 1;
+          for ( i = 0; i < v25 - 2; ++v28 )
+          {
+            if ( v33 )
+            {
+              if ( !io_err && fputc(v40[i], stream) == -1 )
+                io_err = 1;
+            }
+            else
+            {
+              v38->val[v28] = v40[i];
+              if ( v28 + 1 >= asize )
+              {
+                v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+                asize *= 2;
+                if ( !v38->val )
+                  return 0;
+              }
+            }
+            ++i;
+          }
+          if ( !v33 )
+            v38->val[v28] = 0;
+        }
+        else if ( v31 )
+        {
+          for ( j = 0; j < v26; ++j )
+            v40[j] = haystack[j];
+          v25 = v26;
+          v31 = 0;
+        }
+        else
+        {
+          for ( k = 0; k < v25; ++v28 )
+          {
+            if ( v33 )
+            {
+              if ( !io_err && fputc(v40[k], stream) == -1 )
+                io_err = 1;
+            }
+            else
+            {
+              v38->val[v28] = v40[k];
+              if ( v28 + 1 >= asize )
+              {
+                v38->val = (char *)mrealloc(v38->val, asize, 2 * asize);
+                asize *= 2;
+                if ( !v38->val )
+                  return 0;
+              }
+            }
+            ++k;
+          }
+          if ( !v33 )
+            v38->val[v28] = 0;
+          for ( l = 0; l < v26; ++l )
+            v40[l] = haystack[l];
+          v25 = v26;
+        }
+      }
+      while ( !v32 );
+      if ( v33 && !io_err )
+        fclose(stream);
+      v22 = (form_entry *)mmalloc(12);
+      v38->next = v22;
+      v0 = &v38->next;
+      v38 = v22;
+    }
+    *v0 = 0;
+    if ( io_err )
+      eprint("CGI: Error writing to [%s]\n", v24);
+    result = v39;
+  }
+  return result;
+d1080 6
+a1085 13
+	char *v1; // edx@@1
+	char *v2; // eax@@8
+	char *v3; // eax@@11
+	char *v4; // eax@@12
+	const char *v5; // edi@@13
+	char *v7; // eax@@16
+	char *v8; // eax@@18
+	char *v9; // eax@@21
+	char *v11; // eax@@28
+	char *progname; // [sp+18h] [bp-A0h]@@2
+	char *sa; // [sp+1Ch] [bp-9Ch]@@18
+	char path[128]; // [sp+20h] [bp-98h]@@12
+
+d1102 2
+a1103 2
+	v3 = getenv("DOCUMENT_ROOT");
+	if ( !v3 )
+d1105 1
+d1107 2
+a1108 3
+	strcpy(path, v3);
+	v4 = getenv("SCRIPT_NAME");
+	if ( !v4 )
+d1110 2
+a1111 2
+  
+	strcpy(scriptName, v4);
+d1113 1
+a1113 1
+	if ( scriptName[1] == '~' )				// user relative. user == apache/www ?
+d1123 3
+a1125 3
+	v8 = strrchr(v5, '/');
+	sa = v8;
+	if ( !v8 )
+d1127 1
+a1127 2
+	*v8 = 0;
+	
+d1129 1
+d1140 2
+a1141 2
+			v9 = strchr(sa, '.');
+			if ( v9 )
+d1143 1
+a1143 1
+				*v9 = 0;
+d1154 2
+a1155 2
+	v11 = getenv("DOCUMENT_ROOT");
+	if ( v11 )
+d1157 1
+a1157 1
+		if ( chdir(v11) >= 0 )
+d1160 3
+a1162 3
+			v1 = getenv("CL_DEFAULT");
+			if ( v1 )
+				return v1;
+@

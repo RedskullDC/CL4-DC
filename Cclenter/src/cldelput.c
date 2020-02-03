@@ -204,7 +204,8 @@ int opentlog(int Context)
         else
         {
             umask_sav = umask(0);
-            lfd = open64(dest, 'B');
+            //lfd = open64(dest, 0x42);
+            lfd = open64(dest, 0102,0666);
             umask(umask_sav);
             if ( lfd < 0 )
             {
@@ -363,18 +364,18 @@ void wrlog(TDesc *TTptr, char *WorkArea, int LockLog)
     short v14;
 	
 	char buf[32];
-	char Dest[32];
+	char Dest[1024];			// wrong!!!! **************
 	
     v14 = 0;
     tl.Version = 3576;
     
-	cpybuf(buf, (char *)&tl, 32);
+	cpybuf(buf, (char *)&tl, sizeof(TRANSLOG));		// 32 on x86
 
 	if ( l_tty[0] )
         v5 = cdbcpystr(Dest, "\n\n", 0);
     else
     {
-        v4 = cdbcpystr(Dest, pname, "\n", 0);
+        v4 = cdbcpystr(Dest, _pname, "\n", 0);
         v5 = cdbcpystr(v4, pname, "\n", 0);
     }
     if ( TTptr )

@@ -37,7 +37,8 @@ void opendebug(void)
 		if ( *v1 )
 		{
 			umask_sav = umask(0);
-			dbfd = open64(v1, 'B');
+			//dbfd = open64(v1, 0x42);
+			dbfd = open64(v1, 0102, 0666);
 			umask(umask_sav);
 
 			if ( dbfd < 0 )
@@ -157,16 +158,16 @@ void prdebass(int LineNo, ENTAB *entab, int CurrPTno)	// debug show assignment :
 			switch (entab->entype)
 			{
 				case 4:
-					sprintf(buf2, "(float) %f", *(float *)&entab->TTno);
+					sprintf(buf2, "(float) %f", entab->Enun.float4);
 					break;
 				case 8:
-					sprintf(buf2, "(long) %ld", *(int*)&entab->TTno);
+					sprintf(buf2, "(long) %ld", entab->Enun.long8);
 					break;
 				case 16:
-					sprintf(buf2, "(text) '%s'", (char *)&entab->TTno);
+					sprintf(buf2, "(text) '%s'", entab->Enun.char16);
 					break;
 				default:
-					sprintf(buf2, "type=%#o, oper=%#o", entab->TTno, entab->entype);	// check order of variables!!!
+					sprintf(buf2, "type=%#o, oper=%#o", entab->entype, entab->Enun.Enop.Enoper);
 					break;
 			} 
 		}
@@ -209,16 +210,16 @@ void prdebass(int LineNo, ENTAB *entab, int CurrPTno)	// debug show assignment :
 			switch (entab->entype)
 			{
 				case 0x04:
-					eprint("(float) %f", *(float *)&entab->TTno);
+					eprint("(float) %f", entab->Enun.float4);
 					break;
 				case 0x08:
-					eprint("(long) %ld", *(int*)&entab->TTno);
+					eprint("(long) %ld", entab->Enun.long8);		// ** 8 bytes on X64 **
 					break;
 				case 0x10:
-					eprint("(text) '%s'", (char *)&entab->TTno);
+					eprint("(text) '%s'", entab->Enun.char16);
 					break;
 				default:
-					eprint("type=%#o, oper=%#o", entab->TTno, entab->entype);	// check order of variables!!!
+					eprint("type=%#o, oper=%#o", entab->entype, entab->Enun.Enop.Enoper);
 					break;
 			} 
 		}

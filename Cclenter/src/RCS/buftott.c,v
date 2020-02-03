@@ -1,0 +1,293 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.08.31.02.58.33;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.07.20.06.14.35;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.04.10.00.39.46;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.25.03.15.23;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@clean up
+@
+text
+@#ifndef BUFTOTT_C
+#define BUFTOTT_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+char *buftott(char *Dest, FLDdesc *fld)
+{
+    char	*v2;
+	char	*v5;
+	
+	signed int v12;
+	short	Maxlen;
+	signed short v13;
+	
+	char	Separator;
+	char	v4;
+	char	FLDtype;
+
+	double	v14;
+	
+	char	src[64];
+	
+    v2 = Dest;
+    if ( TAB != ',' || *Dest != '"' && *Dest != '\'' )
+        Separator = TAB;
+    else
+    {
+        Separator = *Dest;	// Separator == " or '  , look for a matching quote at end.
+        v2 = Dest + 1;
+    }
+//--------------------------
+    v4 = 0;
+    v5 = v2;
+    if ( *v2 )
+    {
+        if ( *v2 == '\n' )				// newline char or \0 terminates input
+        {
+LABEL_14:
+            if ( *v2 )					// possibly ZERO if null string passed in
+                *v2++ = 0;
+        }
+        else
+        {
+            while ( 1 )
+            {
+                if ( v4 == '\\' )		// if last loop was a \, don't treat this char as a seperator
+                    v4 = 0;
+				else if ( *v2 == Separator )
+					goto LABEL_14;
+				else
+                    v4 = *v2;			// if a \ is found, ignore it next loop! 
+                
+				v2++;
+                
+				if ( !*v2 )				// end of input string
+                    break;
+                
+				if ( *v2 == '\n' )		// newline char also terminates input
+                    goto LABEL_14;
+            }
+        }
+    }
+    
+	if ( Separator != TAB && *v2 == TAB )
+        *v2++ = 0;
+
+//--------------------------------------------------    
+	
+	trim(v5);		// v5 points at string after seperator chars removed
+
+    FLDtype = fld->FLDtype;
+    if ( FLDtype == 'C' )
+    {
+        Maxlen = lenstr(v5) + 1;
+        if ( Maxlen > fld->FLDlen )
+            Maxlen = fld->FLDlen;
+        
+		cpybuf((char *)fld->FLDdata, v5, Maxlen);
+        if ( *v5 )
+        {
+			fld->FLDstat &= ~fld_ZERO;		// 0xFFFB;		// clear ZERO flag
+			fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010;		// set DATA AVAIL flag
+        }
+		else	// null string
+            fld->FLDstat |= (fld_ZERO|fld_DATA_AVAIL);		// 0x0004 0x0010;	// set ZERO, DATA AVAIL flags
+    }
+    else if ( fld->FLDlen )
+    {
+        switch ( FLDtype )
+        {
+            case 'N':
+                v12 = strtol(v5, 0, 10);
+                v14 = (double)v12;
+                break;
+            case 'I':
+                v13 = strtol(v5, 0, 10);
+                v14 = (double)v13;
+                break;
+            case 'B':
+                v13 = strtol(v5, 0, 10);
+                if ( (unsigned short)(v13 + 127) >= 255u )
+                    v13 = 0;
+                v14 = (double)v13;
+                break;
+            case 'D':
+                cdbcpystr(src, v5, 0);
+                v12 = clgetdate(src);
+                if ( v12 < 0 )
+                    v12 = 0;
+                v14 = (double)v12;
+                break;
+            case 'T':
+                cdbcpystr(src, v5, 0);
+                v14 = gettime(src);
+                if ( v14 < 0.0 )
+                    v14 = 0.0;
+                break;
+            default:
+                v14 = strtod(v5, 0);
+                break;
+        }
+        *(double *)fld->FLDdata = v14;
+        
+		if ( v14 != 0.0 )
+        {
+			fld->FLDstat &= ~fld_ZERO;		// 0xFFFB;
+			fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010;
+        }
+		else	// zero result
+            fld->FLDstat |= (fld_ZERO|fld_DATA_AVAIL);		// 0x0004 0x0010;	// set ZERO, DATA AVAIL flags
+    }
+    return v2;	// return point after string for easy chaining!
+}
+
+#endif
+
+@
+
+
+1.3
+log
+@tidy-up
+@
+text
+@d16 1
+a16 1
+	short	v7;
+a28 1
+    {
+a29 1
+    }
+d40 1
+a40 1
+        if ( *v2 == '\n' )
+d43 1
+a43 1
+            if ( *v2 )
+d50 1
+a50 1
+                if ( v4 == '\\' )
+d52 2
+d55 5
+a59 7
+                {
+                    if ( *v2 == Separator )
+                        goto LABEL_14;
+                    v4 = *v2;
+                }
+                ++v2;
+                if ( !*v2 )
+d61 2
+a62 1
+                if ( *v2 == '\n' )
+d70 1
+d78 3
+a80 3
+        v7 = lenstr(v5) + 1;
+        if ( v7 > fld->FLDlen )
+            v7 = fld->FLDlen;
+d82 1
+a82 1
+		cpybuf((char *)fld->FLDdata, v5, v7);
+d88 1
+a88 2
+		else
+		{
+a89 1
+		}
+d128 1
+a128 1
+		if ( v14 == 0.0 )
+a129 4
+            fld->FLDstat |= (fld_ZERO|fld_DATA_AVAIL);		// 0x0004 0x0010;	// set ZERO, DATA AVAIL flags
+        }
+		else
+		{
+d132 3
+a134 1
+		}
+d136 1
+a136 1
+    return v2;
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d12 10
+a21 11
+    char *v2; // edi@@1
+    char *v5; // esi@@6
+    char Separator; // al@@4
+    char v4; // dl@@6
+    char FLDtype; // al@@19
+    short v7; // ax@@20
+    short v11; // ax@@24
+    signed int v12; // eax@@27
+    signed short v13; // ax@@28
+    double v14; // fst7@@31
+    char src[64]; // [sp+10h] [bp-38h]@@32
+d23 4
+d72 2
+a73 1
+	trim(v5);
+a124 1
+                //v14 = __strtod_internal(v5, 0, 0);
+d129 2
+a130 1
+        if ( v14 == 0.0 )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d94 1
+a94 1
+                v12 = __strtol_internal(v5, 0, 10, 0);
+d98 1
+a98 1
+                v13 = __strtol_internal(v5, 0, 10, 0);
+d102 1
+a102 1
+                v13 = __strtol_internal(v5, 0, 10, 0);
+@

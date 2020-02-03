@@ -38,7 +38,7 @@ bool lelibcall(int *LineNo)
 		ENTleft	= loadexp(0,0);						// get return value variable
 
 		ent_test = ENARR(ENTleft);
-		if (!ent_test || ent_test->TTno || ent_test->entype != 1)	// libcall function accepts Variables or Literals *ONLY* for return value
+		if (!ent_test || ent_test->Enun.Enref.TTno || ent_test->entype != 1)	// libcall function accepts Variables or Literals *ONLY* for return value
 			loaderr(92, sym);
 		else
 		{
@@ -68,7 +68,7 @@ bool lelibcall(int *LineNo)
 					params++;
 					if (addr_of)
 					{
-						fld = getvars(ent_test->RecNo);
+						fld = getvars(ent_test->Enun.Enop.RecNo);
 						fld->FLDstat |= fld_ADDROF;		// flag for clenter to indicate *ADDRESS OF* this variable is passed in function calls
 					}
 					entb->enright = ENTno;				// in case we are second last param. May be overwritten below

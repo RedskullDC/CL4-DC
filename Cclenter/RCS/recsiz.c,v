@@ -1,0 +1,46 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2016.08.31.00.40.52;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef RECSIZ_C
+#define RECSIZ_C
+
+#include "DBdefs.h"
+
+// functions will be "inlined" when building release version with optimisation ON.
+
+inline int recsize(int TDno)
+{
+	//printf("recsize(%3d)\n", TDno);
+	return _chktd(TDno)->TDRecSize;
+
+}
+// Possible name conflict with _keysize which exists in src/keysiz.c
+inline int keysize(int TDno)
+{
+	//printf("keysize(%3d)\n", TDno);
+	return _chktd(TDno)->TDKeySize;
+}
+
+#endif
+@

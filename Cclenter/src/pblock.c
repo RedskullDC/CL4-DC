@@ -72,7 +72,8 @@ int pblock(BTAB *bt, ENTAB *entab)
 	}
 //-------------------------
 
-	zap(s, 20u);
+	memset(s, 0, 20u);
+
     if ( entab )
         s[0] = *(char *)(getftf(entab, true, &fld)->FLDdata);
 

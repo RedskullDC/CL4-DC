@@ -1,0 +1,104 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.07.14.05.58.13;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.03.38.59;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef LESELECT_C
+#define LESELECT_C
+
+short leselect(void)
+{
+    short RTno; // edi@@6
+    int v3; // eax@@8
+    short v4; // cx@@14
+    RTAB *rt; // [sp+8h] [bp-10h]@@6
+
+	symbol = getsym();
+    if ( symbol != 2230 )               // string literal
+    {
+		if ( symbol == 930 )
+			loaderr(40, sym);			// "missing table/alias"
+		else
+			loaderr(39, sym);			// "invalid table/alias"
+		return 0;	// error_exit
+	}
+    RTno = getrtmem();
+	rt = RTARR(RTno);
+	
+	v3 = findtd(sym, -1);
+    rt->TTno = v3;
+    if ( v3 < 0 )
+    {
+		loaderr(14, sym); // "table not open"
+        return 0;
+	}
+    rt->OpType = 0x0080u;
+    symbol = getsym();
+    rt->WhereEXP = 0;
+    if ( symbol == 70 )					// 70 = all
+    {
+		symbol = getsym();
+        if ( symbol == 930 )
+			return RTno;
+		loaderr(33, sym);				// "unexpected symbol"
+        return 0;
+	}
+    if ( symbol == 1720 )				// 1720 = where
+	{
+		symbol = getsym();
+		v4 = loadexp(1, 1);
+		if ( v4 )
+		{
+			rt->WhereEXP = v4;			// loaded where expression, look for <CR>
+		    if ( symbol == 930 )
+				return RTno;
+			loaderr(33, sym);			// "unexpected symbol"
+		}
+		return 0;	// error_exit, couldn't load 'where' expression
+	}
+	if ( symbol == 930 )	// nothing following table name is also ok. : "select Tranfl1 \n"
+		return RTno;					// exit_success
+	loaderr(33, sym);					// "unexpected symbol"
+    return 0;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 1
+a21 1
+	rt = RTno ? (RTAB *)&rtarr.TableAddr[20 * (RTno - 1)] : 0;
+d30 1
+a30 1
+    rt->field_2 = 0x0080u;
+@

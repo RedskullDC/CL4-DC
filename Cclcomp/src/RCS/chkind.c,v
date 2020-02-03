@@ -1,0 +1,53 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.07.15.04.45.14;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@First 2 (or 3) tables have fixed definition sizes.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef CHKIND_C
+#define CHKIND_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+TDef* _chkindex(short TableIdx, DBinfo *DBptr)
+{
+	short v2; // esi@@1
+	TDef *tdef; // eax@@4
+
+	v2 = TableIdx;
+	if ( TableIdx <= 2 && (DBptr->DBvflag > 3 || v2 != 2) )
+	{
+		if ( DBptr->DBvflag == 2 )
+		{
+			if ( v2 == 1 )
+				v2 = 3;
+		}
+		tdef = (TDef *)ealloc(sz_shape[v2], 0);
+		cpybuf((char *)tdef, (char *)def_0[v2], sz_shape[v2]);
+	}
+	else
+	{
+		tdef = 0;
+	}
+	return tdef;
+}
+#endif
+@

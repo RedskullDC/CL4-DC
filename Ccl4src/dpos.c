@@ -22,8 +22,8 @@ void _dpos(DPOS *dpos, int PageNo, short Depth, TDinfo *TDptr)
 		page = _indexpg(TDptr, PageNo);
 		dpos->field_8 = PageNo;				// Containing page
 
-		dpos->NumEntries = page->NumEntries;
-		PageNo = mstol((int*)&page->DataStart[4 * dpos->NumEntries]);	// Set to last entry in page
+		dpos->NumEntries = page->header.NumEntries;
+		PageNo = mstol((int*)&page->header.DataStart[4 * dpos->NumEntries]);	// Set to last entry in page
 		--v5;
 	}
 	

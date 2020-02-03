@@ -55,7 +55,8 @@ int cldbopenv(char **DBnamelist)
 	{
 		while ( 1 )
 		{
-			DBptr = nalloc(372u, DBptr);	// Linked list of DBptrs
+			DBptr = nalloc(sizeof(DBinfo), DBptr);	// Linked list of DBptrs
+
 			if ( !DBptr || (DBptr->DBname = nalloc(lenstr(*v3) + 1, 0)) == 0)
 			{
 				ErrorCode = 43;

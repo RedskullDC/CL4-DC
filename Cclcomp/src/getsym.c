@@ -15,13 +15,13 @@ int getch(void)
 	
 	esc_char = false;
 	
-	if ((NextChar = _IO_getc(MainFile)) == -1)	// EOF
+	if ((NextChar = getc(MainFile)) == -1)	// EOF
 		return -1;
 	
 	if (NextChar != '\\')			// Normal next char exit
 		return NextChar;
 
-	if ((NextChar = _IO_getc(MainFile)) == -1)		// NextChar = char following the slash
+	if ((NextChar = getc(MainFile)) == -1)		// NextChar = char following the slash
 		return -1;       
 	
 	esc_char = true;				// nasty globalness!
@@ -51,7 +51,7 @@ int getch(void)
 		++lla;
 		do
 		{
-			NextChar = _IO_getc(MainFile);
+			NextChar = getc(MainFile);
 		}
 		while ( NextChar == ' ' || NextChar == '\t' );	// <SPC> and <TAB> are whitespace chars
 		
@@ -69,7 +69,7 @@ int getch(void)
 		while ((unsigned int)(NextChar - '0') < 8 && OctDigitsFound < 3) // 3 or less octal digits
 		{
 			OctalValue = NextChar - '0' + 8 * OctalValue ;	// octal arithmetic
-			if ((NextChar = _IO_getc(MainFile)) == -1)
+			if ((NextChar = getc(MainFile)) == -1)
 				return -1;
 			OctDigitsFound++;
 		}
@@ -127,18 +127,18 @@ short getsym(void)
         {
             while ( NextChar != '\n' )
             {
-                if ((NextChar = _IO_getc(MainFile)) == -1 )
+                if ((NextChar = getc(MainFile)) == -1 )
 				{
 	                c = -1;
 			        return -1;
 				}
                 if ( NextChar == '\\' )      // Line continue character. Bump line counters
                 {
-                    if ((NextChar = _IO_getc(MainFile)) == '\n')	// <CR> must follow '\'  *NO SPACES*
+                    if ((NextChar = getc(MainFile)) == '\n')	// <CR> must follow '\'  *NO SPACES*
                     {
 						++ll;
                         ++lla;
-                        NextChar = _IO_getc(MainFile);
+                        NextChar = getc(MainFile);
                     }
 				}
                 if ( NextChar == -1 )

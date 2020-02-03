@@ -1,0 +1,883 @@
+head	1.7;
+access;
+symbols;
+locks
+	leslie:1.7; strict;
+comment	@ * @;
+
+
+1.7
+date	2017.01.12.02.28.23;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2016.07.28.07.14.53;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2016.05.12.22.58.23;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.01.18.05.24.50;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.06.27.13.53.22;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.06.19.05.59.11;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.08.06.03.20;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.7
+log
+@tidy-up
+@
+text
+@#ifndef LEDEFINE_C
+#define LEDEFINE_C
+
+#include <stdio.h>
+#include <stdlib.h>				// for strtod(), strtol()
+#include <assert.h>
+
+//unsigned short FPtypes[] = { 0x0000u, 0x00A4u, 0x0084u, 0x00E4u, 0x00C4u, 0x0124u, 0x0104u, 0x0164u, 0x0144, 0x01A4u};
+
+int ledefine(bool local)
+{
+	FLDdesc	*fld;
+	char	*v5;
+	char	*v6;
+
+	double	v18;
+	int		v10;
+	int		fno;
+	int		VarNameLen;
+	int		MemSize;
+	short	ArraySize;
+
+	bool	TypeError;
+	bool	StringVar;
+	bool	InitVar;
+	char	VarType;
+
+	char	s[16];
+	char	nptr[256];
+	char	VarName[56];		// possible buffer overrun on VarName
+	char	v37[80];			// possible buffer overrun on v37 (ArraySize)
+	 
+	TypeError = false;
+    symbol = getsym();
+    
+	while ( symbol != 930 )
+    {
+		if ( symbol != 2230 )	// not a table/record/variable name
+        {
+			loaderr(8, sym);	// "invalid field name or number"
+		    return 0;
+        }
+        if ( local )
+			sprintf(s, "#%d", cur_block);	// local var, append #{BlockNo} to differentiate
+        else
+			s[0] = 0;
+        
+		cdbcpystr(VarName, sym, s, 0);		// *** buffer overrun is possible here !! ***
+        StringVar	= false;
+        InitVar		= false;
+        
+		// If variable type not specified, default to c20, non-array
+		ArraySize	= 0;		
+        VarType		= 'C';
+        MemSize		= 20;
+
+// We now have variable name, check for array type or "eq" <equate>
+        symbol = getsym();
+        if ( symbol == 740 )                  // "["  array 
+        {
+			symbol = getsym();
+            cdbcpystr(v37, sym, 0);
+            if ( symbol == 2200 )					// Numeric constant
+            {
+				ArraySize = strtol(sym, 0, 10);		// String to long, base 10
+                symbol = getsym();
+				if ( symbol == 1310 )				// "]" array sub terminator
+					symbol = getsym();
+                else
+					ArraySize = 0;					// force error
+			}
+            if ( ArraySize <= 0 )					// error in subscript define
+            {
+				loaderr(31, v37);					// "array subscript must be +ve integer"
+			    return 0;
+			}
+		}
+        else if ( symbol == 1800 )					// "eq", "=" or "=="		indicates literal definition
+        {
+			symbol = getsym();
+            cdbcpystr(nptr, sym, 0);				// save value for initialisation later
+
+			switch (symbol)
+			{
+			case 2210:								// floating point literal
+			    InitVar = true;
+                v6 = strchr(nptr, '.');				// should always be true if symbol == 2210!
+				//if ( v6 && lenstr(v6 + 1) == 20)	// ????????? ** error in real clcomp **
+				//	MemSize = 9;
+				//else
+				//	MemSize = 2;
+				if (v6 && (MemSize = lenstr(v6 + 1)))
+				{
+					if (MemSize < 2)
+						MemSize = 2;
+					else if (MemSize > 9)
+						MemSize = 9;
+				}
+				else								// shouldn't be reachable, as token 2210 indicates a '.' was detected.
+					MemSize = 2;
+				VarType = MemSize + '0';	// '0' = 48
+				break;
+			case 2220:								// string literal
+				StringVar	= true;
+                VarType		= 'C';
+                MemSize		= lenstr(nptr);
+				break;
+			case 2200:								// integer literal
+				InitVar		= true;
+                VarType		= 'N';
+				break;
+			default:
+ 			   	loaderr(32, VarName);				// "constant definition"
+				return 0;							// error_exit
+				break;
+			}
+            symbol = getsym();
+		}
+
+// this allows "variable = 65.5,c30".   Creates a C30 variable, but doesn't initialise it.
+
+//		Normal variable definition. Look for separator and vartype
+        if ( symbol == 180 )				// ","
+        {
+			symbol = getsym();
+			//printf("ledefine #124: VarName = %s, sym = %s, syml = %d\n",VarName, sym, syml);
+			//       !a-z       &&      !$       &&     ( !0-9 || not single digit)
+            if ( !isalpha(sym[0]) && sym[0] != '$' && (!isdigit(sym[0]) || syml != 1) )
+            {
+ 				loaderr(4, sym);			// "invalid data type"
+				return 0;
+            }
+            if ( islower(sym[0]))			// ensure VarType is UpperCase
+				VarType = toupper(sym[0]);
+			else
+				VarType = sym[0];
+
+			if ( VarType == '$' )			// re-map $/F VarTypes
+				VarType = '2';
+			else if (VarType == 'F')
+				VarType = '6';
+			
+			v5 = alltypes;					// check for a match on vartype, alltypes[] == "BCDFGILNRT$123456789"
+            while ( *v5 && *v5 != VarType)
+				v5++;
+			if (!*v5)
+	            TypeError = true;			// Error. Reached end of Alltypes array with no match
+			else if (VarType == 'C')
+			{
+				v6 = &sym[1];				// look for char string length bytes
+				if ( *v6 )
+				{
+					if ( !isdigit(*v6) || (MemSize = strtol(v6, 0, 10), MemSize == 0) )
+						TypeError = true;
+				}
+				syml = 1;					// avoid second test below
+			}
+			if ( TypeError || syml != 1 )	// non-string variable, syml should always be 1 char long
+			{
+				loaderr(4, sym);	// "invalid data type"
+				return 0;
+			}
+			symbol = getsym();		// exit_success
+		}
+
+//===============================================================================
+
+		if (VarType != 'C')
+			MemSize = sizeof(double);
+
+		//printf("ledefine : 186 VarSize = %d, symbol = %d\n",MemSize, symbol);
+
+		VarNameLen = lenstr(VarName);
+        if ( VarNameLen > 55 )					// Max Variable Name Length = 56
+        {
+			VarName[55] = 0;
+            VarNameLen = 55;
+		}
+        v10 = last_var;
+        troot = gettnode(troot, VarName, VarNameLen + 1, 1);		// Add VarName to tree structure for easy location.
+        if ( v10 == last_var )										// if last_var didn't change, variable already existed!
+		{
+			loaderr(17, VarName);				// "variable redefined"
+		    return 0;
+		}
+		fno = last_fnd;
+		
+		assert(getvars(fno) == ((void *)0));	// assert that variable doesn't exist
+		fld = getvarmem();						// allocate sapce for it.
+		assert(getvars(fno) == fld);			// assert that the variable we created is now valid
+
+		fld->FLDname = getmem(VarNameLen + 1);	// variable name
+        cdbcpystr(fld->FLDname, VarName, 0);
+        switch ( VarType )						// calculate vartype
+        {
+			case 'B':							// Integer types, Byte (8bit), Int (16bit), Long (32bit), LongLong (64bit)
+				fld->FLDlen		= 1;
+                fld->TDFtype	= 0x0044u;
+                break;
+            case 'C':							// String
+                fld->FLDlen		= MemSize;
+                fld->TDFtype	= 0x001Au;		// variable length flag (0x0002) set
+                break;
+            case 'D':							// Date
+                fld->FLDlen		= 4;
+                fld->TDFtype	= 0x1040u;		// only allow unsigned values
+                break;
+			case 'G':							// Dollar values
+                fld->FLDlen		= 4;
+                fld->TDFtype	= 0x0404u;
+                break;
+			case 'I':
+                fld->FLDlen		= 2;
+                fld->TDFtype	= 0x0044u;
+                break;
+            case 'L':							
+                fld->FLDlen		= 8;
+                fld->TDFtype	= 0x0044u;
+                break;
+            case 'N':
+                fld->FLDlen		= 4;
+                fld->TDFtype	= 0x0044u;
+                break;
+            case 'R':
+                fld->FLDlen		= 4;
+                fld->TDFtype	= 0x0604u;
+                break;
+            case 'T':							// Time
+                fld->FLDlen		= 4;
+                fld->TDFtype	= 0x0800u;		// only allow unsigned values
+                break;
+            default:							// Floating point types
+                fld->FLDlen		= 8;
+                //v15 = VarType - 48;			// '0'
+				//fld->TDFtype = FPtypes[v15];
+				fld->TDFtype = FPtypes[(VarType - '0')];
+				break;
+          }
+		  /*	floating point types, TDFtypes:
+				1 = x00A4
+				2 = x0084
+				3 = x00E4
+				4 = x00C4
+				5 = x0124
+				6 = x0104
+				7 = x0164
+				8 = x0144
+				9 = x01A4
+		*/
+        fld->FLDtype = VarType;
+		fld->FLDdata = getmem(VarType == 'C' ? MemSize + 1 : MemSize ); // allow for terminating \0 in String type
+
+// ======  save the init value  ======
+
+		// default to variable == not initialised, and has ZERO value
+		fld->FLDstat |= fld_ZERO;				// 0x0004 Variable is not initialised. So set quick zero flag.
+
+		if (StringVar)
+		{
+			cdbcpystr((char *)fld->FLDdata, nptr, 0);
+			if ( nptr[0] )
+		        fld->FLDstat &= ~fld_ZERO;		// 0xFFFB clear zero flag if string present
+		}
+        else if ( InitVar )
+        {
+            v18 = strtod(nptr, 0);
+            if ( v18 != 0.0 )
+				fld->FLDstat &= ~fld_ZERO;		// 0xFFFB clear zero flag if required.
+
+            *(double *)fld->FLDdata = v18;
+        }
+
+		if ( ArraySize )						// Use elemID as ArraySize, since unused for local vars
+			fld->FLDelemID = ArraySize;
+
+	} // end while( symbol != 930 )
+	return 1;		// exit_success
+}
+
+#endif
+@
+
+
+1.6
+log
+@tidyy-up
+@
+text
+@d67 1
+a67 1
+				if ( symbol == 1310 )       // "]" array sub terminator
+d70 1
+a70 1
+					ArraySize = 0;			// force error
+d72 1
+a72 1
+            if ( ArraySize <= 0 )			// error in subscript define
+d74 1
+a74 1
+				loaderr(31, v37);			// "array subscript must be +ve integer"
+d78 1
+a78 1
+        else if ( symbol == 1800 )            // "eq", "=" or "=="		indicates literal definition
+d99 1
+a99 1
+				else
+a102 1
+
+d104 3
+a106 3
+				StringVar = true;
+                VarType = 'C';
+                MemSize = lenstr(nptr);
+a107 1
+
+d109 2
+a110 2
+				InitVar = true;
+                VarType = 'N';
+a111 1
+
+d130 1
+a130 1
+ 				loaderr(4, sym);			//"invalid data type"
+d147 1
+a147 1
+	            TypeError = true;	// Error. Reached end of Alltypes array with no match
+d150 1
+a150 1
+				v6 = &sym[1];			// look for char string length bytes
+d197 2
+a198 2
+				fld->FLDlen = 1;
+                fld->TDFtype = 0x0044u;
+d201 2
+a202 2
+                fld->FLDlen = MemSize;
+                fld->TDFtype = 0x001Au;
+d205 2
+a206 2
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x1040u;
+d209 2
+a210 2
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x0404u;
+d213 2
+a214 2
+                fld->FLDlen = 2;
+                fld->TDFtype = 0x0044u;
+d217 2
+a218 2
+                fld->FLDlen = 8;
+                fld->TDFtype = 0x0044u;
+d221 2
+a222 2
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x0044u;
+d225 2
+a226 2
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x0604u;
+d229 2
+a230 2
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x0800u;
+d233 2
+a234 2
+                fld->FLDlen = 8;
+                //v15 = VarType - 48;				// '0'
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@a20 6
+	int		MemSizea;
+	int		StringVar;
+	int		InitVar;
+
+	short	v7;
+	short	v15;
+d23 3
+a26 1
+	bool	TypeError;
+d30 2
+a31 2
+	char	VarName[56];
+	char	v37[80];
+d44 1
+a44 1
+			sprintf(s, "#%d", cur_block);	// local var, append block# to differentiate
+d48 6
+a53 4
+		cdbcpystr(VarName, sym, s, 0);
+        StringVar	= 0;
+        InitVar		= 0;
+        ArraySize	= 0;	// Variable type defaults to C20, non-array
+d70 1
+a70 1
+					ArraySize = 0;
+a76 3
+			#ifdef DEBUG_OUTPUT
+			printf("ledefine : 74 ArraySize = %d\n",ArraySize);
+			#endif
+d78 1
+a78 1
+        else if ( symbol == 1800 )            // "eq", "=" or "=="
+d81 1
+a81 1
+            cdbcpystr(nptr, sym, 0);	// save value for initialisation later
+d86 13
+a98 5
+				//printf("ledefine : 87 symbol = 2210 \n");
+			    InitVar = 1;
+                v6 = strchr(nptr, '.');
+				if ( v6 && lenstr(v6 + 1) == 20)	// ?????????
+					MemSize = 9;
+d101 1
+a101 1
+				VarType = MemSize + 48;				// 48 = '0'
+d103 1
+d105 1
+a105 2
+  				//printf("ledefine : 97 symbol = 2220 \n");
+				StringVar = 1;
+d107 1
+a107 1
+                MemSize = (signed short)lenstr(nptr);
+d109 1
+d111 1
+a111 2
+  				//printf("ledefine : 103 symbol = 2200 \n");
+				InitVar = 1;
+d125 1
+a125 3
+//-----------------------------------
+// Now look for separator and vartype
+
+d129 2
+d145 13
+a157 27
+
+			v5 = alltypes;					// check for a match on vartype
+            while ( *v5 )					// alltypes[] == "BCDFGILNRT$123456789"
+            {
+				if ( *v5 == VarType )
+                {
+LABEL_50:
+					if ( VarType == 'C' )	// look for char string length bytes
+                    {
+						v6 = &sym[1];
+                        if ( *v6 )
+                        {
+							if ( !isdigit(*v6) || (v7 = strtol(v6, 0, 10), (MemSize = v7) == 0) )
+								TypeError = 1;
+						}
+                        syml = 1;
+					}
+                    else if ( syml != 1 )	// non-string variable, syml should always be 1 char long
+						TypeError = 1;
+
+					if ( TypeError )
+                    {
+			 			loaderr(4, sym);	// "invalid data type"
+						return 0;
+					}
+                    symbol = getsym();
+					goto LABEL_63;			// exit_success
+d159 6
+a164 1
+				v5++;
+d166 1
+a166 2
+            TypeError = 1;	// Error. Reached end of Alltypes array with no match
+            goto LABEL_50;
+d169 1
+a169 1
+//---------------------
+d171 2
+a172 7
+LABEL_63:
+        // if ( VarType == 'C' )
+		// 	MemSizea = MemSize;
+		// else
+		// 	MemSizea = sizeof(double);	// 8;
+		
+		MemSizea = VarType == 'C' ? MemSize : sizeof(double);
+d174 1
+a174 1
+		//printf("ledefine : 186 VarSize = %d, symbol = %d\n",MemSizea, symbol);
+d177 1
+a177 1
+        if ( VarNameLen > 55 )		// Max Variable Name Length = 56
+d183 1
+a183 1
+        troot = gettnode(troot, VarName, VarNameLen + 1, 1);		// Add to tree structure for easy location.
+d190 4
+a193 8
+		//if ( getvars(fno) )
+		//	__assert_fail("getvars(fno) == ((void *)0)", "ledefine.c", 155, "ledefine");
+		assert(getvars(fno) == ((void *)0));
+          
+		fld = getvarmem();
+		//if ( fld != getvars(fno) )
+		//	__assert_fail("f == getvars(fno)", "ledefine.c", 157, "ledefine");
+		assert(fld == getvars(fno));
+d203 12
+a218 4
+            case 'N':
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x0044u;
+                break;
+d223 1
+a223 2
+
+			case 'G':							// Dollar values
+d225 1
+a225 1
+                fld->TDFtype = 0x0404u;
+a230 1
+
+a234 10
+            case 'D':							// Date
+                fld->FLDlen = 4;
+                fld->TDFtype = 0x1040u;
+                break;
+
+            case 'C':							// String
+                fld->FLDlen = MemSizea;
+                fld->TDFtype = 0x001Au;
+                break;
+
+d237 3
+a239 2
+                v15 = VarType - 48;
+				fld->TDFtype = FPtypes[v15];
+d254 1
+a254 1
+		fld->FLDdata = getmem(VarType == 'C' ? MemSizea + 1 : MemSizea ); // allow for terminating \0 in String type
+d278 3
+a280 4
+//printf("ledefine : 309 ArraySize = %d, symbol = %d\n",ArraySize, symbol);
+       
+    } // end while( symbol != 930 )
+	return 1;
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d4 1
+d6 1
+d12 24
+a35 26
+     FLDdesc	*fld;
+	 char		*v1;
+	 char		*v5;
+	 char		*v6;
+	 
+     double v18;
+	 int v10;
+	 int fno;
+	 int v16;
+	 int VarNameLen;
+     int MemSize;
+	 int MemSizea;
+	 int StringVar;
+	 int InitVar;
+	 
+     short v7;
+	 short v15;
+	 short ArraySize;
+	 
+	 char VarType;
+	 bool TypeError;
+
+	 char s[16];
+	 char nptr[256];
+	 char VarName[56];
+	 char v37[80];
+d93 2
+a94 2
+                v1 = strchr(nptr, '.');
+				if ( v1 && lenstr(v1 + 1) == 20)
+d125 1
+a125 1
+        if ( symbol == 180 )                  // ","
+d130 1
+a130 1
+ 				loaderr(4, sym);	//"invalid data type"
+d133 1
+a133 1
+            if ( islower(sym[0]))
+d138 1
+a138 1
+			if ( VarType == '$' )				// re-map $/F VarTypes
+d179 6
+a184 4
+        if ( VarType == 'C' )
+			MemSizea = MemSize;
+		else
+			MemSizea = sizeof(double);	// 8;
+d195 2
+a196 2
+        troot = gettnode(troot, VarName, VarNameLen + 1, 1);
+        if ( v10 == last_var )
+d198 1
+a198 1
+			loaderr(17, VarName);						// "variable redefined"
+d202 3
+a204 2
+		if ( getvars(last_fnd) )
+			__assert_fail("getvars(fno) == ((void *)0)", "ledefine.c", 155, "ledefine");
+d207 3
+a209 2
+		if ( fld != getvars(fno) )
+			__assert_fail("f == getvars(fno)", "ledefine.c", 157, "ledefine");
+d273 3
+a275 5
+          
+		v16 = MemSizea;
+        if ( VarType == 'C' )
+			v16 = MemSizea + 1;	// allow for terminating \0 in String type
+		fld->FLDdata = getmem(v16);
+d277 2
+a278 1
+//save the init value
+d283 2
+a284 4
+			if ( !nptr[0] )
+				fld->FLDstat |= 0x0004;			// quick zero check
+			else
+		        fld->FLDstat &= 0xFFFB;
+d289 3
+a291 4
+            if ( v18 == 0.0 )
+				fld->FLDstat |= 0x0004;			// quick zero check
+            else
+				fld->FLDstat &= 0xFFFB;
+a293 2
+		else
+			fld->FLDstat |= 0x0004;				// Variable is not initialised. So set quick zero flag.
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d10 9
+a18 16
+     FLDdesc *fld; // esi@@72
+     char *v1; // eax@@22
+     char *v5; // esi@@44
+     char *v6; // esi@@51
+
+     short v7; // ax@@53
+     short v9; // ax@@65
+     int v10; // edi@@67
+     int fno; // edi@@70
+     signed short v15; // ax@@86
+     int v16; // eax@@97
+     short v17; // ax@@101
+     double v18; // fst6@@103
+     short v19; // ax@@104
+     char VarType; // [sp+27h] [bp-221h]@@7
+     short ArraySize; // [sp+28h] [bp-220h]@@8
+d20 17
+a36 10
+     int MemSize; // [sp+30h] [bp-218h]@@7
+     int MemSizea; // [sp+30h] [bp-218h]@@65
+     int StringVar; // [sp+34h] [bp-214h]@@7
+     int InitVar; // [sp+38h] [bp-210h]@@7
+     bool TypeError; // [sp+3Ch] [bp-20Ch]@@1
+     char s[16]; // [sp+40h] [bp-208h]@@5
+     char nptr[256]; // [sp+50h] [bp-1F8h]@@15
+     char VarName[56]; // [sp+150h] [bp-F8h]@@7
+     char v37[80]; // [sp+1C0h] [bp-88h]@@8
+
+d51 2
+a52 1
+        cdbcpystr(VarName, sym, s, 0);
+d94 1
+a94 1
+				if ( v1 && 20 == lenstr(v1 + 1) )
+d98 1
+a98 1
+				VarType = MemSize + 48;
+d143 2
+a144 6
+ //-----------------------------
+ // check for a match on vartype
+ // alltypes[] == "BCDFGILNRT$123456789"
+
+			v5 = alltypes;
+            while ( *v5 )
+d211 1
+a211 1
+			case 'B':
+d223 1
+a223 1
+            case 'L':
+d227 2
+a228 1
+            case 'G':
+d236 2
+a237 1
+            case 'T':
+d241 1
+a241 1
+            case 'D':
+d245 2
+a246 1
+            case 'C':
+d250 2
+a251 1
+            default:
+a254 25
+				//eprint("FP vartype = %d, TDFtype = x%04X\n",v15, (unsigned short)fld->TDFtype);
+                /*if ( v15 > 2 )
+                {
+					if ( v15 > 4 )
+                    {
+						if ( v15 > 6 )
+                        {
+							if ( v15 > 8 )
+								fld->TDFtype = 0x0184u;	// 9 or ???
+							else
+								fld->TDFtype = 0x0144u;	// 7 or 8
+						}
+                        else
+							fld->TDFtype = 0x0104u;	// 5 or 6
+					}
+                    else
+						fld->TDFtype = 0x00C4u;	// 3 or 4
+				}
+                else
+					fld->TDFtype = 0x0084u;	// 1 or 2
+
+				if ( v15 % 2 == 1 )
+					fld->TDFtype |= 0x20u;
+				*/
+				//printf("ledefine: VarType = %C ,numtype: %d, x%04X\n", VarType,v15,fld->TDFtype );
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d6 2
+d48 1
+a48 1
+			sprintf(s, "#%d", cur_block);	// local var, prepend block# to differentiate
+a135 1
+			//printf("ledefine : 132 VarType = %C\n",VarType);
+d137 1
+a137 2
+// re-map $/F VarTypes
+			if ( VarType == '$' )
+d173 1
+a173 1
+				++v5;
+d253 3
+a255 1
+                if ( v15 > 2 )
+d277 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 2
+d8 1
+d12 1
+d16 1
+a16 2
+     int v12; // edi@@70
+     FLDdesc *fld; // esi@@72
+d46 1
+a46 1
+			sprintf(s, "#%d", cur_block);	// local var, append block# to differentiate
+d62 1
+a62 1
+            if ( symbol == 2200 )            // Numeric constant
+d64 1
+a64 1
+				ArraySize = __strtol_internal(sym, 0, 10, 0);
+d76 3
+a78 2
+			//printf("ledefine : 74 ArraySize = %d\n",ArraySize);
+
+d157 1
+a157 1
+							if ( !isdigit(*v6) || (v7 = __strtol_internal(v6, 0, 10, 0), (MemSize = v7) == 0) )
+d185 1
+a185 1
+			MemSizea = 8;
+d202 1
+a202 1
+		v12 = last_fnd;
+d207 1
+a207 1
+		if ( fld != getvars(v12) )
+d275 1
+d278 17
+a294 6
+
+          fld->FLDtype = VarType;
+          v16 = MemSizea;
+          if ( VarType == 'C' )
+			v16 = MemSizea + 1;
+          fld->FLDdata = getmem(v16);
+d308 1
+a308 1
+            v18 = __strtod_internal(nptr, 0, 0);
+@

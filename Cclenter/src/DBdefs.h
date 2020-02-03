@@ -166,15 +166,46 @@ typedef struct
 	short	field_12;		// padding
 }RTAB;
 
+//=============================================
+
+// ENTAB defs
+
+typedef struct
+{
+	short Enoper;
+	short RecNo;
+} ENOP;
+
+typedef struct
+{
+	short TTno;
+	short VarNum;
+} ENREF;
+
+typedef union
+{
+
+	ENOP	Enop;
+	ENREF	Enref;
+	float	float4;
+	long	long8;
+	char	char16[4];   
+
+} ENUN;
+
 typedef struct 
 {
 	short	entype;
 	short	extOpCode;		// unused in real CL4 - could be used for extended opcodes??
-	short	TTno;			// enum which can hold few diff types
-	short	RecNo;
+	//short	TTno;			// enum which can hold few diff types
+	//short	RecNo;
+	ENUN	Enun;
 	short	enleft;			// LVALUE	Dest	tree structue pointing at other expressions
 	short	enright;		// RVALUE	Src
 }ENTAB;
+
+
+//=============================================
 
 typedef struct 
 {
@@ -624,7 +655,7 @@ typedef struct
 {		
 	unsigned char	TableIndex;		// Table index offset of current table
 	char			KeyBuff[128];	// Holds a copy of the locked record Key Area [max 128]
-	int				PID;			// current user PID
+	pid_t			PID;			// current user PID
 }TD2REC;
 #pragma pack(pop)
 
@@ -736,26 +767,45 @@ typedef struct
 }RLIST;
 #pragma pack(pop)
 
+//===================================================================
+
+//PAGE defs
+
+typedef union
+{
+	char*	TabStart;
+	int		RecSize;
+} TSRS;
 
 typedef struct 
 {
-	short	NumEntries;		//Variable length structure. Depends on page size
-	short	field_2;		//first 16bytes are calculated when page is loaded, and depend on PageType value
-	char	*DataStart;			//
-	char	*TabStart_or_RecSize;
-	char	*TabEnd;
-	char	PageType;			// This is first byte stored on a page on disk
-	char	field_11;
-	char	field_12;
-	char	field_13;
+	short	NumEntries; 
+	short	field_2;
+	char*	DataStart;
+	TSRS	tsrs;
+	char*	TabEnd;
+} PAGEHDR;
+
+typedef struct 
+{
+	unsigned short	PageType;			// This is first byte stored on a page on disk
+	unsigned short	field_12;
 	char	field_14;
 	char	field_15;
 	char	field_16;
 	char	field_17;
 	char	field_18;
 	char	field_19;
-	int		field_1A;			// ; Data normally starts here
+	short	field_1A;			// ; Data normally starts here
+} PAGEDATA;
+
+typedef struct 
+{
+	PAGEHDR		header;
+	PAGEDATA	pgData;
 }PAGE;	//(sizeof=0x1E)
+
+//====================================================================
 
 struct EXPR{
 	EXPR	*NextEXPR;			//struc ; (sizeof=0x10   (16))
@@ -954,7 +1004,6 @@ int		_fsize = 0x7A120;			// default file size for temp files: 0x7A120  [ 500000 
 POS		_tpos[] = {107, 0, 0, 106, 0, 22, 108, 0, 28, 109, 0, 24, 110, 0, 26, 0, 0, 0};	// reposition data for "tables" : TD0
 POS		_fpos[] = {106, 0, 0, 101, 0, 2, 102, 0, 4, 103, 0, 6, 104, 0, 8, 0, 0, 0};	// reposition data for "fields" : TD1
 
-char			cwd[80];
 char			*_pname;				// points to "cldblib" [syserror()]
 int				time_stamp;			// used by syserror()
 pthread_mutex_t	mutex;
@@ -1131,7 +1180,7 @@ char	str_0[8192];		// used by getevar() and others?
 char	buf_0[3072];		// used by CLdbschema and others?
 char	buf_2[6144];		// used by CLtdschema and others?
 char	buffer_0[120];		// used by _getfldno()
-char*	pbuf = 0;			// PageBuffer pointer used by getpg(), cdbfreepg()
+PAGE*	pbuf = 0;			// PageBuffer pointer used by getpg(), cdbfreepg()
 int		psize = 0;			// current page size in bytes
 char	TCLArea[1024];		// used by termcap() to store term controls in global mem
 

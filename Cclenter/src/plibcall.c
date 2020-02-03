@@ -61,7 +61,7 @@ bool plibcall(int ENTno)		// DC extension
 			*(void**)fld_funchandle->FLDdata = dlsym( *(void**)fld_libhandle->FLDdata, (char*)fld_funcname->FLDdata);
 			if ((error = dlerror()) != NULL)
 			{
-				printf(error);
+				printf("%s",error);							// stop GCC warning : format not a string literal and no format arguments 
 				return false;								// avoid calling null pointers
 			}
 			fld_funchandle->FLDstat |= fld_FUNC;			// flag this variable as now holding a valid function pointer
@@ -125,7 +125,7 @@ bool plibcall(int ENTno)		// DC extension
 
 		// last, or only param if void passed in.
 		//        <3 char lit,          Integer                          Non-VOID Variable
-		if (entb->entype == 0x10 || entb->entype == 0x08 || (entb->entype == 1 && entb->RecNo != 0)) // RecNo = ZERO indicates void parameter , do nothing. Only valid for 1st param
+		if (entb->entype == 0x10 || entb->entype == 0x08 || (entb->entype == 1 && entb->Enun.Enref.VarNum != 0)) // RecNo = ZERO indicates void parameter , do nothing. Only valid for 1st param
 		{
 			fld_param = getftf(entb, false, &fld_dummy);
 			switch (fld_param->FLDtype)

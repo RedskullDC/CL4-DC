@@ -1,0 +1,119 @@
+dates.c:	memset(&tp, 0, sizeof(tp));
+getident.c:		*TTno = TDno;							// Update caller mem directly
+getmem.c:short getxtmem(void)
+getmem.c:short getptmem()
+getmem.c:short getxfmem()
+getmem.c:short getenmem()
+getmem.c:short getrtmem(void)
+getmem.c:short getprmem()
+getmem.c:	//eprint("getprmem() - v0->MaxAvail = %d , v0->NextElement = %d\n",v0->MaxAvail,v0->NextElement);
+getmem.c:		//eprint("getprmem(realloc) - v0->MaxAvail = %d \n",v0->MaxAvail);
+getmem.c:		//eprint("getprmem(realloc) - v5 = x%08X\n",v5);
+getmem.c:short getsfmem()
+getmem.c:short getramem(void)
+getmem.c:short getkxmem(void)
+getmem.c:		ptidx = getptmem();
+getmem.c:short getrdmem()
+getmem.c:short getstrmem(int amt)
+getmem.c:     //     __assert_fail("amt < 200", "getmem.c", 0x203u, "getstrmem");
+getprmpt.c:		  ExpNo = getenmem();
+getpt.c:char *getmem(int MemSize)
+getpt.c:FLDdesc *getvarmem(void)
+getsym.c:		mfree_0(FileTree->childINC);		// free memory used by the (now-closed) child
+gettf.c:    *TTno	= 0;		// Update caller memory directly
+gettf.c:        *TTno	= v6;								// Update caller memory directly
+gettf.c:		*FLDtype = fld->FLDtype;					// Update caller memory directly
+gettf.c:    *FLDstat = fld->FLDstat;						// Update caller memory directly. ##wrong## fld uninitiliased for most types!!!
+gettfexp.c:            fld = getvarmem();						// create it anyway for debug purposes?
+gettfexp.c:            fld->FLDname = getmem(MemSize);			// size of Variable Name + '\0'
+gettfexp.c:		ENTno = getenmem();					// Don't remove this.
+gettfexp.c:        entab->enleft	= ENTno;			// getenmem can re-locate entab!!
+gettnode.c:		v4 = (VARTREE *)getmem(sizeof(VARTREE));		// 16
+gettnode.c:		v4->VarName = getmem(namesize + 1);
+gettnode.c:		v4 = (VARTREE *)getmem(sizeof(VARTREE));		// 16
+gettnode.c:		v4->VarName = getmem(namesize + 1);
+isdef.c:	 fld = getvarmem();									// May realloc() var mem space
+isdef.c:	 fld->FLDname	= getmem(LitLen);
+isdef.c:     fld->FLDdata	= getmem(LitLen + 1);
+leaccept.c:    XTno = getxtmem();
+leblock.c:				oep = (ONESC *)getmem(sizeof(ONESC));		// 16
+leblock.c:			    oep->BlockName = getmem(fixbname(BlockName, sym));
+lecopy.c:		XFno = getxfmem();
+lecreate.c:	KXno = getkxmem();
+lecreate.c:									// update ttab record in memory for future instructions which may reference it :o)
+ledefine.c:		fld = getvarmem();						// allocate sapce for it.
+ledefine.c:		fld->FLDname = getmem(VarNameLen + 1);	// variable name
+ledefine.c:		fld->FLDdata = getmem(VarType == 'C' ? MemSize + 1 : MemSize ); // allow for terminating \0 in String type
+leeop.c:	escp = (ONESC *)getmem(16);		// create new escape, Add it to the end of the list
+leeop.c:		escp->BlockName = getmem(fixbname(BlockName, sym));
+leescape.c:    v8 = (ONESC *)getmem(16);		// sizeof(ONESC)
+leescape.c:    v8->BlockName = getmem(fixbname(v16, sym));	// truncate the blockname to 20chars + 1 for \0
+leformat.c:		ENTno = getenmem();
+lefresh.c:		ptb->TABno = getstrmem(syml + 1);
+lefresh.c:		ptb->TABno = getstrmem(syml + 1);	// sym = screen name, anything technically valid
+legetf.c:            //mfree_0(DBname);	// replaces memory pointed to by *DBname  **** different to clenter!! ***
+legetf.c:							qlen = (Qlen *)getmem(sizeof(Qlen));	// sizeof(Qlen) == 16 
+legetf.c:				//else don't alloc any mem for FLDdata
+legetf.c:              dbarray = camake(dbrename, ',');		// mem never free'd in clcomp!
+legetf.c:			TTno = TDno;				// remember lowest TDno in this DBase in case of File level Locking below
+lehdtxt.c:    XTno = getxtmem();
+lejoin.c:    v9 = getenmem();
+lejoin.c:	RTno = getrtmem();
+lejoin.c:		v9 = getenmem();
+lejoin.c:        entb->enleft  = getenmem();
+lejoin.c:		entb->enleft = getenmem();
+lejoin.c:		entb->enright = getenmem();
+lelibcall.c:			ENTtop = getenmem();					// save ENTtop for later insertion in PTAB if all params correct
+lelibcall.c:						ENTright		= getenmem();
+lelibcall.c:               ENTno		= getenmem();
+lemaint.c:		escp = (ONESC *)getmem(sizeof(ONESC));	// 16
+lemaint.c:        escp->BlockName = getmem(fixbname(blockname, sym));
+lemsg.c:               ENTno		= getenmem();
+leopen.c:	SFno	= getsfmem();
+leopenlib.c:			ENTleft = getenmem();
+leopenlib.c:							ENTright = getenmem();
+leopenlib.c:							ENTright = getenmem();
+leopenlib.c:						ENTno = getenmem();
+leopenlib.c:               ENTno		= getenmem();
+lepause.c:		ENno		  = getenmem();
+leprint.c:    a1 = getprmem();
+leprint.c:				ENTno	= getenmem();				// get new expression to describe this
+leprint.c:					PRno = getprmem();
+leprint.c:			PRno = getprmem();			//*** getprmem() can change pr ***
+lerange.c:    v4 = getramem();
+lerange.c:    ENTno = getenmem();
+lerange.c:			v10 = getenmem();
+lerange.c:		ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+leread.c:    SFno = getsfmem();
+leread.c:		sftab->PRTno = getprmem();
+leread.c:					ENTno = getenmem();
+leread.c:						ENTno			 = getenmem();
+leread.c:							PRno = getprmem();			//*** getprmem() can change prtab! ***
+leread.c:					PRno = getprmem();					//*** getprmem() can change prtab! ***
+leredisp.c:	redno = getrdmem();
+leredisp.c:			RDno =  getrdmem();			//***RDno can alter rd pointer if realloc occurs!
+lerfile.c:		RTno = getrtmem();
+lerfile.c:				v4 = getrtmem();
+lerfile.c:    RTno = getrtmem();
+leselect.c:		RTno	 = getrtmem();				// don't simplify!! rt can move
+loadexp.c:			 v6 = getenmem();
+loadexp.c:			 v6				= getenmem();
+loadexp.c:			 v8				= getenmem();
+loadexp.c:			 v7				= getenmem();
+loadexp.c:			 v8 = getenmem();
+loadexp.c:    v7 = getenmem();
+loadexp.c:		v2	= getenmem();
+loadstate.c:			ptab1->TABno = getstrmem(syml + 1);	// allow room for \0
+loadstate.c:			ptab1->TABno = getstrmem(fixbname(Blockname, sym));		// ensure max length = 21 [including \0]
+loadstate.c:				*lt = (LTAB *)getmem(syml + sizeof(LTAB));	// allocate enough to hold labelname , sizeof(LTAB) = 6
+loadstate.c:		ENTno = getenmem();
+loadstate.c:			v112 = getenmem();
+loadvars.c:		fld = getvarmem();
+loadvars.c:		assert(fld == getvars(last_var));				// should now exist after we allocate mem
+loadvars.c:		fld2->FLDdata = getmem(reqsize);
+prdebug.c:               printf("%s", ttab[rdtab->TTno].TableName);	// redisplay all members of a record
+prdebug.c:    count = 0;					// pointless really, alloca clears memory
+putconst.c:		fld = getvarmem();
+putconst.c:        fld->FLDname = getmem(strlen(arg) + 1);
+putconst.c:        fld->FLDdata = getmem(VarSize + 1);		// Why an extra byte for double types?
+termcap.c:	//char TCLArea[1024];	//**** needs to be in global memory area **. ???

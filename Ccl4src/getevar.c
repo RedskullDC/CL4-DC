@@ -14,7 +14,7 @@ char* getevar(char *name)
 	char	Key[128];		// Key buffer     'xyz='
 	char	Buff[8192];
 
-	zap(str_0, 8192u);
+	memset(str_0, 0, 8192u);
 	v2 = getenv(name);	// 1st, look for a system variable with that name
 	if ( v2 && *v2 )
 	{

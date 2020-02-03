@@ -1,0 +1,140 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.11.05.00.44.07;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef PICKPREV_C
+#define PICKPREV_C
+
+/*
+short _pickprev(TDinfo *TDptr, char *WorkArea, short SkipRecs, POS *Pos)
+{
+	SALLOCBUF *v4; // edi@@7
+	SALLOCBUF *i; // esi@@7
+	short v6; // dx@@10
+	short v8; // [sp+10h] [bp-18h]@@4
+	short v9; // [sp+14h] [bp-14h]@@6
+
+	printf("_pickprev( TDptr: x%08X ,WorkArea = %s,SkipRecs = %d, POS = x%08X)\n", TDptr,WorkArea,SkipRecs,Pos);
+
+	if ( TDptr->TDFlags & 0x1000 )
+	{
+		relnode(TDptr->TDNodePtr);
+		TDptr->TDNodePtr = 0;
+		TDptr->TDFlags &= 0xEFFFu;
+		_dmerge(TDptr->TDSallocBuf, TDptr);
+	}
+	if ( Pos )
+		v8 = cdbrindex(Pos, 0);
+	else
+		v8 = TDptr->TDRecSize;
+	
+	v9 = 0;
+	while ( SkipRecs > v9 )
+	{
+		v4 = 0;
+		for ( i = TDptr->TDSallocBuf; i; i = i->NextSA )
+		{
+			if ( i->field_1C )
+			{
+				if ( v4 && (v6 = _cmpkey((char*)&i->field_20, (char*)&v4->field_20, TDptr->TableDefs), v6 <= 0) )
+				{
+					if ( !v6 && !((TDptr->TDFlags >> 8) & 4) )
+					{
+						if ( !((TDptr->TDFlags >> 8) & 8) )
+							_addtuple((char*)&v4->field_20, (char*)&i->field_20, TDptr->TableDefs);
+						i->field_1C = _dfetch((char*)&i->field_20, (DPOS*)&i->field_C, TDptr);
+					}
+				}
+				else
+				{
+					v4 = i;
+				}
+			}
+		}
+		if ( !v4 )
+			break;
+		tuptor(WorkArea, Pos, (char*)&v4->field_20, TDptr->TableDefs);
+		v4->field_1C = _dfetch((char*)&v4->field_20, (DPOS*)&v4->field_C, TDptr);
+		++v9;
+		WorkArea += v8;
+	}
+	return v9;
+}
+*/
+
+short _pickprev(TDinfo *TDptr, char *WorkArea, short SkipRecs, POS *pos)
+{
+    RLARR *v4; // edi@@7
+    RLARR *RLa; // esi@@7
+    short v6; // dx@@10
+    int v8; // [sp+10h] [bp-18h]@@4
+    short v9; // [sp+14h] [bp-14h]@@6
+
+    if ( TDptr->TDFlags & 0x1000 )		// 0x1000 indicates TDptr->TDSallocBuf holds an RLARR structure
+    {
+        relnode(TDptr->TDNodePtr);
+        TDptr->TDNodePtr = 0;
+        TDptr->TDFlags &= 0xEFFFu;
+        _dmerge((RLARR *)TDptr->TDSallocBuf, TDptr);
+    }
+    if ( pos )
+        v8 = cdbrindex(pos, 0);
+    else
+        v8 = TDptr->TDRecSize;
+
+    v9 = 0;
+	while ( SkipRecs > v9 )
+    {
+		v4 = 0;
+        for ( RLa = (RLARR *)TDptr->TDSallocBuf; RLa; RLa = RLa->NextRLARR )
+        {
+			if ( RLa->field_1C )
+            {
+				if ( v4 && (v6 = _cmpkey(&RLa->DataStart, &v4->DataStart, TDptr->TableDefs), v6 <= 0) )
+                {
+					if ( !v6 && !(((unsigned short)TDptr->TDFlags >> 8) & 4) )
+                    {
+						if ( !(((unsigned short)TDptr->TDFlags >> 8) & 8) )
+							_addtuple(&v4->DataStart, &RLa->DataStart, TDptr->TableDefs);
+						RLa->field_1C = _dfetch(&RLa->DataStart, &RLa->Dpos, TDptr);
+					}
+				}
+                else
+                {
+					v4 = RLa;
+				}
+			}
+		}
+        if ( !v4 )
+			break;
+		
+		tuptor(WorkArea, pos, &v4->DataStart, TDptr->TableDefs);
+        v4->field_1C = _dfetch(&v4->DataStart, &v4->Dpos, TDptr);
+        ++v9;
+        WorkArea += v8;
+    }
+    return v9;
+}
+
+#endif
+@

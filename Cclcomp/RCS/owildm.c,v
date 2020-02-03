@@ -1,0 +1,181 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.09.08.00.44.37;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.07.04.16.43;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@old version
+@
+
+
+1.2
+log
+@move to common code
+@
+text
+@#ifndef OWILDM_C
+#define OWILDM_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+//#define _LARGEFILE64_SOURCE
+
+int Star_0(char *a1, char *a2, short TDFtype)
+{
+  char *v3; // esi@@1
+
+  v3 = a1;
+  while ( owildmat(v3, a2, TDFtype) )
+  {
+    ++v3;
+    if ( !*v3 )
+      return -1;
+  }
+  return 0;
+}
+
+int owildmat(char *a1, char *a2, short TDFtype)
+{
+	char	*v3;
+	char	*v4;
+	char	*v9;
+	signed int v5;
+	int	v6;
+	signed int v7;
+	signed int result;
+	signed int v11;
+	signed int v12;
+	int v13;
+	signed int v14;
+	bool v10;
+	
+	v3 = a1;
+	v4 = a2;
+	if ( !*a2 )
+	{
+		v12 = *v3;
+		v13 = *v4;
+		return v12 - v13;
+	}
+	while ( 1 )
+	{
+		v5 = *v4;
+		if ( v5 == -65 )
+		{
+			if ( !*v3 )
+				return -*v4;
+			goto LABEL_34;
+		}
+		if ( v5 <= -65 )
+			break;
+		if ( v5 != -37 )
+		{
+			if ( v5 == 92 )
+				++v4;
+			goto LABEL_9;
+		}
+		v10 = v4[1] == 94;
+		v11 = 256;
+		v14 = 0;
+		for ( v4 += v10 + 1; *v4 && *v4 != 93; v11 = *v4++ )
+		{
+			if ( *v4 == 45 )
+			{
+				++v4;
+				if ( *v3 > *v4 || *v3 < v11 )
+					continue;
+			}
+			else
+			{
+				if ( *v3 != *v4 )
+					continue;
+			}
+			v14 = 1;
+		}
+		if ( v14 == v10 )
+		{
+			v12 = *v3;
+			v13 = *(v4 - 1);
+			return v12 - v13;
+		}
+LABEL_34:
+		++v3;
+		++v4;
+		if ( !*v4 )
+		{
+			v12 = *v3;
+			v13 = *v4;
+			return v12 - v13;
+		}
+	}
+//================
+	if ( v5 == -86 )
+	{
+		v9 = v4 + 1;
+		if ( *v9 )
+			result = Star_0(v3, v9, TDFtype);
+		else
+			result = 0;
+		return result;
+	}
+LABEL_9:
+	if ( TDFtype & 8 )
+	{
+		v6 = *v3;
+		if ( (*v3 - 0x41) <= 0x19u )		// try a case-insensitive match
+			v6 += 32;
+		v7 = v6 - *v4;
+		if ( (*v4 - 0x41) <= 0x19u )
+			v7 -= 32;
+	}	
+	else
+	{
+		v7 = *v3 - *v4;
+	}
+	result = v7;
+	if ( !v7 )
+		goto LABEL_34;
+	return result;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d24 13
+a36 13
+  char *v3; // edi@@1
+  char *v4; // esi@@1
+  signed int v5; // edx@@2
+  int v6; // edx@@10
+  signed int v7; // edx@@12
+  signed int result; // eax@@15
+  char *v9; // esi@@19
+  bool v10; // ecx@@22
+  signed int v11; // edx@@22
+  signed int v12; // edx@@33
+  int v13; // eax@@33
+  signed int v14; // [sp+Ch] [bp-Ch]@@22
+
+d110 1
+a110 1
+		if ( (*v3 - 0x41) <= 0x19u )
+@

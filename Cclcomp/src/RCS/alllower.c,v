@@ -1,0 +1,151 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.28.07.23.39;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.09.02.45.53;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@tidy-up
+@
+text
+@#ifndef ALLLOWER_C
+#define ALLLOWER_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>      // for islower() and toupper() functions
+#include "DBdefs.h"
+#include "cl4.h"
+
+void alltoupper(char *a1)
+{
+	int v2; // edi@@3
+
+	while ( *a1 )
+	{
+		v2 = *a1;
+		if (islower(v2))		//if ((*v3)[v2] & 0x0200 )	// islower() == 0x0200
+			*a1 = toupper(v2);
+		a1++;
+	}
+}
+
+bool alllower(char *a1)			// checks variable names for validity
+{
+	short num_lc = 0;			// number of lower case chars found in the string
+	int cchar;
+
+	cchar = *a1++;
+
+	if (isalpha(cchar))			// Variable names must start with an ALPHA char	// isalpha() == 0x0400
+	{
+		if (islower(cchar))				// islower() == 0x0200
+			num_lc = 1;
+		
+		while ( *a1 )
+		{
+			cchar = *a1++;
+			if ( !isdigit(cchar) && isupper(cchar))		// isdigit() == 0x0800, isupper() == 0x0100
+				return false;
+			if ( islower(cchar))	// islower()  ==	0x0200
+				num_lc++;
+			
+		}
+		return num_lc > 0;
+	}
+	return false;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a11 1
+	char *v1; // esi@@1
+a12 1
+	const unsigned short **v3; // [sp+8h] [bp-10h]@@2
+d14 1
+a14 3
+    v3 = __ctype_b_loc();
+	v1 = a1;
+	while ( *v1 )
+d16 4
+a19 4
+		v2 = *v1;
+		if ((*v3)[v2] & 0x0200 )
+			*v1 = toupper(v2);
+		++v1;
+d23 1
+a23 1
+bool alllower(char *a1)
+d25 2
+a26 7
+	bool result; // eax@@2
+	char *v2; // esi@@5
+	const unsigned short **v3; // edi@@6
+	unsigned short v4; // dx@@7
+	signed short v5; // [sp+8h] [bp-10h]@@1
+  
+  v3 = __ctype_b_loc();
+d28 19
+a46 35
+  v5 = 0;
+  if ( (*v3)[*a1] & 0x0400 )
+  {
+    if ( (*v3)[*a1] & 0x0200 )
+      v5 = 1;
+    v2 = a1 + 1;
+    if ( a1[1] )
+    {
+      while ( 1 )
+      {
+        v4 = (*v3)[*v2];
+        if ( !(v4 & 0x0800) )
+        {
+          result = 0;
+          if ( v4 & 0x0100 )
+            break;
+        }
+        if ( (*v3)[*v2] & 0x0200 )
+          ++v5;
+        ++v2;
+        if ( !*v2 )
+          goto LABEL_12;
+      }
+    }
+    else
+    {
+LABEL_12:
+      result = v5 > 0;
+    }
+  }
+  else
+  {
+    result = 0;
+  }
+  return result;
+@

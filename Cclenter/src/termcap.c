@@ -128,7 +128,8 @@ void termcap()
     short v1; // dx@2
 
 //printf("termcap1: _yh = x%08X \n",_yh);
-	zap(v9,1024);
+	memset(v9, 0, sizeof(v9));
+
     gettcent(v9);	// does nothing?
     for ( i = tc_num_attr; i->AttrName; ++i )
     {
@@ -304,7 +305,7 @@ void getclatt(char *AttrName, char **a2)
     v2 = AttrName + 3;                          // assume 2 chars of AttrName, then '=' or '^', then data
     if ( *AttrName )
     {
-        zap(Src, 2u);
+		memset(Src, 0, sizeof(Src));
         if ( AttrName[3] == '^' )	// Ctrl char specifier
             Src[0] = AttrName[4] & 0x9F;
         else
@@ -493,7 +494,7 @@ void whereat(short Column, short Line, bool allow_mask, int align_chars)
 
 int outc(int c)
 {
-    return _IO_putc(c, stderr);
+    return putc(c, stderr);
 }
 
 void at(void)
@@ -514,8 +515,8 @@ void erase_page(bool clear_internal)
     if ( clear_internal )												// also wipe internal buffers
     {
         ScreenOffset = getosbuf();										// get current offset into screen buffer
-        fillbuf(&abuf[ScreenOffset], (_li * _co) - ScreenOffset, ' ');	// character buffer
-        zap(&ccbuf[ScreenOffset], (_li * _co) - ScreenOffset);			// attribute buffer
+        memset(&abuf[ScreenOffset], ' ', (_li * _co) - ScreenOffset);	// character buffer
+		memset(&ccbuf[ScreenOffset], 0, (_li * _co) - ScreenOffset);	// attribute buffer
     }
 }
 
@@ -530,8 +531,8 @@ void erase_line()
     if ( RemainChars > 0 )
     {
         ScreenOffset = getosbuf();								// get current offset into screen buffer
-        fillbuf(&abuf[ScreenOffset], RemainChars, ' ');			// character buffer
-        zap(&ccbuf[ScreenOffset], RemainChars);					// attribute buffer
+        memset(&abuf[ScreenOffset], ' ', RemainChars);			// character buffer
+		memset(&ccbuf[ScreenOffset], 0, RemainChars);			// attribute buffer
     }
 }
 

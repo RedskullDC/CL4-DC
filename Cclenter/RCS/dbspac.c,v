@@ -1,0 +1,108 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.04.01.03.19.47;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef DBSPAC_C
+#define DBSPAC_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// Return free space in pages
+int dbspace(int DB_no)
+{
+	int Space;
+	DBinfo *DBptr;
+	int FreePages;	// Pages marked as Free in volume bitmap
+	int ListPages;	// Pages currently marked as used, but sitting in Lists 
+	int result; 
+	int *i; 
+	//void *v8; 
+
+	int v9; 
+	int UsedPages; 
+
+	//printf("dbspace(DBno = %d)\n",DB_no);
+
+	Space = 0;
+	result = 0;
+	DBptr = _chkdb(DB_no);
+	if ( DBptr )
+	{
+		do
+		{
+			_usage(DBptr, &UsedPages, &v9);
+			// inlined nextra()
+			ListPages = 0;
+			FreePages = DBptr->DBmaxpages - UsedPages;
+			for ( i = DBptr->SpareList ; *i; ListPages++ )
+				i++;
+			for ( i = DBptr->PageList1 ; *i; ListPages++ )
+				i++;
+			DBptr = DBptr->DBnextDB;
+			Space += FreePages + ListPages - 17;	// fixed number of 17 pages for system tables/bitmap etc.
+			// end nextra()
+		}
+		while ( DBptr );	// DBases can chain. Haven't actually seen this in practice.
+		if ( Space >= 0 )
+			result = Space;
+	}
+	//printf("dbspace(%d) == %d\n",DB_no,Space);
+	return result;
+}
+
+/* not called in clenter
+bool _tblspace(int TDno, int *PagesFree)
+{
+	int v2;
+	DBinfo *DBptr;
+	TDinfo *TDptr;
+	int MarkedPages;
+	int *i;
+	int v9;
+	int UsedPages;
+	int Grow;
+
+	//printf("_tblspace(TDno = %d,PagesFree x%08X)\n",TDno, PagesFree);
+
+	TDptr = _chktd(TDno);
+	DBptr = TDptr->TDDBinfo;
+	v2 = check_bup_sem(TDptr->TDDBinfo);
+	if ( v2 )
+		derror(v2, DBptr, 0);
+	_usage(DBptr, &UsedPages,&Grow);	// Size of DB before "Grow" required 
+	MarkedPages = 0;                                                
+	
+	for ( i = DBptr->SpareList ; *i; MarkedPages++ )
+		i++;
+	
+	for ( i = DBptr->PageList1 ; *i; MarkedPages++ )
+		i++;
+	
+	v9 = DBptr->DBmaxpages - UsedPages + MarkedPages - 17;
+	*PagesFree = v9;	// no sanity check on ptr
+	return v9 > 0;
+}
+*/
+#endif
+@

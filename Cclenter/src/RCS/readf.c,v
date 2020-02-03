@@ -1,0 +1,57 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.04.20.05.58.35;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial version
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef READFULL_C
+#define READFULL_C
+
+//#define _LARGEFILE64_SOURCE
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h> /* for mode_t */
+#include "DBdefs.h"
+
+unsigned int readfull(short fd, char *buf, unsigned int NumBytes)
+{
+	char *Buffer; // esi@@1
+	unsigned int TotalBytesRead; // edi@@1
+	ssize_t BytesRead; // eax@@2
+
+	//printf("readfull(FD: x%04X,Buff: x%08X, NumBytes : %d)\n" ,fd,buf,NumBytes);
+
+	Buffer = buf;
+	*(int*)__errno_location() = 0;
+	for ( TotalBytesRead = 0; TotalBytesRead < NumBytes; TotalBytesRead += BytesRead )
+	{
+		BytesRead = read(fd, Buffer, NumBytes - TotalBytesRead);
+		if ( !BytesRead )
+			break;
+		Buffer += BytesRead;
+	}
+	return TotalBytesRead;
+}
+#endif
+
+@

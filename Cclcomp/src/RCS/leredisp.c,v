@@ -1,0 +1,147 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2015.08.30.07.20.45;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.07.16.07.37.22;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.35.49;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef LEREDISP_C
+#define LEREDISP_C
+
+int leredisp()
+{
+	RDTAB	*v6;
+	RDTAB	*rd;
+	int		v3;
+	short	v0;
+	short	v4;
+	register short RDno;
+
+	v0 = getrdmem();
+    allrdpt(v0, &rd);
+	while ( symbol != 930 )				// no arguments is OK??
+    {
+		if ( !symbol )
+        {
+			dallrdpt(&rd);
+            return 0;
+		}
+        if ( symbol != 2230 )           // variable/table name
+		{
+			loaderr(33, sym);			// unexpected symbol
+		    return 0;
+		}
+		if ( nxtch() == '.' || (v3 = findtd(sym, -1), v3 <= 0) )
+        {
+			v4 = loadexp(0, 1);			// This was a normal variable
+            if ( !v4 )
+			{
+				dallrdpt(&rd);
+                return 0;
+			}
+            rd->field_2 = v4;
+		}
+        else
+        {
+			rd->TTno = v3;				// This was a field in a table
+            symbol = getsym();
+		}
+		//------
+        if ( symbol != 930 )             // Can have multiple redisplayed records/fields all chained
+        {	
+			RDno =  getrdmem();			//***RDno can alter rd pointer if realloc occurs!
+            rd->NextRD = RDno;
+			v6 = RDARR(rd->NextRD);
+            rd = v6;
+		}
+	}
+	//( symbol == 930 )
+	dallrdpt(&rd);
+	return v0;	// exit_success			// result == first variable in chain
+}
+
+#endif
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d6 6
+a11 7
+     RDTAB	*v6; // eax@@14
+     RDTAB	*rd; // [sp+18h] [bp-10h]@@1
+     int	v3; // edx@@5
+     short	v0; // ax@@1
+     short	v1; // edi@@1
+     short	v4; // dx@@7
+	 register short RDno;
+a13 1
+    v1 = v0;
+d22 1
+a22 1
+        if ( symbol != 2230 )            // variable/table name
+d24 1
+a24 1
+			loaderr(33, sym);                     // unexpected symbol
+d42 1
+a42 1
+			//------
+a46 1
+            //v6 = rd->NextRD ? &rdarr.TableAddr[rd->NextRD - 1] : 0;
+d53 1
+a53 1
+	return v1;	// exit_success			// result == first variable in chain
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 6
+a11 7
+     short v0; // ax@@1
+     int v1; // edi@@1
+     int v3; // edx@@5
+     short v4; // dx@@7
+     int result; // eax@@11
+     RDTAB *v6; // eax@@14
+     RDTAB *rd; // [sp+18h] [bp-10h]@@1
+d15 1
+a15 1
+    v1 = (unsigned short)v0;
+d49 2
+a50 1
+            v6 = rd->NextRD ? (RDTAB *)&rdarr.TableAddr[12 * (rd->NextRD - 1)] : 0;
+@

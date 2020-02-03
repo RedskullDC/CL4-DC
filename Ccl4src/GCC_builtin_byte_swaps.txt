@@ -1,0 +1,13 @@
+Built-in Function: uint16_t __builtin_bswap16 (uint16_t x)
+
+Returns x with the order of the bytes reversed; for example, 0xaabb becomes 0xbbaa. Byte here always means exactly 8 bits.
+
+//----------------------------------------------------------------------------
+
+Built-in Function: uint32_t __builtin_bswap32 (uint32_t x)
+Similar to __builtin_bswap16, except the argument and return types are 32 bit.
+
+//----------------------------------------------------------------------------
+
+Built-in Function: uint64_t __builtin_bswap64 (uint64_t x)
+Similar to __builtin_bswap32, except the argument and return types are 64 bit.

@@ -1,0 +1,94 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.04.24.05.46.05;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial version
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef MSQUEEZE_C
+#define MSQUEEZE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+short suck(char *Dest, char *Src, short MaxLen)
+{
+    short v3; // cx@@1
+    char *v4; // esi@@1
+    char *idx; // edx@@1
+    char v6; // al@@2
+
+    v3 = MaxLen;
+    v4 = Dest;
+    for ( idx = Src; v3 > 0; --v3 )
+    {
+        v6 = *idx++;
+        *v4++ = v6;
+    }
+    return (short)(v4 - Dest);
+}
+
+
+short _msqueeze(REFR **a1, REFR **a2, REFR *a3, REFR *a4)
+{
+    REFR **v4; // edi@@1
+    REFR **idx; // esi@@1
+    short v6; // ax@@5
+    REFR *v7; // edx@@5
+    REFR *v8; // eax@@9
+    char *v10; // [sp+Ch] [bp-Ch]@@1
+
+    v4 = a1 - 1;
+    v10 = (*(a1 - 1))->Offset;
+    for ( idx = a1 - 1; a2 < idx; --idx )
+    {
+        if ( *idx < a3 || a4 <= *idx )
+        {
+            if ( idx == v4 )
+            {
+                v10 = (*(idx - 1))->Offset;
+            }
+            else
+            {
+                v6 = suck(v10, (*idx)->Offset, (short)((*(idx - 1))->Offset - (*idx)->Offset) );
+                v7 = *idx;
+                *v4 = *idx;
+                v7->Offset = v10;
+                v7->Data = v4;
+                v10 += v6;
+            }
+            --v4;
+        }
+    }
+    v8 = *idx;
+    *v4 = *idx;
+    v8->Offset = v10;
+    v8->Data = v4;
+    return a1 - v4;                             // return value is ignored by callers
+}
+
+
+#endif
+@

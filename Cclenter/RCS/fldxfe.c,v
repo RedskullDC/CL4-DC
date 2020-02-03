@@ -1,0 +1,275 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2017.01.11.02.19.03;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.10.15.14.13.38;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.15.04.12.09;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@cleanup
+@
+text
+@#ifndef FLDXFER_C
+#define FLDXFER_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void fldxfer(int TDdest, char *DestBuff, int TDsrc, char *Src)
+{
+    char	*SrcBuff;
+	TDef	*tdefSrc;
+	TDef	*tdefDest;
+    short	v7;
+	short	DestBytesLeft;
+	short	SrcBytesLeft;
+	bool	isNeg;
+	
+	//printf("fldxfer TDdest = %3d, TDsrc = %3d\n",TDdest,TDsrc); 
+    tdefDest = tblrow(TDdest);
+    if ( tdefDest && tblrow(TDsrc))
+    {
+		while ( tdefDest->TDFentry )	// go through all dest tdefs
+		{
+			SrcBuff = Src;
+			tdefSrc = tblrow(TDsrc);
+
+			// iterate through Src Tdef's looking for end of list or a match 
+			while ( tdefSrc->TDFentry && tdefSrc->TDFentry != tdefDest->TDFentry )
+			{
+				SrcBuff += tdefSrc->TDFsize;
+				tdefSrc++;
+			}
+
+	        if ( tdefSrc->TDFentry == tdefDest->TDFentry )	// found a match, copy data
+			{
+				v7 = tdefSrc->TDFtype;
+                if ( v7 & 0xFC0 )							// numeric type
+                {
+					if ( v7 & 0x04 && *SrcBuff < 0 )		// 0x04 == allow signed value. check for negative number - high bit set
+					{
+						isNeg = true;
+                        negate(SrcBuff, tdefSrc->TDFsize);	// negate src buffer prior to xfer
+					}
+					else
+						isNeg = false;
+                        
+					SrcBytesLeft	= tdefSrc->TDFsize;
+					DestBytesLeft	= tdefDest->TDFsize;
+
+					while ( DestBytesLeft > 0 && SrcBytesLeft > 0)	// copy Src/Dest num bytes, whichever is least
+						DestBuff[--DestBytesLeft] = SrcBuff[--SrcBytesLeft];
+
+					while ( DestBytesLeft > 0 )				// dest is bigger than src, pad start with \0's
+						DestBuff[--DestBytesLeft] = 0;
+
+					if ( isNeg )
+                    {
+						negate(SrcBuff, tdefSrc->TDFsize);	// negate src buffer back.
+                        if ( tdefDest->TDFtype & 0x04 )
+							negate(DestBuff, tdefDest->TDFsize);
+					}
+				}
+				else		// string type, just copy the buffer. MaxLen = Dest Buffer size
+				{
+					cpybuf(DestBuff, SrcBuff, tdefDest->TDFsize);
+				}
+			}
+			// Possible that no match was found. If so, dest buffer area for that field is not disturbed
+			DestBuff += tdefDest->TDFsize;
+			tdefDest++;
+		}
+		return;	// exit_success
+    }
+}
+
+#endif
+@
+
+
+1.2
+log
+@major cleanup
+@
+text
+@d14 9
+a22 10
+    char *SrcBuff; // edi@@4
+    TDef *tdefSrc; // esi@@4
+    short v7; // ax@@10
+    short DestBytesLeft; // edx@@16
+    short SrcBytesLeft; // [sp+1Ch] [bp-1Ch]@@16
+    bool isNeg; // [sp+20h] [bp-18h]@@11
+    //char *DestBuff; // [sp+24h] [bp-14h]@@3
+    TDef *tdefDest;
+
+	printf("fldxfer TDdest = %3d, TDsrc = %3d\n",TDdest,TDsrc); 
+d31 1
+d43 1
+a43 1
+					if ( v7 & 0x04 && *SrcBuff < 0 )		// check for negative number
+d54 5
+a58 18
+					if ( SrcBytesLeft <= 0 )
+						goto LABEL_21;
+                        
+					if ( DestBytesLeft > 0 )
+                    {
+						do
+                        {
+							DestBuff[--DestBytesLeft] = SrcBuff[--SrcBytesLeft];
+                            if ( SrcBytesLeft <= 0 )
+								break;
+						}
+                        while ( DestBytesLeft > 0 );
+LABEL_21:
+                        while ( DestBytesLeft > 0 )	// dest is bigger than src, pad with \0's
+                        {
+							DestBuff[--DestBytesLeft] = 0;
+						}
+					}
+d67 1
+a67 1
+				else		// string type, just copy the buffer
+d72 1
+d76 1
+a76 1
+		return;						// exit_success
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 1
+a12 1
+void fldxfer(int TDno, char *a2, int TDno2, char *Src)
+d14 2
+a15 3
+    char *v4; // edi@@4
+    TDef *v5; // eax@@4
+    TDef *v6; // esi@@4
+d17 5
+a21 5
+    short v8; // edx@@16
+    short v9; // [sp+1Ch] [bp-1Ch]@@16
+    signed int v10; // [sp+20h] [bp-18h]@@11
+    char *Dest; // [sp+24h] [bp-14h]@@3
+    TDef *v12; // [sp+28h] [bp-10h]@@1
+d23 3
+a25 2
+    v12 = tblrow(TDno);
+    if ( v12 )
+d27 15
+a41 6
+        if ( tblrow(TDno2) )
+        {
+            Dest = a2;
+            if ( v12->TDFentry )
+            {
+                while ( 1 )
+d43 15
+a57 10
+                    v4 = Src;
+                    v5 = tblrow(TDno2);
+                    v6 = v5;
+                    if ( !v5->TDFentry )
+                        goto LABEL_9;
+                    if ( v5->TDFentry != v12->TDFentry )
+                        break;
+LABEL_10:
+                    v7 = v6->TDFtype;
+                    if ( v6->TDFtype & 0xFC0 )
+d59 1
+a59 10
+                        v10 = 0;
+                        if ( v7 & 4 && *v4 < 0 )
+                            v10 = 1;
+                        if ( v10 )
+                            negate(v4, v6->TDFsize);
+                        v9 = v6->TDFsize;
+                        v8 = v12->TDFsize;
+                        if ( v9 <= 0 )
+                            goto LABEL_21;
+                        if ( v8 > 0 )
+d61 5
+a65 9
+                            do
+                            {
+                                v8 = v8 - 1;
+                                v9 = v9 - 1;
+                                Dest[v8] = v4[v9];
+                                if ( v9 <= 0 )
+                                    break;
+                            }
+                            while ( v8 > 0 );
+d67 1
+a67 7
+                            while ( v8 > 0 )
+                            {
+                                v8 = v8 - 1;
+                                Dest[v8] = 0;
+                            }
+                        }
+                        if ( v10 )
+d69 20
+a88 28
+                            negate(v4, v6->TDFsize);
+                            if ( v12->TDFtype & 4 )
+                                negate(Dest, v12->TDFsize);
+                        }
+                        goto LABEL_27;
+                    }
+                    cpybuf(Dest, v4, v12->TDFsize);
+LABEL_27:
+                    Dest += v12->TDFsize;
+                    ++v12;
+                    if ( !v12->TDFentry )
+                        return;
+                }
+                while ( 1 )
+                {
+                    v4 += v6->TDFsize;
+                    ++v6;
+                    if ( !v6->TDFentry )
+                        break;
+                    if ( v6->TDFentry == v12->TDFentry )
+                        goto LABEL_10;
+                }
+LABEL_9:
+                if ( v6->TDFentry != v12->TDFentry )
+                    goto LABEL_27;
+                goto LABEL_10;
+            }
+        }
+@

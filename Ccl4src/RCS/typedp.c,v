@@ -1,0 +1,62 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2017.01.11.00.36.37;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef TYPEDECPL_C
+#define TYPEDECPL_C
+
+#include <ctype.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+// return number of decimal places based on char FLDtype
+
+int typedp(char a1)
+{
+	int result;
+	switch (a1)
+	{
+		case 'D':
+			result = 6;
+			break;
+		case 'G':
+			result = 2;
+			break;
+		case 'R':
+			result = 4;
+			break;
+		case 'T':
+			result = 7;
+			break;
+		default:
+			result = 0;
+			if ( isdigit(a1) )	// 0,1,2,3,4,5,6,7,8,9
+				result = a1 - '0';	// a1 - '0'
+			break;			
+	}
+	//printf("%d\n" ,result);
+	return result;
+}
+
+#endif
+@

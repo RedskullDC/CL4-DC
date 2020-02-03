@@ -83,14 +83,14 @@ short gettfexp(short entn)			// Get Table/Field Expression
     {
 		symbol = getsym();
         allenpt(entn, &entab);
-        entab->TTno		= f_ARRSTART;		// 0xAC00u Array de-reference operator.
-        entab->entype	= 2;				// Array expression
+        entab->Enun.Enop.Enoper		= f_ARRSTART;		// 0xAC00u Array de-reference operator.
+        entab->entype				= 2;				// Array expression
 		ENTno = getenmem();					// Don't remove this.
-        entab->enleft	= ENTno;			// getenmem can re-locate entab!!
+        entab->enleft				= ENTno;			// getenmem can re-locate entab!!
         allenpt(entab->enleft, &v14);
-        v14->TTno		= TDno;
-        v14->RecNo		= v2;				// FieldNo or Variable Number
-        v14->entype		= 1;
+        v14->Enun.Enref.TTno		= TDno;
+        v14->Enun.Enref.VarNum		= v2;				// FieldNo or Variable Number
+        v14->entype					= 1;
         dallenpt(&v14);
         
 		if ( !TDno && !fld->FLDelemID )		// ElemID holds number of subscripts. If \0, not an Array variable 
@@ -117,9 +117,9 @@ short gettfexp(short entn)			// Get Table/Field Expression
     else	// Not an array, update the ENTAB
     {
 		entab = ENARR(entn);
-		entab->TTno		= TDno;
-        entab->RecNo	= v2;				// FieldNo if a Table, or Variable number
-        entab->entype	= 1;				// Normal variable expression
+		entab->Enun.Enref.TTno		= TDno;
+        entab->Enun.Enref.VarNum	= v2;				// FieldNo if a Table, or Variable number
+        entab->entype				= 1;				// Normal variable expression
 	}
     return entn;		// exit success
 }

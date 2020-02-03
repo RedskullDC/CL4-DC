@@ -18,18 +18,18 @@ bool intexp(short ENTno)
     allenpt(ENTno, &entb);
     if ( entb )
 	{
-		OpCode = entb->TTno & 0xFE00;		// preserve state of Integer Flag bit 0x0200
+		OpCode = entb->Enun.Enop.Enoper & 0xFE00;		// preserve state of Integer Flag bit 0x0200
 		if ( entb->entype != 2 )
 			goto LABEL_17;
 
-		if ( entb->TTno & 0x0100 )			// Reserved word flag
+		if ( entb->Enun.Enop.Enoper & 0x0100 )			// Reserved word flag
 		{
 			dallenpt(&entb);
 			return false;					// Not an integer exp.
 		}
-		if ( !(entb->TTno & 0x0200) )		// Integer calc flag. 
+		if ( !(entb->Enun.Enop.Enoper & 0x0200) )		// Integer calc flag. 
 		{
-			OpCode = entb->TTno & 0xFC00;
+			OpCode = entb->Enun.Enop.Enoper & 0xFC00;
 			/*
 			switch (OpCode)
 			{
@@ -44,17 +44,17 @@ bool intexp(short ENTno)
 			{
 				if ( OpCode <= (signed int)0x3000u )
 				{
-					if ( !(entb->TTno & 0xFC00) )
+					if ( !(entb->Enun.Enop.Enoper & 0xFC00) )
 					{
-						if ( !(entb->TTno & 0x003F) )
+						if ( !(entb->Enun.Enop.Enoper & 0x003F) )
 							__assert_fail("(((exp->enun.Enop.Enoper) & 0x3FF) & (02|01|04|010|040|020))","intexp.c",0x3Au,"intexp");
 						dallenpt(&entb);
-						return (entb->TTno >> 9) & 1;
+						return (entb->Enun.Enop.Enoper >> 9) & 1;
 					}
 					if ( OpCode != 0x2400 )	// slen()
 					{
 						dallenpt(&entb);
-						return (entb->TTno >> 9) & 1;	// return state of Integer calc flag on this expression
+						return (entb->Enun.Enop.Enoper >> 9) & 1;	// return state of Integer calc flag on this expression
 					}
 					goto LABEL_23;
 				}
@@ -63,7 +63,7 @@ bool intexp(short ENTno)
 					if ( OpCode != 0xAC00 )		// Array Subscript operator [] 
 					{
 						dallenpt(&entb);
-						return (entb->TTno >> 9) & 1;
+						return (entb->Enun.Enop.Enoper >> 9) & 1;
 					}
 	LABEL_17:
 					gettf(ENTno, &TDno,&FLDtype);

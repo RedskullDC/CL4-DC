@@ -1,0 +1,250 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.05.09.06.12.52;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.24.02.53.44;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef GET_PT_C
+#define GET_PT_C
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void moveptptrs(PTAB *a1, PTAB *a2);
+
+short getptabp(short seq)
+{
+	PTAB_ArrPtr *PTarr; // edx@@1
+	unsigned short ptidx; // edx@@4
+
+	PTarr = &ptarr + (unsigned short)curptarr;
+	
+	//if ( seq > PTarr->NextElement )
+	//	__assert_fail("seq <= pt->nextel", "getpt.c", 35, "getptabp");
+	assert(seq <= PTarr->NextElement);
+
+	if ( seq == PTarr->NextElement )
+	{
+		ptidx = getptmem();
+
+		//if ( seq + 1 != ptidx )
+		//	__assert_fail("seq+1 == ptidx", "getpt.c", 45, "getptabp");
+		assert(seq+1 == ptidx);
+
+	}
+	else
+	{
+		ptidx = seq + 1;
+	}
+	//printf("getptabp(%d) returned %d\n",seq, ptidx);
+	return ptidx;
+}
+
+// following not called in clenter
+//	getvarname()
+//	getvars
+//	getvarmem
+//	getenmem
+//	getxtmem
+
+short getptmem()
+{
+	PTAB_ArrPtr	*v0; // edi@@1
+	short v1; // ax@@3
+	short v2; // edx@@4
+	short v3; // ax@@4
+	PTAB	*v4; // esi@@4
+	PTAB	*v5; // eax@@4
+
+	v0 = &ptarr + curptarr;
+	if ( !v0->MaxAvail )
+		v0->TableAddr = (PTAB *)mmalloc(0);
+	v1 = v0->NextElement;
+//printf("getptmem 139 v1 = %d, MaxAvail = %d\n",v1, v0->MaxAvail);
+	if ( v1 == v0->MaxAvail )
+	{
+		//printf("getptmem 144 v1(%d) == MaxAvail(%d)\n",v1, v0->MaxAvail);
+		v2 = v0->MaxAvail;
+		v3 = v1 + 1500;                             // alloc in blocks of 1500
+		v0->MaxAvail = v3;
+		v4 = v0->TableAddr;
+		v5 = (PTAB*)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);
+		v0->TableAddr = v5;
+		moveptptrs(v4, v5);
+	}
+	v0->NextElement++;
+//printf("getptmem 154 MaxAvail = %d, NextElement = %d\n", v0->MaxAvail,v0->NextElement);
+	return v0->NextElement;
+}
+
+//	getrtmem
+//	getramem
+//	getprmem
+//	getrdmem
+//	getxfmem
+//	getsfmem
+//	getkxmem
+
+short getstrmem(int amt)
+{
+     CLStrArray *v1; // esi@@3
+     int v2; // edx@@6
+     size_t v3; // eax@@6
+     short v4; // ax@@7
+
+     //if ( amt > 199 )
+     //     __assert_fail("amt < 200", "getmem.c", 0x203u, "getstrmem");
+	 assert(amt < 200);
+
+     v1 = &strarr + curstrarr;
+     if ( !v1->StrMaxSize )
+          v1->StringTable = (char *)mmalloc(0);
+     if ( v1->StrTableSize + amt >= v1->StrMaxSize )
+     {
+          v2 = v1->StrMaxSize;
+          v3 = v1->StrMaxSize + 200;            // blocks of 200bytes at a time
+          v1->StrMaxSize = v3;
+          v1->StringTable = (char *)mrealloc(v1->StringTable, v2, v3);
+     }
+     v4 = v1->StrTableSize;
+     v1->StrTableSize += amt;
+     return v4 + 1;
+}
+
+// changed this to a macro. See DBdefs.h
+//PTAB* PTARR(unsigned short PTABno)
+//{
+//	return PTABno ? &ptarr.TableAddr[PTABno - 1] : 0;
+//}
+
+//	Not called in clenter
+
+//	allenpt
+//	moveenptrs
+//	dallenpt
+//	allxtpt
+//	movextptrs
+//	dallxtpt
+//	allptpt
+
+void moveptptrs(PTAB *a1, PTAB *a2)
+{
+     signed int v2; // ecx@@1
+     PTAB **v3; // edx@@3
+
+     //v2 = 29;
+	 v2 = ptrarrsize - 1;	// in funcdefs.h
+     do
+     {
+          if ( ptptrs[v2] )
+          {
+               v3 = ptptrs[v2];
+               *v3 = (PTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+
+//	dallptpt
+//	allxfpt
+//	movexfptrs
+//	dallxfpt
+//	allkxpt
+//	movekxptrs
+//	dallkxpt
+//	allrtpt
+//	movertptrs
+//	dallrtpt
+//	allprpt
+//	moveprptrs
+//	dallprpt
+//	allrdpt
+//	moverdptrs
+//	dallrdpt
+//	allsfpt
+//	movesfptrs
+//	dallsfpt
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d5 1
+d15 1
+a15 1
+short getptabp(short a1)
+d18 1
+a18 1
+	unsigned short v3; // edx@@4
+d22 3
+a24 2
+	if ( a1 > PTarr->NextElement )
+		__assert_fail("seq <= pt->nextel", "getpt.c", 35, "getptabp");
+d26 1
+a26 1
+	if ( a1 == PTarr->NextElement )
+d28 5
+a32 1
+		v3 = getptmem();
+a33 2
+		if ( a1 + 1 != v3 )
+			__assert_fail("seq+1 == ptidx", "getpt.c", 45, "getptabp");
+d37 1
+a37 1
+		v3 = a1 + 1;
+d39 2
+a40 2
+	//printf("getptabp(%d) returned %d\n",a1, v3);
+	return v3;
+d88 1
+a88 1
+short getstrmem(int a1)
+d95 4
+a98 2
+     if ( a1 > 199 )
+          __assert_fail("amt < 200", "getmem.c", 0x203u, "getstrmem");
+d102 1
+a102 1
+     if ( v1->StrTableSize + a1 >= v1->StrMaxSize )
+d110 1
+a110 1
+     v1->StrTableSize += a1;
+d135 2
+a136 1
+     v2 = 29;
+@

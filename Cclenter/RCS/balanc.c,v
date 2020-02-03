@@ -1,0 +1,490 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2014.11.13.00.06.00;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.08.26.06.09.54;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.25.02.16.51;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial Version
+@
+
+
+1.3
+log
+@close to final version
+@
+text
+@#ifndef BALANCE_C
+#define BALANCE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// *not* public in libcl4
+void undo(DBinfo *DBptr)
+{
+	int *SpareList;
+	int *PageList3;
+	//int SpareLen;
+
+	printf("undo( DBptr: x%08X)\n", DBptr);
+
+	SpareList = DBptr->SpareList;
+	PageList3 = DBptr->PageList3;
+
+	//SpareLen = length(DBptr->SpareList);
+	//if ( SpareLen + length(DBptr->PageList3) <= 32 )
+	
+	if ( length(DBptr->SpareList) + length(DBptr->PageList3) <= 32 )
+	{
+		for ( ; *SpareList; ++SpareList )	//	find the end of SpareList
+			;
+	}
+	else
+	{	
+		_mkfree(DBptr, SpareList);
+	}
+
+	while (*PageList3)						// Copy PageList3 entries back to SpareList. (Free Pages)
+	{
+		*SpareList++ = *PageList3++;
+	}
+	*SpareList = 0;							// Null terminate the list
+
+	_rmlock(DBptr, DBptr->PageList2);		// PageList2 contains the list of pages currently locked. Free them all.
+
+	DBptr->PageList3[0] = 0;	// Marked Update and Locked lists as empty
+	DBptr->PageList2[0] = 0;
+}
+
+// *not* public in libcl4
+void putchange(DBinfo *DBptr)
+{
+	int *PageList1; // esi@@1
+	int *PageList2; // edi@@1
+	//int v3; // ST08_4@@1
+
+	//printf("putchange( DBptr: x%08X [ %s ])\n", DBptr, DBptr->DBname);
+
+	PageList1 = DBptr->PageList1;
+	PageList2 = DBptr->PageList2;
+
+	//v3 = length(DBptr->PageList1);
+	//if ( v3 + length(DBptr->PageList2) <= 15 )
+
+	if ( length(DBptr->PageList1) + length(DBptr->PageList2) <= 15 )
+	{
+		for ( ; *PageList1; ++PageList1 )	// Find end of PageList1
+			;
+	}
+	else
+	{
+		_rmlock(DBptr, PageList1);
+		_mkfree(DBptr, PageList1);
+	}
+
+	while (*PageList2)					// Copy PageList2 entries back to PageList1
+	{
+		*PageList1++ = *PageList2++;
+	}
+	*PageList1 = 0;						// Null terminate the list
+	
+	DBptr->PageList3[0] = 0;			// Marked Update and Locked lists as empty
+	DBptr->PageList2[0] = 0;
+}
+
+// *not* public in libcl4
+int length(int *PageList)
+{
+	int *i;
+	for ( i = PageList; *i; ++i )
+		;
+	return i - PageList;
+}
+
+bool _balance(TDinfo *TDptr, NODE *Node, int *PageList, short Depth)
+{
+	int v4;
+	register int v5;
+	int *PagePtr;
+	NODE *Node2; 
+	//char **v9; 
+	//char **v10;
+	char **a5;
+	//char **a5a;	// same mem space as a5 in real clenter
+	//char **a5b;	// same mem space as a5 in real clenter
+	char *ptr;
+	bool success;
+	char* KeyBuff8[8];	// 0 -> 7 are valid
+	short N1_2idx;
+
+	// only called from _update()
+
+	//printf("_balance( TDptr: x%08X, NODE: x%08X , Depth: %d)\n", TDptr,Node, Depth);
+
+	success = true;
+
+	ptr = ealloc(8 * TDptr->TDKeySize, 0);
+	v5 = TDptr->TDKeySize;
+	for ( v4 = 0 ; v4 <= 7; v4++)
+	{
+		KeyBuff8[v4] = &ptr[v5 * v4];    // Array of 8 KeySizeBuffers
+	}
+	
+	//-------
+	a5 = KeyBuff8;
+	PagePtr = &PageList[Depth];
+	while ( 1 )
+	{
+		if ( PagePtr == PageList )		// Number of records exceeds current Tree Depth. Add an extra Level here
+		{
+			if ( Depth > 5 )			// If Depth is already 6, this is as big as Table can get!
+				derror(15, 0, TDptr);
+
+			putnode(TDptr, Node);
+			_whead(TDptr->TDDBinfo, TDptr->TDindexOff, Node->PageNo, Depth + 1);
+			goto FINISH;					// exit_success
+		}
+		--PagePtr;
+
+		if ( PagePtr == PageList && !Node->NumEntries && (!(TDptr->field_0 & 0x20) || Depth != 1) )
+		{	
+			// Deleting entries here, and a smaller tree is required. Decrease Depth in Table header
+			_addlist(TDptr->TDDBinfo->PageList2, Node->PageNo);
+			_whead(TDptr->TDDBinfo, TDptr->TDindexOff, Node->NODE2ptr->PageNo, Depth - 1);
+			goto FINISH;					// exit_success
+		}
+
+		if ( Node->DataEnd <= TDptr->TDDBinfo->DBpgsize && (PagePtr == PageList || TDptr->HalfPageSize <= Node->DataEnd) )
+		{
+			// Node will fit in a page *AND* ( We are at deepest level *OR* Page is more than half full.)
+			putnode(TDptr, Node);
+			_lockpg(TDptr->TDDBinfo, Node->PageNo, 0);
+			goto FINISH;					// exit_success
+		}
+
+		if ( PagePtr == PageList )
+		{
+			Node2 = freshnode(TDptr, 2);
+			N1_2idx = 0;
+			goto LABEL_25;
+		}
+		if ( !_lockpg(TDptr->TDDBinfo, *(PagePtr - 1), 2) )
+			break;
+		
+		Node2 = getnode(TDptr, *(PagePtr - 1), 2);
+		if ( _scanpg((void*)Node2, TDptr, &N1_2idx, 1) )		// "1" indicates to _scanpg this is a NODE structure
+			++N1_2idx;
+		
+		if ( Node2->NODE2ptr[N1_2idx].PageNo != Node->PageNo )
+			derror(19, 0, TDptr);
+
+LABEL_25:
+
+		//v9 = KeyBuff8;
+		//if (a5 != &KeyBuff8[8])	// [8] is past end of the list
+		//	v9 = a5;
+		//a5a = v9;
+		//if ( TDptr->Rec_plus_DB < Node->DataEnd || !_spread(TDptr, Node, Node2, N1_2idx, v9) )
+
+		if (a5 == &KeyBuff8[8])		// [8] is outside the array!!
+			a5 = KeyBuff8;
+
+		if ( TDptr->Rec_plus_DB < Node->DataEnd || !_spread(TDptr, Node, Node2, N1_2idx, a5) )
+		{
+			//a5b = a5a + 2;
+			//v10 = KeyBuff8;
+			//if (a5b != &KeyBuff8[8])	// [8] is past end of the list
+			//	v10 = a5b;
+			//a5a = v10;
+			//if ( !_split(TDptr, Node, Node2, N1_2idx, v10) )
+			
+			a5 += 2;
+			if (a5 == &KeyBuff8[8])		// [8] is outside the array!!
+				a5 = KeyBuff8;
+
+			if ( !_split(TDptr, Node, Node2, N1_2idx, a5) )
+			{
+				_lockpg(TDptr->TDDBinfo, *(PagePtr - 1), 0);
+				Node = Node2;
+				goto FINISH;				// exit_success
+			}
+		}
+		//a5 = a5a + 2;
+		a5 += 2;
+		Node = Node2;
+	}
+	success = false;		// error_exit, something went wrong!
+
+FINISH:
+	nfree(ptr, 0);
+	if ( success )
+	{
+		putchange(TDptr->TDDBinfo);						// all ok, put changes to DB
+	}
+	else
+	{
+		_lockpg(TDptr->TDDBinfo, Node->PageNo, 0);
+		undo(TDptr->TDDBinfo);							// error somewhere, back out any changes
+	}
+	relnode(Node);
+	return success;
+}
+
+
+#endif
+
+@
+
+
+1.2
+log
+@Few notes, minor tidy
+@
+text
+@d51 1
+a51 1
+	printf("putchange( DBptr: x%08X [ %s ])\n", DBptr, DBptr->DBname);
+a83 1
+
+d95 2
+a96 2
+	char **v9; 
+	char **v10;
+d98 2
+a99 2
+	char **a5a;	// same mem space as a5 in real clenter
+	char **a5b;	// same mem space as a5 in real clenter
+d105 1
+a105 1
+// only called from _update()
+d107 1
+a107 1
+	printf("_balance( TDptr: x%08X, NODE: x%08X , Depth: %d)\n", TDptr,Node, Depth);
+d109 1
+a109 1
+	success = 1;
+d117 1
+a117 1
+  
+a118 1
+
+a166 4
+		v9 = KeyBuff8;
+		if (a5 != &KeyBuff8[8])	// [8] is past end of the list
+			v9 = a5;
+		a5a = v9;
+d168 10
+a177 1
+		if ( TDptr->Rec_plus_DB < Node->DataEnd || !_spread(TDptr, Node, Node2, N1_2idx, v9) )
+d179 6
+a184 1
+			a5b = a5a + 2;
+d186 3
+a188 4
+			v10 = KeyBuff8;
+			if (a5b != &KeyBuff8[8])	// [8] is past end of the list
+				v10 = a5b;
+			a5a = v10;
+d190 1
+a190 1
+			if ( !_split(TDptr, Node, Node2, N1_2idx, v10) )
+d197 2
+a198 1
+		a5 = a5a + 2;
+d201 1
+a201 1
+	success = 0;		// error_exit, something went wrong!
+d204 1
+a204 1
+	nfree(ptr, 0);		// Done, if all ok, put changes to DB
+d207 1
+a207 1
+		putchange(TDptr->TDDBinfo);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 1
+a12 1
+	int SpareLen;
+d19 4
+a22 2
+	SpareLen = length(DBptr->SpareList);
+	if ( SpareLen + length(DBptr->PageList3) <= 32 )
+d24 1
+a24 1
+		for ( ; *SpareList; ++SpareList )
+d32 1
+a32 1
+	while (*PageList3)
+d36 1
+a36 1
+	*SpareList = 0;	// Null terminate the list
+d38 3
+a40 2
+	_rmlock(DBptr, DBptr->PageList2);
+	DBptr->PageList3[0] = 0;
+d47 3
+a49 3
+	int *v1; // esi@@1
+	int *v2; // edi@@1
+	int v3; // ST08_4@@1
+d53 7
+a59 4
+	v1 = DBptr->PageList1;
+	v2 = DBptr->PageList2;
+	v3 = length(DBptr->PageList1);
+	if ( v3 + length(DBptr->PageList2) <= 15 )
+d61 1
+a61 1
+		for ( ; *v1; ++v1 )
+d66 2
+a67 2
+		_rmlock(DBptr, v1);
+		_mkfree(DBptr, v1);
+d69 2
+a70 1
+	while (*v2)
+d72 1
+a72 1
+		*v1++ = *v2++;
+d74 3
+a76 2
+	*v1 = 0;
+	DBptr->PageList3[0] = 0;
+d90 1
+a90 1
+int _balance(TDinfo *TDptr, NODE *Node, int *PageList, short Depth)
+d93 2
+a94 3
+	int v5;
+	int *v6;
+	int v7;
+a97 1
+	short v12;
+d99 2
+a100 2
+	char **a5a;
+	char **a5b;
+d102 2
+a103 2
+	signed int v17;
+	char* v18[11];	// 0 -> 7 are valid
+d108 1
+a108 1
+	printf("_balance( TDptr: x%08X, NODE: x%08X )\n", TDptr,Node);
+d110 1
+a110 1
+	v17 = 1;
+d114 1
+a114 2
+	v4 = 0;
+	do
+d116 1
+a116 2
+		v18[v4] = &ptr[v5 * v4];    // Array of 8 KeySizeBuffers
+		v4++;
+a117 1
+	while ( v4 <= 7 );
+d121 2
+a122 2
+	a5 = v18;
+	v6 = &PageList[Depth];
+d125 1
+a125 1
+		if ( v6 == PageList )
+d127 1
+a127 1
+			if ( Depth > 5 )
+d129 1
+d131 2
+a132 4
+			v12 = Depth + 1;
+			v7 = Node->PageNo;
+			_whead(TDptr->TDDBinfo, TDptr->TDindexOff, v7, v12);
+			goto LABEL_33;
+d134 5
+a138 3
+		--v6;
+		if ( v6 == PageList && !Node->NumEntries && (!(TDptr->field_0 & 0x20) || Depth != 1) )
+		{
+d140 2
+a141 4
+			v12 = Depth - 1;
+			v7 = Node->NODE2ptr->PageNo;
+			_whead(TDptr->TDDBinfo, TDptr->TDindexOff, v7, v12);
+			goto LABEL_33;
+d143 2
+a144 1
+		if ( Node->DataEnd <= TDptr->TDDBinfo->DBpgsize && (v6 == PageList || TDptr->HalfPageSize <= Node->DataEnd) )
+d146 1
+d149 1
+a149 1
+			goto LABEL_33;
+d151 2
+a152 1
+		if ( v6 == PageList )
+d158 1
+a158 1
+		if ( !_lockpg(TDptr->TDDBinfo, *(v6 - 1), 2) )
+d160 3
+a162 2
+		Node2 = getnode(TDptr, *(v6 - 1), 2);
+		if ( _scanpg((void*)Node2, TDptr, &N1_2idx, 1) )
+d164 1
+d167 1
+d169 2
+a170 2
+		v9 = v18;
+		if (a5 != &v18[8])	// [8] is past end of the list
+d173 1
+d177 3
+a179 2
+			v10 = v18;
+			if (a5b != &v18[8])	// [8] is past end of the list
+d182 1
+d185 1
+a185 1
+				_lockpg(TDptr->TDDBinfo, *(v6 - 1), 0);
+d187 1
+a187 1
+				goto LABEL_33;
+d193 1
+d195 3
+a197 6
+// Done, if all ok, put changes to DB
+
+	v17 = 0;
+LABEL_33:
+	nfree(ptr, 0);
+	if ( v17 )
+d204 1
+a204 1
+		undo(TDptr->TDDBinfo);       // error somewhere, back out any changes
+d207 1
+a207 1
+	return v17;
+@

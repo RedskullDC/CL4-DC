@@ -1,0 +1,91 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.06.25.11.16.42;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef LECOPY_C
+#define LECOPY_C
+
+short lecopy(void)
+{
+    int TTno; // eax@@6
+    int v4; // eax@@11
+    
+	short XFno; // [sp+14h] [bp-14h]@@6
+    XFTAB *xft; // [sp+18h] [bp-10h]@@6
+
+	symbol = getsym();
+    if ( symbol != 2230 )		// expect string literal (destination table alias)
+    {
+		if ( symbol == 930 )
+			loaderr(40, sym);	// "missing table/alias"
+		else
+			loaderr(39, sym);	// "invalid table/alias"
+		return 0;
+    }
+	XFno = getxfmem();
+    allxfpt(XFno, &xft);
+    
+	// get destination table
+	TTno = findtd(sym, -1);	// look for the table/alias
+    xft->TTno_to = TTno;
+    if ( TTno < 0 )
+	{
+		loaderr(14, sym);	// "table not open"
+        dallxfpt(&xft);
+        return 0;
+	}
+    symbol = getsym();
+    if ( symbol != 550 )                       // from
+    {
+		loaderr(38, sym); // "expected 'from'"
+        dallxfpt(&xft);
+        return 0;
+    }
+
+    symbol = getsym();
+    if ( symbol != 2230 )                      // expecting a string literal to follow (source table/alias)
+    {
+		if ( symbol == 930 )
+			loaderr(40, sym);	// "missing table/alias"
+        else
+			loaderr(39, sym);	// "invalid table/alias"
+		dallxfpt(&xft);
+        return 0;
+    }
+	// all ok, look for source table
+    TTno = findtd(sym, -1);
+    xft->TTno_from = TTno;
+    if ( TTno < 0 )
+    {
+        loaderr(14, sym);	// "table not open"
+        dallxfpt(&xft);
+        return 0;
+    }
+    dallxfpt(&xft);
+    symbol = getsym();
+    return XFno;	// exit_success
+}
+
+
+#endif
+@

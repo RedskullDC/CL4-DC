@@ -1,0 +1,60 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2016.01.13.23.57.04;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETATTRIB_C
+#define GETATTRIB_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+DBinfo* _getattrib(int DBno, char *TableName,TD0REC *WorkArea)
+{
+	DBinfo *DBptr;
+	DBinfo *result;
+	
+	//printf("_getattrib( DBno: x%04X (%3d),TableName = %s, TD0REC: x%08X)\n", DBno, DBno,TableName, WorkArea);
+
+	DBptr = _chkdb(DBno);
+	result = 0;
+	if ( DBptr )
+	{
+		cdbcpystr(WorkArea->TableName, TableName, 0);
+		if ( !_chkname(DBptr, WorkArea) && DBptr )   // if chkname returns 1, Workarea held a system table name, "tables","fields" or "locks"
+		{											 // _chkname also sets fields in WorkArea.
+			do
+			{
+				_chktd(0)->TDDBinfo = DBptr;
+				if ( getr(0, (char*)WorkArea, My_pos) > 0 )	//if > 0, we found it. return DBptr that it was in
+					break;
+				DBptr = DBptr->DBnextDB;
+			}
+			while ( DBptr );
+		}
+		result = DBptr;
+	}
+	return result;
+}
+
+#endif
+@

@@ -21,8 +21,8 @@ int findnxt( TDinfo *TDptr)
 		if ( _scanpg(PagePtr, TDptr, &N1_2idx, TDptr->field_3A | 8) ) // scanpg updates N1_2idx directly
 			++N1_2idx;
 		
-		PageNo = mstol((int *)&PagePtr->DataStart[4 * N1_2idx]);
-		if ( N1_2idx != PagePtr->NumEntries )
+		PageNo = mstol((int *)&PagePtr->header.DataStart[4 * N1_2idx]);
+		if ( N1_2idx != PagePtr->header.NumEntries )
 		{
 			v2 = _itosz(PagePtr, N1_2idx);
 			KSize = TDptr->TDKeySize;

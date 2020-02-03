@@ -1,0 +1,113 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.04.12.34.17;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETTYPE_C
+#define GETTYPE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+char gettype(unsigned short TDFtype, short TDFsize)
+{
+	char v2; // cl@@1
+	unsigned short v3; // edi@@4
+
+	//printf("gettype(TDFtype: x%04X, TDFsize: x%04X (%4d) = " ,TDFtype,TDFsize,TDFsize);
+/*
+
+	& 0x1000 = Date
+	& 0x2000 = Sub-Table
+	& 0x3000 = Key Table
+
+*/
+	v2 = 'D';
+	if ( (TDFtype & 0x3000) != 0x1000 )
+	{
+		v2 = 'S';
+		if ( (TDFtype & 0x3000) != 0x2000 )
+		{
+			v2 = 'K';
+			if ( (TDFtype & 0x3000) != 0x3000 )
+			{
+				v3 = (TDFtype >> 9) & 0x07;
+				//printf("gettype: v3 = %02X\n",v3);
+				if ( v3 || (v3 = (TDFtype >> 6) & 0x07, v2 = 'C', v3) )
+				{
+					if ( TDFsize == 8 )
+					{
+						//printf("v3 = x%02X ",v3);
+						switch ( v3 )
+						{
+						case 1:
+							v2 = 'L';
+							break;
+						case 2:
+							v2 = ((TDFtype & 0x20) == 0) + '1';
+							break;
+						case 3:
+							v2 = ((TDFtype & 0x20) == 0) + '3';
+							break;
+						case 4:
+							v2 = ((TDFtype & 0x20) == 0) + '5';
+							break;
+						case 5:
+							v2 = ((TDFtype & 0x20) == 0) + '7';
+							break;
+						default:
+							v2 = '9';
+							break;
+						}
+					}
+					else if ( TDFsize == 4 )
+					{
+						switch (v3)
+						{
+						case 1:
+							v2 = 'N';
+							break;
+						case 2:
+							v2 = 'G';
+							break;
+						case 3:
+							v2 = 'R';
+							break;
+						default:
+							v2 = 'T';
+							break;
+						}
+					}
+					else if ( TDFsize == 2 )
+						v2 = 'I';
+					else
+						v2 = 'B';
+				}
+			}
+		}
+	}
+	//printf("%c\n", v2); 
+	return v2;
+}
+
+#endif
+@

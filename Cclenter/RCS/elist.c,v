@@ -1,0 +1,146 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.09.07.14.09.49;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef ELIST_C
+#define ELIST_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+Elist *elist_Create(void)
+{
+    Elist *result; // eax@@1
+
+    result			= (Elist *)mmalloc(16u);    // create a blank elist header item
+    result->Next	= (Elist_Elem *)result;     // All items point to itself.
+    result->Prev	= (Elist_Elem *)result;
+    result->Current = (Elist_Elem *)result;
+    result->Size	= 0;
+    return result;
+}
+
+void elist_Add(Elist *head, int BeforeCurrent, void *UserElement)
+{
+    Elist_Elem *CurrElem; // esi@@1
+    Elist_Elem *NewEL; // eax@@1
+
+    CurrElem = head->Current;
+    NewEL = (Elist_Elem *)mmalloc(16u);
+    ++head->Size;                               // Bump Number of entries counter
+    if ( BeforeCurrent )                        // insert new element before the current element
+    {
+        NewEL->Next = CurrElem;
+        NewEL->Prev = CurrElem->Prev;
+        CurrElem->Prev->Next = NewEL;
+        CurrElem->Prev = NewEL;
+    }
+    else                                        // insert *after* the current element
+    {
+        NewEL->Prev = CurrElem;
+        NewEL->Next = CurrElem->Next;
+        CurrElem->Next->Prev = NewEL;
+        CurrElem->Next = NewEL;
+    }
+    NewEL->UserData = UserElement;              // insert the User Data structure into the newly created element
+    head->Current = NewEL;                      // Update header list current value to point at newly created element
+}
+
+void elist_Delete(Elist *Root)
+{
+    Elist_Elem *CurrElem; // edx@@1
+    Elist_Elem *NextElem; // esi@@2
+    Elist_Elem *PrevElem; // eax@@2
+
+    CurrElem = Root->Current;
+    if ( (Elist *)CurrElem != Root )            // Does "current" entry point back at headeritself? If so, list is empty
+    {
+        --Root->Size;                           // decrement number of entries in list
+        NextElem = CurrElem->Next;
+        PrevElem = CurrElem->Prev;
+        PrevElem->Next = NextElem;              // fix lingages to remove current node
+        NextElem->Prev = PrevElem;
+        mfree_0(CurrElem);                      // free memory occupied by current node
+        
+		if ( (Elist *)NextElem != Root || NextElem->Next == NextElem )// if (list is not empty || list has just 1 elem(?))
+            Root->Current = NextElem;
+        else
+            NextElem->UserData = NextElem->Next;// not sure what this does yet
+    }
+}
+
+int elist_Next(Elist *head)
+{
+    Elist_Elem *CurrElem; // ecx@@1
+    int result; // eax@@1
+
+    CurrElem = head->Current;
+    result = 0;
+    if ( (Elist *)CurrElem != head )            // Does "current" entry point back at headeritself? If so, list is empty
+    {
+        head->Current = CurrElem->Next;         // spin around the loop
+        result = 1;
+    }
+    return result;
+}
+
+int elist_Traverse(Elist *head, int (*applyfunc)(void *))
+{
+    Elist_Elem *v2; // esi@@1
+    int result; // eax@@3
+
+    v2 = head->Next;
+    if ( (Elist *)v2 == head )                  // List is empty if it points back at itself
+    {
+LABEL_5:
+        result = 0;
+    }
+    else
+    {
+        while ( !applyfunc(v2->UserData) )      // Allows user supplied function to operate on user supplied data ! :o)
+        {
+            v2 = v2->Next;
+            if ( (Elist *)v2 == head )          // reached end of list if ==
+                goto LABEL_5;
+        }
+        head->Current = v2;
+        result = 1;
+    }
+    return result;
+}
+
+void elist_Destruct(Elist *head, int (*a2)(void *))
+{
+    elist_Traverse(head, a2);                   // Apply customs user function against all entries in the list
+    head->Current = head->Prev;
+    do
+        elist_Delete(head);
+    while ( (Elist *)head->Current != head );
+    mfree_0(head);                              // delete head record itself
+}
+
+#endif
+
+
+
+@

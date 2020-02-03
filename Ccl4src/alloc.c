@@ -7,18 +7,18 @@
 #include "DBdefs.h"
 #include "cl4.h"
 
-void* alloc(unsigned int size, void* vector)
+void* alloc(size_t size, void* vector)
 {
-	char *buff;
+	void **buff;
 	char s[80];
 	
-	if ( size < 4 )			// minimum size required to store vector
-		size = 4;
+	if ( size < sizeof(void*) )			// minimum size required to store vector
+		size = sizeof(void*);			// 4 on X86, 8 on X64
 	
 	buff = malloc(size);
 	if ( !buff )
 	{
-		sprintf(s, "out of heap (wanted %u bytes)", size);
+		sprintf(s, "out of heap (wanted %u bytes)", (unsigned int)size);
 		errexit(s, 0);
 	}
 
@@ -26,23 +26,23 @@ void* alloc(unsigned int size, void* vector)
 
 	// GNU Linux malloc() returns blocks aligned to longword addresses.
 
-	*(int*)buff = (int)vector;	// init value
+	*buff = vector;		// init value // 4 on X86, 8 on X64
 	return buff;
 }
 
-void* nalloc(unsigned int size, void* vector)
+void* nalloc(size_t size, void* vector)
 {
-	char *buff;
+	void **buff;
 
-	if ( size < 4 )			// minimum size required to store vector
-		size = 4;
+	if ( size < sizeof(void*) )			// minimum size required to store vector
+		size = sizeof(void*);			// 4 on X86, 8 on X64
 	
 	buff = malloc(size);
 	if ( buff )
 	{
 		// GNU Linux malloc() returns blocks aligned to longword addresses.
 		memset(buff, 0, size);		// clears the allocated memory area to ZERO
-		*(int*)buff = (int)vector;
+		*buff = vector;		// 4 on X86, 8 on X64
 	}
 	return buff;
 }

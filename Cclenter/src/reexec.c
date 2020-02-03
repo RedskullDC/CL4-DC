@@ -35,13 +35,13 @@
 #define PLUS		02
 #define MINUS		16
 
-char	*__braslist[NBRA];
-char	*__braelist[NBRA];
-char	*__loc1;
-int		__bravar[NBRA];
-int		*__st[SSIZE + 1];
-int		*__eptr_,*__lptr_;
-int		__cflg;
+char		*__braslist[NBRA];
+char		*__braelist[NBRA];
+char		*__loc1;
+intptr_t	__bravar[NBRA];
+intptr_t	*__st[SSIZE + 1];
+intptr_t	*__eptr_,*__lptr_;
+intptr_t	__cflg;
 
 char *__execute(char *addrc, char *addrl)
 {
@@ -53,8 +53,8 @@ char *__execute(char *addrc, char *addrl)
 	
     p1 = addrl;
 	p2 = addrc;
-    __eptr_ = &__st[SSIZE];
-    __lptr_ = &__st[0];
+    __eptr_ = (intptr_t *)&__st[SSIZE];
+    __lptr_ = (intptr_t *)&__st[0];
     
 	if ( *addrc == CIRCFL )
     {
@@ -70,8 +70,8 @@ char *__execute(char *addrc, char *addrl)
             {
                 if ( *p1 == v7 )
                 {
-                    __eptr_ = &__st[SSIZE];
-                    __lptr_ = &__st[0];
+                    __eptr_ = (intptr_t *)&__st[SSIZE];
+                    __lptr_ = (intptr_t *)&__st[0];
                     v3 = __advance(p1, p2);
                     if ( v3 )
                         break;
@@ -86,8 +86,8 @@ char *__execute(char *addrc, char *addrl)
         {	// regular algorithm
             while ( 1 )
             {
-                __eptr_ = &__st[SSIZE];
-                __lptr_ = &__st[0];
+                __eptr_ = (intptr_t *)&__st[SSIZE];
+                __lptr_ = (intptr_t *)&__st[0];
                 v3 = __advance(p1, p2);
                 if ( v3 )
                     break;
@@ -451,8 +451,8 @@ int __xpush(int a1, char* p)
         write(2, "stack overflow\n", 15);
         exit(1);
     }
-    if ( a1 ) *__lptr_++ = p;
-    else      *__eptr_-- = p;
+    if ( a1 ) *__lptr_++ = (intptr_t)p;
+    else      *__eptr_-- = (intptr_t)p;
     return 1;
 }
 

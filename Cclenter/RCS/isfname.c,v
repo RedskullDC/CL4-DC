@@ -1,0 +1,80 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.01.14.05.20.32;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.19.00.36.18;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef ISFNAME_C
+#define ISFNAME_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// for islower() and toupper() functions
+#include "DBdefs.h"
+#include "cl4.h"
+
+/*char isfname(char *a1)
+{
+    char *v1;	// Does this string represent a valid filename? return (char) 0  if so.
+
+    v1 = a1;
+    if ((*__ctype_b_loc())[*v1] & 0x0400 )								// isalpha()  ==	0x0400
+    {
+        while ( *v1 && ((*__ctype_b_loc())[*v1] & 8 || *v1 == '_') )	// isalnum()  ==	0x0008
+            ++v1;
+    }
+    return *v1;
+}
+*/
+
+// Does this string represent a valid filename? return (char) 0  if so.
+// Starts with alpha, then only alphanumeric or underscore
+
+char isfname(char *v1)
+{
+    if (isalpha(*v1))									// isalpha()  ==	0x0400
+    {
+        while (*v1 && (isalnum(*v1) || *v1 == '_'))		// isalnum()  ==	0x0008
+            ++v1;
+    }
+    return *v1;
+}
+
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+char isfname(char *a1)
+d22 14
+@

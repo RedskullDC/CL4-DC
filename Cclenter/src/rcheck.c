@@ -135,7 +135,7 @@ bool rcheck(XTAB *xtab, FLDdesc *fld, int SkipChk)		// return true, range ok.  f
 		case 5:									// MATCH
 	        SIGN = 0;
 	        entb = ENARR(ratb->RangeFrom);
-			assert(entb->entype == 0x02 && entb->TTno == 0x6C00);	// 0x6C00 = match()
+			assert(entb->entype == 0x02 && entb->Enun.Enop.Enoper == 0x6C00);	// 0x6C00 = match()
 
 	        a2a = evalstr(ENARR(entb->enleft), v42);
 			break;

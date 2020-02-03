@@ -14,8 +14,7 @@ void _check_YD()
 {
 	char *v0;
 
-	//printf("_checkYD(): dateDone = %d, _YD = %s\n",dateDone, _YD);
-
+	//printf("_checkYD(): dateDone = %d, _YD = %s, defDateWidth = %d\n",dateDone, _YD, defDateWidth);
 	if ( !dateDone && _YD )
 	{
 		v0 = strchr(_YD, '-');
@@ -37,7 +36,7 @@ void _check_YD()
 			if ( (defDateWidth - 8) > 2 )
 				defDateWidth = 10;
 		}
-		//printf("_checkYD(): fromYear = %d, toYear = %d\n", fromYear, toYear);
+		//printf("_checkYD(): fromYear = %d, toYear = %d, defDateWidth = %d\n", fromYear, toYear, defDateWidth);
 		dateDone = 1;
 	}
 }
@@ -252,8 +251,8 @@ int clgetdate(const char *src)
 
 	//printf("clgetdate(%s), _DF = %d\n" ,src, _DF);
 
-	zap(s, 30u);
-	strncpy(s, src, 29u);
+	memset(s, 0, sizeof(s));
+	strncpy(s, src, 29u);		// avoid buffer overrun
 	sysdate(v52);	//sysdate returns string like [23 Jan 2013]
 	DateAlias = 0;
 
@@ -852,11 +851,7 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 	const char *v7;
 	const char *v13;
 	signed int v8;
-	unsigned int v11;
-	unsigned int v15;
 	int j;
-	unsigned int v18;
-	int v28;
 	
 	signed int State = 0;
 	int YearChars = 0;
@@ -982,13 +977,14 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 						}
 						else
 						{
+							long v28;
 							if ( DayChars == 3 )
 							{
 								v28 = darr[3];			// 3 'd' digits = day of the year **undocumented**
 							}
 							else
 							{
-								v11 = 1;
+								int v11 = 1;
 								for ( j = DayChars; j; --j )
 									v11 *= 10;
 								v28 = darr[0] % v11;
@@ -1032,10 +1028,10 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 						{
 							if ( MonthChars <= 2 )
 							{
-								v15 = 1;
+								int v15 = 1;
 								for ( j = MonthChars; j; --j )
 									v15 *= 10;
-								sprintf(Dest, "%0*ld", MonthChars, (darr[1] % v15));
+								sprintf(Dest, "%0*ld", MonthChars, (long)(darr[1] % v15));
 							}
 							else
 							{
@@ -1059,10 +1055,10 @@ char* dfmt(char *s, char *format, double DaysSinceZero)
 							sprintf(Dest, "%*s", YearChars, " ");
 						else
 						{
-							v18 = 1;
+							int v18 = 1;
 							for ( j = YearChars; j; --j )
 								v18 *= 10;
-							sprintf(Dest, "%0*ld", YearChars, darr[2] % v18);
+							sprintf(Dest, "%0*ld", YearChars, (long)(darr[2] % v18));
 						}
 						Dest += YearChars;
 						YearChars = 0;

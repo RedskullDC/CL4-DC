@@ -1,0 +1,1946 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.06.24.05.49.04;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@screen oriented routines.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef SCREEN_C
+#define SCREEN_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <termio.h>		// for ioctl etc. 
+#include "DBdefs.h"
+#include "cl4.h"
+
+short _prfield(FILE *stream, PRTAB *prtab, FLDdesc *fld, char *a4, int a5, int a6, int a7, int a8)
+{
+    PRTAB *v15; // eax@@24
+    PRTAB *v16; // eax@@26
+    PRTAB *v22; // eax@@53
+    PRTAB *v23; // eax@@55
+    PRTAB *v25; // eax@@66
+    PRTAB *v26; // eax@@68
+    short v8; // edx@@8
+    short v9; // ax@@9
+    char *v10; // edi@@13
+    short i; // dx@@13
+    char *j; // esi@@15
+    char v13; // al@@16
+    char *k; // esi@@17
+    int v17; // eax@@30
+    const unsigned short **v18; // eax@@33
+    char *v19; // esi@@41
+    signed int v20; // edi@@41
+    int v21; // eax@@47
+    char v24; // eax@@60
+    signed int v30; // [sp+20h] [bp-4028h]@@33
+    unsigned int v31; // [sp+24h] [bp-4024h]@@33
+    char *MessageString; // [sp+28h] [bp-4020h]@@2
+    char src[2]; // [sp+2Eh] [bp-401Ah]@@29
+    char v34[16408]; // [sp+30h] [bp-4018h]@@13
+
+    if ( rawprint )
+        MessageString = a4;
+    else
+        MessageString = convstr(a4, 1);
+    if ( !a6 )
+    {
+        if ( a7 )
+            goto LABEL_8;
+        if ( !a8 )
+            goto LABEL_20;
+    }
+    if ( !a7 )
+    {
+        v9 = a5 - strOnPaperLen(MessageString);
+        v8 = v9;
+        if ( v9 < 0 )
+            v8 = 0;
+        if ( a6 )
+            v8 /= 2;
+        goto LABEL_13;
+    }
+LABEL_8:
+    v8 = 0;
+
+LABEL_13:
+    v10 = v34;
+    for ( i = v8 - 1; i != -1; --i )
+        *v10++ = ' ';
+    for ( j = MessageString; *j; ++v10 )
+    {
+        v13 = *j++;
+        *v10 = v13;
+    }
+    for ( k = &v34[strOffPaperLen(MessageString, a5)]; v10 < k; ++v10 )
+        *v10 = ' ';
+    *v10 = 0;
+    MessageString = v34;
+LABEL_20:
+    if ( pr_out & 1 )
+    {
+        if ( TAB )
+        {
+            if ( !prtab || !prtab->NextPR
+              || (v15 = &prarr.TableAddr[prtab->NextPR], v15 == (PRTAB *)10)
+              || (!prtab->NextPR ? (v16 = 0) : (v16 = v15 - 1), v16->field_6 != 4) )
+            {
+                src[0] = TAB;
+                src[1] = 0;
+                strcat(MessageString, src);
+            }
+        }
+        v17 = lenstr(MessageString);
+        toscreen(_cx, _cy, 0, v17, MessageString, 0, 64, 1);
+        return 0;
+    }
+    if ( !*MessageString )
+        goto LABEL_50;
+    if ( csv )
+    {
+        v31 = strlen(MessageString);
+        v30 = 0;
+        v18 = __ctype_b_loc();
+        if ((*v18)[*MessageString] & 0x2000 || (*v18)[MessageString[v31 - 1]] & 0x2000
+          || strchr(MessageString, '"') || strchr(MessageString, ',') || strchr(MessageString, '\n') )
+            v30 = 1;
+        if ( v30 && fputc('"', stream) == -1 )
+            return *(int*)__errno_location();
+        v19 = MessageString;
+        v20 = 0;
+        if ( (signed int)v31 > 0 )
+        {
+            while ( (*v19 != '"' || fputc('"', stream) != -1) && fputc(*v19, stream) != -1 )
+            {
+                ++v19;
+                ++v20;
+                if ( v20 >= (signed int)v31 )
+                    goto LABEL_46;
+            }
+            return *(int*)__errno_location();
+        }
+LABEL_46:
+        if ( v30 )
+        {
+            v21 = fputc('"', stream);
+		    if ( v21 != -1 )
+				goto LABEL_50;
+			return *(int*)__errno_location();
+        }
+//-------------------------------
+LABEL_50:
+        if ( csv )
+        {
+            if ( prtab )
+            {
+                if ( prtab->NextPR )
+                {
+                    v22 = &prarr.TableAddr[prtab->NextPR];
+                    if ( v22 != (PRTAB *)10 )   // some hokey GCC optimisation here
+                    {
+                        v23 = prtab->NextPR ? &v22[-1] : 0;
+                        if ( v23->field_6 == 4 )
+                            return 0;
+                    }
+                }
+            }
+            if ( TAB != ' ' && TAB )
+                v24 = TAB;	// if TAB set, use it as the separator, otherwise
+            else
+                v24 = ',';	// use comma
+			if ( fputc(v24, stream) == -1 )
+				return *(int*)__errno_location();
+			return 0;
+        }
+        else
+        {
+            if ( !TAB || prtab && prtab->NextPR && (v25 = &prarr.TableAddr[prtab->NextPR], v25 != (PRTAB *)10)
+              && (!prtab->NextPR ? (v26 = 0) : (v26 = v25 - 1), v26->field_6 == 4) )
+                return 0;
+			if ( fputc(TAB, stream) == -1 )
+				return *(int*)__errno_location();
+			return 0;
+        }
+    }
+    v21 = fputs(MessageString, stream);
+    if ( v21 != -1 )
+        goto LABEL_50;
+    return *(int*)__errno_location();
+}
+
+int strOnPaperLen(char *a1)
+{
+    unsigned int result; // eax@@2
+
+    //if ( (*__ctype_toupper_loc())[*YL] == 'T' )
+    //    result = thaiStrOnPaperLen(a1);
+    //else
+        result = strlen(a1);
+    return result;
+}
+
+int strOffPaperLen(char *a1, int a2)
+{
+    int result; // eax@@2
+
+    //if ( (*__ctype_toupper_loc())[*YL] == 'T' )
+    //    result = thaiStrOffPaperLen(a1, a2);
+    //else
+        result = a2;
+    return result;
+}
+
+void chkeop()
+{
+    int plines; // esi@@1
+    char a3[5]; // [sp+Fh] [bp-9h]@@1
+
+    a3[0] = 0;
+    plines = incvar(21, 0);                     // "PLINES"
+    if ( plines )
+    {
+        if ( incvar(19, 0) >= plines )          // "LCOUNT"
+        {
+            incvar(20, 1);                      // "PCOUNT"
+            setvar(19, 0);                      // "LCOUNT"
+            chkesc(0, 49, a3);                  // some kind of bodgy handler tacked onto escape routines
+        }
+    }
+}
+
+short prfield(PRTAB *prtab)
+{
+    PRTAB *v1; // esi@@1
+    ENTAB *v6; // eax@@15
+    ENTAB *v7; // eax@@17
+    ENTAB *v8; // eax@@22
+    ENTAB *v9; // eax@@24
+    FLDdesc *v36; // [sp+4h] [bp-2114h]@@132
+    FILE *stream; // [sp+44h] [bp-20D4h]@@7
+
+    short v3; // edx@@5
+    unsigned int v4; // edx@@8
+    short v11; // edi@@32
+    int v12; // eax@@46
+    char v13; // zf@@58
+    short j; // di@@76
+    short v15; // di@@87
+    short i; // di@@99
+    double v27; // fst7@@179
+    double v28; // fst7@@179
+    char *v34; // [sp+0h] [bp-2118h]@@132
+    unsigned int v37; // [sp+8h] [bp-2110h]@@130
+    unsigned int v38; // [sp+8h] [bp-2110h]@@130
+    unsigned int v39; // [sp+8h] [bp-2110h]@@170
+    char v40; // [sp+42h] [bp-20D6h]@@26
+    char v41; // [sp+43h] [bp-20D5h]@@19
+    int v43; // [sp+48h] [bp-20D0h]@@114
+    int a5; // [sp+4Ch] [bp-20CCh]@@40
+    short v45; // [sp+50h] [bp-20C8h]@@116
+    signed int v46; // [sp+54h] [bp-20C4h]@@1
+    signed int v47; // [sp+58h] [bp-20C0h]@@46
+    int a8; // [sp+5Ch] [bp-20BCh]@@8
+    int v49; // [sp+60h] [bp-20B8h]@@8
+    int a7; // [sp+64h] [bp-20B4h]@@8
+    int a6; // [sp+68h] [bp-20B0h]@@8
+    FLDdesc *fld; // [sp+6Ch] [bp-20ACh]@@12
+    FLDdesc s; // [sp+70h] [bp-20A8h]@@12
+    char v54[112]; // [sp+90h] [bp-2088h]@@32
+    char v55[8216]; // [sp+100h] [bp-2018h]@@109
+
+    v1 = prtab;
+    v46 = 0;
+
+	if ( pr_out & 1 )
+        stream = stderr;
+    else if ( pr_out & 2 )
+		stream = stdout;
+    else
+		stream = op;
+
+    while ( v1 )
+    {
+        v4 = v1->field_4;
+        a6 = (v4 >> 12) & 1;
+        a7 = (v4 >> 14) & 1;
+        a8 = (v4 >> 13) & 1;
+        v49 = (v4 >> 11) & 1;
+//-------------------------------
+        if ( v1->field_6 )
+        {
+            fld = 0;
+        }
+        else
+        {
+            fld = getftf(v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, 1, &s);
+        }
+//----------------------------
+        if ( v1->field_0 && (v6 = &enarr.TableAddr[v1->field_0], v6 != (ENTAB *)12) )
+        {
+            if ( v1->field_0 )
+                v7 = v6 - 1;
+            else
+                v7 = 0;
+            v41 = getetype(v7);
+        }
+        else
+        {
+            v41 = 0;
+        }
+//-----------------------------
+        if ( v1->field_2 && (v8 = &enarr.TableAddr[v1->field_2], v8 != (ENTAB *)12) )
+        {
+            if ( v1->field_2 )
+                v9 = v8 - 1;
+            else
+                v9 = 0;
+            v40 = getetype(v9);
+        }
+        else
+        {
+            v40 = 0;
+        }
+//------------------------------        
+		if ( v40 == 'C' )
+        {
+            exptobuf(v54, v1->field_2 ? &enarr.TableAddr[v1->field_2 - 1]: 0, 0);
+            v11 = 0;
+        }
+        else
+        {
+            if ( v1->field_2 )
+                v11 = evalint(&enarr.TableAddr[v1->field_2 - 1]);
+            else
+                v11 = v1->field_4 & 0xFFFF83FF;       // 1000-0011-1111-1111
+            if ( !v11 && v1->field_4 & 0x0400 && fld )
+                v11 = getdwid(fld);
+        }
+//----------------------------
+        a5 = v11;
+        if ( a6 || a7 || a8 || !justify && v49 )
+            v11 = 0;
+        v47 = 0;
+//----------------------------
+        v12 = v1->field_6;
+		switch (v12)
+		{
+		// These are all reserved name special flags:
+		case 0x0008:	// 'date'
+		case 0x0010:	// 'time'
+		case 0x0020:	// 'pname'
+		case 0x0040:	// 'uname'
+		case 0x0080:	// 'pid'
+		case 0x0100:	// 'uid'
+		case 0x0200:	// 'login'
+		case 0x0400:	// 'tty'
+		case 0x0800:	//          ?????
+		case 0x4000:	//          ?????
+            if ( v11 )
+                sprintf(v55, "%-*.*s", v11, v11, getresv(v12));
+            else
+                cdbcpystr(v55, getresv(v12), 0);
+			break;
+
+		case 0x0001:
+            erase_line();
+            for ( i = v11 - 1; i > 0; --i )
+            {
+                _cx = 1;
+                ++_cy;
+                if ( _li < _cy )
+                    _cy = 1;
+                erase_line();
+            }
+            fflush(stderr);
+            v47 = 1;
+			break;
+
+		case 0x0002:				//	"\f" <Form Feed> 
+			if ( !(pr_out & 1) )
+			{
+			    if ( fputc('\f', stream) == -1 )
+				    return *(int*)__errno_location();	// error_exit
+			}
+			v47 = 1;
+			break;
+
+		case 0x0004:				// "\n" <New Line>
+			if ( pr_out & 1 )
+			{
+				if ( !v46 )
+					chkeop();
+				++_cy;
+				_cx = 1;
+				incvar(19, 1);
+				for ( j = v11 - 1; j > 0; --j )
+				{
+					chkeop();
+					++_cy;
+					if ( _li <= _cy )
+					_cy = 1;
+					incvar(19, 1);	// "LCOUNT"
+				}
+				v46 = 0;
+				if ( _li <= _cy )
+				    _cy = 1;
+			    at();
+			    v47 = 1;
+			    goto LABEL_188;
+			}
+			if ( !v46 )
+			    chkeop();
+			if ( dos && fputc('\r', stream) == -1 || fputc('\n', stream) == -1 )
+			    return *(int*)__errno_location();
+
+			incvar(19, 1);	// "LCOUNT"
+			v15 = v11 - 1;
+			if ( v15 <= 0 )
+			{
+				v46 = 0;
+				v47 = 1;
+				goto LABEL_188;
+			}
+			while ( 1 )
+			{
+				chkeop();
+				if ( dos )	// <cr> and <\n> for dos, only <\n> for Linux/unix/osx
+				{
+					if ( fputc('\r', stream) == -1 )
+					    break;
+				}
+				if ( fputc('\n', stream) == -1 )
+					break;
+				incvar(19, 1);	// "LCOUNT"
+				--v15;
+				if ( v15 <= 0 )
+				{
+					v46 = 0;
+					v47 = 1;
+					goto LABEL_188;
+				}
+			}
+		    return *(int*)__errno_location();
+			break;
+
+		case 0x1000:
+            fflush(stream);
+            if ( !v46 )
+            {
+                chkeop();
+                v46 = 1;
+            }
+            if ( pr_out & 1 )
+            {
+                _cx = 1;
+			    at();
+            }
+			else
+			{
+				if ( fputc('\r', stream) == -1 )
+				    return *(int*)__errno_location();	// error_exit
+			}
+            v47 = 1;
+			break;
+		case 0x2000:
+            return 0x2000u;	// ??????????????
+			break;
+
+		default:
+			if ( fld && fld->FLDstat & 0x0002 )	// Trying to print whole Array (no subscript entered)
+			{
+				if ( fld->FLDtype == 'C' )
+				    v43 = (fld->FLDlen + 1);
+				else
+				    v43 = 8;
+				fld->FLDdata = fld->FLDname;	// Array vars hang off FLDname
+				v45 = 0;
+				while (fld->FLDelemID > v45)
+				{
+					switch (v41)
+					{
+					case 'D':
+					    if ( v40 == 'C' )
+					        dfmt(v55, v54, *(double *)fld->FLDdata);
+					    else
+					        fldtobuf(v55, fld, v11);
+					    if ( csv )
+					        trim(v55);
+						break;
+
+					case 'T':
+				        if ( v40 == 'C' )
+				            tfmt(v55, v54, *(double *)fld->FLDdata);
+						else
+							fldtobuf(v55, fld, v11);
+						break;
+
+					case 'C':
+						fldtobuf(v55, fld, strOffPaperLen(fld->FLDdata, v11));
+						break;
+
+					default:
+				        if ( !csv && v40 == 'C' )
+							nfmt(v55, v54, *(double *)fld->FLDdata);
+						else
+							fldtobuf(v55, fld, v11);
+						break;
+					}
+
+					if ( !v46 )
+				    {
+						chkeop();
+				        v46 = 1;
+					}
+				    v3 = _prfield(stream, 0, fld, v55, v11, a6, a7, a8);
+				    if ( v3 )
+						return v3;
+				    ++v45;
+				    fld->FLDdata = (char *)fld->FLDdata + v43;
+				}
+				v47 = 1;
+			}
+			else	// Normal variable or Table field
+			{
+				switch (v41)
+				{
+				case 'D':
+				    if ( v40 == 'C' )
+				        dfmt(v55, v54, evalnum(v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, v41));
+				    else
+				        exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, v11);
+
+					if ( csv )
+				        trim(v55);
+					break;
+				
+				case 'T':
+				    if ( v40 == 'C' )
+				        tfmt(v55, v54, evalnum(v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1]: 0, v41));
+					else
+						exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1]: 0, v11);
+					break;
+
+				case 'C':
+					if ( csv )
+					{
+					    exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, 0);
+					    break;
+					}
+					if ( !v11 )
+					{
+						if ( csv )//*********
+							v38 = 0;
+						else
+							v38 = v11;
+						exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, v38);
+					}
+					else
+					{
+						v39 = 3 * v11;
+						if ( v39 >= 8192 )	// ensure we don't overrun buffer!
+						    v39 = 8191 ;
+						exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, v39);
+						v55[strOffPaperLen(v55, v11)] = 0;
+					}
+					break;
+				default:					// all other variable types
+					if ( csv )
+					{
+					    exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, 0);
+					    break;
+					}
+					if ( v40 != 'C' )
+					{
+					    if ( csv ) //*********
+					        v38 = 0;
+					    else
+					        v38 = v11;
+					    exptobuf(v55, v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, v38);
+					}
+					else
+					{
+						v27 = evalnum(v1->field_0 ? &enarr.TableAddr[v1->field_0 - 1] : 0, v41);
+						nfmt(v55, v54, clround(v27, v41));
+					}
+					break;
+				}
+			}
+			break;
+		}
+
+//----------------------------------------
+LABEL_188:
+        if ( !v47 )
+        {
+            if ( !v46 )
+            {
+                chkeop();
+                v46 = 1;
+            }
+            v3 = _prfield(stream, v1, fld, v55, a5, a6, a7, a8);
+            if ( v3 )
+                return v3;
+        }
+        v1 = v1->NextPR ? &prarr.TableAddr[v1->NextPR - 1] : 0;
+    } // end while(v1)
+	fflush(stream);
+	return 0;
+}
+
+void dispatt(unsigned short a1)
+{
+    short v1; // eax@@1
+
+    v1 = getattr(a1, 1);
+    if ( v1 <= 0x20 )
+		;
+// **** to do ****        
+	//JUMPOUT(__CS__, dword_8099634[v1] + 134889668);
+}
+
+
+void redisp(RDTAB *rdtab, short Start, short End)
+{
+    ENTAB *entb; // eax@@4
+    PTAB *ptabStart; // esi@@7
+    PTAB *ptabEnd; // [sp+38h] [bp-10h]@@7
+    XTAB *xtb; // edi@@12
+    ENTAB *v9; // eax@@16
+    ENTAB *v11; // eax@@24
+    BTAB *btb; // eax@@28
+    RDTAB *rdtb; // eax@@31
+
+    int OpCode; // eax@@8
+    int v14; // [sp+30h] [bp-18h]@@2
+    short RecNo; // [sp+34h] [bp-14h]@@22
+
+    if ( rdtab )
+    {
+        do
+        {
+            v14 = rdtab->TTno;
+            if ( v14 <= 0 )
+            {
+                entb = rdtab->field_2 ? &enarr.TableAddr[rdtab->field_2 - 1]:0;
+                v14 = entb->TTno;
+            }
+            ptabStart = PTARR(getptabp(Start));			// Look for redisplay records between program Start and End instructions
+			ptabEnd = PTARR(getptabp(End));
+
+            for ( ; ptabStart != ptabEnd; ++ptabStart )
+            {
+                OpCode = ptabStart->OpCode;
+                if ( OpCode == 1 )              // accept field
+                {
+                    xtb = ptabStart->TABno ? &xtarr.TableAddr[ptabStart->TABno - 1] : 0;
+                    if ( *(int *)&xtb->C_X )	// check for C_X and C_Y together
+                    {
+                        v9 = xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0;
+                        if ( v9->TTno == v14 )
+                        {
+                            //v10 = (ENTAB *)(xtb->VarExpNo ? &enarr.TableAddr[12 * (xtb->VarExpNo - 1)] : 0);
+                            //RecNo = v10->RecNo;
+							RecNo = v9->RecNo;
+                            if ( rdtab->TTno > 0 || (!rdtab->field_2 ? (v11 = 0) : (v11 = &enarr.TableAddr[rdtab->field_2 - 1]), v11->RecNo == RecNo) )
+                                dispfld(xtb, &ttab[v14].TTfields[RecNo], 1, 0, 1, 1);
+                        }
+                    }
+                }
+                else if ( OpCode == 720 )
+                {
+					btb = &btab[ptabStart->Operand];
+                    redisp(rdtab, btb->TYPE24->PT_start, btb->TYPE24->PT_end);// nice recursion here
+                }
+            }
+            rdtb = rdtab->NextRD ? &rdarr.TableAddr[rdtab->NextRD - 1] : 0;
+            rdtab = rdtb;
+        }
+        while ( rdtb );
+    }
+}
+
+void mreply(char *a1, char *a2)
+{
+    _mreply = 1;
+    reply(a1, a2);
+    _mreply = 0;
+}
+
+void newstab()
+{
+    short v0; // edx@@2
+
+    if ( no_stabs )
+        v0 = no_stabs + 1;
+    else
+        v0 = 0;
+    stab = (STAB **)mrealloc(stab, 4 * v0, 4 * no_stabs++ + 8);
+}
+
+void qatt(char a1, int a2)
+{
+    char **v2; // eax@@3
+
+    switch ( a1 & 0x3F )
+    {
+        case 1:
+            if ( a2 )
+                v2 = &_fs;
+            else
+                v2 = &_fe;
+            break;
+        case 2:
+            if ( a2 )
+                v2 = &_so;
+            else
+                v2 = &_se;
+            break;
+        case 4:
+            if ( a2 )
+                v2 = &_us;
+            else
+                v2 = &_ue;
+            break;
+        case 0x20:
+            if ( a2 )
+                v2 = &_rs;
+            else
+                v2 = &_re;
+            break;
+        case 0x10:
+            if ( a2 )
+                v2 = &_Bs;
+            else
+                v2 = &_Be;
+            break;
+        case 8:
+            if ( a2 )
+                v2 = &_bo;
+            else
+                v2 = &_be;
+            break;
+        default:
+            return;
+    }
+	fputs(*v2, stderr);
+}
+
+void qosat(int a1)
+{
+    qat((short)(a1 % _co + 1), (short)(a1 / _co + 1));
+}
+
+void clrefresh(void)
+{
+    short v0; // di@@1
+    char *v1; // esi@@3
+    char *v2; // esi@@17
+    signed int a1; // [sp+14h] [bp-14h]@@8
+    char *v4; // [sp+18h] [bp-10h]@@1
+
+    qat(1, 1);
+    erase_page(0);
+    v4 = ccbuf;
+    v0 = _li * _co - 1;
+    if ( v0 > 0 )
+    {
+        do
+        {
+            if ( *v4 )
+            {
+                do
+                {
+                    v1 = v4;
+                    if ( v0 >= 0 )
+                    {
+                        do
+                        {
+                            ++v1;
+                            --v0;
+                        }
+                        while ( v0 >= 0 && *v1 == *v4 );
+                    }
+                    if ( *v1 < 0 )
+                    {
+                        qosat((signed short)(v1 - ccbuf));
+                        qatt(*v1, 0);
+                    }
+                    a1 = (signed short)(v4 - ccbuf);
+                    if ( _YF == 1 && !*v1 )
+                    {
+                        qosat(&v1[a1] - v4);
+                        qatt(*v4, 0);
+                    }
+                    qosat(a1);
+                    qatt(*v4, 1);
+                    fwrite(&abuf[a1], 1u, v1 - v4, stderr);
+                    if ( *v1 >= 0 )
+                    {
+                        qatt(*v4, 0);
+                    }
+                    else
+                    {
+                        ++v1;
+                        --v0;
+                    }
+                    v4 = v1;
+                }
+                while ( v0 > 0 && *v1 );
+            }
+            --v0;
+            ++v4;
+        }
+        while ( v0 > 0 );
+    }
+    at();
+    v2 = &ccbuf[getosbuf()];
+    if ( *v2 & 0x40 )
+        qatt(*v2, 1);
+    fflush(stderr);
+}
+/*
+void pscreen(char *ScreenName)
+{
+    STAB **stb; // edi@@2
+    short v2; // si@@2
+    short v3; // esi@@7
+    STAB *v4; // esi@@15
+    int v5; // [sp+14h] [bp-14h]@@2
+    size_t NumBytes; // [sp+18h] [bp-10h]@@2
+
+printf("pscreen(%s)\n",ScreenName);
+    if ( ScreenName )
+    {
+		printf("pscreen [809]: _li = %d, _co = %d, &stab = %08X [== %08X]\n",_li,_co, &stab, stab);
+        NumBytes = (signed short)(_li * _co + 10);
+        v5 = (signed short)(lenstr(ScreenName) + 1);
+        stb = stab;
+        v2 = 0;
+		printf("pscreen [814]: no_stabs = %d\n",no_stabs);
+        while ( no_stabs > v2 )        // Look for a saved screen with this name already
+        {
+			if ( *stb && cmpbuf((*stb)->ScreenName, ScreenName, v5) )
+				break;
+			++v2;
+            ++stb;
+        }
+		printf("pscreen [822]: no_stabs = %d, v2 = %d\n",no_stabs, v2);
+        if ( no_stabs == v2 )                   // Didn't find one, allocated a new screen buffer
+        {
+            stb = stab;
+            v3 = 0;
+            while ( *stb && no_stabs > v3 );
+            {
+				v3++;
+                stb++;
+            }
+		printf("pscreen [832]: no_stabs = %d, v3 = %d\n",no_stabs, v3);
+            if ( no_stabs == v3 )
+            {
+		printf("pscreen [833]\n");
+                newstab();
+		printf("pscreen [835]\n");
+                stb = &stab[v3];
+                if ( no_stabs <= v3 )
+                    __assert_fail("i < no_stabs", "pfresh.c", 0x48u, "pscreen");
+            }
+        }
+        if ( !*stb )
+        {
+            v4 = (STAB *)mmalloc(12u);
+            *stb = v4;
+            v4->ScreenName = (char *)mmalloc(v5 + 1);
+            v4->abuf = (char *)mmalloc(NumBytes);
+            v4->ccbuf = (char *)mmalloc(NumBytes);
+        }
+        cdbcpystr((*stb)->ScreenName, ScreenName, 0);
+        cpybuf((*stb)->abuf, abuf, NumBytes);
+        cpybuf((*stb)->ccbuf, ccbuf, NumBytes);
+    }
+}
+*/
+
+void pscreen(char *StrPtr)
+{
+  STAB **stb; // esi@@2
+  int v2; // edi@@2
+  int v3; // eax@@9
+  short Size; // di@@19
+  STAB *v5; // ST1C_4@@20
+  short columns; // [sp+14h] [bp-24h]@@2
+  short lines; // [sp+16h] [bp-22h]@@2
+  short Length; // [sp+18h] [bp-20h]@@2
+  short size; // [sp+1Ch] [bp-1Ch]@@12
+
+  if ( StrPtr )
+  {
+    columns = _co;
+    lines = _li;
+    Length = lenstr(StrPtr) + 1;
+    stb = stab;
+    v2 = 0;
+    if ( no_stabs > 0 )
+    {
+      do
+      {
+        if ( *stb && cmpbuf((*stb)->ScreenName, StrPtr, Length) )
+          break;
+        ++v2;
+        ++stb;
+      }
+      while ( no_stabs > v2 );
+    }
+    if ( v2 == no_stabs )
+    {
+      stb = stab;
+      if ( *stab && v2 > 0 )
+      {
+        v3 = 0;
+        while ( 1 )
+        {
+          ++v3;
+          ++stb;
+          if ( !*stb )
+            break;
+          if ( v3 >= v2 )
+          {
+            size = v3;
+            goto LABEL_15;
+          }
+        }
+        size = v3;
+      }
+      else
+      {
+        size = 0;
+      }
+LABEL_15:
+      if ( size == v2 )
+      {
+        newstab();
+        if ( size >= no_stabs )
+          __assert_fail("i < no_stabs", "pfresh.c", 0x48u, "pscreen");
+        stb = &stab[size];
+      }
+    }
+    Size = columns * lines + 10;
+    if ( !*stb )
+    {
+      v5 = mmalloc(12);	// sizeof(STAB)
+      *stb = v5;
+      v5->ScreenName = mmalloc(Length + 1);
+      v5->abuf = mmalloc(Size);
+      v5->ccbuf = mmalloc(Size);
+    }
+    cdbcpystr((*stb)->ScreenName, StrPtr, 0);
+    cpybuf((*stb)->abuf, abuf, Size);
+    cpybuf((*stb)->ccbuf, ccbuf, Size);
+  }
+}
+
+void pfresh(char *ScreenName)
+{
+    STAB **stb; // esi@@2
+    signed int v2; // edi@@2
+    int NameLen; // [sp+14h] [bp-14h]@@2
+    int MaxLen; // [sp+18h] [bp-10h]@@2
+
+    if ( !ScreenName )	// no screen name is also legal
+        goto LABEL_11;
+    MaxLen = _co * _li + 10;
+    NameLen = strlen(ScreenName) + 1;
+    stb = stab;
+    v2 = 0;
+    if ( no_stabs > 0 )
+    {
+        while ( !*stb || !cmpbuf((*stb)->ScreenName, ScreenName, NameLen) )
+        {
+            ++v2;
+            ++stb;
+            if ( v2 >= no_stabs )
+                goto LABEL_7;
+        }
+        cpybuf(ccbuf, (*stb)->ccbuf, MaxLen);
+        cpybuf(abuf, (*stb)->abuf, MaxLen);
+        mfree_0((*stb)->ccbuf);
+        mfree_0((*stb)->abuf);
+        mfree_0((*stb)->ScreenName);
+        mfree_0(*stb);
+        *stb = 0;
+    }
+LABEL_7:
+    if ( v2 != no_stabs )
+LABEL_11:
+        clrefresh();
+}
+
+
+void dispfld(XTAB *xtab, FLDdesc *fld, int arg8, int a4, int a5, int a6)
+{
+    int v7; // eax@@6
+    char *v8; // edx@@15
+    int MaxLen; // [sp+2Ch] [bp-42Ch]@@1
+    int Attr; // [sp+3Ch] [bp-41Ch]@@12
+    int Column; // [sp+40h] [bp-418h]@@10
+    int Line; // [sp+44h] [bp-414h]@@10
+    int TTno; // [sp+48h] [bp-410h]@@5
+	char FLDtype;
+    char a3[1032]; // [sp+4Fh] [bp-409h]@@5
+
+    MaxLen = getwid(xtab);
+    if ( MaxLen )
+    {
+        gettdfno(xtab->VarExpNo ? &enarr.TableAddr[xtab->VarExpNo - 1] : 0, &TTno, &FLDtype, 1);
+        if ( fld->FLDtype == 'C' )
+        {
+            v7 = fld->FLDlen;
+            if ( v7 >= MaxLen )
+                v7 = MaxLen;
+            MaxLen = v7;
+        }
+        if ( a6 )
+        {
+            Line = xtab->C_Y;
+            Column = xtab->C_X;
+        }
+        else
+            clgetyx(xtab, &Column, &Line, 1);
+
+        Attr = xtab->Attr;
+        if ( arg8 )
+        {
+            fldtobuf(a3, fld, MaxLen);
+            if ( fld->FLDtype == 'D' && strlen(a3) > MaxLen )
+            {
+                MaxLen = 10;
+                xtab->width = 10;
+            }
+            if ( rawdisplay )
+                v8 = a3;
+            else
+                v8 = convstr(a3, 1);
+        }
+        else
+        {
+            getnats(xtab->Attr, 1);
+            Attr = 0x3Fu;
+            if ( Column <= 0 )
+                Column = 1;
+            fillbuf(a3, MaxLen, ' ');
+            a3[MaxLen] = 0;
+            v8 = a3;
+        }
+        toscreen(Column, Line, a5, MaxLen, v8, Attr, 1, a4);
+    }
+}
+
+void disprec(BTAB *btab, int TDno, int a3, int a4, int PT_st)
+{
+    SCR *v5; // edx@@1
+    int v6; // eax@@1
+    short PT_start; // ax@@3
+
+    v5 = (SCR*)btab->TYPE24;
+    v6 = a3 - 1;
+    if ( a3 )
+    {
+        do
+        {
+            v5 = v5->NextSCR;
+            --v6;
+        }
+        while ( v6 != -1 );
+    }
+    lkf_found = 0;
+    fdf_found = 0;
+    PT_start = PT_st;
+    if ( !PT_st )
+        PT_start = v5->PT_start;
+    _disprec(btab, TDno, PT_start, v5->PT_end, a4);
+}
+
+void _disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, int arg8a)
+{
+    PTAB *ptb_start; // edi@@1
+    PTAB *ptb_end; // [sp+2Ch] [bp-41Ch]@@1
+    BTAB *v9; // eax@@10
+    XTAB *xt; // [sp+28h] [bp-420h]@@18
+    XTAB *xtb; // eax@@14
+    RTAB *rt; // eax@@32
+    signed int OpCode; // edx@@2
+    signed int v11; // eax@@20
+    signed int v12; // eax@@22
+    signed int v14; // eax@@27
+    int MaxLen; // esi@@35
+    int Column; // [sp+30h] [bp-418h]@@35
+    int Line; // [sp+34h] [bp-414h]@@35
+    int TTno; // [sp+38h] [bp-410h]@@27
+	char FLDtype;
+    char a3[1032]; // [sp+3Fh] [bp-409h]@@27
+
+    ptb_start = PTARR(getptabp(PT_start));
+	ptb_end = PTARR(getptabp(PT_end));
+
+	for ( ; ptb_start <= ptb_end; ++ptb_start )
+    {
+        srclineno = ptb_start->SrcLineNo;
+        OpCode = ptb_start->OpCode;
+		switch (OpCode)
+		{
+		case 684:
+            pset(ptb_start);
+			break;
+		case 720:			// do {blockname}
+			v9 = &btab[ptb_start->Operand];
+            _disprec(bt, TDNo, v9->TYPE24->PT_start, v9->TYPE24->PT_end, arg8a);// Some nice recursion here
+			break;
+		case 884:			//????
+			return;
+		case 1:				// accept field
+			xt = ptb_start->TABno ? &xtarr.TableAddr[ptb_start->TABno - 1] : 0;
+                    
+			v11 = 1;
+            if ( !(xt->Flags & 8) )
+				v11 = fdf_found;
+			fdf_found = v11;
+            v12 = 1;
+            if ( !(xt->Flags & 0x40) )
+				v12 = lkf_found;
+			lkf_found = v12;
+                    
+            v14 = gettdfno(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, &TTno, &FLDtype, 1);
+            if ( v14 < 0 )
+				__assert_fail("fno >= 0", "disprec.c", 0x4Cu, "_disprec");
+            
+			if ( TTno )	// Field in a record
+            {
+				dispfld(xt, &ttab[TTno].TTfields[v14], arg8a, 0, 1, 0);
+                if ( xt->Flags & 0x10 )
+                {
+					rt = xt->RangeID ? &rtarr.TableAddr[xt->RangeID - 1] : 0;
+                    rfree(rt->TTno, 0);
+                }
+			}
+            else	// This is a variable (system or user)
+            {
+				MaxLen = getwid(xt);
+                fillbuf(a3, MaxLen, ' ');
+                a3[MaxLen] = 0;
+                clgetyx(xt, &Column, &Line, 1);
+                toscreen(Column, Line, 1, MaxLen, a3, xt->Attr, 1, 0);
+			}
+			break;
+		case 4:				// 4 = "text"
+			if (!arg8a && fdf_found )
+				dhdtxt(ptb_start->TABno ? &xtarr.TableAddr[ptb_start->TABno - 1] : 0, 0, 1);	
+			break;
+		}
+    }
+}
+void dhdtxt(XTAB *xtb, int a2, int a3)
+{
+    int v4; // eax@@4
+    char *v5; // ecx@@5
+    int i; // edx@@5
+    int v7; // eax@@8
+    size_t v8; // esi@@8
+    signed int v10; // edi@@14
+    short v11; // eax@@16
+    int v12; // eax@@19
+    int Column; // [sp+28h] [bp-410h]@@1
+    int Line; // [sp+2Ch] [bp-40Ch]@@1
+    char s[1032]; // [sp+30h] [bp-408h]@@1
+
+    s[0] = 0;
+    clgetyx(xtb, &Column, &Line, 2);
+    exptobuf(s, xtb->Prompt_exp ? &enarr.TableAddr[xtb->Prompt_exp - 1] : 0, 0);
+    v4 = getwid(xtb);
+    if ( v4 > 0 )
+    {
+        v5 = s;
+        for ( i = v4 - 1; i != -1; --i )
+            *v5++ = s[0];
+        *v5 = 0;
+    }
+    v7 = lenstr(s);
+    v8 = v7;
+    
+	if ( Column == 0x1000 )                     // Flag bits? 
+		Column = (_co - v7) / 2;
+    else if ( Column == 0x2000 )                 // centre, left and right attributes?
+		Column = (_co - v7);
+
+    if ( v7 )
+    {
+        v10 = xtb->ScrAttrib;
+        if ( a3 )
+        {
+            if ( Line == _li - 1 )
+                return;
+            v11 = getnats(v10, 0x20u);
+            v10 = '?';
+            Column -= v11;
+            if ( Column <= 0 )
+                Column = 1;
+            v8 += 2 * v11;
+            fillbuf(s, v8, ' ');
+            s[v8] = 0;
+        }
+        v12 = 0x20u;
+        if ( a2 )
+            v12 = 0x04u;
+        toscreen(Column, Line, 0, v8, s, v10, v12, 0);
+    }
+    else
+    {
+        whereat(Column, Line, 0, 0);
+        at();
+    }
+}
+
+void qat(int X, int Y)
+{
+//	char	*v2;
+//	v2 = tgoto(_cm, X - 1, Y - 1);
+//	tputs(v2, 1, outc);
+
+    tputs(tgoto(_cm, X - 1, Y - 1), 1, outc);
+}
+
+bool chg_attr(char *a1, int a2, int AttrNum)
+{
+    short v3; // eax@@1
+
+    v3 = getattr(a2, AttrNum);
+    return v3 != (char)(*a1 & 0xBF);
+}
+
+short getnats(short Attr, int AttrNum)
+{
+    short v2; // edx@@1
+    short result; // ax@@12
+
+    v2 = Attr & 0x13F;
+    if ( !v2 )
+    {
+        v2 = getattr(0, AttrNum);
+    }
+    if ( v2 == 0x3F )
+        v2 = _Yn;
+    switch ( v2 )
+    {
+        case 1:
+            result = _fg;
+            break;
+        case 2:
+            result = _sg;
+            break;
+        case 4:
+            result = _ug;
+            break;
+        case 16:
+            result = _Bg;
+            break;
+        case 32:
+            result = _rg;
+            break;
+        case 8:
+            result = _bg;
+            break;
+        default:
+            result = 0;
+            break;
+    }
+    return result;
+}
+
+void scat(int a1, int a2, int AttrNum, int a4, int a5)
+{
+    char **v5; // eax@@3
+    char *v6; // edx@@5
+    char *v12; // edx@@31
+    short v13; // cx@@31
+    char v14; // [sp+10h] [bp-28h]@@31
+
+    switch ( getattr(a1, AttrNum) )
+    {
+        case 1:
+            if ( a2 )
+                v5 = &_fs;
+            else
+                v5 = &_fe;
+            v6 = *v5;
+            break;
+        case 2:
+            if ( a2 )
+                v5 = &_so;
+            else
+                v5 = &_se;
+            v6 = *v5;
+            break;
+        case 4:
+            if ( a2 )
+                v5 = &_us;
+            else
+                v5 = &_ue;
+            v6 = *v5;
+            break;
+        case 32:
+            if ( a2 )
+                v5 = &_rs;
+            else
+                v5 = &_re;
+            v6 = *v5;
+            break;
+        case 16:
+            if ( a2 )
+                v5 = &_Bs;
+            else
+                v5 = &_Be;
+            v6 = *v5;
+            break;
+        case 8:
+            if ( a2 )
+                v5 = &_bo;
+            else
+                v5 = &_be;
+            v6 = *v5;
+            break;
+        default:
+            v6 = 0;
+            break;
+    }
+    if ( (!v6 || !*v6) && a5 )
+    {
+        v12 = &v14;
+        v13 = _sg - 1;
+        if ( _sg )
+        {
+            do
+            {
+                *v12++ = ' ';
+                --v13;
+            }
+            while ( v13 != -1 );
+        }
+        *v12 = 0;
+        v6 = &v14;
+    }
+    if ( v6 )
+        fputs(v6, stderr);
+}
+
+
+short getattr(short a1, int AttrNum)
+{
+    short v2; // eax@@1
+
+    v2 = a1 & 0x13F;
+    if ( !v2 )
+    {
+        switch ( AttrNum )
+        {
+            case 1:
+                v2 = _Ya;
+                break;
+            case 2:
+                v2 = _Ye;
+                break;
+            case 4:
+                v2 = _Yh;
+                break;
+            case 8:
+                v2 = _Ym;
+                break;
+            case 16:
+                v2 = _Yp;
+                break;
+            case 32:
+                v2 = _Yt;
+                break;
+            case 64:
+                v2 = _Yo;
+                break;
+            default:
+                v2 = 0;
+                break;
+        }
+    }
+    if ( v2 == '?' )
+        v2 = _Yn;
+    return v2;
+}
+
+int toscreen(int Column, int Line, int a3, int MaxLen, char *s, int a2, int AttrNum, int a8)
+{
+    int v8; // edi@@1
+    int result; // eax@@1
+    int v10; // eax@@2
+    short v11; // ax@@4
+    short v12; // ax@@9
+    short v13; // ST2C_2@@12
+    char v14; // al@@12
+    short v15; // ax@@18
+    int v16; // esi@@18
+    int v17; // ecx@@18
+    int v18; // eax@@18
+    int v19; // esi@@20
+    int a4; // [sp+18h] [bp-30h]@@7
+    int v21; // [sp+1Ch] [bp-2Ch]@@18
+    int v22; // [sp+20h] [bp-28h]@@18
+    int v23; // [sp+24h] [bp-24h]@@20
+    int a5; // [sp+28h] [bp-20h]@@4
+    char v25; // [sp+2Ch] [bp-1Ch]@@14
+    char *a1; // [sp+30h] [bp-18h]@@4
+    char *a1a; // [sp+30h] [bp-18h]@@20
+    char *Dest; // [sp+34h] [bp-14h]@@4
+    short n; // [sp+38h] [bp-10h]@@9
+
+    v8 = MaxLen;
+    result = 0;
+    if ( MaxLen )
+    {
+        v10 = 0;
+        if ( AttrNum == 1 )
+            v10 = MaxLen;
+        whereat(Column, Line, a3, v10);
+        coord();
+        v11 = getosbuf();
+        Dest = &abuf[v11];
+        a1 = &ccbuf[v11];
+        a5 = 0;
+        if ( a8 || !cmpbuf(Dest, s, MaxLen) || (a5 = chg_attr(a1, a2, AttrNum)) != 0 )
+        {
+            a4 = 0;
+            if ( AttrNum != 0x40 )
+                a4 = _cx;
+            v12 = getnats(a2, AttrNum);
+            n = v12;
+            if ( !v12 && a5 )
+                n = _sg;
+            v13 = getattr(a2, AttrNum);
+            v14 = v13 | 0x40;
+            if ( !v13 )
+                v14 = 0;
+            v25 = v14;
+            if ( n )
+            {
+                if ( n >= (signed short)a4 )
+                {
+                    zap(Dest, n);
+                    Dest += n;
+                }
+                else
+                {
+                    a1 -= n;
+                    _cx -= n;
+                    zap(&Dest[-n], n);
+                }
+            }
+            v22 = _cx;
+            v21 = _cy;
+            v15 = getosbuf();
+            v16 = v15;
+            v17 = MaxLen + v15 + 2 * n + 1;
+            v18 = _co * _li;
+            if ( v17 >= v18 )
+            {
+                v8 = v18 - v16 - n - n - 1;
+                s[v8] = 0;
+            }
+            fillbuf(a1, v8 + n, v25);
+            a1a = &a1[v8] + n;
+            _cx += v8 + n;
+            coord();
+            v23 = _cx;
+            v19 = _cy;
+            cpybuf(Dest, s, v8);
+            if ( n && (*a1a = v25 | 0x80, zap(&Dest[v8], n), (_cx += n) != 0) && _YF == 1 )
+            {
+                qat(v23, v19);
+                scat(a2, 0, AttrNum, 0, a5);
+				qat(v22, v21);
+                scat(a2, 1, AttrNum, a4, a5);
+                fputs(s, stderr);
+                scat(a2, 0, AttrNum, 0, a5);
+                qat(n + v23, v19);
+            }
+            else
+            {
+                qat(v22, v21);	// Never returns from qat.. :o(
+                scat(a2, 1, AttrNum, a4, a5);
+                fputs(s, stderr);
+                scat(a2, 0, AttrNum, 0, a5);
+            }
+            whereat(n + v23, v19, 0, 0);
+            if ( AttrNum != 0x40 )
+                fflush(stderr);
+            result = 1;
+        }
+        else
+        {
+            _cx += MaxLen;
+            if ( AttrNum == 0x20 && *s == 7 )
+            {
+                fputc(7, stderr);
+                fflush(stderr);
+            }
+            result = 0;
+        }
+    }
+    return result;
+}
+
+void whereat(int Column, int Line, int a3, int a4)
+{
+    short v4; // esi@@1
+    short v5; // edi@@1
+    int v6; // eax@@1
+    int v7; // eax@@8
+
+    v4 = Column;
+    v5 = Line;
+// Check for Line attributes??
+    v6 = Line & 0x7E00;	// Mask out Line# bits: 0-01FF  (Max 512 Lines)
+    if ( v6 )
+    {
+        if ( a3 )
+        {
+            if ( v6 == 0x200 )
+                v5 = (Line & 0x1FF) + oy_1;
+            else if ( v6 == 0x400 )
+				v5 = oy_1 - (Line & 0x1FF);
+        }
+        else
+            v5 = oy_1;
+    }
+//---------------------------
+// look for any column attributes: $,c,
+    v7 = Column & 0x7E00; // Mask out Column# bits: 0-01FF  (Max 512 Column)
+    if ( v7 )
+    {
+        if ( a3 )
+        {
+            if ( v7 == 0x1000 )
+                v4 = (Column & 0x1FF) + ox_0;
+            else if ( v7 == 0x2000 )
+                v4 = ox_0 - (Column & 0x1FF);
+        }
+        else
+            v4 = ox_0;
+    }
+//------------------------
+// Check for range overflow
+	for ( ; _co < v4; ++v5 )
+        v4 -= _co;
+    if ( v5 <= 0 || _li < v5 )
+        v5 = 1;
+    if ( v4 <= 0 || _co < v4 )
+        v4 = 1;
+    _cy = v5;
+    if ( a4 && a4 < align )
+        _cx = align + v4 - a4;
+    else
+        _cx = v4;
+//------------------------
+	if ( a3 )
+    {
+        ox_0 = v4;
+        oy_1 = v5;
+    }
+}
+
+void clgetyx(XTAB *xt, int *Column, int *Line, int ArgType)
+{
+	// clgetyx assumes that xtab variable is valid, unlike almost every other routine.
+	// Not very OOP using that nasty global variable var_cr!!
+
+    if ( ArgType == 1 )           // if ArgType == 1, return the *answer* values
+    {
+        if ( xt->ACol_exp )
+        {
+            *Column = evalint(&enarr.TableAddr[xt->ACol_exp - 1]);
+            var_cr = 1;
+        }
+        else
+            *Column = xt->ACol;		// Answer Column
+
+		if ( xt->ALine_exp )
+        {
+            *Line = evalint(&enarr.TableAddr[xt->ALine_exp - 1]);
+            var_cr = 1;
+        }
+		else
+			*Line = xt->ALine;		// Answer Line
+    }
+    else                          // else return the Prompt values
+    {
+        if ( xt->PCol_exp )
+        {
+            *Column = evalint(&enarr.TableAddr[xt->PCol_exp - 1]);
+            var_cr = 1;
+        }
+        else
+            *Column = xt->PCol;	// Prompt Column
+        
+		if ( xt->PLine_exp )
+        {
+            *Line = evalint(&enarr.TableAddr[xt->PLine_exp - 1]);
+            var_cr = 1;
+        }
+		else
+			*Line = xt->PLine;	// Prompt Line
+    }
+	return;
+}
+
+
+void at(void)
+{
+    tputs(tgoto(_cm, _cx - 1, _cy - 1), 1, outc);
+}
+
+int outc(int c)
+{
+    return _IO_putc(c, stderr);
+}
+
+void coord()
+{
+    for ( ; _co < _cx; ++_cy )
+        _cx -= _co;
+    for ( ; _li < _cy; _cy -= _li )
+        ;
+}
+
+short getosbuf()
+{
+    short v0; // edx@@1
+
+    v0 = _cx + _co * (_cy - 1) - 1;
+    if ( v0 < 0 || _co * _li <= v0 )
+        v0 = 0;
+    return v0;
+}
+
+void erase_line()
+{
+    short v0; // eax@@1
+    short v2; // esi@@2
+
+    at();
+    tputs(_ce, 1, outc);
+    v0 = _co - _cx + 1;
+//printf("erase_line : _ce = %s, v0 = %d\n",_ce,v0);
+    if ( v0 > 0 )
+    {
+        v2 = getosbuf();
+//printf("erase_line : v2 = %d, abuf = x%08X\n",v2,abuf);
+        fillbuf(&abuf[v2], v0, ' ');
+//printf("erase_line : fillbuff returned\n\n\n");
+        zap(&ccbuf[v2], v0);
+//printf("erase_line : zap returned\n\n\n");
+    }
+}
+
+void erase_page(int a1)
+{
+    short v1; // edi@@2
+
+    tputs(_cd, _li, outc);
+    if ( a1 )
+    {
+        v1 = getosbuf();
+        fillbuf(&abuf[v1], _li * _co - v1, ' ');
+        zap(&ccbuf[v1], _li * _co - v1);
+    }
+}
+
+void cl_intr(int a1)
+{
+    if ( a1 )
+    {
+        signal(SIGINT, SIG_IGN);
+        setvar(17, 1);	// "INTERRUPT"
+    }
+    else
+        signal(SIGINT, cl_intr);
+}
+
+void dprint(const char *format, ...)
+{
+    FILE *v1; // edi@@1
+    time_t timer; // [sp+18h] [bp-10h]@@1
+    va_list va; // [sp+34h] [bp+Ch]@@1
+
+    va_start(va, format);
+    v1 = fopen64("/tmp/cldebug", "a+");
+    time(&timer);
+    if ( v1 )
+    {
+        fprintf(v1, "%.24s: pid=%d ", ctime(&timer), getpid());
+        vfprintf(v1, format, va);
+        fflush(v1);
+        fclose(v1);
+    }
+	va_end(va);
+
+}
+
+void fatal(int arg)
+{
+    dprint("fatal: sig=%d\n", arg);
+    
+	if ( isatty(0) )
+        ioctl(0, 0x5407u, &TTY_sv);
+    
+	if ( isatty(2) )
+    {
+        if ( *_vs )
+            fputs(_vs, stderr);
+        if ( *_ve )
+            fputs(_ve, stderr);
+        if ( *_te )
+            fputs(_te, stderr);
+        fflush(stderr);
+    }
+    abort();
+}
+
+void bp_intr(int sig)			// Broken Pipe interrupt handler
+{
+    signal(SIGPIPE, bp_intr);
+    bp_flag = 1;
+}
+
+void clh_intr(int a1)
+{
+    int v2; // esi@@4
+
+    signal(SIGTERM, SIG_IGN );
+    signal(SIGHUP, SIG_IGN );
+    if ( a1 )
+    {
+        if ( hangup == 1 )
+            longjmp(sjbuf, -a1);
+        if ( hangup == 2 )
+            sigSeen_0 = a1;
+    }
+    else
+    {
+        if ( hangup == 1 )
+        {
+            signal(SIGHUP, clh_intr);
+            signal(SIGTERM, clh_intr);
+            if ( sigSeen_0 )
+            {
+                v2 = sigSeen_0;
+                sigSeen_0 = 0;
+                clh_intr(v2);
+            }
+        }
+        else
+        {
+            if ( hangup == 2 )
+            {
+                signal(SIGHUP, clh_intr);
+                signal(SIGTERM, clh_intr);
+            }
+        }
+    }
+}
+
+void cle_intr(int sig)
+{
+    char *v2;
+    int v3;
+    char s[256];
+
+    signal(sig, SIG_IGN );	// stop multiple signals of same type arriving
+    if ( sig != 14 || hangup != 2 )
+    {
+        if ( !inhere_10 )
+        {
+            inhere_10 = 1;
+            signal(SIGHUP, SIG_IGN);
+            signal(SIGINT, SIG_IGN);
+            signal(SIGQUIT, SIG_IGN);
+            signal(SIGALRM, SIG_IGN);
+            signal(SIGTERM, SIG_IGN);
+            signal(SIGFPE, fatal);
+            signal(SIGABRT, fatal);
+            signal(SIGBUS, fatal);
+            signal(SIGSEGV, fatal);
+            switch ( sig )
+            {
+                case SIGHUP:
+                    v2 = sighup_0;
+                    break;
+                case SIGQUIT:
+                    v2 = sigquit_1;
+                    break;
+                case SIGFPE:
+                    v2 = sigfpe_2;
+                    break;
+                case SIGABRT:
+                    v2 = sigabrt_3;
+                    break;
+                case SIGBUS:
+                    v2 = sigbus_4;
+                    break;
+                case SIGSEGV:
+                    v2 = sigsegv_5;
+                    break;
+                case SIGALRM:
+                    if ( _isterm )
+                        v2 = sigt_o_6;	// "timeout exceeded"
+                    else
+                        v2 = sigeof_7;	// "unexpected end of input"
+                    break;
+                case SIGTERM:
+                    v2 = sigterm_8;
+                    break;
+                default:
+                    v2 = s;
+                    sprintf(s, "%s %d", sigukn_9, sig);	// "unknown signal"
+                    break;
+            }
+            v3 = fileno(op);
+            
+			if ( !isatty(v3) )
+                oprint(op, "** %s **\n", v2);
+            
+			if ( isatty(2) )
+                eprint("** %s **\n", v2);
+            
+			ioctl(0, 0x540Bu, 0);
+            
+			if ( sig == SIGSEGV )
+            {
+                signal(SIGABRT, SIG_DFL);
+                abort();
+            }
+            longjmp(sjbuf, -sig);
+        }
+    }
+}
+
+void openscr()
+{
+    if ( signal(SIGINT, SIG_IGN) != SIG_IGN )
+    {
+        signal(SIGINT, cl_intr);
+        signal(SIGQUIT, cle_intr);
+    }
+    
+	if ( signal(SIGHUP, SIG_IGN) != SIG_IGN )
+        signal(SIGHUP, clh_intr);
+    
+	if ( signal(SIGTERM, SIG_IGN) != SIG_IGN )
+        signal(SIGTERM, clh_intr);
+    
+	signal(SIGFPE, cle_intr);
+    signal(SIGABRT, cle_intr);
+    signal(SIGSEGV, cle_intr);
+    signal(SIGALRM, cle_intr);
+    signal(SIGBUS, cle_intr);
+    signal(SIGPIPE, bp_intr);
+    signal(SIGUSR1, SIG_IGN);
+    signal(SIGUSR2, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGCONT, SIG_IGN);
+    _started = 1;
+    _isterm = isatty(0);
+    if ( _isterm )
+    {
+        setbuf(stdin, 0);
+        if ( first_time )
+        {
+			ioctl(0, 0x5405u, &TTY_sv);
+            ioctl(0, 0x5405u, &TTY);
+            //ospeed = TTY.c_cflag & 0x100F;
+            TTY.c_iflag &= 0xFFDB;
+            TTY.c_lflag = 1;
+            TTY.c_oflag = (TTY.c_oflag | 1) & 0xE7FF;
+            TTY.c_cc[6] = 1;
+            TTY.c_cc[5] = 1;
+            _tty_bc = TTY.c_cc[2];
+            first_time = 0;
+        }
+        ioctl(0, 0x5407u, &TTY);
+    }
+    if ( isatty(1) )
+    {
+        if ( !_issetbuf )
+        //    setbuf(stdout, _obuf);	// careful, easily overrun!!!
+		// while debugging, use line buffering:
+			setvbuf(stdout, _obuf, _IOLBF, 8192); 
+        pr_out = 1;
+    }
+    if ( !_issetbuf )
+    {
+        setbuf(stderr, _ebuf);	// overrides default linux unbuffered stderr functionality!!!
+        _issetbuf = 1;
+    }
+    if ( isatty(2) )
+    {
+        if ( *_ti )
+            fputs(_ti, stderr);
+        if ( *_vi )
+            fputs(_vi, stderr);
+    }
+}
+
+void closescr()
+{
+    if ( _started )
+    {
+        if ( signal(SIGINT, SIG_IGN) != SIG_IGN )
+        {
+            signal(SIGINT, SIG_DFL);
+            signal(SIGQUIT, SIG_DFL);
+        }
+        
+		if ( signal(SIGHUP, SIG_IGN) != SIG_IGN )
+            signal(SIGHUP, SIG_DFL);
+        
+		if ( signal(SIGTERM, SIG_IGN) != SIG_IGN )
+            signal(SIGTERM, SIG_DFL);
+        
+		if ( isatty(0) )
+            ioctl(0, 0x5407u, &TTY_sv);
+        
+		if ( isatty(2) )
+        {
+            if ( *_vs )
+                fputs(_vs, stderr);
+            if ( *_ve )
+                fputs(_ve, stderr);
+            if ( *_te )
+                fputs(_te, stderr);
+            fflush(stderr);
+        }
+        _started = 0;
+    }
+}
+#endif
+@

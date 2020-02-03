@@ -59,7 +59,7 @@ short _cmp(void *PageBuffer, short N1_2idx, TDinfo *TDptr, short ArgType, short 
 
 		//TDFsize2 = v9;
 		
-		//printf("_cmp: Before cmpattrib (RecBuff: x%08X, TDFsize2: x%02X, KeyDefs: x%08X, v12: x%02X, TDFtype: x%04X)\n",RecBuff, TDFsize2, KeyDefs, v12, TDFtype);
+		//printf("_cmp: Before cmpattrib (RecBuff: x%08X, TDFsize2: x%02X, KeyDefs: x%08X, Width: x%02X, TDFtype: x%04X)\n",RecBuff, TDFsize2, KeyDefs, v12, TDFtype);
 		//DumpBlock(RecBuff,TDFsize2);
 		//DumpBlock(KeyDefs,v12);
 
@@ -104,7 +104,7 @@ bool _scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType)
 	//printf("_scanpg(PAGEptr: x%08X, TDptr: x%08X, N2idxPtr: x%08X, ArgType: x%02X)\n" ,PagePtr, TDptr,N2idx,ArgType);
 
 	if ( ArgType & 8 )                      // if (ArgType& 8), PagePtr is a PAGE structure, otherwise it is a NODE
-		NumEntries = PagePtr->NumEntries;	// PagePtr was a PAGE here. get PagePtr->NumEntries
+		NumEntries = PagePtr->header.NumEntries;	// PagePtr was a PAGE here. get PagePtr->NumEntries
 	 else
 		NumEntries = ((NODE*)PagePtr)->NumEntries;	// PagePtr was a NODE here. get PagePtr->NumEntries
 	

@@ -6,7 +6,7 @@
 #include "cl4.h"
 #include "lvarnames.h"		// for bit field values
 
-void DumpBlock(char* Buffer, int NumBytes);
+//void DumpBlock(char* Buffer, int NumBytes);
 
 bool tdtotd(int TDdest, int TDsrc, char KeyOnly, int CopyMode)
 {

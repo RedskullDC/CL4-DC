@@ -1,0 +1,34 @@
+# test the string functions.
+
+##################
+{ Main
+##################
+
+define tess,c120	testd,d
+
+define str100,c100	str26,c38	str27,c38	divisor,c4	divisorI,i
+
+define C30,c30
+
+define num,n
+
+set trim, off
+num = 9876
+
+str27 = num
+
+pause slen(str27)
+pause str27
+pause 10 - slen(str27)
+
+str100 = scat('123456',' ' * (10 - slen(str27)),str27)
+
+print str100 nl
+
+str100 = lcase('lcase val')
+pause str100
+
+print nl,6
+break
+}
+

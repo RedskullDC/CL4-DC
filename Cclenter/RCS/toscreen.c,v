@@ -1,0 +1,518 @@
+head	1.5;
+access;
+symbols;
+locks
+	leslie:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2015.11.05.00.31.19;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.08.20.02.13.35;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.04.08.04.45.17;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.12.16.04.19.29;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.24.06.07.50;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.5
+log
+@minor tidy-up to toscreen()
+@
+text
+@#ifndef TOSCREEN_C
+#define TOSCREEN_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+int toscreen(int Column, int Line, bool allow_mask, int MaxLen, char *MessageString, int a2, int AttrNum, int a8)
+{
+    char	*a1; // [sp+30h] [bp-18h]@@4
+    char	*Dest;
+	
+	int		cy_sav;
+	int		cx_sav;
+    
+	int		v16;
+	int		v17;
+	int		v18;
+	int		v19;
+	int		a4;
+	int		v23;
+	int		a5;
+	int		v8;
+	
+	short	ScreenOffset;
+	short	v13;
+	short	v15;
+	short	num_glitch;
+	char	v25;
+	
+    v8 = MaxLen;
+    if ( MaxLen )
+    {
+		whereat(Column, Line, allow_mask, (AttrNum == 1 ? MaxLen: 0));	// allow_mask == true means col/line can have relative flags
+		coord();	// update _cx, _cy
+
+		ScreenOffset = getosbuf();
+        Dest = &abuf[ScreenOffset];	// current offset in Character Buffer
+        a1 = &ccbuf[ScreenOffset];	// current offset in Attribute Buffer
+
+        a5 = 0;
+        if ( a8 || !cmpbuf(Dest, MessageString, MaxLen) || (a5 = chg_attr(a1, a2, AttrNum)) != 0 )
+        {
+            a4 = 0;
+            if ( AttrNum != 0x40 )
+                a4 = _cx;
+            
+            num_glitch = getnats(a2, AttrNum);
+            if ( !num_glitch && a5 )
+                num_glitch = _sg;				// Number of "standout glitch" chars to display
+
+			v13 = getattr(a2, AttrNum);
+            v25 = v13 ? (v13 | 0x40) : 0;
+
+			if ( num_glitch )
+            {
+                if ( num_glitch >= (signed short)a4 )
+                {
+                    zap(Dest, num_glitch);
+                    Dest += num_glitch;
+                }
+                else
+                {
+                    a1 -= num_glitch;
+                    _cx -= num_glitch;
+                    zap(&Dest[-num_glitch], num_glitch);
+                }
+            }
+
+            cx_sav = _cx;
+            cy_sav = _cy;
+            v15 = getosbuf();
+            v16 = v15;
+            v17 = MaxLen + v15 + 2 * num_glitch + 1;
+
+            v18 = _co * _li;	// check for Screen buffer overflow. V18 = screen end.
+            if ( v17 >= v18 )
+            {
+                v8 = v18 - v16 - num_glitch - num_glitch - 1;
+                MessageString[v8] = 0;	// *** modifies caller string buffer directly ***
+            }
+            
+			fillbuf(a1, v8 + num_glitch, v25);
+            a1 = &a1[v8] + num_glitch;
+            _cx += v8 + num_glitch;
+            
+			coord();			// update _cx, _cy
+            v23 = _cx;
+            v19 = _cy;
+            cpybuf(Dest, MessageString, v8);
+            
+			if ( num_glitch && (*a1 = v25 | 0x80, zap(&Dest[v8], num_glitch), (_cx += num_glitch) != 0) && _YF == 1 )
+            {
+                qat(v23, v19);
+                scat(a2, 0, AttrNum, 0, a5);
+				qat(cx_sav, cy_sav);
+                scat(a2, 1, AttrNum, a4, a5);
+                fputs(MessageString, stderr);
+                scat(a2, 0, AttrNum, 0, a5);
+                qat(num_glitch + v23, v19);
+            }
+            else	// no screen glitch fudging was required
+            {
+                qat(cx_sav, cy_sav);
+                scat(a2, 1, AttrNum, a4, a5);
+                fputs(MessageString, stderr);
+                scat(a2, 0, AttrNum, 0, a5);
+            }
+            
+			whereat(num_glitch + v23, v19, 0, 0);
+            if ( AttrNum != 0x40 )
+                fflush(stderr);
+
+            return 1;		// exit_success
+        }
+        else
+        {
+            _cx += MaxLen;
+            if ( AttrNum == 0x20 && *MessageString == 7 )	// Bell char
+            {
+                fputc(7, stderr);
+                fflush(stderr);
+            }
+            // return 0;
+        }
+    }
+    return 0;	// exit_failure
+}
+
+void scat(int a1, int a2, int AttrNum, int a4, int a5)
+{
+    char **v5; // eax@@3
+    char *v6; // edx@@5
+    char *v12; // edx@@31
+    short v13; // cx@@31
+    char v14[8];
+
+    switch ( getattr(a1, AttrNum) )
+    {
+        case 0x01:
+			v5 = a2 ? &_fs : &_fe;
+            v6 = *v5;
+            break;
+        case 0x02:
+			v5 = a2 ? &_so : &_se;	// on/off standout mode
+            v6 = *v5;
+            break;
+        case 0x04:
+			v5 = a2 ? &_us : &_ue;	// on/off underline mode
+            v6 = *v5;
+            break;
+        case 0x08:
+			v5 = a2 ? &_bo : &_be;
+            v6 = *v5;
+            break;
+        case 0x10:
+			v5 = a2 ? &_Bs : &_Be;
+            v6 = *v5;
+            break;
+        case 0x20:
+			v5 = a2 ? &_rs : &_re;
+            v6 = *v5;
+            break;
+        default:
+            v6 = 0;
+            break;
+    }
+    if ( (!v6 || !*v6) && a5 )
+    {
+        v12 = v14;
+        v13 = _sg - 1;
+        if ( _sg )				// fix for terminals with the "standout glitch"
+        {
+            do
+            {
+                *v12++ = ' ';
+                --v13;
+            }
+            while ( v13 != -1 );
+        }
+        *v12 = 0;
+        v6 = v14;
+    }
+    if ( v6 )
+        fputs(v6, stderr);
+}
+
+bool chg_attr(char *a1, int a2, int AttrNum)
+{
+    short v3; // eax@@1
+
+    v3 = getattr(a2, AttrNum);
+    return v3 != (char)(*a1 & 0xBF);
+}
+
+#endif
+
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d10 1
+a10 1
+int toscreen(int Column, int Line, int a3, int MaxLen, char *MessageString, int a2, int AttrNum, int a8)
+d12 5
+a16 3
+    char *a1; // [sp+30h] [bp-18h]@@4
+    char *a1a; // [sp+30h] [bp-18h]@@20
+    char *Dest;
+d18 15
+a32 19
+	int v16; // esi@@18
+    int v17; // ecx@@18
+    int v18; // eax@@18
+    int v19; // esi@@20
+    int a4; // [sp+18h] [bp-30h]@@7
+    int v21; // [sp+1Ch] [bp-2Ch]@@18
+    int v22; // [sp+20h] [bp-28h]@@18
+    int v23; // [sp+24h] [bp-24h]@@20
+    int a5; // [sp+28h] [bp-20h]@@4
+    int v8; // edi@@1
+    int result; // eax@@1
+
+	short ScreenOffset; // ax@@4
+    short v12; // ax@@9
+    short v13; // ST2C_2@@12
+    short v15; // ax@@18
+    short num_glitch; // Number of "standout glitch" chars to allow for
+    char v25; // [sp+2Ch] [bp-1Ch]@@14
+
+a33 1
+    result = 0;
+d36 2
+a37 2
+		whereat(Column, Line, a3, (AttrNum == 1 ? MaxLen: 0));
+		coord();
+d50 2
+a51 3
+			v12 = getnats(a2, AttrNum);
+            num_glitch = v12;
+            if ( !v12 && a5 )
+d53 1
+a53 1
+            
+d72 2
+a73 2
+            v22 = _cx;
+            v21 = _cy;
+d86 1
+a86 1
+            a1a = &a1[v8] + num_glitch;
+d94 1
+a94 1
+			if ( num_glitch && (*a1a = v25 | 0x80, zap(&Dest[v8], num_glitch), (_cx += num_glitch) != 0) && _YF == 1 )
+d98 1
+a98 1
+				qat(v22, v21);
+d104 1
+a104 1
+            else
+d106 1
+a106 1
+                qat(v22, v21);
+d111 2
+a112 1
+            whereat(num_glitch + v23, v19, 0, 0);
+d115 2
+a116 1
+            result = 1;
+d126 1
+a126 1
+            result = 0;
+d129 1
+a129 1
+    return result;
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d12 5
+a16 7
+    int v8; // edi@@1
+    int result; // eax@@1
+    short ScreenOffset; // ax@@4
+    short v12; // ax@@9
+    short v13; // ST2C_2@@12
+    short v15; // ax@@18
+    int v16; // esi@@18
+d25 8
+a33 4
+    char *a1; // [sp+30h] [bp-18h]@@4
+    char *a1a; // [sp+30h] [bp-18h]@@20
+    char *Dest;
+    short num_glitch; // Number of "standout glitch" chars to allow for
+d75 1
+d88 2
+a89 1
+            fillbuf(a1, v8 + num_glitch, v25);
+@
+
+
+1.2
+log
+@major clean up
+@
+text
+@a13 1
+    //int v10; // eax@@2
+a16 1
+    //char v14; // al@@12
+d30 1
+a30 1
+    char *Dest; // [sp+34h] [bp-14h]@@4
+a36 4
+        //v10 = 0;
+        //if ( AttrNum == 1 )
+        //    v10 = MaxLen;
+		//whereat(Column, Line, a3, v10);
+a37 1
+
+a56 5
+            
+            //v14 = 0;
+            //if ( v13 )
+			//	v14 = v13 | 0x40;
+            //v25 = v14;
+d89 1
+a89 1
+			coord();
+d93 2
+a94 1
+            if ( num_glitch && (*a1a = v25 | 0x80, zap(&Dest[v8], num_glitch), (_cx += num_glitch) != 0) && _YF == 1 )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 1
+a14 1
+    int v10; // eax@@2
+d18 1
+a18 1
+    char v14; // al@@12
+d33 1
+a33 1
+    short n; // [sp+38h] [bp-10h]@@9
+d39 7
+a45 5
+        v10 = 0;
+        if ( AttrNum == 1 )
+            v10 = MaxLen;
+        whereat(Column, Line, a3, v10);
+        coord();
+d57 3
+a59 2
+            v12 = getnats(a2, AttrNum);
+            n = v12;
+d61 11
+a71 7
+                n = _sg;
+            v13 = getattr(a2, AttrNum);
+            v14 = v13 | 0x40;
+            if ( !v13 )
+                v14 = 0;
+            v25 = v14;
+            if ( n )
+d73 1
+a73 1
+                if ( n >= (signed short)a4 )
+d75 2
+a76 2
+                    zap(Dest, n);
+                    Dest += n;
+d80 3
+a82 3
+                    a1 -= n;
+                    _cx -= n;
+                    zap(&Dest[-n], n);
+d89 3
+a91 2
+            v17 = MaxLen + v15 + 2 * n + 1;
+            v18 = _co * _li;
+d94 1
+a94 1
+                v8 = v18 - v16 - n - n - 1;
+d97 5
+a101 4
+            fillbuf(a1, v8 + n, v25);
+            a1a = &a1[v8] + n;
+            _cx += v8 + n;
+            coord();
+d105 1
+a105 1
+            if ( n && (*a1a = v25 | 0x80, zap(&Dest[v8], n), (_cx += n) != 0) && _YF == 1 )
+d113 1
+a113 1
+                qat(n + v23, v19);
+d117 1
+a117 1
+                qat(v22, v21);	// Never returns from qat.. :o(
+d122 1
+a122 1
+            whereat(n + v23, v19, 0, 0);
+d130 1
+a130 1
+            if ( AttrNum == 0x20 && *MessageString == 7 )
+d147 1
+a147 1
+    char v14; // [sp+10h] [bp-28h]@@31
+d151 2
+a152 5
+        case 1:
+            if ( a2 )
+                v5 = &_fs;
+            else
+                v5 = &_fe;
+d155 2
+a156 5
+        case 2:
+            if ( a2 )
+                v5 = &_so;
+            else
+                v5 = &_se;
+d159 2
+a160 5
+        case 4:
+            if ( a2 )
+                v5 = &_us;
+            else
+                v5 = &_ue;
+d163 2
+a164 5
+        case 32:
+            if ( a2 )
+                v5 = &_rs;
+            else
+                v5 = &_re;
+d167 2
+a168 5
+        case 16:
+            if ( a2 )
+                v5 = &_Bs;
+            else
+                v5 = &_Be;
+d171 2
+a172 5
+        case 8:
+            if ( a2 )
+                v5 = &_bo;
+            else
+                v5 = &_be;
+d181 1
+a181 1
+        v12 = &v14;
+d183 1
+a183 1
+        if ( _sg )
+d193 1
+a193 1
+        v6 = &v14;
+@

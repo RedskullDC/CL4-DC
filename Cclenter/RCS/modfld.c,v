@@ -1,0 +1,1177 @@
+head	1.7;
+access;
+symbols;
+locks
+	leslie:1.7; strict;
+comment	@ * @;
+
+
+1.7
+date	2015.07.16.23.55.46;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2015.04.08.04.51.16;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2014.12.16.02.36.05;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2014.11.27.09.56.55;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.24.02.38.06;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.13.00.20.50;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.16.04.37.11;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.7
+log
+@intermediate
+@
+text
+@#ifndef MODFLD_C
+#define MODFLD_C
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+bool fcheck(char *a1, XTAB *arg4, int noScreenOut)
+{
+    char v3;
+    char a2[2];
+
+//    if ( noScreenOut || SLOBYTE(arg4->Flags) >= 0 || (v3 = isfname(a1), *(short *)a2 = (unsigned char)v3 | *(short *)a2 & 0xFF00, !v3) )
+    if ( noScreenOut || !(arg4->Flags & 0x80) || (v3 = isfname(a1), *(short *)a2 = (unsigned char)v3 | *(short *)a2 & 0xFF00, !v3) )
+        return true;	// exit_success
+
+	else
+    {
+        a2[1] = 0;
+        prerr("invalid character [%s]", a2, 1);
+        return false;	// exit_failure
+    }
+}
+
+void dstrip(char *a1)
+{
+    char *v1; // esi@@1
+    char *v2; // ecx@@6
+
+    v1 = a1;
+    if ( *a1 )
+    {
+        if ( *a1 == RADIX_CHAR[0] )
+        {
+LABEL_5:
+            if ( *v1 )
+            {
+                v2 = &a1[lenstr(a1) - 1];
+                while ( v1 <= v2 && (*v2 == '0' || *v2 == RADIX_CHAR[0]) )
+	                *v2-- = 0;
+            }
+        }
+        else
+        {
+            while ( 1 )
+            {
+                ++v1;
+                if ( !*v1 )
+                    break;
+                if ( *v1 == RADIX_CHAR[0] )
+                    goto LABEL_5;
+            }
+        }
+    }
+}
+
+void dispatt(unsigned short a1)
+{
+  unsigned short v1; // eax@@1
+  const char *v2; // eax@@2
+
+  v1 = getattr(a1, 1);
+  switch ( v1 )
+  {
+    case 0x01:
+      v2 = _fs;
+      break;
+    case 0x02:
+      v2 = _so;
+      break;
+    case 0x04:
+      v2 = _us;
+      break;
+    case 0x08:
+      v2 = _bo;
+      break;
+    case 0x20:
+      v2 = _rs;
+      break;
+    default:
+      v2 = 0;
+      break;
+  }
+  if ( v2 )
+    fputs(v2, stderr);
+}
+
+int modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld, int mySkip, char **a5, int a2)
+{
+    RTAB *rtab; // eax@@28
+    XTAB *xt; // [sp+2Ch] [bp-4DCh]@@4
+
+    int fno; // esi@@9
+    int fld_type; // eax@@48
+    double v25; // fst7@@124
+	bool validNum; // esi@@169
+    double v37; // fst7@@194
+    int v39; // eax@@226
+
+	char WildChar;
+    int v47;
+    
+	bool v48;
+    bool AllowLookup;
+    
+    int v51; // [sp+50h] [bp-4B8h]@@169
+
+    
+	int a4; // [sp+5Ch] [bp-4ACh]@@102
+    
+	int v56; // [sp+60h] [bp-4A8h]@@6
+    int MaxLen; // [sp+68h] [bp-4A0h]@@42
+    int Column; // [sp+6Ch] [bp-49Ch]@@42
+    int Line; // [sp+70h] [bp-498h]@@42
+    int v61; // [sp+74h] [bp-494h]@@36
+    int TTno; // [sp+78h] [bp-490h]@@9
+    char FLDtype; // [sp+7Fh] [bp-489h]@@9
+    char LineBuff[1008]; // [sp+80h] [bp-488h]@@3
+    char v65[64]; // [sp+470h] [bp-98h]@@100
+    char format[1024]; // [sp+4B0h] [bp-58h]@@100
+    
+	bool ClrMsgLine = false;
+    bool v52 = false;
+	
+printf("modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld,mySkip = %d, char **a5, a2 = %d)\n", mySkip, a2);
+
+    v47 = 0;
+    ++no_fields;
+    
+	if ( skipping )
+        mySkip = skipping == 1;
+    
+	*a5 = LineBuff;	// out of scope by time we return?
+
+    xt = XTARR(ptab->TABno);
+
+	v56 = 0;
+    WildChar = 0;
+
+	fno = gettdfno(ENARR(xt->VarExpNo), &TTno, &FLDtype, 0);
+	assert(fno >= 0);
+
+printf("modfld #215 - fno = %d, TTn0 = %d, FLDtype = %C\n",fno,TTno,FLDtype);
+printf("modfld btb->TTno = %d, fld->FLDstat = x%04X, btb->Curr_Mode = %C\n",btb->TTno,fld->FLDstat,btb->Curr_Mode);
+
+	//Maintain block for this Table && Key Field && Mode == Change, Delete or View 
+    if ( btb->TTno == TTno && fld->FLDstat & 0x8000 && (btb->Curr_Mode == 'c' || btb->Curr_Mode == 'd' || btb->Curr_Mode == 'v') )
+        v52 = true;
+
+//------------------   
+	AllowLookup = false;
+    if ( btb->Curr_Mode != 'a' || btb->TTno != TTno || !(fld->FLDstat & 0x8000) || xt->Flags & 0x0010 )
+    {
+        AllowLookup = true;
+        if ( xt->Flags & 0x0100 )
+            AllowLookup = false;
+    }
+//------------------
+    if ( btb->Curr_Mode != 'a' || xt->Flags >= 0 || btb->TTno != TTno )
+        v48 = false;
+    else
+    {
+        v48 = true;
+        if ( (xt->Flags & 0x110) == 0x0010 )
+        {
+            rtab = RTARR(xt->RangeID);
+            gettdfno(ENARR(rtab->field_C), &v61, &FLDtype, 0);
+			//x86 checked, doesn't test return code of this gettdfno() call.
+            //if ( fno < 0 )	// should be unreachable fno is tested above.
+            //    __assert_fail("fno >= 0", "modfld.c", 118, "modfld");
+			//assert(fno >= 0);
+
+			v48 = TTno == v61;
+            if ( v48 )
+                AllowLookup = false;
+        }
+    }
+printf("modfld #248 - v52 = %d, AllowLookup = %d, v48 = %d \n",v52,AllowLookup,v48);
+//------------------------------------
+    MaxLen = (signed short)getwid(xt);
+    clgetyx(xt, &Column, &Line, yx_answer);		// get the column/line for where the *answer* shall be
+    whereat(Column, Line, 1, MaxLen);
+    
+	if ( fld->FLDtype == 'C' && fld->FLDlen < (signed short)MaxLen )
+        MaxLen = fld->FLDlen;
+    
+	xt->C_X = _cx;	// update current coords. clgetyx() may have evaluated an expression!
+    xt->C_Y = _cy;
+    
+	if ( mySkip && incvar(v_BYPASS, 0) )		// Skip in ON && "BYPASS" !=0, decrement the bypass count
+        incvar(v_BYPASS, -1);
+
+//=====================================    
+	fld_type = fld->FLDtype;
+    if ( fld_type == 'D' || fld_type == 'T' )
+    {
+		printf("modfld Date/Time Handler \n");
+        while ( 1 )
+        {
+            while ( 1 )
+            {
+                v51 = 0;
+                a4 = 0;
+                zap(LineBuff, 20u);
+                fldtobuf(LineBuff, fld, 0);
+                if ( fld->FLDtype == 'D' && strlen(LineBuff) > MaxLen )
+                {
+                    MaxLen = 10;
+                    xt->width = 10;
+                }
+                if ( !mySkip )
+                {
+                    while ( 1 )
+                    {
+                        a4 = 1;
+                        if ( _sg )
+                            dispfld(xt, fld, 1, 0, 0, 0);
+                        else
+                            dispatt(xt->Attr);
+                        
+						whereat(Column, Line, 0, MaxLen);
+                        at();
+                        
+						v56 = 0;
+                        WildChar = 0;
+                        
+						v47 = linput(LineBuff, _YA ? -MaxLen : MaxLen, xt->onesc);  // YA allows "auto-accept fields". (Return when buffer full)
+
+                        if ( v47 > 0)			// v47 +ve == number of chars in the buffer
+                        {
+                            WildChar = LineBuff[v47 - 1];	// Look at last char in Buffer for wildcard
+                            if ( WildChar != '*' && WildChar != '+' && WildChar != '-' )
+	                            WildChar = 0;
+                        }
+                        else if ( v47 < 0 )	// v47 -ve == error, or exception condition
+						{
+							switch (v47)	// Error Handler
+							{
+								case -27:
+								    v56 = 1;
+								    break;
+								case -26:
+								    v56 = 1;
+								    v47 = 0;
+									WildChar = 0;
+								    break;
+								case -30:
+								case -22:
+								case -17:
+								case -5:
+									dispfld(xt, fld, v47 == -22, 1, 0, 0);
+									skipping = 0;
+									return v47;			// exit
+								    break;
+								default:				// unknown error code
+								    v51 = 1;
+								    break;
+						    }
+						}
+						// v47 == 0 falls straight through here 
+                        if ( WildChar )					
+							LineBuff[v47 - 1] = 0;	// Remove valid Wildcards (*,+,-) from end of Buffer. 
+                        
+						v25 = 0.0;
+						if ( LineBuff[0] )	// Look for fudgey single char override commands
+                        {
+                            if ( fld->FLDtype == 'D' )
+                            {
+                                if ( v47 == 1 && LineBuff[0] == '.')
+                                    LineBuff[0] = 't';	// 'today'
+                                v25 = (double)clgetdate(LineBuff);
+                            }
+                            else
+                            {
+                                if ( v47 == 1 && LineBuff[0] == '.')
+                                    LineBuff[0] = 'n';	// 'now'
+                                v25 = gettime(LineBuff);
+                            }
+                        }
+
+                        if ( v25 < 0.0 )
+                        {
+							prerr("invalid %s", fld->FLDtype == 'D' ? "date" : "time", 1);
+                            ClrMsgLine = true;
+                        }
+						else
+						{
+                            if ( !mySkip )
+                            {
+                                *(double *)fld->FLDdata = v25;
+                                if ( v25 == 0.0 )
+                                    fld->FLDstat |= fld_ZERO;	// 0x0004;
+                                else
+                                    fld->FLDstat &= ~fld_ZERO;	// 0xFFFB;
+                            }
+                            goto LABEL_149;
+                        }
+                        if ( mySkip )		// never set to true in this loop!
+                            goto LABEL_149;
+                    }
+                }
+LABEL_149:
+                if ( !v51 )
+                    break;
+                
+				if ( ClrMsgLine )
+                    prerr(0, 0, 0);
+                
+				if ( chkesc(xt->onesc, -v47, &btb->Curr_Mode) == -5 )
+                    return -5;
+            }
+            if ( (!WildChar || AllowLookup) && (v52 && WildChar || v48 || jcheck(ptab, fld, WildChar, 1)) && (v52 && WildChar || rcheck(xt, fld, a2)) )
+                break;
+            if ( WildChar && !AllowLookup )
+                prerr("table lookup not allowed", 0, 1);
+            recalt = true;
+            ClrMsgLine = true;
+            mySkip = 0;
+        }
+        fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010u;
+        dispfld(xt, fld, 1, a4, 0, 0);
+
+		if ( WildChar )
+	        cdbcpystr(LineBuff, LineBuff, (WildChar == '-' ? "-" : "+"), 0);
+    }
+//===========================================    
+	else if ( fld_type == 'C' )	// string handler
+    {
+		printf("modfld String Handler \n");
+        while ( 1 )
+        {
+            v51 = 0;
+            zap(LineBuff, MaxLen + 1);
+            
+			if ( rawdisplay )
+				cdbcpystr(LineBuff, (char *)fld->FLDdata, 0);
+            else
+				cdbcpystr(LineBuff, convstr((char *)fld->FLDdata, 1), 0);
+    
+			if ( mySkip )
+                goto LABEL_85;
+            if ( _sg )
+                dispfld(xt, fld, 1, 0, 0, 0);
+            else
+                dispatt(xt->Attr);
+            whereat(Column, Line, 0, MaxLen);
+            at();
+            
+			v56 = 0;
+            WildChar = 0;
+
+			// YA allows "auto-accept fields". (Return when buffer full)
+			v47 = linput(LineBuff, _YA ? -MaxLen : MaxLen, xt->onesc);
+            if ( v47 > 0)				// v47 +ve == number of chars in the buffer
+            {
+				WildChar = LineBuff[v47 - 1];	// Look at last char in Buffer for wildcard
+                if ( WildChar != '*' && WildChar != '+' && WildChar != '-' )
+					WildChar = 0;
+            }
+            else if ( v47 < 0 )		// v47 -ve == error, or exception condition
+            {
+                switch (v47)
+                {
+                    case -27:
+                        v56 = 1;
+                        break;
+                    case -26:
+                        v56 = 1;
+                        v47 = 0;
+                        WildChar = 0;
+                        break;
+                    case -30:
+                    case -22:
+                    case -17:
+                    case -5:
+						dispfld(xt, fld, v47 == -22, 1, 0, 0);
+						skipping = 0;
+						return v47;			// exit
+						break;
+                    default:
+                        v51 = 1;
+                        break;
+                }
+            }
+			// v47 == 0 falls straight through here 
+			if ( rawdisplay )
+				cdbcpystr((char *)fld->FLDdata, LineBuff, 0);
+            else
+				cdbcpystr((char *)fld->FLDdata, convstr(LineBuff, 0), 0);
+
+            if ( LineBuff[0] )	// quick zero flag
+                fld->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+            else
+                fld->FLDstat |= fld_ZERO;	// 0x0004u;
+
+            if ( v51 )
+            {
+                if ( ClrMsgLine )
+                    prerr(0, 0, 0);	// clear message line
+
+                if ( chkesc(xt->onesc, -v47, &btb->Curr_Mode) == -5 )
+                    return -5;
+            }
+            else
+            {
+                dispfld(xt, fld, 1, 1, 0, 0);
+LABEL_85:
+                if ( (!WildChar || AllowLookup) && (v52 && WildChar || v48 || jcheck(ptab, fld, WildChar, 1)) 
+					&& (v52 && WildChar || rcheck(xt, fld, a2)) && (v52 && WildChar || fcheck((char *)fld->FLDdata, xt, a2)) )
+                {
+                    fld->FLDstat |= fld_DATA_AVAIL;	// indicate that field now has valid data in buffer area
+                    dispfld(xt, fld, 1, 0, 0, 0);	// copy field data to screen
+					break;							// success_ exit out
+                }
+                if ( WildChar && !AllowLookup )
+                {
+                    sprintf(format, "'%s' table lookup not allowed", fldtobuf(v65, fld, 0));
+                    prerr(format, 0, 1);
+                    *(char *)fld->FLDdata = 0;
+                }
+                recalt = true;
+                ClrMsgLine = true;
+                mySkip = 0;
+            }
+        }
+    }
+//======================================
+	else	// default numeric field handler
+	{
+		while ( 1 )
+		{
+			printf("modfld Default number Handler \n");
+			// default handler, all others must be numbers
+			while ( 1 )
+			{
+				v51 = 0;
+				a4 = 0;
+				
+				zap(LineBuff, MaxLen + 1);
+				fldtobuf(LineBuff, fld, 0);
+				
+				dstrip(LineBuff);				// remove any thousands seperator chars
+				
+				validNum = false;
+		        while ( !validNum )
+				{
+				    if ( !mySkip )
+				    {
+				        a4 = 1;
+				        if ( _sg )										// number of blank characters left by smso or rmso
+				            dispfld(xt, fld, 1, 0, 0, 0);
+				        else
+				            dispatt(xt->Attr);
+				        
+						whereat(Column, Line, 0, MaxLen);				// Locate cursor on screen
+				        at();
+				        v56 = 0;
+				        WildChar = 0;
+
+						v47 = linput(LineBuff, _YA ? -MaxLen : MaxLen, xt->onesc);	// YA allows "auto-accept fields". (Return when buffer full)
+			            if (v47 > 0)					// v47 +ve == number of chars in the buffer
+			            {
+			                WildChar = LineBuff[v47 - 1];	// Look at last char in Buffer for wildcard
+			                if ( WildChar != '*' && WildChar != '+' && WildChar != '-' )
+			                    WildChar = 0;
+			            }
+			            else if (v47 < 0)			// v47 -ve == error, or exception condition
+			            {
+			                switch (v47)
+			                {
+			                    case -27:
+			                        v56 = 1;
+			                        break;
+			                    case -26:
+			                        v56 = 1;
+			                        v47 = 0;
+									WildChar = 0;
+			                        break;
+			                    case -30:
+			                    case -22:
+			                    case -17:
+			                    case -5:
+									dispfld(xt, fld, v47 == -22, 1, 0, 0);
+						            skipping = 0;
+				                    return v47;
+									break;
+		                        default:
+		                            v51 = 1;		// unknown error code
+		                            break;
+		                    }
+		                }
+						// v47 == 0 falls straight through here 
+		                if ( WildChar )
+							LineBuff[v47 - 1] = 0;
+		            }
+					printf("modfld 573 - LineBuff = %s\n",LineBuff);
+		            if ( echknum(LineBuff, fld->FLDtype))	// Is this a valid number?
+		                validNum = true;
+		            else
+		                ClrMsgLine = true;
+		        }	// end while ( !validNum )
+//-------------------------------
+		        if ( !mySkip )
+		        {
+		            v37 = clround(strtod(LineBuff, 0), fld->FLDtype);
+					printf("modfld 583 - v37 = %G\n",v37);
+	                *(double *)fld->FLDdata = v37;
+	                if ( v37 == 0.0 )
+	                    fld->FLDstat |= fld_ZERO;	// 0x0004u;
+	                else
+	                    fld->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+	                fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010u;
+	            }
+	            if ( !v51 )
+	                break;	// success, jump out
+	            if ( ClrMsgLine )
+	                prerr(0, 0, 0);	// clear message line
+	
+			    if ( chkesc(xt->onesc, -v47, &btb->Curr_Mode) == -5 )
+			        return -5;
+			}
+			if ( (!WildChar || AllowLookup) && (v52 && WildChar || v48 || jcheck(ptab, fld, WildChar, 1)) && (v52 && WildChar || rcheck(xt, fld, a2)) )
+			    break;	// success, jump out.
+        
+			if ( WildChar && !AllowLookup )
+			    prerr("table lookup not allowed", 0, 1);
+
+		    recalt	= true;
+		    ClrMsgLine = true;
+		    mySkip	= 0;
+		}
+		dispfld(xt, fld, 1, a4, 0, 0);
+
+		if ( WildChar )
+	        cdbcpystr(LineBuff, LineBuff, (WildChar == '-' ? "-" : "+"), 0);
+	}
+
+//------------------------------
+    if ( ClrMsgLine )
+        prerr(0, 0, 0);	// quick way to blank the message line
+    
+	if (v56)
+		return v47 ? -27 : -26 ;
+    
+	return 1;			// exit_success
+}
+
+#endif
+
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@a97 1
+    //int v14; // edx@@61
+a98 1
+    //char *v31; // eax@@168
+d103 2
+a104 2
+	char WildChar; // [sp+3Fh] [bp-4C9h]@@6
+    int v47; // [sp+48h] [bp-4C0h]@@1
+a110 1
+    int v52; // [sp+54h] [bp-4B4h]@@11
+a112 1
+    int a4a; // [sp+5Ch] [bp-4ACh]@@169
+d126 2
+a127 1
+
+d132 2
+a133 1
+    if ( skipping )
+d149 1
+a149 1
+	v52 = 0;
+d151 2
+a152 1
+        v52 = 1;
+d189 2
+a190 1
+    xt->C_X = _cx;	// update current coords. clgetyx() may have evaluated an expression!
+d223 2
+a224 1
+                        whereat(Column, Line, 0, MaxLen);
+d230 2
+a231 2
+                        // YA allows "auto-accept fields". (Return when buffer full)
+						v47 = linput(LineBuff, _YA ? -MaxLen : MaxLen, xt->onesc);
+d264 2
+a265 2
+                        if ( WildChar )
+							LineBuff[v47 - 1] = 0;
+d272 1
+a272 1
+                                if ( v47 == 1 && (LineBuff[0] == '.' || LineBuff[0] == '-') )	// shortcuts!!   '-' doesn't seem to work though
+d278 1
+a278 1
+                                if ( v47 == 1 && (LineBuff[0] == '.' || LineBuff[0] == '-') )
+d308 2
+a309 1
+                if ( ClrMsgLine )
+d311 2
+a312 1
+                if ( chkesc(xt->onesc, -v47, &btb->Curr_Mode) == -5 )
+d411 2
+a412 2
+                if ( (!WildChar || AllowLookup) && (v52 && WildChar || v48 || jcheck(ptab, fld, WildChar, 1))
+                  && (v52 && WildChar || rcheck(xt, fld, a2)) && (v52 && WildChar || fcheck((char *)fld->FLDdata, xt, a2)) )
+d440 2
+a441 1
+				a4a = 0;
+d444 1
+d446 1
+d452 1
+a452 1
+				        a4a = 1;
+d457 2
+a458 1
+				        whereat(Column, Line, 0, MaxLen);				// Locate cursor on screen
+d535 1
+a535 1
+		dispfld(xt, fld, 1, a4a, 0, 0);
+@
+
+
+1.5
+log
+@fixed all macros. time to get logic flow correct
+@
+text
+@d107 3
+a109 1
+    bool v48; // [sp+4Ch] [bp-4BCh]@@26
+a113 1
+    int AllowLookup; // [sp+58h] [bp-4B0h]@@16
+d155 1
+a155 1
+	AllowLookup = 0;
+d158 1
+a158 1
+        AllowLookup = 1;
+d160 1
+a160 1
+            AllowLookup = 0;
+d179 1
+a179 1
+                AllowLookup = 0;
+d187 2
+a188 1
+    if ( fld->FLDtype == 'C' && fld->FLDlen < (signed short)MaxLen )
+d283 1
+a283 1
+                        if ( (double)v25 < 0.0 )
+d534 1
+a534 1
+LABEL_221:
+@
+
+
+1.4
+log
+@prior to ENARR() fixes
+@
+text
+@d139 1
+a139 1
+    xt = ptab->TABno ? &xtarr.TableAddr[ptab->TABno - 1] : 0 ;
+d144 1
+a144 3
+	fno = gettdfno(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, &TTno, &FLDtype, 0);
+    //if ( fno < 0 )
+    //    __assert_fail("fno >= 0", "modfld.c", 102, "modfld");
+d169 2
+a170 2
+            rtab = xt->RangeID ? &rtarr.TableAddr[xt->RangeID - 1] : 0;
+            gettdfno(rtab->field_C ? &enarr.TableAddr[rtab->field_C - 1] : 0, &v61, &FLDtype, 0);
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d5 1
+d96 1
+a96 1
+    int v7; // esi@@9
+d144 4
+a147 3
+	v7 = gettdfno(xt->VarExpNo ? &enarr.TableAddr[xt->VarExpNo - 1] : 0, &TTno, &FLDtype, 0);
+    if ( v7 < 0 )
+        __assert_fail("fno >= 0", "modfld.c", 102, "modfld");
+d149 1
+a149 1
+printf("modfld #215 - v7 = %d, TTn0 = %d, FLDtype = %C\n",v7,TTno,FLDtype);
+a172 2
+            if ( v7 < 0 )	// should be unreachable v7 is tested above.
+                __assert_fail("fno >= 0", "modfld.c", 118, "modfld");
+d174 3
+@
+
+
+1.2
+log
+@close to final version
+@
+text
+@d10 1
+a10 1
+int fcheck(char *a1, XTAB *arg4, int noScreenOut)
+d12 2
+a13 3
+    char v3; // al@@3
+    int result; // eax@@4
+    char a2[2]; // [sp+12h] [bp-6h]@@3
+d17 3
+a19 4
+    {
+        result = 1;
+    }
+    else
+d23 1
+a23 1
+        result = 0;
+a24 1
+    return result;
+d313 1
+a313 1
+            recalt = 1;
+d418 1
+a418 1
+                recalt = 1;
+d521 2
+a522 2
+		    recalt	= 1;
+		    ClrMsgLine		= true;
+a534 11
+	/*if ( v47 )
+    {
+        if ( v56 )
+            return -27;
+    }
+	else
+	{
+		if ( v56 )
+			return -26;
+	}
+	*/
+d537 2
+a538 1
+    return 1;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+int fcheck(char *a1, XTAB *arg4, int a3)
+d16 2
+a17 2
+//    if ( a3 || SLOBYTE(arg4->Flags) >= 0 || (v3 = isfname(a1), *(short *)a2 = (unsigned char)v3 | *(short *)a2 & 0xFF00, !v3) )
+    if ( a3 || !(arg4->Flags & 0x80) || (v3 = isfname(a1), *(short *)a2 = (unsigned char)v3 | *(short *)a2 & 0xFF00, !v3) )
+d70 1
+a70 4
+    default:
+      v2 = 0;
+      break;
+    case 1:
+d73 1
+a73 4
+    case 32:
+      v2 = _rs;
+      break;
+    case 2:
+d76 1
+a76 1
+    case 4:
+d79 1
+a79 1
+    case 8:
+d82 6
+d93 1
+a93 1
+int modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld, int argC, char **a5, int a2)
+d100 1
+a100 4
+    int v14; // edx@@61
+    int v15; // eax@@63
+    int v21; // edx@@109
+    int v22; // eax@@111
+d102 2
+a103 4
+    char *v31; // eax@@168
+    signed int v32; // esi@@169
+    int v33; // edx@@174
+    int v34; // eax@@176
+d106 2
+a107 2
+    int v43; // [sp+Ch] [bp-4FCh]@@168
+    char WildChar; // [sp+3Fh] [bp-4C9h]@@6
+d110 1
+a110 2
+    int v49; // [sp+50h] [bp-4B8h]@@54
+    int v50; // [sp+50h] [bp-4B8h]@@102
+d112 1
+d115 2
+a116 1
+    int a4; // [sp+5Ch] [bp-4ACh]@@102
+d118 2
+a119 2
+    int v56; // [sp+60h] [bp-4A8h]@@6
+    int v57; // [sp+64h] [bp-4A4h]@@6
+d129 2
+d132 1
+a132 1
+printf("modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld,argC = %d, char **a5, a2 = %d)\n", argC, a2);
+d137 1
+a137 1
+        argC = skipping == 1;
+a143 1
+    v57 = 0;
+d154 1
+a154 1
+    if ( btb->TTno == TTno && fld->FLDstat < 0 && ((unsigned char)(btb->Curr_Mode - 'c') <= 1u || btb->Curr_Mode == 'v') )
+d158 1
+a158 1
+    if ( btb->Curr_Mode != 'a' || btb->TTno != TTno || fld->FLDstat >= 0 || xt->Flags & 0x10 )
+d186 1
+a186 1
+    clgetyx(xt, &Column, &Line, 1);		// get the column/line for where the *answer* shall be
+d192 2
+a193 1
+    if ( argC && incvar(v_BYPASS, 0) )                // "BYPASS" 42
+d205 1
+a205 1
+                v50 = 0;
+d214 1
+a214 1
+                if ( !argC )
+d229 3
+a231 9
+						v21 = MaxLen;
+                        if ( _YA )	// Unsure what this flag does??
+                            v21 = -MaxLen;
+                        
+						v22 = linput(LineBuff, v21, xt->onesc);
+                        v47 = v22;
+                        if ( v22 < 0 )
+                            break;
+                        if ( v22 )
+d233 1
+a233 1
+                            WildChar = LineBuff[v22 - 1];	// Look at last char in Buffer for wildcard
+d237 26
+a262 1
+LABEL_121:
+d271 1
+a271 1
+                                if ( v47 == 1 && (LineBuff[0] == '.' || LineBuff[0] == '-') )// shortcuts!!   '-' doesn't seem to work though
+d285 2
+a286 5
+                            if ( fld->FLDtype == 'D' )
+								prerr("invalid %s", "date", 1);
+                            else
+								prerr("invalid %s", "time", 1);
+                            v57 = 1;
+d290 1
+a290 1
+                            if ( !argC )
+d300 1
+a300 1
+                        if ( argC )
+a302 22
+                    switch ( v22 + 30 )	// Error Handler
+                    {
+                        case 3:
+                            v56 = 1;
+                            goto LABEL_121;
+                        case 4:
+                            v56 = 1;
+                            v47 = 0;
+							WildChar = 0;
+                            goto LABEL_121;
+                        default:
+                            v50 = 1;
+                            goto LABEL_121;
+                        case 0:
+                        case 8:
+                        case 13:
+                        case 25:
+                            break;
+                    }
+                    dispfld(xt, fld, v47 == -22, 1, 0, 0);
+                    skipping = 0;
+                    return v47;
+d305 1
+a305 1
+                if ( !v50 )
+d307 1
+a307 1
+                if ( v57 )
+d317 2
+a318 2
+            v57 = 1;
+            argC = 0;
+d324 1
+a324 8
+        {
+			v43 = 0;
+			v31 = "*";
+		    if ( WildChar == '-' )
+		        v31 = "-";
+	        cdbcpystr(LineBuff, LineBuff, v31, v43);
+		}
+        goto LABEL_221;
+d327 1
+a327 1
+	if ( fld_type == 'C' )	// string handler
+d332 1
+a332 1
+            v49 = 0;
+d340 1
+a340 1
+			if ( argC )
+d348 2
+a349 1
+            v56 = 0;
+d351 10
+a360 6
+            v14 = MaxLen;
+            if ( _YA )
+                v14 = -MaxLen;
+            v15 = linput(LineBuff, v14, xt->onesc);
+            v47 = v15;
+            if ( v15 < 0 )	// Error Handler
+d362 1
+a362 1
+                switch ( v15 + 30 )	// GCC optimisation on the select elements
+d364 1
+a364 1
+                    case 3:
+d366 2
+a367 2
+                        goto LABEL_73;
+                    case 4:
+d371 9
+a379 1
+                        goto LABEL_73;
+d381 2
+a382 7
+                        v49 = 1;
+                        goto LABEL_73;
+                    case 0:
+                    case 8:
+                    case 13:
+                    case 25:
+						break;
+a383 3
+                dispfld(xt, fld, v47 == -22, 1, 0, 0);
+                skipping = 0;
+                return v47;
+d385 2
+a386 8
+            if ( v15 )
+            {
+				WildChar = LineBuff[v15 - 1];	// Look at last char in Buffer for wildcard
+                if ( WildChar != '*' && WildChar != '+' && WildChar != '-' )
+					WildChar = 0;
+            }
+LABEL_73:
+            if ( rawdisplay )
+d396 1
+a396 1
+            if ( v49 )
+d398 3
+a400 2
+                if ( v57 )
+                    prerr(0, 0, 0);
+d411 3
+a413 3
+                    fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010u;
+                    dispfld(xt, fld, 1, 0, 0, 0);
+                    goto LABEL_221;	// success_ exit out
+d422 2
+a423 2
+                v57 = 1;
+                argC = 0;
+d428 70
+a497 75
+    while ( 1 )
+    {
+		printf("modfld Default number Handler \n");
+		// default handler, all others must be numbers
+        while ( 1 )
+        {
+            v51 = 0;
+            a4a = 0;
+            zap(LineBuff, MaxLen + 1);
+            fldtobuf(LineBuff, fld, 0);
+            dstrip(LineBuff);
+            v32 = 0;
+            do
+            {
+                if ( !argC )
+                {
+                    a4a = 1;
+                    if ( _sg )
+                        dispfld(xt, fld, 1, 0, 0, 0);
+                    else
+                        dispatt(xt->Attr);
+                    whereat(Column, Line, 0, MaxLen);
+                    at();
+                    v56 = 0;
+                    WildChar = 0;
+                    v33 = MaxLen;
+                    if ( _YA )
+                        v33 = -MaxLen;
+                    v34 = linput(LineBuff, v33, xt->onesc);
+                    v47 = v34;
+					// If v34 == 0, nothing happens here
+                    if ( v34 >= 0 )
+                    {
+                        if ( v34 )
+                        {
+                            WildChar = LineBuff[v34 - 1];	// Look at last char in Buffer for wildcard
+                            if ( WildChar != '*' && WildChar != '+' && WildChar != '-' )
+	                            WildChar = 0;
+                        }
+                    }
+                    else
+                    {
+                        switch ( v34 + 30 )
+                        {
+                            case 0:
+                            case 8:
+                            case 13:
+                            case 25:
+								dispfld(xt, fld, v47 == -22, 1, 0, 0);
+					            skipping = 0;
+			                    return v47;
+								break;
+                            case 3:
+                                v56 = 1;
+                                break;
+                            case 4:
+                                v56 = 1;
+                                v47 = 0;
+								WildChar = 0;
+                                break;
+                            default:
+                                v51 = 1;
+                                break;
+                        }
+                    }
+                    if ( WildChar )
+						LineBuff[v47 - 1] = 0;
+                }
+				printf("modfld 573 - LineBuff = %s\n",LineBuff);
+                if ( echknum(LineBuff, fld->FLDtype))	// Is this a valid number?
+                    v32 = 1;
+                else
+                    v57 = 1;
+            }
+            while ( !v32 );
+d499 34
+a532 37
+            if ( !argC )
+            {
+                //v37 = clround(__strtod_internal(LineBuff, 0, 0), fld->FLDtype);
+                v37 = clround(strtod(LineBuff, 0), fld->FLDtype);
+				printf("modfld 583 - v37 = %G\n",v37);
+                *(double *)fld->FLDdata = v37;
+                if ( v37 == 0.0 )
+                    fld->FLDstat |= fld_ZERO;	// 0x0004u;
+                else
+                    fld->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+                fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010u;
+            }
+            if ( !v51 )
+                break;	// success, jump out
+            if ( v57 )
+                prerr(0, 0, 0);
+            if ( chkesc(xt->onesc, -v47, &btb->Curr_Mode) == -5 )
+                return -5;
+        }
+        if ( (!WildChar || AllowLookup) && (v52 && WildChar || v48 || jcheck(ptab, fld, WildChar, 1)) && (v52 && WildChar || rcheck(xt, fld, a2)) )
+            break;	// success, jump out.
+        if ( WildChar && !AllowLookup )
+            prerr("table lookup not allowed", 0, 1);
+        recalt = 1;
+        v57 = 1;
+        argC = 0;
+    }
+//-----------------------------------
+    dispfld(xt, fld, 1, a4a, 0, 0);
+    if ( WildChar )
+    {
+        v43 = 0;
+        v31 = "+";
+        if ( WildChar == '-' )
+            v31 = "-";
+        cdbcpystr(LineBuff, LineBuff, v31, v43);
+    }
+d535 2
+a536 2
+    if ( v57 )
+        prerr(0, 0, 0);
+d538 1
+a538 1
+	if ( v47 )
+d548 3
+@

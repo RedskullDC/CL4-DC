@@ -19,13 +19,13 @@ int gettdfno(ENTAB *entab, int *TTno, char *FLDtype, bool UpdateTT)		// returns 
         __assert_fail("0", "gettdfno.c", 0x52u, "gettdfno");
 	//assert(entab);
 
-    if ( entab->entype == 2 && (unsigned short)(entab->TTno & 0xFC00) == 0xAC00 )	// Array variable. can be field in a table
+    if ( entab->entype == 2 && (entab->Enun.Enop.Enoper & 0xFC00) == 0xAC00 )	// Array variable. can be field in a table
     {
         entb = ENARR(entab->enleft);
-        *TTno		= entb->TTno;			// 0 = Variable, non-zero = Field in a Table		** update caller mem **
-        fno			= entb->RecNo;			// destination field no
+        *TTno		= entb->Enun.Enref.TTno;		// 0 = Variable, non-zero = Field in a Table		** update caller mem **
+        fno			= entb->Enun.Enref.VarNum;		// destination field no
         TTptr		= &ttab[*TTno];
-        rtdget(TTptr);						// seems pointless, but rtdget() will throw _asserts if TTptr->rtd invalid
+        rtdget(TTptr);								// seems pointless, but rtdget() will throw _asserts if TTptr->rtd invalid
         fld			= &TTptr->TTfields[fno];
 
 		Subscript = evalint(ENARR(entab->enright));	// 1 based at this point
@@ -66,8 +66,8 @@ int gettdfno(ENTAB *entab, int *TTno, char *FLDtype, bool UpdateTT)		// returns 
     }
 	else if ( entab->entype == 1 )				// Return a variable value. Can be field in a table.
 	{
-		*TTno	= entab->TTno;					// TTno is a multi-use field depending on entab->entype
-		fno		= entab->RecNo;
+		*TTno	= entab->Enun.Enref.TTno;		// Enun is a multi-use field depending on entab->entype
+		fno		= entab->Enun.Enref.VarNum;
 		TTptr	= &ttab[*TTno];
 		rtdget(TTptr);							// seems pointless, but rtdget() will throw _asserts if TTptr invalid
 		*FLDtype = TTptr->TTfields[fno].FLDtype;

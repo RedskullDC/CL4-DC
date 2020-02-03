@@ -74,7 +74,7 @@ void prpipe(SFTAB *sftab)
 			}
 		}
 
-		printf(v3);
+		printf("%s",v3);					// stop compiler warning on later GCC (format not a string literal and no format arguments)
         prtfid(sftab->AliasEnt);
         if ( sftab->FileNameEnt )			// takes precedence over field 2
 			prtfid(sftab->FileNameEnt);

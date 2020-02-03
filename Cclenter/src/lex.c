@@ -9,7 +9,7 @@
 #include "cl4.h"
 #include "lvarnames.h"			// for bit field values
 
-int Lex(_IO_FILE *stream)
+int Lex(FILE *stream)
 {
     char	*v6;
     int		NextState;
@@ -228,7 +228,7 @@ int Lex(_IO_FILE *stream)
     }
 }
 
-int Lex_GetSChar(_IO_FILE *fp, int *Rstart, int *Rend)
+int Lex_GetSChar(FILE *fp, int *Rstart, int *Rend)
 {
     char	*v12;
 	int		NextState;
@@ -246,7 +246,7 @@ int Lex_GetSChar(_IO_FILE *fp, int *Rstart, int *Rend)
 _L185_0:
         while ( 1 )
         {
-            CharRead = _IO_getc(fp);
+            CharRead = getc(fp);
             if ( CharRead != '\t' )
             {
                 if ( CharRead != ' ' )
@@ -393,7 +393,7 @@ LABEL_7:
     }
 }
 
-int Lex_GetChar(_IO_FILE *stream)
+int Lex_GetChar(FILE *stream)
 {
     char	*v5;
 	int		CharRead;
@@ -404,7 +404,7 @@ int Lex_GetChar(_IO_FILE *stream)
     v5 = 0;
     while ( 2 )
     {
-        CharRead = _IO_getc(stream);
+        CharRead = getc(stream);
         if ( CharRead == -1 )
             return -1;
         switch ( NextState )

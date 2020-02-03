@@ -1,0 +1,695 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2020.01.27.14.55.49;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.07.22.04.55.23;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.10.30.05.20.04;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.05.04.14.50;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@prior to X64 conversion
+@
+text
+@#ifndef prdebug_C
+#define prdebug_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <sys/types.h>	// for umask()
+#include <sys/stat.h> 
+#include "DBdefs.h"
+#include "cl4.h"
+
+// Not implemented, web only:
+
+int dbfd = -1;			// default to debug file not open
+
+void lockdebug(int LockMode)
+{
+	if ( lseek64(dbfd, 0LL, 0) < 0 || lockf64(dbfd, LockMode, 1LL) < 0 )
+		dberror(-123, -1, 0);	// dead end error condition
+}
+
+void opendebug(void)
+{
+	char *v1;
+	char *v2;
+	__mode_t umask_sav;
+
+	if ( dbfd < 0 )
+	{
+		v1 = getevar("CLDEBUG");
+		v2 = strchr(v1, ':');
+		if ( !v2 || (*v2 = 0, !v2[1]) )
+		{
+			if ( !isCGI )
+				*v1 = 0;
+		}
+		
+		if ( *v1 )
+		{
+			umask_sav = umask(0);
+			//dbfd = open64(v1, 0x42);
+			dbfd = open64(v1, 0102, 0666);
+			umask(umask_sav);
+
+			if ( dbfd < 0 )
+			{
+				syserror("can't open debug file - %s", v1);
+				exit(1);
+			}
+		}
+		else
+			debuglogging = 0;
+	}
+}
+
+// used by debug routines 
+
+char	buf[1024];
+char	buf1[1024];
+char	buf2[1024];
+int		l;
+int		l1;
+int		l2;
+
+void prdebcon(int LineNo, bool Condition, int CurrPTno)		// debug show condition : TRUE or FALSE
+{
+    BTAB	*btb;
+	short	cy_sav;
+	short	cx_sav;
+	int		ErrorCode = 0;      
+	char	Buffer[128];
+	
+    if ( debuglogging && dbfd < 0 )
+		opendebug();
+    
+	for ( btb = btab; btb->BlockName[0]; btb++ )
+    {
+        if ( CurrPTno >= btb->StartLine && CurrPTno <= btb->EndLine )
+            break;
+    }
+	if ( isCGI || debuglogging )
+	{
+		sprintf(buf, "[%d] %s: [%s] ", getpid(), pname, btb->BlockName);
+		sprintf(buf1, "ln %d, condition %s\n", LineNo, (Condition ? "true" : "false"));
+		l	= strlen(buf);
+		l1	= strlen(buf1);
+		lockdebug(1);
+		if ( lseek64(dbfd, 0LL, SEEK_END) < 0 || write(dbfd, buf, l) != l || write(dbfd, buf1, l1) != l1 )
+			ErrorCode = -121;
+		lockdebug(0);
+		if ( ErrorCode )
+		  dberror(ErrorCode, -1, 0);
+	}
+	else
+	{
+		cx_sav = _cx;	// save current x/y values, and restore after debug line display
+		cy_sav = _cy;
+		qat(1, _li);                 // first char of last line
+		eprint("[%s] ln %d, condition %s ", btb->BlockName, LineNo, (Condition ? "true" : "false"));
+
+		if ( linput(Buffer, 0, 0) )	// wait for a keypress.
+			debug = 0;
+
+		_cx = 1;
+		_cy = _li;
+		erase_line();	// wipe debug message, and return pointer to previous location
+
+		_cx = cx_sav;
+		_cy = cy_sav;
+	}
+}
+
+void prdebass(int LineNo, ENTAB *entab, int CurrPTno)	// debug show assignment : VARIABLE = VALUE
+{
+    BTAB	*btb;
+    TDesc	*TTptr;
+    FLDdesc *flda;
+    
+    int		FieldNo2;
+	int		ErrorCode = 0;      
+    int		TTno;
+	short	cy_sav;
+    short	cx_sav;
+    char	Buffer[2];
+    char	a3[1032];
+	char	FLDtype;
+	
+    if ( debuglogging && dbfd < 0 )
+		opendebug();
+    
+	for ( btb = btab; btb->BlockName[0]; btb++ )
+    {
+        if ( CurrPTno >= btb->StartLine && CurrPTno <= btb->EndLine )
+            break;
+    }
+
+	if ( isCGI || debuglogging )
+	{
+		sprintf(buf, "[%d] %s: [%s] ", getpid(), pname, btb->BlockName);
+		if (entab->entype == 1 || entab->entype == 2)
+		{
+			FieldNo2 = (signed short)gettdfno(entab, &TTno, &FLDtype, 0);
+			TTptr	 = &ttab[TTno];
+			flda	 = &TTptr->TTfields[FieldNo2];
+
+			if ( TTno )
+				sprintf(buf1, "ln %d, %s.%d = ", LineNo, TTptr->TableAlias, FieldNo2 + 1);			// Table field
+			else
+				sprintf(buf1, "ln %d, %sariable = ", LineNo, (flda->FLDelemID ? "array v": "v"));	// Normal variable or Array variable
+
+			if ( flda->FLDtype == 'C' )
+				sprintf(buf2, "'%s'\n", convstr(fldtobuf(a3, flda, 0), true));	// encode contrcol chars
+			else
+				sprintf(buf2, "%s\n", convstr(fldtobuf(a3, flda, 0), true));
+		}
+		else
+		{
+			sprintf(buf1, "ln %d, constant = ", LineNo);
+			switch (entab->entype)
+			{
+				case 4:
+					sprintf(buf2, "(float) %f", *(float *)&entab->TTno);
+					break;
+				case 8:
+					sprintf(buf2, "(long) %ld", *(int*)&entab->TTno);
+					break;
+				case 16:
+					sprintf(buf2, "(text) '%s'", (char *)&entab->TTno);
+					break;
+				default:
+					sprintf(buf2, "type=%#o, oper=%#o", entab->TTno, entab->entype);	// check order of variables!!!
+					break;
+			} 
+		}
+		
+		l	= strlen(buf);
+		l1	= strlen(buf1);
+		l2	= strlen(buf2);
+		
+		lockdebug(1);
+		if ( lseek64(dbfd, 0LL, SEEK_END) < 0 || write(dbfd, buf, l) != l || write(dbfd, buf1, l1) != l1 || write(dbfd, buf2, l2) != l2 )
+			ErrorCode = -121;
+		lockdebug(0);
+		
+		if ( ErrorCode )
+			dberror(ErrorCode, -1, 0);	// dead end exit
+	}
+	else
+	{
+		cx_sav = _cx;	// save current x/y, restore later
+		cy_sav = _cy;
+		qat(1, _li);	// column 1, last line of screen
+
+		if (entab->entype == 1 || entab->entype == 2)
+		{
+			FieldNo2 = (signed short)gettdfno(entab, &TTno, &FLDtype, 0);
+			TTptr	 = &ttab[TTno];
+			flda	 = &TTptr->TTfields[FieldNo2];
+			eprint("[%s] ", btb->BlockName);
+			
+			if ( TTno )
+				eprint("ln %d, %s.%d = ", LineNo, TTptr->TableAlias, FieldNo2 + 1);			// Table field
+			else
+				eprint("ln %d, %sariable = ", LineNo, (flda->FLDelemID ? "array v": "v"));	// Normal variable or Array variable
+
+			eprint("%s ", fldtobuf(a3, flda, 0));
+		}
+		else
+		{
+			eprint("[%s] ln %d, constant = ", btb->BlockName, LineNo);
+			switch (entab->entype)
+			{
+				case 0x04:
+					eprint("(float) %f", *(float *)&entab->TTno);
+					break;
+				case 0x08:
+					eprint("(long) %ld", *(int*)&entab->TTno);
+					break;
+				case 0x10:
+					eprint("(text) '%s'", (char *)&entab->TTno);
+					break;
+				default:
+					eprint("type=%#o, oper=%#o", entab->TTno, entab->entype);	// check order of variables!!!
+					break;
+			} 
+		}
+
+		if ( linput(Buffer, 0, 0) )		// wait for keypress
+			debug = 0;
+
+		_cx = 1;						// left side of screen
+		_cy = _li;						// last line
+		erase_line();
+
+		_cx = cx_sav;					// restore x/y screen values
+		_cy = cy_sav;
+	}
+}
+
+#endif
+@
+
+
+1.3
+log
+@tidyup
+@
+text
+@d17 1
+a17 4
+	int v1; // edx@@1
+
+	v1 = lseek64(dbfd, 0LL, 0);
+	if ( v1 < 0 || lockf64(dbfd, LockMode, 1LL) < 0 )
+d23 3
+a25 3
+	char *v1; // esi@@2
+	char *v2; // eax@@2
+	__mode_t v3; // edi@@8
+d39 5
+a43 3
+			v3 = umask(0);
+			dbfd = open64(v1, 'B');
+			umask(v3);
+a50 1
+		{
+a51 1
+		}
+d64 1
+a64 1
+void prdebcon(int LineNo, int Condition, int CurrPTno)		// show condition : TRUE or FALSE
+d84 2
+a85 2
+		l = strlen(buf);
+		l1 = strlen(buf1);
+d112 1
+a112 1
+void prdebass(int LineNo, ENTAB *entab, int CurrPTno)	// show assignment : VARIABLE = VALUE
+d151 1
+a151 1
+				sprintf(buf2, "'%s'\n", convstr(fldtobuf(a3, flda, 0), 1));
+d153 1
+a153 1
+				sprintf(buf2, "%s\n", convstr(fldtobuf(a3, flda, 0), 1));
+d175 3
+a177 3
+		l = strlen(buf);
+		l1 = strlen(buf1);
+		l2 = strlen(buf2);
+a192 1
+	//    if ( (unsigned short)(entab->entype - 1) <= 1u )	// 1 or 2
+d212 1
+a212 1
+				case 4:
+d215 1
+a215 1
+				case 8:
+d218 1
+a218 1
+				case 16:
+d227 1
+a227 1
+		if ( linput(Buffer, 0, 0) )	// wait for keypress
+d230 2
+a231 2
+		_cx = 1;
+		_cy = _li;
+d234 1
+a234 1
+		_cx = cx_sav;	// restore x/y screen values
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d6 2
+a11 2
+//opendebug()
+//lockdebug()
+d13 12
+a24 1
+void prdebcon(int LineNo, int Condition, int a3)
+d26 31
+a56 8
+    BTAB *btb; // esi@@4
+    //char *v7; // eax@@18
+    //int ErrorCode; // [sp+1Ch] [bp-1Ch]@@1
+    short v9; // [sp+20h] [bp-18h]@@18
+    short v10; // [sp+24h] [bp-14h]@@18
+    char Buffer[128]; // [sp+2Ah] [bp-Eh]@@20
+
+// Don't currently support cgi or debuglogging!!!
+d58 1
+d60 19
+a78 4
+    //ErrorCode = 0;                              // print debug condition line
+    //if ( debuglogging && dbfd < 0 )
+    //    opendebug();
+    for ( btb = btab; btb->BlockName[0]; ++btb )
+d80 1
+a80 1
+        if ( a3 >= btb->StartLine && a3 <= btb->EndLine )
+d83 26
+a108 2
+	v10 = _cx;	// save current x/y values, and restore after debug line display
+	v9 = _cy;
+d110 3
+a112 16
+	qat(1, _li);                             // first char of last line
+	//if ( Condition )
+	//	v7 = "true";
+	//else
+	//	v7 = "false";
+	eprint("[%s] ln %d, condition %s ", btb->BlockName, LineNo, (Condition ? "true" : "false"));
+
+	if ( linput(Buffer, 0, 0) )	// wait for a keypress.
+		debug = 0;
+	
+	_cx = 1;
+	_cy = _li;
+	erase_line();
+
+	_cx = v10;
+	_cy = v9;
+d115 1
+a115 1
+void prdebass(int LineNo, ENTAB *entab, signed int arg8)
+a117 1
+    int		FieldNo2;
+d121 3
+d127 1
+a127 1
+    int		TTno;
+d129 5
+a133 5
+    char	a3[1032]; // [sp+4Fh] [bp-409h]@@19
+
+// Don't currently support cgi or debuglogging!!!
+
+    for ( btb = btab; btb->BlockName[0]; ++btb )
+d135 1
+a135 1
+        if ( arg8 >= btb->StartLine && arg8 <= btb->EndLine )
+d139 1
+a139 20
+    cx_sav = _cx;	// save current x/y, restore later
+    cy_sav = _cy;
+    qat(1, _li);	// column 1, last line of screen
+
+//    if ( (unsigned short)(entab->entype - 1) <= 1u )	// 1 or 2
+    if (entab->entype == 1 || entab->entype == 2)
+    {
+        FieldNo2 = (signed short)gettdfno(entab, &TTno, &FLDtype, 0);
+        TTptr	 = &ttab[TTno];
+        flda	 = &TTptr->TTfields[FieldNo2];
+        eprint("[%s] ", btb->BlockName);
+        
+		if ( TTno )
+            eprint("ln %d, %s.%d = ", LineNo, TTptr->TableAlias, FieldNo2 + 1);			// Table field
+        else
+            eprint("ln %d, %sariable = ", LineNo, (flda->FLDelemID ? "array v": "v"));	// Normal variable or Array variable
+
+		eprint("%s ", fldtobuf(a3, flda, 0));
+    }
+	else
+d141 18
+a158 2
+		eprint("[%s] ln %d, constant = ", btb->BlockName, LineNo);
+		switch (entab->entype)
+d160 29
+a188 13
+			case 4:
+				eprint("(float) %f", *(float *)&entab->TTno);
+				break;
+			case 8:
+				eprint("(long) %ld", *(int*)&entab->TTno);
+				break;
+			case 16:
+				eprint("(text) '%s'", (char *)&entab->TTno);
+				break;
+			default:
+				eprint("type=%#o, oper=%#o", entab->TTno, entab->entype);	// check order of variables!!!
+				break;
+		} 
+d190 5
+d196 41
+a236 2
+	if ( linput(Buffer, 0, 0) )	// wait for keypress
+        debug = 0;
+d238 3
+a240 6
+    _cx = 1;
+    _cy = _li;
+    erase_line();
+
+    _cx = cx_sav;	// restore x/y screen values
+    _cy = cy_sav;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d15 3
+a17 6
+    BTAB *i; // esi@@4
+    __pid_t v4; // eax@@10
+    char *v5; // eax@@10
+    int v6; // edx@@12
+    char *v7; // eax@@18
+    int ErrorCode; // [sp+1Ch] [bp-1Ch]@@1
+d25 1
+a25 1
+    ErrorCode = 0;                              // print debug condition line
+d28 1
+a28 1
+    for ( i = btab; i->BlockName[0]; ++i )
+d30 1
+a30 1
+        if ( a3 >= i->StartLine && a3 <= i->EndLine )
+d33 19
+a51 41
+    /*
+	if ( isCGI || debuglogging )
+    {
+        v4 = getpid();
+        sprintf(buf, "[%d] %s: [%s] ", v4, pname, i->BlockName);
+        v5 = "false";
+        if ( Condition )
+            v5 = "true";
+        sprintf(buf1, "ln %d, condition %s\n", LineNo, v5);
+        l = strlen(buf);
+        l1 = strlen(buf1);
+        lockdebug(1);
+        lseek64(dbfd, 0, 0, 2);
+        if ( v6 < 0 || write(dbfd, buf, l) != l || write(dbfd, buf1, l1) != l1 )
+            ErrorCode = -121;
+        lockdebug(0);
+        if ( ErrorCode )
+            dberror(ErrorCode, -1, 0);
+    }
+    else
+    {
+	*/
+        v10 = _cx;	// save current x/y values, and restore after debug line display
+        v9 = _cy;
+
+        qat(1, _li);                             // first char of last line
+        if ( Condition )
+            v7 = "true";
+		else
+			v7 = "false";
+        eprint("[%s] ln %d, condition %s ", i->BlockName, LineNo, v7);
+
+        if ( linput(Buffer, 0, 0) )	// wait for a keypress.
+            debug = 0;
+        _cx = 1;
+        _cy = _li;
+        erase_line();
+
+        _cx = v10;
+        _cy = v9;
+    //}
+d56 9
+a64 27
+    BTAB *btb; // esi@@4
+    __pid_t v4; // eax@@10
+    const char *v5; // eax@@12
+    const char *v6; // eax@@14
+    int FieldNo; // edi@@19
+    FLDdesc *v8; // eax@@19
+    char *v9; // eax@@21
+    char *v10; // eax@@26
+    char *v11; // eax@@27
+    int v12; // edx@@29
+    char *v13; // eax@@38
+    char *v14; // eax@@40
+    int FieldNo2; // edi@@45
+    char *v16; // eax@@47
+    double v17; // [sp+4h] [bp-454h]@@38
+    char *v18; // [sp+4h] [bp-454h]@@40
+    double v19; // [sp+8h] [bp-450h]@@12
+    char *v20; // [sp+8h] [bp-450h]@@14
+    int ErrorCode; // [sp+30h] [bp-428h]@@1
+    TDesc *v22; // [sp+34h] [bp-424h]@@19
+    TDesc *TTptr; // [sp+34h] [bp-424h]@@45
+    FLDdesc *fld; // [sp+38h] [bp-420h]@@19
+    FLDdesc *flda; // [sp+38h] [bp-420h]@@45
+    short v26; // [sp+3Ch] [bp-41Ch]@@36
+    short v27; // [sp+40h] [bp-418h]@@36
+    char Buffer[2]; // [sp+46h] [bp-412h]@@53
+    int TTno; // [sp+48h] [bp-410h]@@19
+d66 1
+a66 1
+    char a3[1032]; // [sp+4Fh] [bp-409h]@@19
+a69 3
+    ErrorCode = 0;                              // print debug assignment line
+    //if ( debuglogging && dbfd < 0 )
+    //    opendebug();
+a74 79
+    /*if ( isCGI || debuglogging )
+    {
+        v4 = getpid();
+        sprintf(buf, "[%d] %s: [%s] ", v4, pname, btb->BlockName);
+        if ( (unsigned short)(entab->entype - 1) <= 1u )
+        {
+            FieldNo = (signed short)gettdfno(entab, &TTno, &FLDtype, 0);
+            v22 = &ttab[TTno];
+            v8 = v22->TTfields;
+            fld = &v8[FieldNo];
+            if ( TTno )
+            {
+                sprintf(buf1, "ln %d, %s.%d = ", LineNo, v22->TableAlias, FieldNo + 1);
+            }
+            else
+            {
+                if ( v8[FieldNo].FLDelemID )
+                    v9 = "array v";
+                else
+                    v9 = "v";
+                sprintf(buf1, "ln %d, %sariable = ", LineNo, v9);
+            }
+            if ( fld->FLDtype == 'C' )
+            {
+                v10 = fldtobuf(a3, fld, 0);
+                v20 = convstr(v10, 1);
+                v6 = "'%s'\n";
+            }
+            else
+            {
+                v11 = fldtobuf(a3, fld, 0);
+                v20 = convstr(v11, 1);
+                v6 = "%s\n";
+            }
+        }
+        else
+        {
+            sprintf(buf1, "ln %d, constant = ", LineNo);
+            if ( entab->entype == 4 )
+            {
+                v19 = *(float *)&entab->TTno;
+                v5 = "(float) %f\n";
+                sprintf(buf2, v5, *(_QWORD *)&v19);
+                goto LABEL_29;
+            }
+            if ( entab->entype == 8 )
+            {
+                v20 = *(char **)&entab->TTno;
+                v6 = "(long) %ld\n";
+            }
+            else
+            {
+                if ( entab->entype != 16 )
+                {
+                    HIDWORD(v19) = entab->TTno;
+                    LODWORD(v19) = entab->entype;
+                    v5 = "type=%#o, oper=%#o\n";
+	                sprintf(buf2, v5, *(_QWORD *)&v19);
+		            goto LABEL_29;
+                }
+                v20 = (char *)&entab->TTno;
+                v6 = "(text) '%s'\n";
+            }
+        }
+        sprintf(buf2, v6, v20);
+LABEL_29:
+        l = strlen(buf);
+        l1 = strlen(buf1);
+        l2 = strlen(buf2);
+        lockdebug(1);
+        lseek64(dbfd, 0, 0, 2);
+        if ( v12 < 0 || write(dbfd, buf, l) != l || write(dbfd, buf1, l1) != l1 || write(dbfd, buf2, l2) != l2 )
+            ErrorCode = -121;
+        lockdebug(0);
+        if ( ErrorCode )
+            dberror(ErrorCode, -1, 0);
+        return;
+    }
+	*/
+d76 3
+a78 3
+// start of normal screen handler code
+    v27 = _cx;  // save current x/y, restore later
+    v26 = _cy;
+d80 2
+a81 2
+    qat(1, _li);	// column 1, last line of screen
+    if ( (unsigned short)(entab->entype - 1) <= 1u )
+d84 2
+a85 2
+        TTptr = &ttab[TTno];
+        flda = &TTptr->TTfields[FieldNo2];
+d87 3
+a89 2
+        if ( TTno )
+            eprint("ln %d, %s.%d = ", LineNo, TTptr->TableAlias, FieldNo2 + 1);
+d91 3
+a93 8
+        {
+            if ( flda->FLDelemID )	// array subscript
+                v16 = "array v";
+            else
+                v16 = "v";
+            eprint("ln %d, %sariable = ", LineNo, v16);
+        }
+        eprint("%s ", fldtobuf(a3, flda, 0));
+d117 1
+d122 2
+a123 2
+    _cx = v27;	// restore x/y screen values
+    _cy = v26;
+@

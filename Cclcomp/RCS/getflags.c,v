@@ -1,0 +1,348 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.06.21.04.48.51;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.07.03.15.14;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@old version
+@
+
+
+1.2
+log
+@move to common code
+@
+text
+@#ifndef GETFLAGS_C
+#define GETFLAGS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for strtol, strtod etc.
+//#include "DBdefs.h"
+//#include "cl4.h"
+
+typedef struct 
+{
+	short	FlagIndex;	//0 
+	short	FlagType;		//2
+} FLAG;
+
+char *arg(int *argc, char ***argv, short FlagType)
+{
+  char *result; // eax@@3
+  char **v4; // ecx@@4
+
+
+  if ( (**argv)[1] || FlagType == 4 )
+  {
+    result = (char *)(**argv + 1);
+  }
+  else
+  {
+    --*argc;
+    v4 = *argv;
+    ++*argv;
+    if ( *argc )
+      result = (char *)v4[1];
+    else
+      result = 0;
+  }
+  return result;
+}
+
+int flagindex(char *s, char c, FLAG *flag)
+{
+	char *v4;
+	int v6;
+	signed int v8;
+	short Index;
+	char v5;
+	
+	//printf ("flagindex - s = %s, c = %C, \n",s,c);
+
+	Index = 0;
+	v4 = s;	// example of index string passed in "D,I#,L*,C?"
+	while ( *v4 )
+	{
+		if ( *v4 == c )
+			goto LABEL_10;
+		while ( *v4 != ':' )
+		{
+			v5 = *v4++;
+			if ( v5 == ',' )
+				Index++;
+			if ( !*v4 )
+			break;
+			if ( *v4 == c )
+				goto LABEL_10;
+		}
+	}
+
+	v6 = 0;
+	if ( *v4 == c )
+	{
+LABEL_10:
+		flag->FlagIndex = Index;
+		v4++;
+		v8 = *v4;
+		switch (v8)
+		{
+		case '*':
+			flag->FlagType = 3;	// string argument
+			return 1;
+			break;
+
+		case '?':
+			flag->FlagType = 4;	// Single char value
+			return 1;
+			break;
+
+		case '#':
+			if ( v4[1] == '#' )
+				flag->FlagType = 2;			// ## = long integer
+			else
+				flag->FlagType = 1;			// #  = short integer
+			return 1;
+			break;
+		}
+		//printf ("flagindex - 96 v8 = %C \n",v8);
+
+		if ( v8 != ',' )
+		{
+			if ( v8 <= ',' )
+			{
+				if ( v8 <= '#' )
+				{
+					if ( *v4 )
+						return 0;
+					flag->FlagType = 0;
+					return 1;
+				}
+				return 0;
+			}
+			if ( v8 != ':' )
+			{
+				return 0;
+			}
+		}
+		flag->FlagType = 0;	// ',' or ':' ??
+		return 1;
+	}
+	return v6;
+}
+
+int getflags(int *argc, char ***argv, char *flags, ...)
+{
+	char *v3; // ecx@@1
+	int v5; // edx@@2
+	char *v9; // edx@@5
+	char *v10; // eax@@8
+	char *v11; // eax@@18
+	char **v12; // edx@@19
+	int v14; // [sp+14h] [bp-A4h]@@1
+	FLAG Flag; // [sp+1Ch] [bp-9Ch]@@6
+	void *v16[38]; // [sp+20h] [bp-98h]@@2
+	va_list va; // [sp+CCh] [bp+14h]@@1
+
+	va_start(va, flags);		// grab any arguments which follow flags
+	v3 = va_arg(va,char*);
+	v5 = 0;
+	while (v3)
+	{
+		v16[v5++] = v3;
+		v3 = va_arg(va,char*);
+	}
+	v16[v5] = 0;
+
+	/*
+	v5 = 0;
+	while (v16[v5])
+	{
+		printf ("v16[%d] = x%08X\n",v5, v16[v5]);
+		v5++;
+	}
+	*/
+	v14 = 1;
+	--*argc;
+	v12 = *argv;
+	++*argv;
+	while ( *argc && *v12[1] == '-' )
+	{
+		//printf("argc = %d, %c\n", *argc, *v12[1]);
+		v9 = **argv + 1;
+		**argv = v9;											// Update caller memory directly
+		//printf("v9 = %s\n",v9);
+		if ( *v9 )
+		{
+			while (flagindex(flags, ***argv, &Flag))
+			{
+				//printf("Type = %d, Index = %d\n",Flag.FlagType,Flag.FlagIndex);
+				if ( Flag.FlagType )
+				{
+					v10 = arg(argc, argv, Flag.FlagType);
+					if ( v10 )
+					{
+						//printf("v10 = %s, Type = %d, Index = %d\n", v10, Flag.FlagType,Flag.FlagIndex);
+						if ( Flag.FlagType == 1 )             // string arg to short
+						{
+							*(short *)v16[Flag.FlagIndex] = strtol(v10, 0, 10);
+							goto LABEL_19;
+						}
+						if ( Flag.FlagType == 2 )             // string arg to long
+						{
+							*(int *)v16[Flag.FlagIndex] = strtol(v10, 0, 10);
+							goto LABEL_19;
+						}
+						if ( Flag.FlagType == 3 )
+						{
+							*(char**)v16[Flag.FlagIndex] = v10;// string argument
+							goto LABEL_19;
+						}
+						if ( Flag.FlagType == 4 )             // single char value
+						{
+							*(char*)v16[Flag.FlagIndex] = *v10;
+							goto LABEL_19;
+						}
+						//printf("return 0\n");
+						return 0;	// error exit					
+					}
+				}
+				*(int *)v16[Flag.FlagIndex] = 1;       // default = bool on?
+				v11 = **argv + 1;
+				**argv = v11;
+				if ( !*v11 )
+				goto LABEL_19;
+			}
+			return 0;					// ZERO = error return : No flags found
+		}
+
+LABEL_19:		
+		--*argc;
+		v12 = *argv;
+		++*argv;
+	}
+
+/*
+	printf("argc = %d, %s\n", *argc, **argv);
+	printf("flags= %s\n", flags);
+
+	v5 = 0;
+	while (v16[v5])
+	{
+		printf ("v16[%d] = x%08X, *() =x%08X\n",v5, v16[v5], *(int*)v16[v5]);
+		v5++;
+	}
+*/
+	return v14;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 1
+a6 1
+#include <stdlib.h>         // for strtol()
+d16 1
+a16 1
+char *arg(int *argc, const char ***argv, short FlagType)
+d19 1
+a19 1
+  const char **v4; // ecx@@4
+d39 1
+a39 1
+int flagindex(const char *s, char c, FLAG *flag)
+d41 7
+a47 9
+	short Index; // di@@1
+	const char *v4; // edx@@1
+	char v5; // al@@4
+	int v6; // esi@@9
+	//const char *v7; // edx@@10
+	signed int v8; // eax@@10
+	short v9; // ax@@23
+
+	printf ("flagindex - s = %s, c = %C, \n",s,c);
+d82 1
+a82 1
+			flag->FlagType = 4;	// SIngle char value
+d88 1
+a88 1
+				v9 = 2;			// ## = long integer
+d90 1
+a90 2
+				v9 = 1;			// #  = short integer
+			flag->FlagType = v9;
+d94 1
+a94 1
+		printf ("flagindex - 96 v8 = %C \n",v8);
+d114 1
+a114 1
+		flag->FlagType = 0;
+d120 1
+a120 1
+int getflags(int *argc, const char ***argv, char *s, ...)
+d122 1
+a122 2
+	char* v3; // ecx@@1
+	char *v4; // esi@@1
+d124 4
+a127 7
+	void **v6; // eax@@2
+	void *v7; // eax@@2
+	const char **v8; // edx@@3
+	const char *v9; // edx@@5
+	const char *v10; // eax@@8
+	const char *v11; // eax@@18
+	const char **v12; // edx@@19
+d133 1
+a133 1
+	va_start(va, s);
+d142 1
+d157 1
+a157 1
+		printf("argc = %d, %c\n", *argc, *v12[1]);
+d159 2
+a160 2
+		**argv = v9;
+		printf("v9 = %s\n",v9);
+d163 1
+a163 1
+			while (flagindex(s, ***argv, &Flag))
+d165 1
+a165 1
+				printf("Type = %d, Index = %d\n",Flag.FlagType,Flag.FlagIndex);
+d171 1
+a171 1
+						printf("v10 = %s, Type = %d, Index = %d\n", v10, Flag.FlagType,Flag.FlagIndex);
+d184 1
+a184 1
+							*(const char**)v16[Flag.FlagIndex] = v10;// string argument
+d192 1
+a192 1
+						printf("return 0\n");
+d210 2
+d213 1
+d221 1
+a221 1
+	
+@

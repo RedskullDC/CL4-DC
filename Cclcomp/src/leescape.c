@@ -39,7 +39,7 @@ int leescape(int PTno, int symbol2)
 	while (*v6)
 		v6 = &(*v6)->NextESC;
 
-    v8 = (ONESC *)getmem(16);		// sizeof(ONESC)
+    v8 = (ONESC *)getmem(sizeof(ONESC));		// sizeof(ONESC)
     *v6 = v8;
     
 	v8->OESCFlags = symbol2 == 1020;		// 1020 == on_key command

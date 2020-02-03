@@ -1,0 +1,125 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.06.19.06.56.02;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.13.14.33;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef LEFRESH_C
+#define LEFRESH_C
+
+int lefresh(PTAB *ptb)
+{
+
+    symbol = getsym();			// refresh without a block name is OK
+    if ( symbol != 930 && symbol )
+    {
+		ptb->TABno = getstrmem(syml + 1);
+		cdbcpystr(STRARR(ptb->TABno), sym, 0);
+        symbol = getsym();
+	}
+    return 1;		// always exit_success
+}
+
+int lescreen(PTAB *ptb)
+{
+    symbol = getsym();
+    if ( symbol != 930 && symbol )           // screen without a block name is OK
+    {
+		ptb->TABno = getstrmem(syml + 1);
+		cdbcpystr(STRARR(ptb->TABno), sym, 0);
+        symbol = getsym();
+        return 1;			// exit_success
+	}
+    else
+    {
+		if ( symbol == 930 )
+			loaderr(7, sym);					// "unexpected end of line"
+		else
+			loaderr(6, sym);					// "unexpected end of file"
+        return 0;
+	}
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 1
+a4 1
+int lefresh(PTAB *ptab)
+a5 2
+	short v1; // ax@@1
+    char *v2; // eax@@4
+d7 2
+a8 3
+    v1 = getsym();
+    symbol = v1;			// refresh without a block name is OK
+    if ( v1 != 930 && v1 )
+d10 2
+a11 3
+		ptab->TABno = getstrmem(syml + 1);
+        v2 = ptab->TABno ? &strarr.StringTable[ptab->TABno - 1] : 0;
+        cdbcpystr(v2, sym, 0);
+d14 1
+a14 1
+    return 1;
+d17 1
+a17 1
+int lescreen(PTAB *pt)
+d19 2
+a20 8
+	short v1; // ax@@1
+    int v2; // eax@@4
+    int result; // eax@@6
+    char *v4; // eax@@8
+
+    v1 = getsym();
+    symbol = v1;
+    if ( v1 != 930 && v1 )           // expects a block name
+d22 2
+a23 3
+		pt->TABno = getstrmem(syml + 1);
+        v4 = pt->TABno ? &strarr.StringTable[pt->TABno - 1] : 0;
+        cdbcpystr(v4, sym, 0);
+d25 1
+a25 1
+        result = 1;
+d30 1
+a30 1
+			v2 = 7;					// "unexpected end of line"
+d32 2
+a33 3
+			v2 = 6;					// "unexpected end of file"
+		loaderr(v2, sym);
+        result = 0;
+a34 1
+    return result;
+@

@@ -1,0 +1,50 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2016.09.08.03.36.36;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef WRITEPAGE_C
+#define WRITEPAGE_C
+
+#include "DBdefs.h"
+
+bool _writepg(DBinfo *DBptr, char *Buffer, unsigned int PageNo)
+{
+	int v3;
+	bool wrt_ok;
+
+	//printf("_writepg(DBptr: x%08X,Buffer: x%08X,PageNo x%04X (%4d)\n" ,DBptr,Buffer,PageNo,PageNo);
+
+	wrt_ok = false;
+	v3 = lseek64(DBptr->DBfilehandle, PageNo * DBptr->DBpgsize, 0);
+	if ( v3 >= 0 )
+	{
+		v3 = write(DBptr->DBfilehandle, Buffer, DBptr->DBpgsize) == DBptr->DBpgsize;
+		if ( v3 )
+			wrt_ok = true;
+	}
+	if ( !wrt_ok )
+		printf("_writepg: num=[%d]\n", PageNo);
+	return wrt_ok;
+}
+#endif
+@

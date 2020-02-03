@@ -1,0 +1,115 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.22.04.15.37;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.17.04.35.36;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@clean up
+@
+text
+@#ifndef REPLACEREC_C
+#define REPLACEREC_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int reprec(int TDno, int InvLock)
+{
+	TDesc	*TTptr;
+	char	*v3;
+	int		result;
+	signed int v9;
+	int		TTno;
+	int		ErrorCode;
+	short	v7;
+
+	//printf("reprec(TDno = %d, InvLock = %d)\n" ,TDno, InvLock);
+
+	TTptr = &ttab[TDno];
+	v9 = 0;
+	TTno = rtdget(TTptr);
+	v3 = TTptr->TDworkarea1;
+	tttorec(TDno, TTptr->TDworkarea1, 0);
+	//printf("reprec : TDlocked1 = x%02X\n",TTptr->TDlocked );
+	if ( (TTptr->TDlocked & 0x21) == 0x21 && (v9 = 1, cmpbuf(TTptr->TDworkarea2, v3, TTptr->TDrecsize)) )
+	{
+		//printf("reprec : v9 == 1\n");
+		if ( InvLock )
+			ulckrec(TDno);
+		result = 0;
+	}
+	else
+	{
+		//v6 = 0;
+		//if ( v9 )
+		//	v6 = TTptr->TDworkarea2;
+		//v7 = clputr(TTno, v3, 0, TTptr, v6);
+		v7 = clputr(TTno, v3, 0, TTptr, (v9? TTptr->TDworkarea2 : 0));
+		ErrorCode = v7;
+		if ( v7 < 0 )
+			dberror(v7, 0, TTno);
+		//printf("reprec : TDlocked2 = x%02X\n",TTptr->TDlocked );
+		if ( TTptr->TDlocked & 1 )
+		{
+			if ( InvLock )
+			{
+				ulckrec(TDno);
+			}
+			else
+			{
+				if ( cmpbuf(TTptr->TDworkarea2, v3, keysize(TTno)) )
+					cpybuf(TTptr->TDworkarea2, v3, TTptr->TDrecsize);
+			}
+		}
+		TTptr->TDlocked |= 0x0020u;
+		result = ErrorCode;
+	}
+	return result;
+}
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 3
+a11 5
+	TDesc *TTptr;
+	char *v3;
+	int result;
+	char *v6;
+	short v7;
+d13 3
+a15 2
+	int TTno;
+	int ErrorCode;
+d34 5
+a38 4
+		v6 = 0;
+		if ( v9 )
+			v6 = TTptr->TDworkarea2;
+		v7 = clputr(TTno, v3, 0, TTptr, v6);
+@

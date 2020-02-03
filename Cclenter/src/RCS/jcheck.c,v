@@ -1,0 +1,840 @@
+head	1.6;
+access;
+symbols;
+locks
+	leslie:1.6; strict;
+comment	@ * @;
+
+
+1.6
+date	2020.01.27.15.10.07;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2016.08.29.09.27.15;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.01.14.05.23.15;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.27.09.58.56;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.11.05.05.51;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.27.05.07.13;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.6
+log
+@prior to X64 conversion
+@
+text
+@#ifndef JOINCHECK_C
+#define JOINCHECK_C
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void dispjoin(PTAB *ptb, FLDdesc *fld, int TDno, bool show)
+{
+    XTAB	*xtb;
+    RTAB	*rtb;
+	int		fno;
+	int		TTno;
+    char	FLDtype;
+
+    dispfld(XTARR(ptb->TABno), fld, show, 0, 1, 0);
+    ptb++;
+
+    while ( ptb->OpCode != 950 )							// look for 'break' at end of current block
+    {
+		if ( (unsigned short)(ptb->OpCode - 500) <= 98u )	// file operation.
+        {
+			rtb = RTARR(ptb->TABno);
+            if ( rtb->TTno == TDno )						// if fileop is on same TD, no need to go any further!
+				break;
+		}
+        if ( (unsigned short)(ptb->OpCode - 1) <= 48u )
+        {
+			xtb = XTARR(ptb->TABno);
+
+			if ( xtb->Flags & xtb_JOIN);	// 0x0010 JOIN command follows this accept field
+				return;
+
+			if ( xtb->Flags & xtb_DISPLAY)	// 0x0004 DISPLAY ONLY field
+            {
+                fno = gettdfno(ENARR(xtb->VarExpNo), &TTno, &FLDtype, 1);
+				assert(fno >= 0);
+				
+				if ( TTno == TDno )
+                {
+					xtb = XTARR(ptb->TABno);
+					dispfld(xtb, &ttab[TDno].TTfields[fno], show, 0, 1, 0);
+				}
+			}
+		}
+        ptb++;
+    }
+}
+
+// join check?
+
+bool jcheck(PTAB *ptb, FLDdesc *fld, int wchar, int a4)
+{
+    RTAB	*rt;
+	ENTAB	*v10;
+	ENTAB	*v11;
+	ENTAB	*v12;
+	XTAB	*xt;
+	TDesc	*TTptr;
+	FLDdesc *v37;
+
+	int		v9;
+	int		fno;
+	bool	NOJOIN;
+	bool	Forward;
+	bool	WildChar;
+	int		TTno;
+	
+	short	retcode;
+	
+    char	prmt[112];			// prompt string expression
+	char	v46[64];
+	char	format[64];
+	ENTAB	ent;
+	char	v36;
+	char	FLDtype;
+	
+    xt = XTARR(ptb->TABno);
+    if ( !(xt->Flags & (xtb_JOIN|xtb_NOJOIN)))	// 0x0110			// this field has no "join" constraint, return success!
+        return true;
+    
+	NOJOIN = ((xt->Flags & xtb_NOJOIN) != 0);	// 0x0100			// 'nojoin' no match should exist
+    
+	WildChar	= ( wchar == '*' || wchar == '+' || wchar == '-' );	// Is last character a wildcard?  ( '*' == '+' )
+	Forward		= WildChar && wchar != '-';							// Search direction if WildChar found
+
+    rt  = RTARR(xt->RangeID);
+	fno	= gettdfno(ENARR(rt->enleft), &TTno, &FLDtype, 1);
+	assert(fno >= 0);
+    
+	v37 = &ttab[TTno].TTfields[fno];
+    
+	if ( !WildChar )
+    {
+        if ( fld->FLDstat & fld_ZERO )
+        {
+            rfree(rt->TTno, fno);
+            dispjoin(ptb, fld, rt->TTno, false);
+            return true;
+        }
+        fldtobuf(v46, fld, 0);			// are 64 chars really enough for some string fields?
+    }
+    
+	memset((char*)&ent, 0, sizeof(ENTAB));		// Fudge our own local ENTAB record. :o)
+    ent.enleft	= rt->enleft;
+    ent.entype	= 2;
+    ent.TTno	= 0xA800u;				// insert '=' OpCode
+    ent.enright	= rt->enright;
+    calculate(&ent);
+    
+	TTptr = &ttab[TTno];
+    TTptr->TTselect = (EXPR *)fretre(TTptr->TTselect, 0);
+    
+	if ( rt->WhereEXP )	// Has a "where" selection been specified in join command?
+    {
+        v9	= rt->WhereEXP;
+        v10 = enarr.TableAddr;
+		//DumpBlock(&v10[v9],20);
+		//DumpBlock(&v10[v9 - 1],20);
+
+        if ( *((short *)&v10[v9] - 2) )		// ***** wrong *****
+        {
+            v11 = rt->WhereEXP ? &v10[v9 - 1] : 0;
+            v12 = &enarr.TableAddr[v11->enleft - 1];
+        }
+        else
+            v12 = 0;									// error, will throw nil pointer exception
+		v12->entype = 2;
+
+		if ( fld->FLDtype != 'C' )						// override expression constraints
+        {
+            if ( WildChar )
+				v12->TTno = Forward ? 0x30u : 0x18u;	// 0x30 == greater than or equal '>=', 0x18 == less than or equal '<='
+            else
+                v12->TTno = 0x10u;						// 0x10 == equal to	'='
+        }
+        TTptr->TTselect = getexpr(ENARR(rt->WhereEXP), TTno);	// "Where" expression specified in the join command. Use it!
+    }
+    else
+        TTptr->TTselect = bldexpr(TTno, fno, wchar);			// Build an expression including all key fields up to fno
+    
+    if ( !WildChar || (v36 = 'p', Forward) )
+        v36 = 'n';
+    
+	rt->OpType &= 0xFFF9;			// 1111 1111 1111 1001		
+	if ( !WildChar || Forward )
+        rt->OpType |= 0x0002;
+    else
+        rt->OpType |= 0x0004;
+
+    retcode = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+    if ( retcode >= 0 )
+    {
+        ent.enleft	= rt->enright;
+        ent.enright = rt->enleft;
+        exptobuf(prmt, ENARR(xt->Prompt_exp), 0);
+        
+		if ( prompt_0 )					// blow away old prompt string
+            mfree_0(prompt_0);
+        
+        if ( Forward )
+			prompt_0 = mstrcpy(prmt, " <y>es <n>ext <p>rev or <q>uit ", 0);
+		else
+			prompt_0 = mstrcpy(prmt, " <y>es <p>rev <n>ext or <q>uit ", 0);
+        
+		while ( v36 == 'n' || v36 == 'p' )
+        {
+            retcode = reffile(rt);
+            if ( retcode )
+            {
+                if ( NOJOIN )
+                    retcode = 0;
+                else
+                {
+                    rfree(TTno, fno);
+                    v36 = 120;	// lower case 'x' ?
+                }
+            }
+            else if ( NOJOIN )
+            {
+				prerr("record exists", 0,1);
+                return false;
+            }
+
+            v37->FLDstat &= 0xFFEFu;	// ~0x0010  == fld_DATA_AVAIL
+            if ( !NOJOIN )
+            {
+                calculate(&ent);
+                dispjoin(ptb, fld, TTno, retcode == 0);
+            }
+            if ( !retcode )
+            {
+                if ( WildChar )
+                {
+                    qat(1, _li - 1);					// Move to column 1 , last screen line
+
+                    if ( v36 == 'n' )					// show prompt, get response
+						v36 = reply(prompt_0, "npyq");
+                    else
+						v36 = reply(prompt_0, "pnyq");
+                    erase_line();						// wipe prompt line
+                    
+					if ( v36 == 'q' )
+                    {
+                        rfree(TTno, fno);
+                        v37->FLDstat &= 0xFFEFu;	// ~0x0010  == fld_DATA_AVAIL
+                        calculate(&ent);
+                        dispjoin(ptb, fld, TTno, false);
+                    }
+                    else if ( v36 == 'n' || v36 == 'p' )	// set direction flag
+                    {
+						rt->OpType &= 0xFFF9;				//  1111 1111 1111 1001		// clear bits 0x02 and 0x04
+                        if ( v36 == 'p' )
+							rt->OpType |= 0x0004;	// backwards
+						else
+							rt->OpType |= 0x0002;	// forwards
+                    }
+                }
+                else
+                {
+                    v36 = 'y';						// indicate we want this record being shown
+                }
+            }
+        } // while
+    }
+    else
+    {
+        dberror(retcode, 0, rtdget(TTptr));			// dead end error 
+    }
+
+    if ( v36 == 'y' && xt->Flags & xtb_LOCK && rdrec(TTno, 1) == -10 )
+    {
+        prerr("record locked", 0, 1);
+        return false;
+    }
+    if ( retcode && v36 != 'q' && a4 )
+    {
+        if ( WildChar )
+			prerr("no more in %s",TTptr->TableName,1);
+        else
+        {
+            sprintf(format, "'%s' not found in %%s", v46);	// %%s converted to %s in format buffer
+			prerr(format,TTptr->TableName, 1);				// prerr replaces it with 'Tablename'
+        }
+    }
+    return v36 == 'y';
+}
+
+
+#endif
+
+@
+
+
+1.5
+log
+@clean up
+@
+text
+@d14 5
+a18 5
+    XTAB *xtb; // edx@@12
+    RTAB *rtb; // eax@@7
+    int FieldNo; // edi@@19
+    int TTno;
+    char FLDtype;
+d23 1
+a23 1
+    while ( ptb->OpCode != 950 )	// 'break'
+d25 1
+a25 1
+		if ( (unsigned short)(ptb->OpCode - 500) <= 98u )
+d28 1
+a28 1
+            if ( rtb->TTno == TDno )
+d40 2
+a41 2
+                FieldNo = gettdfno(ENARR(xtb->VarExpNo), &TTno, &FLDtype, 1);
+				assert(FieldNo >= 0);
+d46 1
+a46 1
+					dispfld(xtb, &ttab[TDno].TTfields[FieldNo], show, 0, 1, 0);
+d56 1
+a56 1
+int jcheck(PTAB *ptb, FLDdesc *fld, int a3, int a4)
+a61 1
+	EXPR	*expr;
+d65 4
+a68 8
+	
+    const char *v28;
+	char	*v30;
+	char	*v32;
+	
+    int		v9;
+	int		FieldNo2;
+	bool	v39;
+d73 1
+a73 3
+    short	FieldNo;
+	short	v19;
+	short	v20;
+d75 1
+a75 1
+    char	s[112];
+a81 1
+	//printf("jcheck\n");
+d83 2
+a84 3
+
+    if ( !(xt->Flags & (xtb_JOIN|xtb_NOJOIN)))	// 0x0110 
+        return 1;
+d86 1
+a86 1
+	v39 = ((xt->Flags & xtb_NOJOIN) != 0);		// 0x0100
+d88 2
+a89 2
+	WildChar	= ( a3 == '*' || a3 == '+' || a3 == '-' );				// Is last character a wildcard?  ( '*' == '+' )
+	Forward		= WildChar && a3 != '-';								// Search direction if WildChar found
+d91 3
+a93 5
+    rt = RTARR(xt->RangeID);
+    
+	FieldNo		= gettdfno(ENARR(rt->enleft), &TTno, &FLDtype, 1);
+    FieldNo2	= FieldNo;
+	assert(FieldNo >= 0);
+d95 1
+a95 1
+	v37 = &ttab[TTno].TTfields[FieldNo];
+d101 1
+a101 1
+            rfree(rt->TTno, FieldNo);
+d103 1
+a103 1
+            return 1;
+d105 1
+a105 1
+        fldtobuf(v46, fld, 0);
+d108 1
+a108 1
+	zap((char*)&ent, 12u);			// Fudge our own local ENTAB record. :o)
+d111 1
+a111 1
+    ent.TTno	= 0xA800u;			// insert '=' OpCode
+d131 2
+a132 1
+            v12 = 0;				// error, will throw nil pointer exception
+d134 1
+a134 2
+		v12->entype = 2;
+        if ( fld->FLDtype != 'C' )
+d137 1
+a137 1
+				v12->TTno = Forward ? 0x30u : 0x18u; // 0x30 == greater than or equal '>=', 0x18 == less than or equal '<='
+d139 1
+a139 1
+                v12->TTno = 0x10u;	// 0x10 == equal to	'='
+d141 1
+a141 1
+        expr = getexpr(ENARR(rt->WhereEXP), TTno);	// "Where" expression specified in the join command. Use it!
+d144 1
+a144 1
+        expr = bldexpr(TTno, FieldNo2, a3);			// Build an expression including all key fields up to FieldNo2
+a145 2
+	TTptr->TTselect = expr;
+
+d155 2
+a156 3
+    v19 = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+    v20 = v19;
+    if ( v19 >= 0 )
+d158 1
+a158 1
+        ent.enleft = rt->enright;
+d160 1
+a160 1
+        exptobuf(s, ENARR(xt->Prompt_exp), 0);
+d162 1
+a162 1
+		if ( prompt_0 )
+d166 1
+a166 1
+			prompt_0 = mstrcpy(s, " <y>es <n>ext <p>rev or <q>uit ", 0);
+d168 1
+a168 1
+			prompt_0 = mstrcpy(s, " <y>es <p>rev <n>ext or <q>uit ", 0);
+d172 2
+a173 2
+            v20 = reffile(rt);
+            if ( v20 )
+d175 2
+a176 2
+                if ( v39 )
+                    v20 = 0;
+d179 1
+a179 1
+                    rfree(TTno, FieldNo2);
+d183 1
+a183 1
+            else if ( v39 )
+d186 1
+a186 1
+                return 0;
+d190 1
+a190 1
+            if ( !v39 )
+d193 1
+a193 1
+                dispjoin(ptb, fld, TTno, v20 == 0);
+d195 1
+a195 1
+            if ( !v20 )
+d199 1
+a199 1
+                    qat(1, _li - 1);	// Move to column 1 , last screen line
+d201 1
+a201 1
+                    if ( v36 == 'n' )
+d205 1
+a205 2
+
+                    erase_line();
+d209 1
+a209 1
+                        rfree(TTno, FieldNo2);
+d216 1
+a216 1
+						rt->OpType &= 0xFFF9;
+d225 1
+a225 1
+                    v36 = 'y';
+d228 1
+a228 1
+        }
+d232 1
+a232 1
+        dberror(v20, 0, rtdget(TTptr));
+d237 2
+a238 2
+        prerr("record locked",0,1);
+        return 0;
+d240 1
+a240 1
+    if ( v20 && v36 != 'q' && a4 )
+d246 2
+a247 2
+            sprintf(format, "'%s' not found in %%s", v46);
+			prerr(format,TTptr->TableName, 1);
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d10 1
+d35 1
+a35 1
+			if ( xtb->Flags & 0x0010 )
+d38 1
+a38 1
+			if ( xtb->Flags & 0x0004 )
+d58 31
+a88 34
+    RTAB *rt; // edi@@13
+    ENTAB *v10; // eax@@25
+    ENTAB *v11; // eax@@27
+    ENTAB *v12; // eax@@29
+    EXPR *expr; // eax@@40
+    XTAB *xt; // [sp+34h] [bp-124h]@@2
+    TDesc *TTptr; // [sp+18h] [bp-140h]@@24
+    FLDdesc *v37; // [sp+20h] [bp-138h]@@20
+
+    const char *v28; // eax@@84
+    char *v30; // [sp+0h] [bp-158h]@@89
+    char *v32; // [sp+4h] [bp-154h]@@89
+
+    int v9; // edx@@25
+    int v31; // [sp+4h] [bp-154h]@@84
+    int v33; // [sp+8h] [bp-150h]@@84
+    int v34; // [sp+8h] [bp-150h]@@89
+    int FieldNo2; // [sp+24h] [bp-134h]@@18
+    bool v39; // [sp+28h] [bp-130h]@@5
+    bool Forward; // [sp+2Ch] [bp-12Ch]@@8
+    bool WildChar; // [sp+30h] [bp-128h]@@5
+    int TTno; // [sp+38h] [bp-120h]@@18
+
+    short FieldNo; // ax@@18
+    short v19; // ax@@49
+    short v20; // esi@@49
+
+    char s[112]; // [sp+40h] [bp-118h]@@54
+    char v46[64]; // [sp+B0h] [bp-A8h]@@23
+    char format[64]; // [sp+F0h] [bp-68h]@@92
+    ENTAB ent; // [sp+130h] [bp-28h]@@24
+    char v36; // [sp+1Fh] [bp-139h]@@43
+    char FLDtype; // [sp+3Fh] [bp-119h]@@18
+
+d92 1
+a92 1
+    if ( !(xt->Flags & 0x0110) )
+d95 1
+a95 1
+	v39 = ((xt->Flags & 0x0100) != 0);
+d97 2
+a98 2
+	WildChar = ( a3 == '*' || a3 == '+' || a3 == '-' );				// Is last character a wildcard?  ( '*' == '+' )
+	Forward = WildChar && a3 != '-';								// Search direction if WildChar found
+d102 2
+a103 2
+	FieldNo = gettdfno(ENARR(rt->field_C), &TTno, &FLDtype, 1);
+    FieldNo2 = FieldNo;
+d120 4
+a123 4
+    ent.enleft = rt->field_C;
+    ent.entype = 2;
+    ent.TTno = 0xA800u;				// insert '=' OpCode
+    ent.enright = rt->field_E;
+d131 1
+a131 1
+        v9 = rt->WhereEXP;
+d172 2
+a173 2
+        ent.enleft = rt->field_E;
+        ent.enright = rt->field_C;
+d225 1
+a225 1
+                        v37->FLDstat &= 0xFFEFu;
+d250 1
+a250 1
+    if ( v36 == 'y' && xt->Flags & 0x0020 && rdrec(TTno, 1) == -10 )
+@
+
+
+1.3
+log
+@prior to ENARR() fixes
+@
+text
+@d11 1
+a11 1
+void dispjoin(PTAB *ptb, FLDdesc *fld, int TDno, int a4)
+d19 1
+a19 1
+    dispfld(ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0, fld, a4, 0, 1, 0);
+d22 1
+a22 1
+    while ( ptb->OpCode != 950 )
+d26 1
+a26 1
+			rtb = ptb->TABno ? &rtarr.TableAddr[ptb->TABno - 1] : 0;
+d32 1
+a32 1
+			xtb = ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0;
+d39 1
+a39 3
+                FieldNo = gettdfno(xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0, &TTno, &FLDtype, 1);
+                //if ( FieldNo < 0 )
+				//	__assert_fail("fno >= 0", "jcheck.c", 0x22u, "dispjoin");
+d44 2
+a45 2
+					xtb = ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0;
+					dispfld(xtb, &ttab[TDno].TTfields[FieldNo], a4, 0, 1, 0);
+a80 1
+    //short v13; // dx@@33
+a83 2
+    char v36; // [sp+1Fh] [bp-139h]@@43
+    char FLDtype; // [sp+3Fh] [bp-119h]@@18
+d88 2
+d91 2
+a92 1
+    xt = ptb->TABno ? &xtarr.TableAddr[ptb->TABno - 1] : 0;
+d102 1
+a102 1
+    rt = xt->RangeID ? &rtarr.TableAddr[xt->RangeID - 1] : 0;
+d104 1
+a104 1
+	FieldNo = gettdfno(rt->field_C ? &enarr.TableAddr[rt->field_C - 1] : 0, &TTno, &FLDtype, 1);
+a105 2
+    //if ( FieldNo < 0 )
+    //    __assert_fail("fno >= 0", "jcheck.c", 0x49u, "jcheck");
+d115 1
+a115 1
+            dispjoin(ptb, fld, rt->TTno, 0);
+d130 2
+a131 1
+    if ( rt->WhereEXP )
+d135 3
+d154 1
+a154 1
+        expr = getexpr(rt->WhereEXP ? &enarr.TableAddr[rt->WhereEXP - 1] : 0, TTno);
+d157 1
+a157 1
+        expr = bldexpr(TTno, FieldNo2, a3);
+d176 1
+a176 1
+        exptobuf(s, xt->Prompt_exp ? &enarr.TableAddr[xt->Prompt_exp - 1] : 0, 0);
+d229 1
+a229 1
+                        dispjoin(ptb, fld, TTno, 0);
+@
+
+
+1.2
+log
+@fixed a few field names
+@
+text
+@d5 1
+d40 3
+a42 2
+                if ( FieldNo < 0 )
+					__assert_fail("fno >= 0", "jcheck.c", 0x22u, "dispjoin");
+d76 1
+d78 2
+a79 3
+    int FieldNo2; // [sp+24h] [bp-134h]@@18
+    int v40; // [sp+2Ch] [bp-12Ch]@@8
+    int v41; // [sp+30h] [bp-128h]@@5
+d101 3
+a103 11
+	v41 = 0;
+    if ( (unsigned int)(a3 - 42) <= 1 || a3 == '-' )	// 42 = '*'
+        v41 = 1;
+    
+	v40 = 0;
+    if ( v41 )
+    {
+        v40 = 1;
+        if ( a3 == '-' )
+            v40 = 0;
+    }
+d108 3
+a110 2
+    if ( FieldNo < 0 )
+        __assert_fail("fno >= 0", "jcheck.c", 0x49u, "jcheck");
+d113 2
+a114 1
+    if ( !v41 )
+d126 1
+a126 1
+    ent.Dest = rt->field_C;
+d129 1
+a129 1
+    ent.Src = rt->field_E;
+d141 1
+a141 1
+            v12 = &enarr.TableAddr[v11->Dest - 1];
+d149 2
+a150 8
+            if ( v41 )
+            {
+				//v13 = 0x18u;	// 0x18 == less than or equal		'<='
+                //if ( v40 )
+				//	v13 = 0x30u;		// 0x30 == greater than or equal	'>='
+				//v12->TTno = v13;
+				v12->TTno = v40 ? 0x30u : 0x18u; 
+            }
+d161 1
+a161 1
+    if ( !v41 || (v36 = 'p', v40) )
+d165 1
+a165 1
+	if ( !v41 || v40 )
+d174 2
+a175 2
+        ent.Dest = rt->field_E;
+        ent.Src = rt->field_C;
+d181 1
+a181 1
+        if ( v40 )
+d213 1
+a213 1
+                if ( v41 )
+d259 1
+a259 1
+        if ( v41 )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+void dispjoin(PTAB *pt, FLDdesc *fld, int TDno, int a4)
+d12 2
+a13 4
+    XTAB *xt2; // edx@@12
+    PTAB *v5; // esi@@4
+    RTAB *rt; // eax@@7
+    short v10; // ax@@19
+d18 4
+a21 3
+    dispfld(pt->TABno ? &xtarr.TableAddr[pt->TABno - 1] : 0, fld, a4, 0, 1, 0);
+    v5 = pt + 1;
+    while ( v5->OpCode != 950 )
+d23 1
+a23 1
+		if ( (unsigned short)(v5->OpCode - 500) <= 98u )
+d25 2
+a26 2
+			rt = v5->TABno ? &rtarr.TableAddr[v5->TABno - 1] : 0;
+            if ( rt->TTno == TDno )
+d29 1
+a29 1
+        if ( (unsigned short)(v5->OpCode - 1) <= 48u )
+d31 1
+a31 1
+			xt2 = v5->TABno ? &xtarr.TableAddr[v5->TABno - 1] : 0;
+d33 1
+a33 1
+			if ( xt2->Flags & 0x0010 )
+d35 2
+a36 1
+			if ( xt2->Flags & 0x0004 )
+d38 2
+a39 3
+				v10 = gettdfno(xt2->VarExpNo ? &enarr.TableAddr[xt2->VarExpNo - 1] : 0, &TTno, &FLDtype, 1);
+                FieldNo = v10;
+                if ( v10 < 0 )
+d41 1
+d44 2
+a45 2
+					xt2 = v5->TABno ? &xtarr.TableAddr[v5->TABno - 1] : 0;
+					dispfld(xt2, &ttab[TDno].TTfields[FieldNo], a4, 0, 1, 0);
+d49 1
+a49 1
+        v5++;
+d53 2
+d74 1
+a74 1
+    int v39; // [sp+28h] [bp-130h]@@5
+d81 1
+a81 1
+    short v13; // dx@@33
+d97 4
+a100 3
+	v39 = xt->Flags & 0x0100;
+    v41 = 0;
+    if ( (unsigned int)(a3 - 42) <= 1 || a3 == '-' )
+d102 2
+a103 1
+    v40 = 0;
+d128 2
+a129 1
+    zap((char*)&ent, 12u);			// Fudge our own local ENTAB record. :o)
+d132 1
+a132 1
+    ent.TTno = 0xA800u;				// insert OpCode
+d148 1
+a148 1
+            v12 = 0;
+d155 5
+a159 4
+                v13 = 0x30u;		// 0x30 == greater than or equal	'>='
+                if ( !v40 )
+                    v13 = 0x18u;	// 0x18 == less than or equal		'<='
+                v12->TTno = v13;
+d162 1
+a162 1
+                v12->TTno = 0x10u;
+d174 1
+a174 1
+	rt->field_2 &= 0xFFF9;
+d176 1
+a176 1
+        rt->field_2 |= 0x0002;
+d178 1
+a178 1
+        rt->field_2 |= 0x0004;
+d206 1
+a206 1
+                    v36 = 120;
+d243 1
+a243 1
+						rt->field_2 &= 0xFFF9;
+d245 1
+a245 1
+							rt->field_2 |= 0x0004;	// backwards
+d247 1
+a247 1
+							rt->field_2 |= 0x0002;	// forwards
+@

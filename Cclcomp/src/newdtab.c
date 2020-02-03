@@ -6,8 +6,10 @@
 
 void newdtab(void)
 {
-	int v0; // edx@2
+	int v0;
+	
 	//printf("newdtab() - no_dtabs = %d, sizeof(DBase) = %d\n",no_dtabs + 1, sizeof(DBase));
+	
 	if ( no_dtabs )
 		v0 = no_dtabs + 1;
 	else

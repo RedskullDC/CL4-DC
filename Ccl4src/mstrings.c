@@ -29,8 +29,8 @@ void* mmalloc(size_t reqsize)
 {
 	void	*memptr; // edi@3
 
-	if ( reqsize < 4 )
-		reqsize = 4;				// minimum 4bytes per allocation
+	if ( reqsize < sizeof(size_t) )
+		reqsize = sizeof(size_t);				// minimum 4bytes on X86, 8 on X64
 
 	memptr = malloc(reqsize);
 	if ( !memptr )
@@ -46,7 +46,7 @@ void* mmalloc(size_t reqsize)
 	return memptr;
 }
 
-void* mrealloc(void *ptr, int oldsize, size_t newsize)
+void* mrealloc(void *ptr, size_t oldsize, size_t newsize)
 {
 	void	*memptr; // esi@1
 
@@ -54,10 +54,9 @@ void* mrealloc(void *ptr, int oldsize, size_t newsize)
 	
 	if ( !memptr )
 		mexit(-99);	// fatal error
-	// clear only the newly allocated area if larger
-	// old area is guaranteed to remain constant, even if moved
-	if ( newsize > oldsize )
-		memset(memptr + oldsize, 0, newsize - oldsize);
+	
+	if ( newsize > oldsize )								// clear only the newly allocated area if larger
+		memset(memptr + oldsize, 0, newsize - oldsize);		// old area is guaranteed to remain constant, even if moved
 
 	return memptr;
 }
@@ -145,8 +144,8 @@ char *mstrcat(char *orig_str, char *add_str, ...)
 		v4 = va_arg(va,char*);
 	}	
 
-	va_end(va);	// keep var_arg macros happy
-	*v10 = 0;
+	va_end(va);				// keep var_arg macros happy
+	*v10 = 0;				// Ensure final string is terminated
 	return v9;
 }
 

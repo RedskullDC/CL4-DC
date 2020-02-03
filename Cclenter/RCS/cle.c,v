@@ -1,0 +1,1112 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.06.22.06.14.42;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.06.09.02.27.01;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.08.26.06.39.14;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.12.16.02.10.55;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@improving main loop
+@
+text
+@//#define __USE_LARGEFILE64
+//#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE 1
+//#define _LARGE_FILE_API
+
+//#define NDEBUG		// uncomment to remove asserts from code
+
+#include <stdio.h>		// printf etc.
+#include <stdlib.h>		// getenv, putenv
+#include <fcntl.h>
+//#include <curses.h>		// for terminal handling
+#include <unistd.h>
+#include <stdint.h>
+#include <string.h>		// for void *memset(void *s, int c, size_t n);
+#include <stdbool.h>
+#include <pthread.h>
+#include <locale.h>
+#include <assert.h>
+#include <sys/types.h>
+#include <sys/stat.h> /* for mode_t */
+#include <ctype.h>
+#include <time.h>       // for struct tm
+#include <sys/times.h>  // for times()
+#include <signal.h>		// for signal() calls
+#include <sys/signal.h>  // for sighandler()
+#include <setjmp.h>     /* jmp_buf, setjmp, longjmp */
+
+//#include "UTIL_FUNCTIONS.h"
+// Test some undocumented CL4 lib routines
+#include "DBdefs.h"
+#include "lvarnames.h"
+#include "funcdefs.h"
+#include "alloc.c"
+#include "derror.c"
+#include "blowfish.c"		// includes blowfish.h
+#include "encrypt.c"		// includes encrypt.h
+#include "cpyseq.c"
+#include "getdirname.c"
+#include "getevar.c"
+#include "getftf.c"
+#include "getresv.c"
+#include "pcreate.c"
+#include "rcheck.c"
+#include "ppause.c"
+#include "gettdfno.c"
+#include "getexpr.c"
+#include "getyx.c"
+#include "buftott.c"
+#include "getetype.c"
+#include "psleep.c"
+#include "psrand.c"
+#include "setvar.c"
+#include "pset.c"
+#include "crc.c"
+#include "gnname.c"
+#include "fldtobuf.c"
+#include "getdwid.c"
+#include "calculate.c"
+#include "redisp.c"
+#include "prfield.c"
+#include "rdnxt.c"
+#include "rdprev.c"
+#include "tdclose.c"
+#include "pedit.c"
+#include "pfile.c"
+#include "prdebug.c"
+#include "chkesc.c"
+#include "toscreen.c"
+#include "termcap.c"
+#include "clintr.c"
+#include "clhintr.c"
+#include "jcheck.c"
+#include "modfld.c"
+#include "dispfld.c"
+#include "disprec.c"
+#include "ploop.c"
+#include "dscreen.c"
+#include "isalist.c"
+#include "pcount.c"	// not called in clenter
+#include "argenv.c"
+#include "pattern.c"
+#include "oformat.c"
+#include "coord.c"
+#include "getpt.c"
+
+#include "clfork.c"
+#include "flagcbd.c"	//used by pfork
+#include "chklt.c"
+#include "pfork.c"	// Needs work on the byte division
+#include "cafuncs.c"
+#include "extstr.c"
+
+#include "msquee.c"
+#include "append.c"
+#include "mvref.c"
+#include "mvheap.c"
+#include "merge.c"
+#include "loadr.c"
+#include "join.c"
+#include "sift.c"
+#include "pflush.c"
+#include "hflush.c"
+#include "rlist.c"
+#include "fldxfe.c"
+#include "sameke.c"
+#include "testr.c"
+#include "commit.c"
+#include "sflush.c"
+#include "salloc.c"
+#include "compose.c"
+
+
+#include "guname.c"
+#include "newexp.c"
+#include "newjun.c"
+#include "identi.c"
+#include "keysiz.c"
+#include "rowsiz.c"
+#include "getatt.c"
+#include "getsha.c"
+#include "delhier.c"
+#include "gettype.c"
+#include "bldexpr.c"
+#include "rectott.c"	//needs more work around clround()
+#include "tttorec.c" 
+#include "owildm.c"
+#include "repkey.c"
+#include "rdkey.c"
+#include "reprec.c"
+#include "ealloc.c"
+#include "putstr.c"
+#include "findtd.c"
+#include "seq.c"
+#include "cmpstr.c"
+#include "chkpath.c"		//needs work
+#include "dbglob.c"
+#include "reexec.c"
+#include "getr.c"
+#include "rtokey.c"
+#include "lockr.c"
+#include "fwidth.c"
+#include "fill.c"
+#include "fretre.c"
+#include "frelst.c"
+#include "cldelput.c"	// log structures different to libcl4. needs more work.
+#include "dbsize.c"
+#include "dbspac.c"
+#include "newdtab.c"
+#include "newttab.c"
+#include "isnumber.c"
+#include "openscr.c"
+#include "getosbuf.c"
+#include "relnod.c"
+#include "clrtab.c"			// _sparetree()
+#include "usage.c"
+#include "closedb.c"
+#include "rdrec.c"
+#include "tdtotd.c"
+#include "ulock.c"
+#include "ulockr.c"
+#include "chkind.c"
+#include "cpytuc.c"
+#include "bupsem.c"
+#include "nextr.c"
+#include "getpat.c"
+#include "indexp.c"
+#include "getpg.c"
+#include "datapg.c"
+#include "chkpag.c"		// requires more testing
+#include "itoptr.c"
+#include "scanpg.c"
+#include "itosz.c"
+#include "readpg.c"
+#include "scnbuf.c"
+#include "readf.c"
+#include "rhead.c"
+#include "cmpatt.c"
+#include "numsz.c"
+#include "rindex.c"
+#include "prevr.c"
+#include "tuptor.c"
+#include "rtotup.c"
+#include "echknum.c"
+#include "reply.c"
+#include "getwid.c"
+#include "pfresh.c"
+#include "getnod.c"
+#include "reffile.c"
+#include "mkfree.c"
+#include "lock.c"
+#include "picknx.c"		// testing
+#include "pickpr.c"		// testing
+#include "match.c"
+#include "beyond.c"
+#include "fclear.c"
+#include "cmpkey.c"
+#include "bound.c"
+#include "ifetch.c"
+#include "dfetch.c"
+#include "ipos.c"
+#include "dpos.c"
+#include "dmerge.c"
+#include "imerge.c"
+#include "addtup.c"
+#include "update.c"
+#include "freshn.c"
+#include "sync.c"
+#include "addpag.c"
+#include "delpag.c"
+#include "uptupl.c"
+#include "modpag.c"
+#include "chkite.c"
+#include "captur.c"
+#include "balanc.c"
+#include "rmlock.c"
+#include "dbclos.c"
+#include "stepba.c"
+#include "stepfw.c"
+#include "putnod.c"   //** Need to work out rdata/roffset use of NODE_1 structure
+#include "whead.c"
+#include "writep.c"
+#include "repos.c"
+#include "spread.c"
+#include "split.c"
+#include "relsha.c"
+#include "promot.c"
+#include "redist.c"
+#include "movele.c"
+#include "moveri.c"
+#include "diffat.c"
+#include "diffke.c"			//untested, needs work
+
+#include "elist.c"
+#include "delr.c"
+#include "putr.c"
+#include "cllogerr.c"
+#include "error.c"
+#include "dbopen.c"
+#include "oshare.c"
+#include "onexit.c"
+#include "shutdb.c"
+#include "rdhdr.c"
+#include "mktmp.c"
+#include "mktabl.c"
+#include "newstab.c"
+#include "prerr.c"
+
+
+// conversion routines follow
+#include "domtox.c"			// Needs more work
+#include "xtodom.c"			// Needs more work
+#include "mstoi.c"
+#include "mstol.c"
+#include "mstod.c"
+#include "mstoxi.c"
+#include "mstoxl.c"
+#include "xitoms.c"
+#include "xltoms.c"
+#include "itoms.c"
+#include "ltoms.c"
+#include "dtoms.c"
+#include "addexp.c"
+#include "negate.c"
+
+
+#include "zap.c"
+#include "sutimes.c"
+#include "round.c"		// OK to 7 decimal places, then gets stuffed up!
+#include "print.c"
+#include "lenstr.c"
+#include "cpybuf.c"
+#include "compare.c"
+#include "rfree.c"
+#include "recsiz.c"
+#include "trim.c"
+#include "power.c"
+#include "typedp.c"
+#include "restri.c"
+#include "releas.c"   // need to understand sallocbuf better
+#include "getclver.c"
+#include "times.c"
+#include "tty.c"
+#include "keydebug.c"
+#include "cllock.c"
+#include "getattr.c"
+
+#include "mstrings.c"
+#include "getflags.c"
+#include "cpystr.c"
+#include "cmpbuf.c"
+#include "key.c"
+#include "keyname.c"
+#include "process.c"
+#include "bind.c"
+#include "basename.c"
+#include "lex.c"
+#include "tblglo.c"
+#include "loadenc.c"
+#include "pblock.c"
+#include "eafr.c"
+#include "abcd.c"		//needs more work
+#include "exptobuf.c"		// still needs more work.
+
+#include "isfname.c"
+#include "funs.c"
+#include "evaliex.c"
+#include "dates.c"
+#include "prscreen.c"
+#include "linput.c"
+#include "convstr.c"
+#include "cnvstr.c"			// handler for sconv()
+#include "getfmode.c"
+#include "linpesc.c"
+#include "getfile.c"
+#include "ulckrec.c"
+
+int main(int argc, char **argv, char** a3)
+{
+	TDesc	*TTptr;
+	FLDdesc *fld;
+	char	*v28;
+	char	*v32;
+	char	*i;
+	char	*arg;
+	char	*v47;
+	
+	int		v30;
+	int		v35;
+	int		v52;
+	//int		v36;
+	//int		v37;
+	int		v41;
+	int		j;
+	
+	short	v31;
+	short	TimeOut;
+	short	v38;
+	
+	char	FillChar;
+	
+	TimeOut		= -1;
+	FillChar	= 0;
+	arg			= 0;
+	op			= stdout;
+	fullpname	= *argv;
+	_pname		= clbasename(*argv);
+	getcwd(cwd, 0x80u);
+	setupEnv();
+//------
+// clcgi nonsense removed
+	if ( !getflags(
+          &argc,
+          &argv,
+          "D,I*,c,d#,f?,k,L##,n,N,p,P,r*,s,t?,T##",
+          &lddeb,                               // DEBUG mode
+          &incl_dir,                            // Include file directory
+          &check,                               // validate checksums
+          &TimeOut,                             // timeout delay in seconds
+          &FillChar,                            // fill character
+          &Key_Debug,                           // debug keydefs and macros
+          &lpid,                                // Log File process ID
+          &noWarnings,                          // don't print Warnings
+          &noLog,                               // do not Log transactions
+          &pr_scr,                              // allow screen dumps
+          &npr_scr,                             // allow screen dumps with line/col numbers
+          &dbrename,                            // dbase rename
+          &tpenc,                               // compile to portable enc file 
+          &TAB,                                 // TAB char
+          &cl_tx,                               // LOGFILE transaction number
+          0)
+    || !argc && !Key_Debug )
+	{
+		//CLversion = getclver();
+		//eprint("usage: %s (%s) [options] ent_file [var...]\n", _pname, CLversion);
+		eprint("usage: %s (%s) [options] ent_file [var...]\n", _pname, getclver());
+		eprint("options:\n");
+		eprint("  -c               validate checksums on tables\n");
+		eprint("  -d {secs}        set timeout delay in seconds\n");
+		eprint("  -f {char}        set fill character to {char}\n");
+		eprint("  -k               debug keydefs and macros\n");
+		eprint("  -L {lpid}        log file process id\n");
+		eprint("  -N               do Not log transactions\n");
+		eprint("  -p               allow screen dumps\n");
+		eprint("  -P               allow screen dumps with line and column numbers\n");
+		eprint("  -r {db1=db2,..}  process enc file with database db2 in place of db1\n");
+		eprint("  -t {char}        set tab character to {char}\n");
+		eprint("  -T {tran}        log file transaction no\n");
+		eprint("\n");
+		eprint("The following options are passed to the compiler:\n");
+		eprint("  -D               debug mode\n");
+		eprint("  -I {dir}         find include files in directory {dir}\n");
+		eprint("  -n               don't print warnings\n");
+		eprint("  -s               compile to portable enc file\n");
+		exit(1);	// err_exit
+	}
+	//eprint("sizeof(BTAB) = %d\n",sizeof(BTAB));
+	getcwd(cwd, 128u);
+	arg		= *argv;
+	v28		= getenv("LANG");
+	if ( !v28 || !*v28 )
+	{
+		putenv("LANG=en_AU");
+		v28 = "en_AU";
+	}
+	setlocale(LC_ALL, v28);
+	termcap();
+	++cldepth;
+	if ( Key_Debug )			// not running a program, just testing keydefs and macros
+	{
+		v30 = 0;
+		v30 = _setjmp(sjbuf);
+		if ( !v30 )
+		{
+			dateCheck(0);
+			Key_Debugem();
+		}
+	}
+	else
+	{
+		if ( TimeOut >= 0 )
+			_Yd = TimeOut;
+		if ( FillChar )
+			*_Yf = FillChar;
+		v31 = lenstr(arg);
+		if ( v31 > 3 )
+		{
+			v32 = &arg[v31 - 4];
+			if ( cmpbuf(v32, ".enc", 4) || cmpbuf(v32, ".ent", 4) )
+				*v32 = 0;
+		}
+//---------------------------------------------------------------------
+		cdbcpystr(pname, arg, 0);
+		for ( i = &pname[lenstr(pname) - 1]; i > pname && *i != '/'; --i )
+			;
+		if ( i != pname )
+			++i;
+		cdbcpystr(pname, i, 0);
+
+		v52 = 0;
+		if ( lpid || cl_tx )
+			v52 = 1;
+		if ( !lpid )
+			lpid = getpid();
+		if ( cl_tx )
+		{
+			if ( cl_tx < 0 )
+				cl_tx = -cl_tx;
+		}
+		else
+			cl_tx = 1;
+
+		if ( noLog )
+			setNoLogging();
+		stab = (STAB **)mmalloc(0);	// "screen" table holders
+		Key_Construct();
+
+//======== load enc file here ==========
+
+		v30 = _setjmp(sjbuf);
+		if ( !v30 )
+			v30 = loadenc(arg);
+		//eprint("main v30 = %d\n",v30);
+		//exit(0);
+		if ( v30 )
+		{
+			closedb(0);
+			closetlog(v30);
+		}
+		else
+		{
+			if ( check ) // not actually running the program. Just check we can access all Tables
+			{
+				TTptr = ttab;
+				v35 = 0;
+				for ( j = 0; v35 < no_ttabs; ++TTptr )
+				{
+					if ( TTptr->TTrtd < 0 && !(TTptr->TDlocked & 0x0200) )		// user table?
+					{
+						//v36 = tgetfile(TTptr);
+						//printf("check - v35 = %d, v36 = %d\n",v35,v36);
+						//v37 = j + 1;
+						//if ( v36 > -1 )
+						//	v37 = j;
+						//j = v37;
+						if (tgetfile(TTptr) < 0)
+							j++;					// error count
+					}
+					++v35;
+				}
+				closedb(0);
+				exit(j);
+			}
+			dateCheck(1);	// force a _check_YD()
+			if ( v52 )
+			{
+				btab->Scrs |= 0x4000u;
+				prev_tx = cl_tx;
+			}
+			argvect = argv;
+			envvect = a3;
+
+			// look for any command line params, and copy them into V1-V9			
+			if ( argc )
+			{
+				++argv;
+				v38 = 0;
+				fld = &ttab->TTfields[v_V1];					// fld now points at "V1"
+				--argc;
+				while ( argc && v38 <= 8 )						// stop at V9
+				{
+					v41 = lenstr(*argv);
+					if (v41 > 127)
+						v41 = 128;								// MaxLen of 128 bytes on each cmdline variable
+					cpybuf((char *)fld->FLDdata, *argv, v41);	// copy command line vars into V1-V9
+					//printf("V%d set to %s\n",v38 + 1,(char *)fld->FLDdata);
+					if ( **argv )
+						fld->FLDstat = (fld->FLDstat | fld_DATA_AVAIL) & ~fld_ZERO;	// 0x0010) & 0xFFFB;	// set quick zero, data avail flags
+					++fld;
+					++v38;
+					++argv;
+					--argc;
+				}	
+			}
+		
+			setvar(v_SLINES, _li);								// "SLINES"
+			setvar(v_SCOLS, _co);								// "SCOLS"
+			setvar(v_MLINE, _li - 1);							// "MLINE"
+			setvar(v_MCOL, _sg ? _sg + 1 : 1);					// "MCOL"
+			setvar(v_DATEFORM, _DF);							// "DATEFORM"
+			if ( *_YL )
+				rawdisplay = 1;
+			else
+				rawdisplay = _Y3;
+			setvar(v_RAWDISPLAY, (unsigned short)rawdisplay);	// "RAWDISPLAY"
+			setvar(v_RAWPRINT, (unsigned short)rawprint);		// "RAWPRINT"
+
+			loadMonthArrays(1);
+			//printf("main: loadmontharrays() \n");
+			//printf("_YD set to %s\n",_YD);
+			v30 = _setjmp(sjbuf);
+			if ( !v30 )	// v30 is non-zero if an exception has occured while running
+			{
+				openscr();
+				pblock(btab, 0);	// go execute the program!!!
+			}
+			signal(SIGTERM, SIG_IGN);
+			signal(SIGINT, SIG_IGN);
+			signal(SIGHUP, SIG_IGN);
+			signal(SIGPIPE, SIG_IGN);
+			if ( v30 == 1 )
+				v30 = 0;
+			closedb(0);		// close all open databases
+			closefp();		// close all open pipes/files
+			//if ( v30 >= 0 )
+			//	v30 = (signed int)*(double *)ttab->TTfields[6].FLDdata;	"EXIT"
+			//==
+			//closetlog(v30);
+			clunlock();
+			//if ( v30 < 0 )
+			//	cllogerr(-v30, pname, 0, 0);
+			closescr();
+			unloadMonthArrays();	// free memassociated with DateString vars
+			Key_Destruct();			// ditto the key macros if loaded
+			if ( timing )
+			{
+				v47 = mstrcpy(arg, ".ent");
+				sutimes(v47, 0);
+				mfree_0(v47);
+			}
+		}
+	}
+	exit(v30);	// exit_success if v30 == 0
+}
+
+void mexit(int ErrorCode)
+{
+	//;	// Do nothing on Linux if we can't find the memory we want. Uh-oh!
+	longjmp(sjbuf, ErrorCode);	// crash out back into main()
+}
+
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d28 1
+a28 1
+//#include "src/UTIL_FUNCTIONS.h"
+d30 217
+a246 217
+#include "src/DBdefs.h"
+#include "src/lvarnames.h"
+#include "src/funcdefs.h"
+#include "src/alloc.c"
+#include "src/derror.c"
+#include "src/blowfish.c"		// includes blowfish.h
+#include "src/encrypt.c"		// includes encrypt.h
+#include "src/cpyseq.c"
+#include "src/getdirname.c"
+#include "src/getevar.c"
+#include "src/getftf.c"
+#include "src/getresv.c"
+#include "src/pcreate.c"
+#include "src/rcheck.c"
+#include "src/ppause.c"
+#include "src/gettdfno.c"
+#include "src/getexpr.c"
+#include "src/getyx.c"
+#include "src/buftott.c"
+#include "src/getetype.c"
+#include "src/psleep.c"
+#include "src/psrand.c"
+#include "src/setvar.c"
+#include "src/pset.c"
+#include "src/crc.c"
+#include "src/gnname.c"
+#include "src/fldtobuf.c"
+#include "src/getdwid.c"
+#include "src/calculate.c"
+#include "src/redisp.c"
+#include "src/prfield.c"
+#include "src/rdnxt.c"
+#include "src/rdprev.c"
+#include "src/tdclose.c"
+#include "src/pedit.c"
+#include "src/pfile.c"
+#include "src/prdebug.c"
+#include "src/chkesc.c"
+#include "src/toscreen.c"
+#include "src/termcap.c"
+#include "src/clintr.c"
+#include "src/clhintr.c"
+#include "src/jcheck.c"
+#include "src/modfld.c"
+#include "src/dispfld.c"
+#include "src/disprec.c"
+#include "src/ploop.c"
+#include "src/dscreen.c"
+#include "src/isalist.c"
+#include "src/pcount.c"	// not called in clenter
+#include "src/argenv.c"
+#include "src/pattern.c"
+#include "src/oformat.c"
+#include "src/coord.c"
+#include "src/getpt.c"
+
+#include "src/clfork.c"
+#include "src/flagcbd.c"	//used by pfork
+#include "src/chklt.c"
+#include "src/pfork.c"	// Needs work on the byte division
+#include "src/cafuncs.c"
+#include "src/extstr.c"
+
+#include "src/msquee.c"
+#include "src/append.c"
+#include "src/mvref.c"
+#include "src/mvheap.c"
+#include "src/merge.c"
+#include "src/loadr.c"
+#include "src/join.c"
+#include "src/sift.c"
+#include "src/pflush.c"
+#include "src/hflush.c"
+#include "src/rlist.c"
+#include "src/fldxfe.c"
+#include "src/sameke.c"
+#include "src/testr.c"
+#include "src/commit.c"
+#include "src/sflush.c"
+#include "src/salloc.c"
+#include "src/compose.c"
+
+
+#include "src/guname.c"
+#include "src/newexp.c"
+#include "src/newjun.c"
+#include "src/identi.c"
+#include "src/keysiz.c"
+#include "src/rowsiz.c"
+#include "src/getatt.c"
+#include "src/getsha.c"
+#include "src/delhier.c"
+#include "src/gettype.c"
+#include "src/bldexpr.c"
+#include "src/rectott.c"	//needs more work around clround()
+#include "src/tttorec.c" 
+#include "src/owildm.c"
+#include "src/repkey.c"
+#include "src/rdkey.c"
+#include "src/reprec.c"
+#include "src/ealloc.c"
+#include "src/putstr.c"
+#include "src/findtd.c"
+#include "src/seq.c"
+#include "src/cmpstr.c"
+#include "src/chkpath.c"		//needs work
+#include "src/dbglob.c"
+#include "src/reexec.c"
+#include "src/getr.c"
+#include "src/rtokey.c"
+#include "src/lockr.c"
+#include "src/fwidth.c"
+#include "src/fill.c"
+#include "src/fretre.c"
+#include "src/frelst.c"
+#include "src/cldelput.c"	// log structures different to libcl4. needs more work.
+#include "src/dbsize.c"
+#include "src/dbspac.c"
+#include "src/newdtab.c"
+#include "src/newttab.c"
+#include "src/isnumber.c"
+#include "src/openscr.c"
+#include "src/getosbuf.c"
+#include "src/relnod.c"
+#include "src/clrtab.c"			// _sparetree()
+#include "src/usage.c"
+#include "src/closedb.c"
+#include "src/rdrec.c"
+#include "src/tdtotd.c"
+#include "src/ulock.c"
+#include "src/ulockr.c"
+#include "src/chkind.c"
+#include "src/cpytuc.c"
+#include "src/bupsem.c"
+#include "src/nextr.c"
+#include "src/getpat.c"
+#include "src/indexp.c"
+#include "src/getpg.c"
+#include "src/datapg.c"
+#include "src/chkpag.c"		// requires more testing
+#include "src/itoptr.c"
+#include "src/scanpg.c"
+#include "src/itosz.c"
+#include "src/readpg.c"
+#include "src/scnbuf.c"
+#include "src/readf.c"
+#include "src/rhead.c"
+#include "src/cmpatt.c"
+#include "src/numsz.c"
+#include "src/rindex.c"
+#include "src/prevr.c"
+#include "src/tuptor.c"
+#include "src/rtotup.c"
+#include "src/echknum.c"
+#include "src/reply.c"
+#include "src/getwid.c"
+#include "src/pfresh.c"
+#include "src/getnod.c"
+#include "src/reffile.c"
+#include "src/mkfree.c"
+#include "src/lock.c"
+#include "src/picknx.c"		// testing
+#include "src/pickpr.c"		// testing
+#include "src/match.c"
+#include "src/beyond.c"
+#include "src/fclear.c"
+#include "src/cmpkey.c"
+#include "src/bound.c"
+#include "src/ifetch.c"
+#include "src/dfetch.c"
+#include "src/ipos.c"
+#include "src/dpos.c"
+#include "src/dmerge.c"
+#include "src/imerge.c"
+#include "src/addtup.c"
+#include "src/update.c"
+#include "src/freshn.c"
+#include "src/sync.c"
+#include "src/addpag.c"
+#include "src/delpag.c"
+#include "src/uptupl.c"
+#include "src/modpag.c"
+#include "src/chkite.c"
+#include "src/captur.c"
+#include "src/balanc.c"
+#include "src/rmlock.c"
+#include "src/dbclos.c"
+#include "src/stepba.c"
+#include "src/stepfw.c"
+#include "src/putnod.c"   //** Need to work out rdata/roffset use of NODE_1 structure
+#include "src/whead.c"
+#include "src/writep.c"
+#include "src/repos.c"
+#include "src/spread.c"
+#include "src/split.c"
+#include "src/relsha.c"
+#include "src/promot.c"
+#include "src/redist.c"
+#include "src/movele.c"
+#include "src/moveri.c"
+#include "src/diffat.c"
+#include "src/diffke.c"			//untested, needs work
+
+#include "src/elist.c"
+#include "src/delr.c"
+#include "src/putr.c"
+#include "src/cllogerr.c"
+#include "src/error.c"
+#include "src/dbopen.c"
+#include "src/oshare.c"
+#include "src/onexit.c"
+#include "src/shutdb.c"
+#include "src/rdhdr.c"
+#include "src/mktmp.c"
+#include "src/mktabl.c"
+#include "src/newstab.c"
+#include "src/prerr.c"
+d250 66
+a315 66
+#include "src/domtox.c"			// Needs more work
+#include "src/xtodom.c"			// Needs more work
+#include "src/mstoi.c"
+#include "src/mstol.c"
+#include "src/mstod.c"
+#include "src/mstoxi.c"
+#include "src/mstoxl.c"
+#include "src/xitoms.c"
+#include "src/xltoms.c"
+#include "src/itoms.c"
+#include "src/ltoms.c"
+#include "src/dtoms.c"
+#include "src/addexp.c"
+#include "src/negate.c"
+
+
+#include "src/zap.c"
+#include "src/sutimes.c"
+#include "src/round.c"		// OK to 7 decimal places, then gets stuffed up!
+#include "src/print.c"
+#include "src/lenstr.c"
+#include "src/cpybuf.c"
+#include "src/compare.c"
+#include "src/rfree.c"
+#include "src/recsiz.c"
+#include "src/trim.c"
+#include "src/power.c"
+#include "src/typedp.c"
+#include "src/restri.c"
+#include "src/releas.c"   // need to understand sallocbuf better
+#include "src/getclver.c"
+#include "src/times.c"
+#include "src/tty.c"
+#include "src/keydebug.c"
+#include "src/cllock.c"
+#include "src/getattr.c"
+
+#include "src/mstrings.c"
+#include "src/getflags.c"
+#include "src/cpystr.c"
+#include "src/cmpbuf.c"
+#include "src/key.c"
+#include "src/keyname.c"
+#include "src/process.c"
+#include "src/bind.c"
+#include "src/basename.c"
+#include "src/lex.c"
+#include "src/tblglo.c"
+#include "src/loadenc.c"
+#include "src/pblock.c"
+#include "src/eafr.c"
+#include "src/abcd.c"		//needs more work
+#include "src/exptobuf.c"		// still needs more work.
+
+#include "src/isfname.c"
+#include "src/funs.c"
+#include "src/evaliex.c"
+#include "src/dates.c"
+#include "src/prscreen.c"
+#include "src/linput.c"
+#include "src/convstr.c"
+#include "src/cnvstr.c"			// handler for sconv()
+#include "src/getfmode.c"
+#include "src/linpesc.c"
+#include "src/getfile.c"
+#include "src/ulckrec.c"
+d319 21
+a339 22
+	TDesc *TTptr; // esi@@72
+	FLDdesc *fld; // esi@@83
+	char *CLversion; // eax@@26
+	char *v28; // eax@@29
+	char *v32; // edi@@41
+	char *i; // edi@@44
+	char *arg; // [sp+68h] [bp-20h]@@1
+	char *v47; // edi@@105
+
+	signed int v30; // esi@@33
+	signed int v35; // edi@@72
+	signed int v52; // [sp+6Ch] [bp-1Ch]@@50
+	int v36; // eax@@75
+	int v37; // edx@@75
+	int v41; // edx@@84
+	int j; // [sp+58h] [bp-30h]@@72
+
+	short v31; // ax@@40
+	short TimeOut; // [sp+7Ah] [bp-Eh]@@1
+	short v38; // di@@83
+
+	char FillChar;
+d346 1
+a346 1
+	_pname		= (char *)clbasename(*argv);
+d373 3
+a375 2
+		CLversion = getclver();
+		eprint("usage: %s (%s) [options] ent_file [var...]\n", _pname, CLversion);
+d405 1
+a405 1
+	setlocale(6, v28);
+d408 1
+a408 1
+	if ( Key_Debug )
+d477 1
+a477 1
+					if ( TTptr->TTrtd < 0 && !(TTptr->TDlocked & 0x0200) )
+d479 8
+a486 5
+						v36 = tgetfile(TTptr);
+						v37 = j + 1;
+						if ( v36 > -1 )
+							v37 = j;
+						j = v37;
+d502 1
+a502 1
+// look for any command line params, and copy them into V1-V9			
+d507 1
+a507 1
+				fld = &ttab->TTfields[v_V1];	// fld now points at "V1"
+d509 1
+a509 1
+				while ( argc && v38 <= 8 )	// stop at V9
+d513 2
+a514 2
+						v41 = 128;	// MaxLen of 128 bytes on each cmdline variable
+					cpybuf((char *)fld->FLDdata, *argv, v41);	// copy command line vars into V0-V9
+d517 1
+a517 1
+						fld->FLDstat = (fld->FLDstat | 0x0010) & 0xFFFB;	// set quick zero, data avail flags
+d525 5
+a529 5
+			setvar(v_SLINES, _li);				// "SLINES"
+			setvar(v_SCOLS, _co);				// "SCOLS"
+			setvar(v_MLINE, _li - 1);			// "MLINE"
+			setvar(v_MCOL, _sg ? _sg + 1 : 1);	// "MCOL"
+			setvar(v_DATEFORM, _DF);			// "DATEFORM"
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d35 2
+d311 2
+a312 1
+//#include "src/getfmode.c"
+a333 1
+	//int v45; // eax@@91
+d342 6
+a347 6
+	TimeOut = -1;
+	FillChar = 0;
+	arg = 0;
+	op = stdout;
+	fullpname = *argv;
+	_pname = (char *)clbasename(*argv);
+d398 2
+a399 2
+	arg = *argv;
+	v28 = getenv("LANG");
+d457 1
+a457 1
+//======== load end file here ==========
+d462 1
+d522 5
+a526 10
+			setvar(v_SLINES, _li);		// "SLINES"
+			setvar(v_SCOLS, _co);		// "SCOLS"
+			setvar(v_MLINE, _li - 1);	// "MLINE"
+			//if ( _sg )
+			//	v45 = _sg + 1;
+			//else
+			//	v45 = 1;
+			//setvar(v_MCOL, v45);			// "MCOL"
+			setvar(v_MCOL, _sg ? _sg + 1 : 1);			// "MCOL"
+			setvar(v_DATEFORM, _DF);		// "DATEFORM"
+d560 1
+a560 1
+			Key_Destruct();
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d84 6
+a89 5
+//#include "src/flagcbd.c"	used by pfork
+//#include "src/chklt.c"
+//#include "src/pfork.c"	// Needs work on the byte division
+//#include "src/cafuncs.c"
+//#include "src/extstr.c"
+d316 21
+a336 27
+  unsigned char v4; // zf@@1
+  char *CLversion; // eax@@26
+  char *v28; // eax@@29
+  const char *v29; // edi@@29
+  signed int v30; // esi@@33
+  short v31; // ax@@40
+  char *v32; // edi@@41
+  char *i; // edi@@44
+  TDesc *TTptr; // esi@@72
+  signed int v35; // edi@@72
+  int v36; // eax@@75
+  int v37; // edx@@75
+  short v38; // di@@83
+  FLDdesc *v39; // esi@@83
+  short v40; // ax@@84
+  int v41; // edx@@84
+  char v42; // sf@@84
+  unsigned char v43; // of@@84
+  int v44; // eax@@84
+  int v45; // eax@@91
+  char *v47; // edi@@105
+  int j; // [sp+58h] [bp-30h]@@72
+  int v50; // [sp+5Ch] [bp-2Ch]@@13
+  char *arg; // [sp+68h] [bp-20h]@@1
+  signed int v52; // [sp+6Ch] [bp-1Ch]@@50
+  char FillChar; // [sp+79h] [bp-Fh]@@1
+  short TimeOut; // [sp+7Ah] [bp-Eh]@@1
+d338 2
+d394 1
+a397 1
+	v29 = v28;
+d401 1
+a401 1
+		v29 = "en_AU";
+d403 1
+a403 1
+	setlocale(6, v29);
+a414 1
+
+a467 1
+LABEL_71:
+d501 1
+a501 1
+				v39 = &ttab->TTfields[v_V1];	// v39 now points at "V1"
+d508 2
+a509 2
+					cpybuf((char *)v39->FLDdata, *argv, v41);	// copy command line vars into V0-V9
+					//printf("V%d set to %s\n",v38 + 1,(char *)v39->FLDdata);
+d511 2
+a512 2
+						v39->FLDstat = (v39->FLDstat | 0x0010) & 0xFFFB;	// set quick zero, data avail flags
+					++v39;
+d522 6
+a527 5
+			if ( _sg )
+				v45 = _sg + 1;
+			else
+				v45 = 1;
+			setvar(v_MCOL, v45);			// "MCOL"
+d552 1
+a552 1
+			//closefp();
+@

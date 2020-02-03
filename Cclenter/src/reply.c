@@ -35,7 +35,8 @@ char reply(char *ReplyMsg, char *ValidChars)
 	//printf("reply: (%s,%s)\n",ReplyMsg,ValidChars);
 
     EXIT_PROG = false;	// fast exit
-    zap(Buffer, 2u);
+	memset(Buffer, 0, sizeof(Buffer));
+
     
 	fldREPLY = &ttab->TTfields[v_REPLY];	// "REPLY" fld
 
@@ -112,7 +113,7 @@ char reply(char *ReplyMsg, char *ValidChars)
             }
             while ( !v18 );
             
-			fillbuf(reply_buff, Column + 1, ' ');
+			memset(reply_buff, ' ', Column + 1);
             reply_buff[Column + 1] = 0;
             toscreen(1, Line, 0, Column + 1, reply_buff, 0, 0, 1);
             whereat(1, Line, 0, 0);

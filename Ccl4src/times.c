@@ -200,8 +200,8 @@ char* tfmt(char *s,char *format, double dbTime)
 	int v9; // edx@42
 	int v14;
 	signed int v10; // eax@46
-	unsigned int v11; // edx@61
-	unsigned int v12; // edx@71
+	//unsigned int v11; // edx@61
+	//unsigned int v12; // edx@71
 	
 	double v13;
 	double v15;
@@ -386,10 +386,10 @@ char* tfmt(char *s,char *format, double dbTime)
 					--v6;
 					if ( dbTime > 0.0 )
 					{
-						v11 = 100;
+						int v11 = 100;
 						if ( v22 == 1 )
 							v11 = 10;
-						sprintf(v5, "%0*ld", v22, Mins % v11);
+						sprintf(v5, "%0*ld", v22, (long)(Mins % v11));
 						v5 += v22;
 					}
 					else
@@ -412,10 +412,10 @@ char* tfmt(char *s,char *format, double dbTime)
 					--v6;
 					if ( dbTime > 0.0 )
 					{
-						v12 = 100;
+						int v12 = 100;
 						if ( v20 == 1 )
 							v12 = 10;
-						sprintf(v5, "%0*ld", v20, Secs % v12);
+						sprintf(v5, "%0*ld", v20, (long)(Secs % v12));
 						v5 += v20;
 					}
 					else

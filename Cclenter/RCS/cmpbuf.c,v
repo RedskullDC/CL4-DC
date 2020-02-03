@@ -1,0 +1,53 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.11.03.59.50;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef CMPBUF_C
+#define CMPBUF_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int cmpbuf(char *a1, char *a2, size_t a3)
+{
+	char *v3; // edi@@1
+	char *v4; // esi@@1
+	unsigned int v5; // ecx@@1
+
+	//printf("cmpbuf(%s, %s, %d)\n",a1,a2,a3);
+
+	v3 = a1;
+	v4 = a2;
+	v5 = a3;
+	do
+	{
+		if ( --v5 == -1 )
+			break;
+	}
+	while ( *v3++ == *v4++ );
+
+	//printf("cmpbuf#2 v5 = %d, v5>>31 = %d\n",v5, v5 >> 31);
+	return v5 >> 31;		// Returns 1 if match all bytes == TRUE
+}
+#endif
+@

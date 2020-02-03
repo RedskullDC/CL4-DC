@@ -12,7 +12,7 @@ short aliasexp()
 	RTAB	*rt;
 	short	RTno;
 	short	expno;
-	short	v4;
+	short	tmpidx;
 
 	// example:  "replace t1 dbname 'Tranfl1' 'tf1'"
 	if ( symbol == 930 )
@@ -35,11 +35,11 @@ short aliasexp()
 			}
 			else	// symbol != 930	// go around again for next parameter
 			{							// ** Only 3 are valid and read in clenter, but no limit on number entered **
-				v4 = getrtmem();
-				//if ( !v4 )
+				tmpidx = getrtmem();
+				//if ( !tmpidx )
 				//	 __assert_fail("tmpidx > 0", "lerfile.c", 0x2Bu, "aliasexp");
-				assert(v4 > 0);
-				rt->NextRT = v4;
+				assert(tmpidx > 0);
+				rt->NextRT = tmpidx;
 				v5 = RTARR(rt->NextRT);
 				rt = v5;
 			}

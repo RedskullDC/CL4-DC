@@ -461,7 +461,7 @@ char *cnvstr(char *dest, char *command, const char *OpType, char *src)
 			//strcat(dest, Blowfish_StrDecrypt(src, 0));
 		}
 		else
-			strcat(dest, 0);
+			strcat(dest, "");
 	}
 //=======================================================
 	else if (!strncmp(command,"tabsub",7))

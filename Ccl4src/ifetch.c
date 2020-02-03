@@ -31,10 +31,10 @@ short _ifetch(char *Dest, DPOS *dpos, TDinfo *TDptr)
 	{
 		//++fcount;	// fetch count? Only ever accessed from here.
 		page = _indexpg(TDptr, dpos->field_8);
-		dpos->PageNo = mstol((int*)&page->DataStart[4 * dpos->NumEntries++]);
-		if ( page->NumEntries < dpos->NumEntries )
+		dpos->PageNo = mstol((int*)&page->header.DataStart[4 * dpos->NumEntries++]);
+		if ( page->header.NumEntries < dpos->NumEntries )
 		{
-			dpos->field_8 = mstol((int*)&page->field_16);
+			dpos->field_8 = mstol((int*)&page->pgData.field_16);
 			dpos->NumEntries = 0;
 		}
 	}

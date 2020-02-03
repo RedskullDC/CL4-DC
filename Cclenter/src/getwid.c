@@ -10,21 +10,19 @@
 #include "cl4.h"
 #include "lvarnames.h"	// for bit field values
 
-int getwid(XTAB *xt)	// get width in chars required to display a field
+short getwid(XTAB *xt)	// get width in chars required to display a field
 {
-    short	result;
 	FLDdesc fld;
 	
     if ( xt->WidthEXP )
-        result = evalint(&enarr.TableAddr[xt->WidthEXP - 1]);
+        return evalint(&enarr.TableAddr[xt->WidthEXP - 1]);
     else
     {
-        if ( result == 0x400 )											// flag bit to get default width
-			result = getdwid(getftf(ENARR(xt->VarExpNo), 1, &fld));     // get defult width for this vartype
+        if ( xt->width == 0x400 )										// flag bit to get default width
+			return getdwid(getftf(ENARR(xt->VarExpNo), 1, &fld));     // get defult width for this vartype
 		else
-			result = xt->width;
+			return xt->width;
     }
-    return result;
 }
 
 #endif

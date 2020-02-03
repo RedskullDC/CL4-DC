@@ -38,6 +38,7 @@ short* soffset(short *Dest, NODE_1 *Node1ptr, short NumEntries)
 		++Dest;
 		--v4;
 	}
+	//printf("soffset returns (Dest : x%08X)\n",Dest);
 	return Dest;
 }
 
@@ -100,39 +101,46 @@ int* vectoms(int *a1, NODE_2 *Node2ptr, short NumEntries)
 
 bool putnode(TDinfo *TDptr, NODE *Node)
 {
-	char *v2;
-	unsigned short v3;
+	unsigned short NumEntries;
 	short *v6;
 	short RecSize;
 	char *v11;
 	bool result;
+	PAGE	*pg;
+	PAGEDATA *pgdt;
 
     //printf("putnode(TDptr: %08X, PageNo: x%04X [%4d] , PageType: %02X)\n",TDptr, Node->PageNo,Node->PageNo, Node->PageType & 0x0F);
 
-	v2 = _getpg(TDptr->TDDBinfo) + 16;
-	v3 = Node->NumEntries;
+	pg = _getpg(TDptr->TDDBinfo);
+	pgdt = &pg->pgData;
+
+	NumEntries = Node->NumEntries;
 	if ( Node->PageType & 2 )
 	{
 		if ( Node->PageType & 1 )
-			v3 |= 0xC000;				// Map PageType bits 0&1 -> 14&15
+			NumEntries |= 0xC000;				// Map PageType bits 0&1 -> 14&15
 		else
-			v3 |= 0x8000;
+			NumEntries |= 0x8000;
+	    //printf("putnode_120 (NumEntries : x%04X [%4d] , PageType: %02X)\n",NumEntries,NumEntries, Node->PageType & 0x0F);
 
-		itoms((unsigned short*)v2, v3);			// 2 bytes PageType written to disk
-		ltoms((unsigned int*)(v2 + 2), Node->field_8);		//??
-		ltoms((unsigned int*)(v2 + 6), Node->field_C);		//??
-		v6 = (short*)vectoms((unsigned int*)(v2 + 10), Node->NODE2ptr, Node->NumEntries + 1);	//Normally a pagelist
+		itoms(&pgdt->PageType, NumEntries);				// 2 bytes PageType written to disk
+	    ltoms((int *)&pgdt->field_12, Node->field_8);
+		ltoms((int *)&pgdt->field_16, Node->field_C);
+
+		v6 = (short*)vectoms((int *)&pgdt->field_1A, Node->NODE2ptr, Node->NumEntries + 1);	// Normally a pagelist
 		RecSize = TDptr->TDKeySize;				// RecSize is actually the size of "Key Values"
 	}
 	else
 	{
 		if ( Node->PageType & 1 )
-			v3 |= 0x4000u;
-		itoms((unsigned short*)v2, v3);			// PageType written to disk
-		v6 = (unsigned short*)(v2 + 2);			// Start of data
+			NumEntries |= 0x4000u;
+		itoms(&pgdt->PageType, NumEntries);			// PageType written to disk
+		v6 = &pgdt->field_12;						// Start of data
 		RecSize = TDptr->TDRecSize;
 	}
-
+	
+	//printf("putnode_138 (v6: %08X, pgdt: %08X\n",v6,pgdt);
+	
 	if ( Node->PageType & 1 )
 	{
 		if ( Node->PageType & 8 )
@@ -148,17 +156,23 @@ bool putnode(TDinfo *TDptr, NODE *Node)
 			++v6;
 		}
 	}
-	
+	//printf("putnode_159 (v6: %08X, pgdt: %08X\n",v6,pgdt);
+
+	//DumpBlock((char*)pgdt, (char*)v6 - (char*)pgdt , 0);
+
 	// write the actual data to the page buffer
 	if ( Node->PageType & 8 )
 		v11 = rdata((char*)v6, Node->NODE1ptr, Node->NumEntries);	// These are tables in a TEMP DBase
 	else
 		v11 = sdata((char*)v6, Node->NODE1ptr, Node->NumEntries);
 
+    //printf("putnode_162 (v11: %08X, pgdt: %08X, PageSize :%08X, Fill Size :%08X)\n",v11,pgdt, TDptr->TDDBinfo->DBpgsize, (v11 - (char*)pgdt));
+	//DumpBlock(v6, (v11 - (char*)pgdt) , 0);
+
 	// Fill remainder of buffer with $FF
-	fill(v11, TDptr->TDDBinfo->DBpgsize - (v11 - v2), 0xFF);
+	fill(v11, TDptr->TDDBinfo->DBpgsize - (v11 - (char*)pgdt), 0xFF);
 	
-	result = _writepg(TDptr->TDDBinfo, v2, Node->PageNo);
+	result = _writepg(TDptr->TDDBinfo, (char *)pgdt, Node->PageNo);
 	if ( !result )
 		derror(11, 0, TDptr);
 	return result;

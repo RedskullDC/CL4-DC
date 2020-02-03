@@ -1,0 +1,182 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.07.02.04.26.52;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.07.14.03.56.17;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Move entries from end left node to start of right node
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef MOVERIGHT_C
+#define MOVERIGHT_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int moveright(NODE *NodeSRC, NODE *NodeDEST, short EntriesToMove)
+{
+	int SrcLastEntry; // edx@@3
+	int result; // eax@@5
+	short DestLastEntry; // [sp+Ch] [bp-1Ch]@@1
+	short i; // [sp+Ch] [bp-1Ch]@@3
+	short SizeMoved; // [sp+10h] [bp-18h]@@1
+
+	NODE_1 *N1pSrc; // esi@@3
+	NODE_1 *v4; // esi@@1
+	NODE_1 *v6; // ecx@@1
+	
+	NODE_2 *v5; // edi@@1
+	NODE_2 *N2pSrc; // edi@@3
+	NODE_2 *v15;
+	NODE_2 *v16;
+
+	//printf("moveright(SRC = x%08X, DEST = x%08X, Num: %d\n",NodeSRC,NodeDEST, EntriesToMove);
+
+	_chkitems(NodeDEST, EntriesToMove);		// ensure NodeDEST can hold required number of entries.
+
+	DestLastEntry = NodeDEST->NumEntries;
+	v4 = &NodeDEST->NODE1ptr[DestLastEntry];
+	v5 = &NodeDEST->NODE2ptr[DestLastEntry + 1];
+
+	v6 = &v4[EntriesToMove];                // Expand DestNODE by EntriesToMove.
+	v15 = &v5[EntriesToMove];
+
+	SizeMoved = 0;
+	while ( DestLastEntry > 0 )                       // If DestNODE empty, no need to shift entries
+	{  
+		--v4;								// make (EntriesToMove) space at start of DestNODE
+		--v6;								// shift entries up.
+		v6->Data = v4->Data;
+		v6->Size = v4->Size;
+		--v15;
+		--v5;
+		v15->PageNo = v5->PageNo;
+		--DestLastEntry;
+	}
+  
+	SrcLastEntry = NodeSRC->NumEntries;
+	N1pSrc = &NodeSRC->NODE1ptr[SrcLastEntry];
+
+	v16 = v15 - 1;
+	N2pSrc = &NodeSRC->NODE2ptr[SrcLastEntry];
+	v16->PageNo = N2pSrc->PageNo;
+	for ( i = EntriesToMove; i > 0; --i )            // Copy entries from end of left node to start of right node
+	{	
+		--N1pSrc;
+		--v6;
+		v6->Data = N1pSrc->Data;
+		v6->Size = N1pSrc->Size;
+		--v16;
+		--N2pSrc;
+		v16->PageNo = N2pSrc->PageNo;
+		SizeMoved += v6->Size;
+	}
+
+	// adjust SRC/DEST node pointers,counters
+	result = (SizeMoved	+ EntriesToMove * NodeDEST->field_16);
+	NodeDEST->DataEnd		+= result;
+	NodeDEST->NumEntries	+= EntriesToMove;
+	NodeSRC->DataEnd		-= result;
+	NodeSRC->NumEntries		-= EntriesToMove;
+	return result;		// return size of data moved
+}
+#endif
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 1
+a7 1
+int moveright(NODE *NodeSRC, NODE *NodeDEST, short NumEntries)
+d9 1
+a9 1
+	int v7; // edx@@3
+d11 1
+a11 1
+	short v12; // [sp+Ch] [bp-1Ch]@@1
+d13 1
+a13 1
+	short v14; // [sp+10h] [bp-18h]@@1
+d15 1
+a15 1
+	NODE_1 *v8; // esi@@3
+d20 1
+a20 1
+	NODE_2 *v9; // edi@@3
+d24 1
+a24 1
+	//printf("moveright(SRC = x%08X, DEST = x%08X, Num: %d\n",NodeSRC,NodeDEST, NumEntries);
+d26 1
+a26 1
+	_chkitems(NodeDEST, NumEntries);	// has an error exit, may not return.
+d28 9
+a36 7
+	v12 = NodeDEST->NumEntries;
+	v4 = &NodeDEST->NODE1ptr[v12];
+	v5 = &NodeDEST->NODE2ptr[v12 + 1];
+	v6 = &v4[NumEntries];                         // Expand DestNODE by NumEntries.
+	v15 = &v5[NumEntries];
+	v14 = 0;
+	while ( v12 > 0 )                                 // If DestNODE empty, no need to shift entries
+d38 2
+a39 2
+		--v4;										  // make NumEntries space at start of DestNODE
+		--v6;
+d45 1
+a45 1
+		--v12;
+d48 3
+a50 2
+	v7 = NodeSRC->NumEntries;
+	v8 = &NodeSRC->NODE1ptr[v7];
+d52 3
+a54 3
+	v9 = &NodeSRC->NODE2ptr[v7];
+	v16->PageNo = v9->PageNo;
+	for ( i = NumEntries; i > 0; --i )            // Copy entries into start of DestNODE
+d56 1
+a56 1
+		--v8;
+d58 2
+a59 2
+		v6->Data = v8->Data;
+		v6->Size = v8->Size;
+d61 3
+a63 3
+		--v9;
+		v16->PageNo = v9->PageNo;
+		v14 += v6->Size;
+d65 8
+a72 6
+	result = (v14 + NumEntries * NodeDEST->field_16);
+	NodeDEST->DataEnd += result;
+	NodeDEST->NumEntries += NumEntries;
+	NodeSRC->DataEnd -= result;
+	NodeSRC->NumEntries -= NumEntries;
+	return result;
+@

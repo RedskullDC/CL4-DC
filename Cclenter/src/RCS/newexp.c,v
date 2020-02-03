@@ -1,0 +1,48 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.10.23.11.36.48;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef NEWEXP_C
+#define NEWEXP_C
+
+#include "DBdefs.h"
+
+EXPR*	newexpr(short Type, short Operator, char *ExprData, size_t ExprSize)
+{
+	EXPR *Expr; // eax@@1
+
+	Expr = (EXPR *)alloc(ExprSize + 16, 0);				// Expression = variable length struct. 16 + expr size
+	Expr->NextEXPR	= 0;
+	Expr->PrevEXPR	= 0;
+	Expr->Operator	= Operator;
+	Expr->Type		= Type;								// Normally a TDFtype from a tdef record
+	Expr->ExprSize	= ExprSize;
+	cpybuf(&Expr->ExprData, ExprData, ExprSize);		// Data is copied to Offset 0x0E (14)
+	*(char*)(&Expr->ExprData + ExprSize) = 0;			// Terminate with a ZERO
+
+	return Expr;
+}
+
+#endif
+
+@

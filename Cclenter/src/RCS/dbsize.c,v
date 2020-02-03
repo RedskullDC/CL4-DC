@@ -1,0 +1,94 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.04.01.03.16.48;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.23.04.18.27;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@minor tidy
+@
+text
+@#ifndef DBSIZE_C
+#define DBSIZE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// Return DBase size in Number of Pages
+
+int dbsize(int DBno)
+{
+	DBinfo *DBptr;
+
+	DBptr = _chkdb(DBno);
+	//if ( DBptr )
+	//	return DBptr->DBmaxpages;
+	//return 0;	// 0 == error_exit
+	return DBptr ? DBptr->DBmaxpages : 0 ;
+}
+
+// return the PageSize in bytes for DBno passed.
+// Optionally populate the NumTables and MaxTables fields
+int dbpgsize(int DBno, short *NumTables, short *MaxTables)
+{
+	DBinfo *DBptr;
+
+	DBptr = _chkdb(DBno);
+	if ( DBptr )
+	{
+		if ( NumTables )
+			*NumTables = DBptr->DBnumtables;
+		
+		if ( MaxTables )
+			*MaxTables = DBptr->DBmaxtables;
+		
+		return DBptr->DBpgsize;
+	}
+	return 0;	// error_exit
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 4
+a17 3
+	if ( DBptr )
+		return DBptr->DBmaxpages;
+	return 0;
+a23 1
+	int pagesize; 
+a26 1
+	pagesize = 0;
+d31 1
+d34 2
+a35 1
+		pagesize = DBptr->DBpgsize;
+d37 1
+a37 1
+	return pagesize;
+@

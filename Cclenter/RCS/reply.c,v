@@ -1,0 +1,310 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.11.13.02.00.19;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.04.05.02.07;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@further optimisations
+@
+text
+@#ifndef REPLY_C
+#define REPLY_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <termcap.h>
+#include <stdlib.h>		// for srand48()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+char reply(char *ReplyMsg, char *ValidChars)
+{
+    FLDdesc *fldREPLY; // edx@@1
+    char *v3; // ecx@@2
+    short v4; // ax@@2
+    short v5; // si@@24
+    int v6; // eax@@25
+    int v7; // edx@@27
+    int v8; // esi@@29
+    char *v9; // esi@@41
+    
+	int Column; // [sp+24h] [bp-2034h]@@1
+    int Line; // [sp+28h] [bp-2030h]@@1
+    bool v15; // [sp+2Ch] [bp-202Ch]@@1
+    bool v16; // [sp+30h] [bp-2028h]@@15
+    bool v17; // [sp+34h] [bp-2024h]@@17
+    bool v18; // [sp+38h] [bp-2020h]@@22
+    char EscChar;
+	char Buffer[2]; // [sp+3Ch] [bp-201Ch]@@1
+
+    char s[256]; // [sp+40h] [bp-2018h]@@32
+
+	printf("reply: (%s,%s)\n",ReplyMsg,ValidChars);
+
+    v15 = false;	// fast exit
+    Line = 0;
+    zap(Buffer, 2u);
+    Column = 0;
+    fldREPLY = &ttab->TTfields[v_REPLY];	// "REPLY" fld
+
+    if ( *(char *)fldREPLY->FLDdata == 'E' )
+    {
+        v3 = ccbuf;
+        v4 = _li * _co;
+        while ( v4 > 0 && !*v3 )
+        {
+	        --v4;
+            ++v3;
+        }
+        if ( v4 )
+            prerr(0, 0, 0);
+        goto LABEL_52;
+    }
+
+	if ( fldREPLY->FLDstat & fld_ZERO )
+        *Buffer = *ValidChars;
+    else
+    {
+        *Buffer = *(char *)fldREPLY->FLDdata;
+        *(char *)fldREPLY->FLDdata = 0;
+        fldREPLY->FLDstat |= fld_ZERO;
+    }
+	//if ( !((*__ctype_b_loc())[Buffer[0]] & 0x0100) && (_mreply || ValidChars[1] != 'r' || repeat) )
+    if ( !(isupper(*Buffer)) && (_mreply || ValidChars[1] != 'r' || repeat) )
+        v16 = false;
+    else
+    {
+        *Buffer = tolower(*Buffer);
+        v16 = true;
+    }
+
+    //v17 = 0;
+    //if ( v16 && *Buffer == 'e' )
+    //    v17 = 1;
+	v17 = (v16 && *Buffer == 'e') ? true : false ;
+    
+	for ( ; !v17; v16 = false )
+    {
+        if ( !v16 )
+        {
+            v15 = false;
+            v18 = false;
+            prerr("%s", ReplyMsg, 0);
+            if ( !Column )
+            {
+                Column = _cx + 2;
+                Line = _cy;
+            }
+            
+			do
+            {
+				//printf("reply: calling linput\n");
+                v5 = align;
+                align = 0;
+                toscreen(Column, Line, 0, 1, Buffer, 0, 1, 1);
+                align = v5;
+
+                whereat(Column, Line, 0, 0);
+                at();
+                if ( _YR )
+                    v6 = -1;
+                else
+                    v6 = 1;
+                
+				v7 = linput(&Buffer[0], v6, 0);
+                if ( v7 <= 0 )
+                {
+                    v8 = chkesc(0, -v7, &EscChar);
+                    prerr("%s", ReplyMsg, 0);
+                    if ( v8 == -5 )
+                    {
+                        exit_type = 0;
+                        v18 = true;
+                        *Buffer = 'E';
+                    }
+                }
+                else
+                    v18 = true;
+            }
+            while ( !v18 );
+            
+			fillbuf(s, Column + 1, ' ');
+            s[Column + 1] = 0;
+            toscreen(1, Line, 0, Column + 1, s, 0, 0, 1);
+            whereat(1, Line, 0, 0);
+            at();
+            
+			if ( *Buffer == '.' )
+                *Buffer = 'a';
+			else if ( *Buffer == ',' )
+				*Buffer = 'c';
+			else if (isupper(*Buffer))
+            {
+				//v15 = 0;
+                //if ( *Buffer == 'E' && bige == 1 )
+				//	v15 = 1;
+				v15 = (*Buffer == 'E' && bige == 1) ? true : false ;
+				
+				*Buffer = tolower(*Buffer);
+                if ( v15 )
+					break;
+            }
+        } // end if ( !v16 )
+        
+		v9 = ValidChars;
+        while ( *v9 )
+        {
+			if ( *Buffer == *v9 || *Buffer == tolower(*v9) )
+				v17 = true;	// Found a valid match on the char entered
+			v9++;
+        }
+        if ( !v17 && !v16 )
+            fputc(7, stderr);		// bell char
+    }
+    prerr(0, 0, 0);					// clear message line
+
+    if ( v15 )
+LABEL_52:
+        longjmp(sjbuf, 1);			// crash back out to main()	****************
+    
+	setcvar(v_LREPLY, &Buffer[0]);	// "LREPLY"
+    return Buffer[0];
+}
+
+void mreply(char *a1, char *a2)
+{
+    _mreply = 1;
+    reply(a1, a2);
+    _mreply = 0;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d23 2
+a24 1
+    int Column; // [sp+24h] [bp-2034h]@@1
+d26 7
+a32 5
+    signed int v15; // [sp+2Ch] [bp-202Ch]@@1
+    signed int v16; // [sp+30h] [bp-2028h]@@15
+    signed int v17; // [sp+34h] [bp-2024h]@@17
+    signed int v18; // [sp+38h] [bp-2020h]@@22
+    char Buffer[4]; // [sp+3Ch] [bp-201Ch]@@1
+d35 1
+a35 1
+	//printf("reply: (%s,%s)\n",ReplyMsg,ValidChars);
+d37 1
+a37 1
+    v15 = 0;
+d39 1
+a39 1
+    zap(&Buffer[2], 2u);
+d58 1
+a58 3
+    {
+        Buffer[2] = *ValidChars;
+    }
+d61 1
+a61 1
+        Buffer[2] = *(char *)ttab->TTfields[5].FLDdata;
+d65 3
+a67 5
+	//if ( !((*__ctype_b_loc())[Buffer[2]] & 0x0100) && (_mreply || ValidChars[1] != 'r' || repeat) )
+    if ( !(isupper(Buffer[2])) && (_mreply || ValidChars[1] != 'r' || repeat) )
+    {
+        v16 = 0;
+    }
+d70 2
+a71 2
+        Buffer[2] = tolower(Buffer[2]);
+        v16 = 1;
+d74 4
+a77 3
+    v17 = 0;
+    if ( v16 && Buffer[2] == 'e' )
+        v17 = 1;
+d79 1
+a79 1
+	for ( ; !v17; v16 = 0 )
+d83 2
+a84 2
+            v15 = 0;
+            v18 = 0;
+d91 2
+a92 1
+            do
+d97 1
+a97 1
+                toscreen(Column, Line, 0, 1, &Buffer[2], 0, 1, 1);
+d99 1
+d106 2
+a107 1
+                v7 = linput(&Buffer[2], v6, 0);
+d110 1
+a110 1
+                    v8 = chkesc(0, -v7, Buffer);
+d115 2
+a116 2
+                        v18 = 1;
+                        Buffer[2] = 'E';
+d120 1
+a120 1
+                    v18 = 1;
+d130 5
+a134 7
+			if ( Buffer[2] == '.' )
+                Buffer[2] = 'a';
+            
+			else if ( Buffer[2] == ',' )
+				Buffer[2] = 'c';
+			
+			else if (isupper(Buffer[2]))
+d136 6
+a141 4
+				v15 = 0;
+                if ( Buffer[2] == 'E' && bige == 1 )
+					v15 = 1;
+				Buffer[2] = tolower(Buffer[2]);
+d150 2
+a151 2
+			if ( Buffer[2] == *v9 || Buffer[2] == tolower(*v9) )
+				v17 = 1;
+d155 1
+a155 1
+            fputc(7, stderr);	// bell char
+d157 2
+a158 1
+    prerr(0, 0, 0);				// clear messaeg line
+d162 3
+a164 2
+    setcvar(v_LREPLY, &Buffer[2]);	// "LREPLY"
+    return Buffer[2];
+@

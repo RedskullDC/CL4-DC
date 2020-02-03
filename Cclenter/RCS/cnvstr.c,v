@@ -1,0 +1,1063 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.07.04.53.37;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2016.04.01.01.48.38;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.2
+log
+@added SHA1 handler
+@
+text
+@#ifndef SCONV_C
+#define SCONV_C
+
+#include <stdio.h>
+#include <stdarg.h>			// for var args stuff
+#include <ctype.h>			// tolower() etc.
+#include <stdlib.h>			// strtod() etc.
+#include <string.h>			// for strncmp()
+#include <sys/stat.h>		// for stat64
+#include <sys/types.h>
+#include <grp.h>			// getgrgid(gid_t gid);
+#include <openssl/sha.h>	// for SHA1()
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+// called by sconv() handler in evalstr()
+
+unsigned char hash[SHA_DIGEST_LENGTH];
+
+char *tabsub(char *Src, int max)
+{
+	char	*v11;
+	char	*v3;
+	char	*i;
+
+    int		v2;
+	int		prev;
+	int		v10;
+	char	v5;
+	
+	// LSCONV contains the length previously processed. 
+	// SCONVERR is set to 1 when no more string is left.
+
+    v10 = 0;
+    prev = incvar(v_LSCONV, 0);
+    v11 = &Src[prev];
+    
+	v2 = strlen(&Src[prev]);
+    if ( v2 > max )
+        v2 = max;
+
+    strncpy(buf_0, &Src[prev], v2);
+    buf_0[v2] = 0;
+
+    v3 = strchr(buf_0, '\n');
+    if ( v3 || (v3 = strchr(buf_0, '\r')) != 0 )	// string contains a newline or carriage return!
+    {
+        v10 = 1;
+        if ( *v3 == '\r' && v3 - buf_0 == max - 1 && v11[max] == '\n' )
+            v10 = 2;
+        
+		*v3 = 0;
+        if ( v3 > buf_0 && *(v3 - 1) == '\r' )
+        {
+            *--v3 = 0;
+            ++v10;
+        }
+        v2 = v3 - buf_0;		// pointer arithmetic
+    }
+	else	// string does *not* contain a NEWLINE or CR
+	{
+		for ( i = &v11[v2]; *i; ++i )
+		{
+			v5 = *i;
+			if ( v5 != TAB && v5 != '\r' && v5 != '\n' )
+				break;
+			++v10;
+			if ( *i == '\n' )
+				break;
+		}
+		if ( max == v2 && !v10 )
+		{
+			v3 = &buf_0[v2 - 1];
+			if ( v3 > buf_0 )
+			{
+				if ( *v3 == TAB )
+				{
+					*v3 = 0;
+					v2 = v3 - buf_0;
+					v10 = 1;
+					goto LABEL_27;
+				}
+				do
+					--v3;
+				while ( v3 > buf_0 && *v3 != TAB );
+			}
+			if ( *v3 == TAB )
+			{
+				*v3 = 0;
+				v2	= v3 - buf_0;
+				v10 = 1;
+			}
+		}
+	}
+
+LABEL_27:
+    if ( *(&Src[v10] + v2 + prev) )	// is current char non-zero?
+    {
+        incvar(v_LSCONV, v2 + v10);
+		setvar(v_SCONVERR, 0);		// Yes, there are string chars remaining 
+    }
+    else
+    {
+        setvar(v_LSCONV, v2);
+		setvar(v_SCONVERR, 1);		// No, there are no more string chars left, possible error
+    }
+    return buf_0;
+}
+
+
+char *cnvstr(char *dest, char *command, const char *nptr, char *src)
+{
+
+	char	*v66;
+	char	*v67;
+	char	*v69;
+	char	*v70;
+	char	*v71;
+	int		v74;
+	char	*i;
+	char	*v117;
+	char	*sa;
+	
+	char	v120[10];
+	struct stat64 buf;
+
+	// sconv(url|soundex|tabsub|stat, en|de|ign|unign|0|1-9, string3)
+
+	if (!strncmp(command,"stat",5))
+	{
+		*dest = 0;	// default return blank string
+		if (!__xstat64(3, src, &buf))				// in this case, Src is a pathname
+		{
+			if (!strncmp(nptr,"mtime",6))
+				sprintf(dest, "%ld", buf.st_mtime);	
+
+			else if (!strncmp(nptr,"size",5))
+				sprintf(dest, "%lld", buf.st_size);
+
+			else if (!strncmp(nptr,"mode",5))
+				sprintf(dest, "%0o", buf.st_mode);
+
+			else if (!strncmp(nptr,"inode",6))
+				sprintf(dest, "%ld", buf.st_ino);
+			
+			else if (!strncmp(nptr,"uid",4))						// token filtered by clcomp
+				sprintf(dest, "%d", buf.st_uid);
+			
+			else if (!strncmp(nptr,"uname",6))						// token filtered by clcomp
+				strcpy(dest, getpwuid(buf.st_uid)->pw_name);
+			
+			else if (!strncmp(nptr,"gid",4))						// token filtered by clcomp
+				sprintf(dest, "%d", buf.st_gid);
+			
+			else if (!strncmp(nptr,"gname",6))						// token filtered by clcomp
+				strcpy(dest, getgrgid(buf.st_gid)->gr_name);
+			
+			else if (!strncmp(nptr,"nlink",6))
+				sprintf(dest, "%d", buf.st_nlink);
+		}
+		return dest;
+	}
+//===============================================
+	if (!strncmp(command,"base64",7))
+	{
+		if ( *nptr == 'e' && nptr[1] == 'n' && !nptr[2] )		// encode
+		{
+			//strcpy(dest, base64en(src));
+		}		
+		else if ( *nptr == 'd' && nptr[1] == 'e' && !nptr[2] )	// decode
+		{
+			//strcpy(dest, base64de(src));
+		}		
+		else
+			strcpy(dest, src);									// neither, return unmodified
+		
+		return dest;
+	}
+//=============================================================================
+	if (!strncmp(command,"url",4))
+	{
+		v66 = 0;
+		sa = strchr(src, '?');
+		if ( sa )
+		{
+			sa++;
+			strncpy(dest, src, sa - src);
+		}
+		else
+			sa = src;
+		dest[sa - src] = 0;
+		
+		v67 = strchr(sa, '#');
+		v69 = v67;
+		if ( v67 )
+		{
+			v66 = mstrcpy(v67, 0);
+			*v69 = 0;
+		}
+		if ( first_0 )					// global in funcdefs.h
+		{
+			v69 = getenv("CL4_KEY");
+			if ( v69 && *v69 )
+				bfk_1 = 1;				// use blowfish mode if CL4_KEY set
+			first_0 = false;
+		}
+
+		if ( *nptr != 'e' || nptr[1] != 'n' || nptr[2] )
+		{
+			if ( *nptr != 'd' || nptr[1] != 'e' || nptr[2] )
+			{
+				v71 = sa;
+			}
+			else if ( bfk_1 )
+			{
+				//v71 = Blowfish_StrDecrypt(sa, bfk_1);
+			}
+			else
+			{
+				//v71 = base64de((char *)sa);
+			}
+			strcat(dest, v71);
+			if ( v66 )
+			{
+				strcat(dest, v66);
+				mfree_0(v66);
+			}
+			return dest;
+		}
+		if ( bfk_1 )
+		{
+			if ( !strchr(sa, '=') )
+			{
+				strcat(dest, sa);
+				if ( v66 )
+				{
+					strcat(dest, v66);
+					mfree_0(v66);
+				}
+				return dest;
+			}
+			//v70 = Blowfish_StrEncrypt((char *)sa, bfk_1);
+		}
+		else
+		{
+			//v70 = base64en((char *)sa);
+		}
+		strcat(dest, v70);
+		if ( v66 )
+		{
+			strcat(dest, v66);
+			mfree_0(v66);
+		}
+		return dest;
+	}
+//=================================================================
+	if (!strncmp(command,"crc",4))											// "crc" handler   - middle param ignored
+	{																		// ex: sconv('crc','','testrsv.enc')
+		sprintf(dest, "%d", (unsigned short)acrc(0, src, strlen(src)));
+		return dest;
+	}
+//=================================================================
+	if (!strncmp(command,"xml",4))											// "xml" handler
+	{
+		if (!strncmp(nptr,"en",3))			// encode mode only
+		{
+			v117 = src;
+			for ( i = dest; *v117; ++v117 )
+			{
+				switch ( *v117 )
+				{
+					case '<':
+						strcat(i, "&lt;");
+						i += 4;
+						continue;
+				   case '>':
+						strcat(i, "&gt;");
+						i += 4;
+						continue;
+					case '&':
+						strcat(i, "&amp;");
+						i += 5;
+						continue;
+					case '"':
+						strcat(i, "&quot;");
+						i += 6;
+						break;
+					case '\'':
+						strcat(i, "&apos;");
+						i += 6;
+						break;
+					default:
+						if ( *v117 >= 0 && (signed int)(unsigned char)*v117 > 31 )
+						{
+							*i++ = *v117;
+						}
+						else	// control character 0-31
+						{
+							v74 = sprintf(v120, "#%d;", (unsigned char)*v117);
+							strcat(i, v120);
+							i += v74;
+						}
+						break;
+				}
+			}
+		}
+		return dest;
+	}
+//========================================================
+	if (!strncmp(command,"soundex",8))
+	{
+		if (!strncmp(nptr,"unign",6))
+		{
+			//soundexIgn(src, 0);	// unignore
+		}
+		if (!strncmp(nptr,"ign",4))
+		{
+			//soundexIgn(src, 1);	// ignore
+		}
+		else
+		{
+			//strcpy(dest, soundex(src, strtol(nptr, 0, 10)));
+			strcpy(dest, src);		// *** debug code ***
+		}
+		return dest;
+	}
+//=====================================================================
+	if (!strncmp(command,"bf",3))
+	{
+		if (!strncmp(nptr,"en",3))
+		{
+			//strcat(dest, Blowfish_StrEncrypt(src, 0));
+		}			
+		else if (!strncmp(nptr,"de",3))
+		{
+			//strcat(dest, Blowfish_StrDecrypt(src, 0));
+		}
+		else
+			strcat(dest, 0);
+		
+		return dest;
+	}
+//=======================================================
+	if (!strncmp(command,"tabsub",7))
+	{
+		strcpy(dest, tabsub(src, strtol(nptr, 0, 10)));
+		return dest;
+	}
+//===================================================================
+	if (!strncmp(command,"sha0",5))
+	{
+		sha0_encrypt(src, dest);
+		return dest;
+	}
+//===========================================					*** DC Extension - SHA1 encode **
+	if (!strncmp(command,"sha1",5))
+	{
+		//printf("src = %s\n",src);
+		memset(hash, 0x0, SHA_DIGEST_LENGTH);
+		SHA1(src, strlen(src), hash);							// hash now contains the 20-byte SHA-1 hash
+		register int idx;
+		for (idx = 0; idx < SHA_DIGEST_LENGTH; idx++)					// ** no sanity check on size of dest buffer **
+			sprintf((char*)&(dest[idx*2]), "%02x", hash[idx]);
+		
+		return dest;				
+	}
+
+	// default action: return string unmodified
+	strcpy(dest, src);
+	return dest;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d5 8
+a12 4
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include <string.h>		// for strncmp()
+d19 3
+a21 1
+char *cnvstr(char *dest, char *command, const char *nptr, char *src)
+d23 73
+d97 2
+a98 120
+	unsigned char v4; // cf@@1
+	unsigned char v5; // zf@@1
+	char *v6; // esi@@1
+	char *v7; // edi@@1
+	signed int v8; // ecx@@1
+	unsigned char v9; // dl@@4
+	unsigned char v10; // al@@4
+	unsigned char v11; // cf@@4
+	unsigned char v12; // zf@@4
+	int v13; // eax@@5
+	unsigned char v14; // cf@@5
+	unsigned char v15; // zf@@5
+	const char *v16; // esi@@6
+	char *v17; // edi@@6
+	signed int v18; // ecx@@6
+	unsigned char v19; // dl@@9
+	unsigned char v20; // al@@9
+	unsigned char v21; // cf@@9
+	unsigned char v22; // zf@@9
+	const char *v24; // esi@@11
+	char *v25; // edi@@11
+	signed int v26; // ecx@@11
+	unsigned char v27; // dl@@14
+	unsigned char v28; // al@@14
+	unsigned char v29; // cf@@14
+	unsigned char v30; // zf@@14
+	const char *v32; // esi@@16
+	char *v33; // edi@@16
+	signed int v34; // ecx@@16
+	unsigned char v35; // dl@@19
+	unsigned char v36; // al@@19
+	unsigned char v37; // cf@@19
+	unsigned char v38; // zf@@19
+	const char *v39; // esi@@22
+	char *v40; // edi@@22
+	signed int v41; // ecx@@22
+	unsigned char v42; // cf@@28
+	unsigned char v43; // zf@@28
+	__uid_t v44; // eax@@32
+	const char *v45; // esi@@33
+	char *v46; // edi@@33
+	signed int v47; // ecx@@33
+	char *v48; // eax@@37
+	unsigned char v49; // cf@@38
+	unsigned char v50; // zf@@38
+	const char *v52; // esi@@43
+	char *v53; // edi@@43
+	signed int v54; // ecx@@43
+	unsigned char v55; // dl@@46
+	unsigned char v56; // al@@46
+	unsigned char v57; // cf@@46
+	unsigned char v58; // zf@@46
+	char *v59; // eax@@47
+	const char *v60; // esi@@48
+	char *v61; // edi@@48
+	signed int v62; // ecx@@48
+	char *v63; // esi@@54
+	char *v64; // edi@@54
+	signed int v65; // ecx@@54
+	char *v66; // edi@@71
+	char *v67; // eax@@74
+	char *v68; // esi@@74
+	char *v69; // eax@@77
+	int v70; // eax@@87
+	int v71; // eax@@95
+	unsigned char v72; // cf@@108
+	unsigned char v73; // zf@@108
+	int v74; // edi@@126
+	char *v75; // esi@@130
+	char *v76; // edi@@130
+	signed int v77; // ecx@@130
+	unsigned char v78; // cf@@134
+	unsigned char v79; // zf@@134
+	const char *v80; // esi@@139
+	char *v81; // edi@@139
+	signed int v82; // ecx@@139
+	unsigned char v84; // cf@@147
+	unsigned char v85; // zf@@147
+	int v86; // eax@@157
+	char *v87; // esi@@161
+	char *v88; // edi@@161
+	signed int v89; // ecx@@161
+	unsigned char v90; // dl@@164
+	unsigned char v91; // al@@164
+	unsigned char v92; // cf@@164
+	unsigned char v93; // zf@@164
+	char *v95; // esi@@166
+	char *v96; // edi@@166
+	signed int v97; // ecx@@166
+	char *v104; // [sp+0h] [bp-98h]@@138
+	int v111; // [sp+4h] [bp-94h]@@138
+	const char *v112; // [sp+4h] [bp-94h]@@153
+	int v114; // [sp+8h] [bp-90h]@@15
+	int v115; // [sp+Ch] [bp-8Ch]@@15
+	char *i; // [sp+14h] [bp-84h]@@115
+	char *v117; // [sp+18h] [bp-80h]@@115
+	char *s; // [sp+1Ch] [bp-7Ch]@@71
+	const char *sa; // [sp+1Ch] [bp-7Ch]@@72
+
+// struct stat64 ============================
+	char v120; // [sp+20h] [bp-78h]@@5
+	int v121; // [sp+30h] [bp-68h]@@20
+	__gid_t v122; // [sp+34h] [bp-64h]@@52
+	__uid_t uid; // [sp+38h] [bp-60h]@@32
+	__gid_t gid; // [sp+3Ch] [bp-5Ch]@@42
+	int v125; // [sp+4Ch] [bp-4Ch]@@15
+	int v126; // [sp+50h] [bp-48h]@@15
+	int v127; // [sp+68h] [bp-30h]@@10
+	int v128; // [sp+78h] [bp-20h]@@26
+	int v129; // [sp+7Ch] [bp-1Ch]@@26
+//===========================================
+
+	// sconv(url|soundex|tabsub, en|de|ign|unign|0|1-9, string3)
+
+    v4 = 0;
+    v5 = 0;
+    v6 = command;
+    v7 = "stat";
+    v8 = 5;
+    do
+d100 2
+a101 5
+        if ( !v8 )
+            break;
+        v4 = (unsigned char)*v6 < (unsigned char)*v7;
+        v5 = *v6++ == *v7++;
+        --v8;
+d103 1
+a103 6
+    while ( v5 );
+    v9 = !(v4 | v5);
+    v10 = v4;
+    v11 = v9 < v4;
+    v12 = v9 == v10;
+    if ( v9 != v10 ) // if (command != "stat")
+d105 50
+a154 20
+//=======================================================
+        v63 = command;
+        v64 = "base64";
+        v65 = 7;
+        do
+        {
+            if ( !v65 )
+                break;
+            v11 = (unsigned char)*v63 < (unsigned char)*v64;
+            v12 = *v63++ == *v64++;
+            --v65;
+        }
+        while ( v12 );
+        if ( !(v11 | v12) == v11 )   // command was "base64"
+        {
+            if ( *nptr == 'e' && nptr[1] == 'n' && !nptr[2] )		// encode
+				strcpy(dest, base64en(src));
+            
+			else if ( *nptr == 'd' && nptr[1] == 'e' && !nptr[2] )	// decode
+				strcpy(dest, base64de(src));
+d156 2
+a157 2
+			else
+				strcpy(dest, src);									// neither, return unmodified
+d159 21
+a179 2
+			return dest;
+        }
+d181 27
+d209 15
+a223 236
+        if ( *command != 'u' || command[1] != 'r' || command[2] != 'l' || command[3] )
+        {
+            if ( *command == 'c' && command[1] == 'r' && command[2] == 'c' && !command[3] )		// "crc" handler
+            {
+                v44 = (unsigned short)acrc(0, src, strlen(src));
+				sprintf(dest, "%d", v44);
+				return dest;
+            }
+            v72 = (unsigned char)*command < 'x';
+            v73 = *command == 'x';
+            if ( *command == 'x' )
+            {
+                v72 = (unsigned char)command[1] < 'm';
+                v73 = command[1] == 'm';
+                if ( command[1] == 'm' )
+                {
+                    v72 = (unsigned char)command[2] < 'l';
+                    v73 = command[2] == 'l';
+                    if ( command[2] == 'l' )
+                    {
+                        v72 = 0;
+                        v73 = command[3] == 0;
+                        if ( !command[3] )					// "xml" handler
+                        {
+                            if ( *nptr == 'e' && nptr[1] == 'n' && !nptr[2] )	// encode
+                            {
+                                v117 = src;
+                                for ( i = dest; *v117; ++v117 )
+                                {
+                                    switch ( *v117 )
+                                    {
+                                        case '<':
+                                            strcat(i, "&lt;");
+                                            i += 4;
+                                            continue;
+                                       case '>':
+                                            strcat(i, "&gt;");
+                                            i += 4;
+                                            continue;
+                                        case '&':
+                                            strcat(i, "&amp;");
+                                            i += 5;
+                                            continue;
+                                        case '"':
+                                            strcat(i, "&quot;");
+                                            i += 6;
+                                            break;
+                                        case '\'':
+                                            strcat(i, "&apos;");
+                                            i += 6;
+                                            break;
+                                        default:
+                                            if ( *v117 >= 0 && (signed int)(unsigned char)*v117 > 31 )
+                                            {
+                                                *i++ = *v117;
+                                            }
+                                            else
+                                            {
+                                                v74 = sprintf(&v120, "#%d;", (unsigned char)*v117);
+                                                strcat(i, &v120);
+                                                i += v74;
+                                            }
+                                            break;
+                                    }
+                                }
+                            }
+                            return dest;
+                        }
+                    }
+                }
+            }
+//========================================================
+            v75 = command;
+            v76 = "soundex";
+            v77 = 8;
+            do
+            {
+                if ( !v77 )
+                    break;
+                v72 = (unsigned char)*v75 < (unsigned char)*v76;
+                v73 = *v75++ == *v76++;
+                --v77;
+            }
+            while ( v73 );
+            if ( !(v72 | v73) == v72 )
+            {
+                v78 = *nptr < (unsigned char)'i';
+                v79 = *nptr == 'i';
+                if ( *nptr != 'i'
+                  || (v78 = nptr[1] < (unsigned char)'g', v79 = nptr[1] == 'g', nptr[1] != 'g')
+                  || (v78 = nptr[2] < (unsigned char)'n', v79 = nptr[2] == 'n', nptr[2] != 'n')
+                  || (v78 = 0, v79 = nptr[3] == 0, nptr[3]) )
+                {
+                    v80 = nptr;
+                    v81 = "unign";
+                    v82 = 6;
+                    do
+                    {
+                        if ( !v82 )
+                            break;
+                        v78 = *v80 < (unsigned char)*v81;
+                        v79 = *v80++ == *v81++;
+                        --v82;
+                    }
+                    while ( v79 );
+                    if ( !(v78 | v79) != v78 )
+                    {
+						strcpy(dest, soundex(src, strtol(nptr, 0, 10)));
+						return dest;
+                    }
+                    v111 = 0;
+                    v104 = src;
+                }
+                else
+                {
+                    v111 = 1;
+                    v104 = src;
+                }
+                //soundexIgn((int (__cdecl **)(void *))v104, v111);
+                return dest;
+            }
+//=====================================================================
+            v84 = (unsigned char)*command < 'b';
+            v85 = *command == 'b';
+            if ( *command == 'b' )
+            {
+                v84 = (unsigned char)command[1] < 'f';
+                v85 = command[1] == 'f';
+                if ( command[1] == 'f' )
+                {
+                    v84 = 0;
+                    v85 = command[2] == 0;
+                    if ( !command[2] )
+                    {
+                        if ( *nptr != 'e' || nptr[1] != 'n' || nptr[2] )
+                        {
+                            if ( *nptr != 'd' || nptr[1] != 'e' || nptr[2] )
+                                v86 = 0;
+                            else
+                                v86 = Blowfish_StrDecrypt(src, 0);
+                            v112 = (const char *)v86;
+                        }
+                        else
+                        {
+                            v112 = (const char *)Blowfish_StrEncrypt(src, 0);
+                        }
+                        strcat(dest, v112);
+                        return dest;
+                    }
+                }
+            }
+//=======================================================
+            v87 = command;
+            v88 = "tabsub";
+            v89 = 7;
+            do
+            {
+                if ( !v89 )
+                    break;
+                v84 = (unsigned char)*v87 < (unsigned char)*v88;
+                v85 = *v87++ == *v88++;
+                --v89;
+            }
+            while ( v85 );
+            v90 = !(v84 | v85);
+            v91 = v84;
+            v92 = v90 < v84;
+            v93 = v90 == v91;
+            if ( v90 == v91 )
+            {
+				strcpy(dest, tabsub(src, strtol(nptr, 0, 10)));
+				return dest;
+            }
+//===================================================================
+            v95 = command;
+            v96 = "sha0";
+            v97 = 5;
+            do
+            {
+                if ( !v97 )
+                    break;
+                v92 = (unsigned char)*v95 < (unsigned char)*v96;
+                v93 = *v95++ == *v96++;
+                --v97;
+            }
+            while ( v93 );
+            if ( !(v92 | v93) == v92 )
+            {
+                sha0_encrypt(src, dest);
+                return dest;
+            }
+			strcpy(dest, src);
+			return dest;
+        }
+//==========================================================
+        v66 = 0;
+        s = strchr(src, '?');
+        if ( s )
+        {
+            sa = s + 1;
+            strncpy(dest, src, sa - src);
+        }
+        else
+        {
+            sa = src;
+        }
+        dest[sa - src] = 0;
+        v67 = strchr(sa, '#');
+        v68 = v67;
+        if ( v67 )
+        {
+            v66 = mstrcpy(v67, 0);
+            *v68 = 0;
+        }
+        if ( first_0 )					// global in funcdefs.h
+        {
+            v69 = getenv("CL4_KEY");
+            if ( v69 && *v69 )
+                bfk_1 = 1;
+            first_0 = false;
+        }
+        if ( *nptr != 'e' || nptr[1] != 'n' || nptr[2] )
+        {
+            if ( *nptr != 'd' || nptr[1] != 'e' || nptr[2] )
+            {
+                v71 = (int)sa;
+            }
+            else if ( bfk_1 )
+            {
+                v71 = Blowfish_StrDecrypt(sa, bfk_1);
+            }
+            else
+            {
+                v71 = base64de((char *)sa);
+            }
+            strcat(dest, v71);
+d230 19
+a248 19
+        }
+        if ( bfk_1 )
+        {
+            if ( !strchr(sa, '=') )
+            {
+                strcat(dest, sa);
+                if ( v66 )
+                {
+                    strcat(dest, v66);
+                    mfree_0(v66);
+                }
+                return dest;
+            }
+            v70 = Blowfish_StrEncrypt((char *)sa, bfk_1);
+        }
+        else
+        {
+            v70 = base64en((char *)sa);
+        }
+d256 80
+a335 140
+    }
+//============================================
+
+// "stat" handler
+
+    *dest = 0;
+    v13 = __xstat64(3, src, &v120);
+    v14 = 0;
+    v15 = v13 == 0;
+    if ( !v13 )
+    {
+        v16 = nptr;
+        v17 = "mtime";
+        v18 = 6;
+        do
+        {
+            if ( !v18 )
+                break;
+            v14 = *v16 < (unsigned char)*v17;
+            v15 = *v16++ == *v17++;
+            --v18;
+        }
+        while ( v15 );
+        v19 = !(v14 | v15);
+        v20 = v14;
+        v21 = v19 < v14;
+        v22 = v19 == v20;
+        if ( v19 == v20 )
+        {
+            sprintf(dest, "%ld", v127);
+            return dest;
+        }
+//==================================================
+        v24 = nptr;
+        v25 = "size";
+        v26 = 5;
+        do
+        {
+            if ( !v26 )
+                break;
+            v21 = *v24 < (unsigned char)*v25;
+            v22 = *v24++ == *v25++;
+            --v26;
+        }
+        while ( v22 );
+        v27 = !(v21 | v22);
+        v28 = v21;
+        v29 = v27 < v21;
+        v30 = v27 == v28;
+        if ( v27 == v28 )
+        {
+            v114 = v125;
+            v115 = v126;
+            sprintf(dest, "%lld", v114, v115);
+            return dest;
+        }
+//================================================
+        v32 = nptr;
+        v33 = "mode";
+        v34 = 5;
+        do
+        {
+            if ( !v34 )
+                break;
+            v29 = *v32 < (unsigned char)*v33;
+            v30 = *v32++ == *v33++;
+            --v34;
+        }
+        while ( v30 );
+        v35 = !(v29 | v30);
+        v36 = v29;
+        v37 = v35 < v29;
+        v38 = v35 == v36;
+        if ( v35 == v36 )
+        {
+            sprintf(dest, "%0o", v121);
+            return dest;
+        }
+//==============================================
+        v39 = nptr;
+        v40 = "inode";
+        v41 = 6;
+        do
+        {
+            if ( !v41 )
+                break;
+            v37 = *v39 < (unsigned char)*v40;
+            v38 = *v39++ == *v40++;
+            --v41;
+        }
+        while ( v38 );
+        if ( !(v37 | v38) == v37 )
+        {
+            v114 = v128;
+            v115 = v129;
+            sprintf(dest, "%ld", v114, v115);
+            return dest;
+        }
+//===============================================
+        v42 = *nptr < (unsigned char)'u';
+        v43 = *nptr == 'u';
+        if ( *nptr == 'u' )
+        {
+            v42 = nptr[1] < (unsigned char)'i';
+            v43 = nptr[1] == 'i';
+            if ( nptr[1] == 'i' )
+            {
+                v42 = nptr[2] < (unsigned char)'d';
+                v43 = nptr[2] == 'd';
+                if ( nptr[2] == 'd' )
+                {
+                    v42 = 0;
+                    v43 = nptr[3] == 0;
+                    if ( !nptr[3] )
+                    {
+						sprintf(dest, "%d", uid);
+						return dest;
+                    }
+                }
+            }
+        }
+//=====================================================
+        v45 = nptr;
+        v46 = "uname";
+        v47 = 6;
+        do
+        {
+            if ( !v47 )
+                break;
+            v42 = *v45 < (unsigned char)*v46;
+            v43 = *v45++ == *v46++;
+            --v47;
+        }
+        while ( v43 );
+        if ( !(v42 | v43) == v42 )
+        {
+			strcpy(dest, getpwuid(uid)->pw_name);
+			return dest;
+        }
+		if (!strncmp(nptr,"uname",6))
+d337 1
+a337 2
+			strcpy(dest, getpwuid(uid)->pw_name);
+			return dest;
+d339 33
+a371 66
+//=====================================================
+        v49 = *nptr < (unsigned char)'g';
+        v50 = *nptr == 'g';
+        if ( *nptr == 'g' )
+        {
+            v49 = nptr[1] < (unsigned char)'i';
+            v50 = nptr[1] == 'i';
+            if ( nptr[1] == 'i' )
+            {
+                v49 = nptr[2] < (unsigned char)'d';
+                v50 = nptr[2] == 'd';
+                if ( nptr[2] == 'd' )
+                {
+                    v49 = 0;
+                    v50 = nptr[3] == 0;
+                    if ( !nptr[3] )
+                    {
+						sprintf(dest, "%d", gid);
+						return dest;
+                    }
+                }
+            }
+        }
+//=================================================
+        v52 = nptr;
+        v53 = "gname";
+        v54 = 6;
+        do
+        {
+            if ( !v54 )
+                break;
+            v49 = *v52 < (unsigned char)*v53;
+            v50 = *v52++ == *v53++;
+            --v54;
+        }
+        while ( v50 );
+        v55 = !(v49 | v50);
+        v56 = v49;
+        v57 = v55 < v49;
+        v58 = v55 == v56;
+        if ( v55 == v56 )
+        {
+            v59 = getgrgid(gid)->gr_name;
+            strcpy(dest, v59);
+            return dest;
+        }
+//============================================
+        v60 = nptr;
+        v61 = "nlink";
+        v62 = 6;
+        do
+        {
+            if ( !v62 )
+                break;
+            v57 = *v60 < (unsigned char)*v61;
+            v58 = *v60++ == *v61++;
+            --v62;
+        }
+        while ( v58 );
+        if ( !(v57 | v58) == v57 )
+        {
+			sprintf(dest, "%d", v122);
+			return dest;
+        }
+    }
+    return dest;
+@

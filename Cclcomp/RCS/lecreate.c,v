@@ -1,0 +1,925 @@
+head	1.7;
+access;
+symbols;
+locks
+	leslie:1.7; strict;
+comment	@ * @;
+
+
+1.7
+date	2016.03.10.05.34.26;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2016.01.19.05.51.03;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2015.08.30.11.04.44;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.07.16.03.34.43;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.06.19.06.44.34;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.09.23.07.41.24;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.13.30.30;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.7
+log
+@*** empty log message ***
+@
+text
+@#ifndef LECREATE_C
+#define LECREATE_C
+
+#include <assert.h>
+
+// careful not to confuse with tdopen()!!
+
+int _tdopen(int DBno, int TTno)
+{
+	TDesc	*TTptr;
+	TDef	*v18;
+	TDef	*tdef;
+	FLDdesc *fld;
+	
+    unsigned int v7;
+    signed int result;
+    size_t	v9;
+    short	v4;
+    short	NumFields;
+    short	v6;
+    short	v8;
+    short	v15;
+    int		TDno;
+    int		ErrorNo;
+    char	arg[112];
+    char	v23[32];
+    char	FLDtype;
+    ELEMENTREC elem;
+
+    if ( no_ttabs - 1 <= TTno )
+    {
+          newttab();
+		  assert(TTno < no_ttabs);
+          //if ( TTno >= no_ttabs )
+          //     __assert_fail("td < no_ttabs", "lecreate.c", 0xCCu, "_tdopen");
+    }
+    TTptr = &ttab[TTno];
+    v18 = tblrow(TTno);
+    result = 0;
+    if ( v18 )
+    {
+		tdef = v18;
+        v4 = 0;
+        for ( NumFields = 0; tdef->TDFentry; ++tdef )
+        {
+			v4 = pcrc(v4, tdef, 2, 68, 3u);
+            NumFields++;
+		}
+        if ( !v4 )
+			v4 = 1;
+		TTptr->TableCRC = v4;
+        
+		TTptr->NumFields = NumFields;
+        TTptr->TTfields = (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));		// sizeof(FLDdesc) == 24. zero terminated array
+        TDno = identify(DBno, "elements");
+        if ( TDno < 0 )
+			TDno = identify(DBno, "domains");
+		
+		tdef = v18;
+        for ( fld = TTptr->TTfields; tdef->TDFentry; ++tdef )
+        {
+			v23[0] = 0;
+            if ( TDno > 0 )
+            {
+				itoms(&elem.TDFentry, tdef->TDFentry);
+				v6 = getr(TDno,(char*)&elem, 0);
+                ErrorNo = v6;
+                if ( v6 <= 0 )
+                {
+					sprintf(arg, "domid %d not in %s.elements", tdef->TDFentry, dtab[DBno].FullDBname);
+                    loaderr(82, arg);
+                    v23[0] = 0;
+                    if ( (signed short)ErrorNo < 0 )
+						dberror(ErrorNo, 0, TDno);// dead end exit
+				}
+                else
+                {
+					elem.FLDlen = 0;	// ensure that FieldName is terminated
+                    cdbcpystr(v23, elem.FieldName, 0);
+				}
+                v7 = strlen(v23) + 1;
+                v8 = v7 - 1;
+                if ( v7 != 1 )
+                {
+					v9 = v8 + 1;
+                    fld->FLDname = (char *)mmalloc(v8 + 1);
+                    cpybuf(fld->FLDname, v23, v9);
+				}
+			}
+            FLDtype = gettype(tdef->TDFtype, tdef->TDFsize);
+            fld->FLDtype = FLDtype;
+            
+			if ( FLDtype == 'C' )
+				fld->FLDdata = mmalloc(tdef->TDFsize + 1);				// string 
+			else if ( fld->FLDtype != 'S' && fld->FLDtype != 'K' )
+				fld->FLDdata = mmalloc(sizeof(double));					// all others stored as doubles 8
+
+			fld->FLDstat |= fld_ZERO;		// Quick ZERO flag
+              
+			if ( tdef->TDFtype & 1 )		// Key Field flag
+				fld->FLDstat |= fld_KEY;	// 0x8000;
+			else
+				fld->FLDstat &= ~fld_KEY;	// 0x7FFF;
+
+			fld->FLDelemID	= tdef->TDFentry;
+            fld->FLDlen		= tdef->TDFsize;
+            fld->TDFtype	= tdef->TDFtype;
+            fld++;
+		}
+        v15 = release(TDno);
+        if ( v15 < 0 )
+			dberror(v15, 0, TDno);
+		result = 1;
+	}
+    return result;
+}
+
+short lecreate(void)
+{
+	
+    TDesc	*TTptr;
+    KXTAB	*kxtab;
+    int		*v16;
+    short	*v10;
+
+    int		TDno;
+    int		TTno;
+	short	count;
+    short	v11;
+	short	KXno;
+
+    char	NewTableName[144];
+
+    short	KeyElemIDs[100];
+    short	KeyTypes[100];
+    short	DataElemIDs[200];
+    int		TTnoList[20];
+
+	KXno = getkxmem();
+    allkxpt(KXno, &kxtab);
+
+    kxtab->TTlist		 = TTnoList;
+    kxtab->KeyElemIDs	 = KeyElemIDs;
+    kxtab->TkeyTy		 = KeyTypes;
+    kxtab->DataElemIDs	 = DataElemIDs;
+    kxtab->RecSize		 = 0;
+    kxtab->KeySize		 = 0;
+    kxtab->NumDataFields = 0;
+    kxtab->NumKeyFields	 = 0;
+    kxtab->NumTTs		 = 0;
+    
+	// wipe the the arrays
+	for (count = 0; count <= 99 ; count++ )		
+	{
+		KeyElemIDs[count] = 0;					// 100 Key Elements (should be overkill)
+        KeyTypes[count] = 0;
+    }
+
+	for (count = 0; count <= 199 ; count++)		// 200 Data elements
+		DataElemIDs[count] = 0;
+
+	for (count = 0; count <= 19 ; count++)		// Table can have fields from up to 20 TT's
+		TTnoList[count] = 0;
+
+	symbol = getsym();
+    if ( symbol == 1670 )							// unique
+    {
+		kxtab->KXFlags |= kxf_UNIQUE;					// unique flag
+        symbol = getsym();
+    }
+    
+	if ( symbol == 2230 )							// Variable/Table name
+	{
+		cdbcpystr(NewTableName, sym, 0);			// next symbol is the new table name
+		if ( findtd(sym, -1) < 0 )					// see if that name is already used. -1 == not found
+		{
+			symbol = getsym();								// next symbol should be start of key fields
+			if ( getkflds(kxtab) >= 0 )						// -1 == error. getkflds will load error code. 0 = success
+			{
+				if ( kxtab->NumKeyFields )					// no key fields? Error!!
+				{
+
+				// --- load non-key fields
+					if ( symbol == 1740 )						// with
+					{
+						symbol = getsym();
+						if ( getxflds(kxtab) < 0 )				// no extra fields?
+						{										// should this load an error??
+							dallkxpt(&kxtab);
+							return 0;
+						}
+					}
+
+				// --- look for optional specifiers
+					if ( symbol == 380 )						// empty
+					{
+						if ( !(kxtab->KXFlags & kxf_UNIQUE) )		// Empty without unique specifier is an error
+						{
+							loaderr(65, NewTableName);			// "must be 'create unique' to be empty"
+							dallkxpt(&kxtab);
+							return 0;
+						}
+						kxtab->KXFlags |= kxf_EMPTY;			// Empty flag 0x1000
+						symbol = getsym();
+					}
+				   
+					else if ( symbol == 70 || symbol == 930 )   // all or newline. all is default behaviour if not specified
+						symbol = getsym();						// OK, just continue
+
+					else if ( symbol == 1720 )					// where ( conditional expression )
+					{
+						symbol = getsym();
+						v11 = loadexp(1, 1);
+						if ( !v11 )
+						{
+							dallkxpt(&kxtab);
+							return 0;
+						}
+						kxtab->WhereEXP = v11;
+					}
+
+				//--- collected all the info required, do range checks etc.
+
+					if ( kxtab->KeySize <= 128 )
+					{
+						if ( kxtab->RecSize <= 1016 )
+						{
+							TDno = mktable(TTnoList, kxtab->NumTTs, KeyElemIDs, DataElemIDs, KeyTypes);	// Try and create the temp table!
+							TTno = TDno;
+							if ( TDno >= 0 )	// Table was created ok, now try to open it normally.
+							{
+								if ( _tdopen(ttab[TTnoList[0]].DBnumber, TDno) )		// Table was created in DB pointed to by first TTno?
+								{
+									TTptr = &ttab[TTno];
+									cdbcpystr(TTptr->TableName, NewTableName, 0);		// possible buffer overrun on the alias copy!
+									cdbcpystr(TTptr->TableAlias, NewTableName, 0);
+									
+									// update ttab record in memory for future instructions which may reference it :o)
+									TTptr->TTrtd = TTno;
+									TTptr->DBnumber = ttab[TTnoList[0]].DBnumber;	// Hmmmmm.....
+									TTptr->TDlocked |= ttl_CREATE;					// temp table flag 0x0200
+									if ( kxtab->KXFlags & kxf_UNIQUE )				// unique flag bit
+										TTptr->TDlocked |= ttl_UNIQUE;				// 0x400;
+									
+									// All ok, create the kxtab record
+									cdbcpystr(kxtab->TableName, NewTableName, 0);
+									kxtab->TTno = TTno;
+									kxtab->KeyElemIDs	= (short *)mmalloc(2 * (kxtab->NumKeyFields + 1));	// +1 as all null terminated lists
+									kxtab->TkeyTy		= (short *)mmalloc(2 * (kxtab->NumKeyFields + 1));
+									kxtab->DataElemIDs	= (short *)mmalloc(2 * (kxtab->NumDataFields + 1));
+									kxtab->TTlist		= (int *)mmalloc(4 * (kxtab->NumTTs + 1));
+
+									//  ----------------------------
+									//  Copy into the kxtab structure
+
+									v10 = kxtab->KeyElemIDs;
+									v11 = 0;
+									while ( kxtab->NumKeyFields >= v11 )
+										*v10++ = KeyElemIDs[v11++];
+									
+									v10 = kxtab->TkeyTy;
+									v11 = 0;
+									while ( kxtab->NumKeyFields >= v11 )
+										*v10++ = KeyTypes[v11++];
+									
+									v10 = kxtab->DataElemIDs;
+									v11 = 0;
+									while ( kxtab->NumDataFields >= v11 )
+										*v10++ = DataElemIDs[v11++];
+									
+									v16 = kxtab->TTlist;
+									v11 = 0;
+									while ( kxtab->NumTTs >= v11 )
+										*v16++ = TTnoList[v11++];
+
+									dallkxpt(&kxtab);
+									return KXno;				// *** exit_success ***
+								}
+								else
+									loaderr(14, NewTableName);	// "table not open"
+							}
+							else
+								loaderr(45, NewTableName);		// "can't create table"
+						}
+						else
+							loaderr(49, sym);					// "record length too big"
+					}
+					else
+						loaderr(48, sym);						// "key length too big"
+				}
+				else
+					loaderr(47, sym);							// "no key fields defined"
+			}
+			// getkflds(kxtab) will load error code if required
+		}
+		else
+			loaderr(46, sym);									// "table/alias redefined"
+	}
+	else	// no tablename specified
+    {
+        if ( symbol == 930 )
+			loaderr(40, sym);					//"missing table/alias"
+        else
+			loaderr(39, sym);					//"invalid table/alias"
+    }
+
+	dallkxpt(&kxtab);
+	return 0;
+}
+
+#endif
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@d54 1
+a54 1
+        TTptr->TTfields = (FLDdesc *)mmalloc(24 * (NumFields + 1));
+d58 1
+d98 1
+a98 1
+			fld->FLDstat |= 0x0004;				// Quick ZERO flag
+d100 2
+a101 2
+			if ( tdef->TDFtype & 1 )			// Key Field flag
+				fld->FLDstat |= 0x8000;
+d103 1
+a103 1
+				fld->FLDstat &= 0x7FFF;
+d166 1
+a166 1
+    if ( symbol == 1670 )                      // unique
+d168 1
+a168 1
+		kxtab->KXFlags |= 0x0400u;             // unique flag
+d197 1
+a197 1
+						if ( !(kxtab->KXFlags & 0x0400) )		// Empty without unique specifier is an error
+d203 1
+a203 1
+						kxtab->KXFlags |= 0x1000u;				// Empty flag
+d240 4
+a243 4
+									TTptr->DBnumber = ttab[TTnoList[0]].DBnumber;		// Hmmmmm.....
+									TTptr->TDlocked |= 0x200;				// temp table flag?
+									if ( kxtab->KXFlags & 0x0400 )			// unique flag bit
+										TTptr->TDlocked |= 0x400;
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d33 3
+a35 2
+          if ( TTno >= no_ttabs )
+               __assert_fail("td < no_ttabs", "lecreate.c", 0xCCu, "_tdopen");
+d167 1
+a167 1
+		kxtab->field_0 |= 0x0400u;             // unique flag
+d196 1
+a196 1
+						if ( !(kxtab->field_0 & 0x0400) )		// Empty without unique specifier is an error
+d202 1
+a202 1
+						kxtab->field_0 |= 0x1000u;				// Empty flag
+d241 1
+a241 1
+									if ( kxtab->field_0 & 0x0400 )			// unique flag bit
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d4 2
+a126 1
+    short	v5;
+d170 128
+a297 1
+	if ( symbol != 2230 )						// Variable/Table name
+a302 66
+		dallkxpt(&kxtab);
+		return 0;
+    }
+    
+	cdbcpystr(NewTableName, sym, 0);			// next symbol is the new table name
+    if ( findtd(sym, -1) >= 0 )					// see if that name is already used.
+    {
+		loaderr(46, sym);						// "table/alias redefined"
+		dallkxpt(&kxtab);
+		return 0;
+    }
+    
+	symbol = getsym();							// next symbol should be start of key fields
+    if ( getkflds(kxtab) < 0 )					// no key fields? Error!!
+	{
+		dallkxpt(&kxtab);
+        return 0;	// error_exit
+	}
+    if ( !kxtab->NumKeyFields )
+    {
+        loaderr(47, sym);						// "no key fields defined"
+		dallkxpt(&kxtab);
+		return 0;	// error_exit
+    }
+    if ( symbol == 1740 )						// with
+    {
+		symbol = getsym();
+        if ( getxflds(kxtab) < 0 )				// no extra fields?
+        {										// should this load an error??
+			dallkxpt(&kxtab);
+			return 0;
+		}
+    }
+//----------------
+    if ( symbol == 380 )						// empty
+    {
+		if ( !(kxtab->field_0 & 0x0400) )		// Empty without unique specifier is an error
+        {
+            loaderr(65, NewTableName);			// "must be 'create unique' to be empty"
+			dallkxpt(&kxtab);
+			return 0;
+		}
+        kxtab->field_0 |= 0x1000u;				// Empty flag
+		symbol = getsym();
+	}
+   
+	else if ( symbol == 70 || symbol == 930 )   // all or newline
+		symbol = getsym();		// OK, just continue
+
+	else if ( symbol == 1720 )					// where
+    {
+		symbol = getsym();
+        v5 = loadexp(1, 1);
+        if ( !v5 )
+        {
+			dallkxpt(&kxtab);
+			return 0;
+		}
+		kxtab->WhereEXP = v5;
+	}
+    
+	if ( kxtab->KeySize > 128 )
+    {
+        loaderr(48, sym);						// "key length too big"
+		dallkxpt(&kxtab);
+		return 0;
+a303 65
+    if ( kxtab->RecSize > 1016 )
+    {
+        loaderr(49, sym);						// "record length too big"
+		dallkxpt(&kxtab);
+		return 0;
+    }
+    
+	// Try and create the temp table!
+	TDno = mktable(TTnoList, kxtab->NumTTs, KeyElemIDs, DataElemIDs, KeyTypes);
+    TTno = TDno;
+    if ( TDno < 0 )
+    {
+        loaderr(45, NewTableName);						// "can't create table"
+		dallkxpt(&kxtab);
+		return 0;
+    }
+	// Table was created ok, now try to open it normally.
+    if ( !_tdopen(ttab[TTnoList[0]].DBnumber, TDno) )	// Table was created in DB pointed to by first TTno?
+    {
+        loaderr(14, NewTableName);						// "table not open"
+		dallkxpt(&kxtab);
+		return 0;
+    }
+    
+	TTptr = &ttab[TTno];
+    cdbcpystr(TTptr->TableName, NewTableName, 0);		// possible buffer overrun on the alias copy!
+    cdbcpystr(TTptr->TableAlias, NewTableName, 0);
+    
+	// update ttab record in memory for future instructions which may reference it :o)
+	TTptr->TTrtd = TTno;
+    TTptr->DBnumber = ttab[TTnoList[0]].DBnumber;	// Hmmmmm.....
+    TTptr->TDlocked |= 0x200;		// temp table flag?
+    if ( kxtab->field_0 & 0x0400 )	// unique flag bit
+		TTptr->TDlocked |= 0x400;
+    
+	// All ok, create the kxtab record
+	cdbcpystr(kxtab->TableName, NewTableName, 0);
+    kxtab->TTno = TTno;
+    kxtab->KeyElemIDs	= (short *)mmalloc(2 * (kxtab->NumKeyFields + 1));	// +1 as all null terminated lists
+    kxtab->TkeyTy		= (short *)mmalloc(2 * (kxtab->NumKeyFields + 1));
+    kxtab->DataElemIDs	= (short *)mmalloc(2 * (kxtab->NumDataFields + 1));
+    kxtab->TTlist		= (int *)mmalloc(4 * (kxtab->NumTTs + 1));
+
+//  ----------------------------
+//  Copy into the kxtab structure
+
+	v10 = kxtab->KeyElemIDs;
+    v11 = 0;
+    while ( kxtab->NumKeyFields >= v11 )
+		*v10++ = KeyElemIDs[v11++];
+    
+	v10 = kxtab->TkeyTy;
+    v11 = 0;
+    while ( kxtab->NumKeyFields >= v11 )
+		*v10++ = KeyTypes[v11++];
+    
+	v10 = kxtab->DataElemIDs;
+    v11 = 0;
+    while ( kxtab->NumDataFields >= v11 )
+		*v10++ = DataElemIDs[v11++];
+    
+	v16 = kxtab->TTlist;
+    v11 = 0;
+    while ( kxtab->NumTTs >= v11 )
+		*v16++ = TTnoList[v11++];
+d305 2
+a306 2
+    dallkxpt(&kxtab);
+    return KXno;
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d8 18
+a25 18
+	TDesc *TTptr; // edi@@4
+    TDef *v18; // [sp+44h] [bp-20B4h]@@4
+    TDef *tdef; // [sp+4Ch] [bp-20ACh]@@5
+    FLDdesc *fld; // [sp+2Ch] [bp-20CCh]@@11
+
+    signed int result; // eax@@4
+    short v4; // dx@@5
+    short NumFields; // esi@@5
+    short v6; // ax@@13
+    unsigned int v7; // kr04_4@@17
+    short v8; // cx@@17
+    size_t v9; // esi@@18
+    char FLDtype; // al@@19
+    short v15; // ax@@31
+    int TDno;
+    int ErrorNo;
+    char arg[112];
+    char v23[32];
+d117 11
+a127 17
+    int *v16; // ecx@@49
+    short *v10; // ecx@@43
+    short *v12; // ecx@@45
+    short *v14; // ecx@@47
+
+    int TDno; // eax@@35
+    int TTno; // edi@@35
+	short count;
+    short v5; // dx@@29
+    short v11; // edx@@43
+    short v13; // edx@@45
+    short v15; // edx@@47
+    short v17; // edx@@49
+     
+	short KXno;
+    TDesc *TTptr;
+    KXTAB *kxtab;
+d152 1
+a152 1
+		KeyElemIDs[count] = 0;				// 100 Key Elements (should be overkill)
+d169 1
+a169 1
+	if ( symbol != 2230 )						// string literal
+a234 1
+//-----------------------
+d254 1
+a254 1
+        loaderr(45, NewTableName);				// "can't create table"
+d261 1
+a261 1
+        loaderr(14, NewTableName);				// "table not open"
+d267 1
+a267 1
+    cdbcpystr(TTptr->TableName, NewTableName, 0);	// possible buffer overrun on the alias copy!
+d285 2
+a286 2
+//----------------------------
+//Copy into the kxtab structure
+d293 9
+a301 9
+	v12 = kxtab->TkeyTy;
+    v13 = 0;
+    while ( kxtab->NumKeyFields >= v13 )
+		*v12++ = KeyTypes[v13++];
+    
+	v14 = kxtab->DataElemIDs;
+    v15 = 0;
+    while ( kxtab->NumDataFields >= v15 )
+		*v14++ = DataElemIDs[v15++];
+d304 3
+a306 3
+    v17 = 0;
+    while ( kxtab->NumTTs >= v17 )
+		*v16++ = TTnoList[v17++];
+a307 1
+//----------------------
+@
+
+
+1.2
+log
+@minor tidy up
+@
+text
+@a20 1
+    size_t v11; // eax@@20
+d90 1
+a90 1
+				v11 = tdef->TDFsize + 1;
+d92 1
+a92 6
+				v11 = sizeof(double);								// 8
+			else
+				v11 = 0;
+
+			if ( v11 )
+				fld->FLDdata = mmalloc(v11);	
+d104 1
+a104 1
+            ++fld;
+d116 14
+a129 12
+     short count;
+     short v5; // dx@@29
+     int TDno; // eax@@35
+     int TTno; // edi@@35
+     short *v10; // ecx@@43
+     short v11; // edx@@43
+     short *v12; // ecx@@45
+     short v13; // edx@@45
+     short *v14; // ecx@@47
+     short v15; // edx@@47
+     int *v16; // ecx@@49
+     short v17; // edx@@49
+d131 10
+a140 10
+	 short KXno;
+     TDesc *TTptr;
+     KXTAB *kxtab;
+
+     char	NewTableName[144];
+
+     short	KeyElemIDs[100];
+     short	KeyTypes[100];
+     short	DataElemIDs[200];
+     int	TTnoList[20];
+a162 1
+	{
+a163 1
+	}
+a165 1
+	{
+a166 1
+	}    
+d197 1
+a197 1
+        return 0;
+d203 1
+a203 1
+		return 0;
+d205 1
+a205 1
+    if ( symbol == 1740 )                      // with
+d208 2
+a209 2
+        if ( getxflds(kxtab) < 0 )		// no extra fields?
+        {								// should this load an error??
+d215 1
+a215 1
+    if ( symbol == 380 )                       // empty
+d217 1
+a217 1
+		if ( !(kxtab->field_0 & 0x0400) )  // Empty without unique specifier is an error
+d219 1
+a219 1
+            loaderr(65, NewTableName);		// "must be 'create unique' to be empty"
+d223 1
+a223 1
+        kxtab->field_0 |= 0x1000u;            // Empty flag
+d227 1
+a227 1
+	else if ( symbol == 70 || symbol == 930 )       // all or newline
+d230 1
+a230 1
+	else if ( symbol == 1720 )                 // where
+a297 1
+    {
+a298 1
+	}
+a302 1
+    {
+a303 1
+	}
+a307 1
+    {
+a308 1
+	}
+a312 1
+    {
+d314 1
+a314 1
+	}
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d23 5
+a27 5
+    int TDno; // [sp+40h] [bp-20B8h]@@9
+    int ErrorNo; // [sp+48h] [bp-20B0h]@@13
+    char arg[112]; // [sp+50h] [bp-20A8h]@@15
+    char v23[32]; // [sp+C0h] [bp-2038h]@@12
+    ELEMENTREC elem; // [sp+E0h] [bp-2018h]@@13
+d89 2
+a90 1
+            if ( FLDtype == 'C' )
+d93 1
+a93 1
+				v11 = 8;
+d98 3
+a100 2
+				fld->FLDdata = mmalloc(v11);
+			fld->FLDstat |= 0x0004;	// Quick ZERO flag
+d102 1
+a102 1
+			if ( tdef->TDFtype & 1 )	// Key Field flag
+d107 3
+a109 3
+			fld->FLDelemID = tdef->TDFentry;
+            fld->FLDlen	  = tdef->TDFsize;
+            fld->TDFtype   = tdef->TDFtype;
+d122 1
+a122 4
+     KXTAB *v0; // eax@@1
+     short v1; // edx@@1
+     short v2; // edx@@3
+     short v3; // edx@@5
+d134 11
+a144 8
+     short KXno; // [sp+24h] [bp-434h]@@1
+     TDesc *TTptr; // [sp+28h] [bp-430h]@@41
+     KXTAB *kxtab; // [sp+2Ch] [bp-42Ch]@@1
+     char NewTableName[144]; // [sp+30h] [bp-428h]@@14
+     int TTnoList[20]; // [sp+C0h] [bp-398h]@@1
+     short KeyTypes[104]; // [sp+110h] [bp-348h]@@1
+     short DataElemIDs[200]; // [sp+1E0h] [bp-278h]@@1
+     short KeyElemIDs[116]; // [sp+370h] [bp-E8h]@@1
+d148 10
+a157 19
+    kxtab->TTlist = TTnoList;
+    kxtab->KeyElemIDs = KeyElemIDs;
+    kxtab->TkeyTy = KeyTypes;
+    kxtab->DataElemIDs = DataElemIDs;
+    v0 = kxtab;
+    kxtab->RecSize = 0;
+    v0->KeySize = 0;
+    v0->NumDataFields = 0;
+    v0->NumKeyFields = 0;
+    v0->NumTTs = 0;
+    v1 = 0;                                    // wipe the three arrays
+    do
+    {
+		KeyElemIDs[v1] = 0;
+        KeyTypes[v1] = 0;
+        v1++;
+    }
+    while ( v1 <= 99 );
+    v2 = 0;
+d159 2
+a160 1
+	do
+d162 2
+a163 2
+		DataElemIDs[v2] = 0;
+        v2++;
+d165 10
+a174 9
+    while ( v2 <= 199 );
+    
+	v3 = 0;
+    do
+    {
+		TTnoList[v3] = 0;
+        v3++;
+    }
+    while ( v3 <= 19 );        // Table can have fields from up to 20 TT's
+d183 1
+a183 1
+	if ( symbol != 2230 )
+d193 2
+a194 2
+	cdbcpystr(NewTableName, sym, 0);           // next symbol is the new table name
+    if ( findtd(sym, -1) >= 0 )                // see if that name is already used.
+d201 2
+a202 2
+	symbol = getsym();                         // next symbol should be start of key fields
+    if ( getkflds(kxtab) < 0 )                 // no key fields? Error!!
+d236 1
+a236 1
+		symbol = getsym();	// OK, just continue
+d264 1
+d273 2
+a274 1
+    if ( !_tdopen(ttab[TTnoList[0]].DBnumber, TDno) )
+d282 1
+a282 1
+    cdbcpystr(TTptr->TableName, NewTableName, 0);// possible buffer overrun on the alias copy!
+a283 2
+    TTptr->TTrtd = TTno;
+    TTptr->DBnumber = ttab[TTnoList[0]].DBnumber; // Hmmmmm.....
+d285 5
+a289 2
+	TTptr->TDlocked |= 0x200;
+    if ( kxtab->field_0 & 0x0400 )
+d292 1
+d295 1
+a295 1
+    kxtab->KeyElemIDs	= (short *)mmalloc(2 * (kxtab->NumKeyFields + 1));
+d305 1
+a305 1
+    while ( kxtab->NumKeyFields >= v11 );
+d307 1
+a307 3
+		*v10 = KeyElemIDs[v11];
+        v10++;
+        v11++;
+d312 1
+a312 1
+    while ( kxtab->NumKeyFields >= v13 );
+d314 1
+a314 3
+		*v12 = KeyTypes[v13];
+        v12++;
+        v13++;
+d319 1
+a319 1
+    while ( kxtab->NumDataFields >= v15 );
+d321 1
+a321 3
+		*v14 = DataElemIDs[v15];
+        v14++;
+        v15++;
+d326 1
+a326 1
+    while ( kxtab->NumTTs >= v17 );
+d328 1
+a328 3
+		*v16 = TTnoList[v17];
+        v16++;
+        v17++;
+@

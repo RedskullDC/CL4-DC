@@ -1,0 +1,111 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.08.20.02.54.21;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETATTR_C
+#define GETATTR_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+short getattr(short a1, int AttrNum)
+{
+    short v2; // eax@@1
+
+    v2 = a1 & 0x13F;
+    if ( !v2 )
+    {
+        switch ( AttrNum )
+        {
+            case 0x01:
+                v2 = _Ya;			// Attribute for ACCEPT fields
+                break;
+            case 0x02:
+                v2 = _Ye;			// Attribute for ERROR display fields
+                break;
+            case 0x04:
+                v2 = _Yh;			// Attribute for HEAD statements
+                break;
+            case 0x08:
+                v2 = _Ym;			// Attribute for cl messages and MESSAGE statement
+                break;
+            case 0x10:
+                v2 = _Yp;			// Attribute for PROMPTS on FIELD statements
+                break;
+            case 0x20:
+                v2 = _Yt;			// Attribute for TEXT statements
+                break;
+            case 0x40:
+                v2 = _Yo;			// Attribute for PRINT statements
+                break;
+            default:
+                v2 = 0;
+                break;
+        }
+    }
+    if ( v2 == '?' )
+        v2 = _Yn;					// Attribute of terminal in NORMAL usage
+    return v2;
+}
+
+short getnats(short Attr, int AttrNum)
+{
+    short v2; // edx@@1
+    short result; // ax@@12
+
+    v2 = Attr & 0x13F;
+    if ( !v2 )
+    {
+        v2 = getattr(0, AttrNum);
+    }
+    if ( v2 == 0x3F )
+        v2 = _Yn;
+    switch ( v2 )
+    {
+        case 0x01:
+            result = _fg;
+            break;
+        case 0x02:
+            result = _sg;
+            break;
+        case 0x04:
+            result = _ug;
+            break;
+        case 0x08:
+            result = _bg;
+            break;
+        case 0x10:
+            result = _Bg;
+            break;
+        case 0x20:
+            result = _rg;
+            break;
+        default:
+            result = 0;
+            break;
+    }
+    return result;
+}
+
+#endif
+@

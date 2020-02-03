@@ -1,0 +1,1009 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2017.01.23.03.51.19;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2017.01.11.00.20.32;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.2
+log
+@tidyup
+@
+text
+@#ifndef LOADEXP_C
+#define LOADEXP_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for flag bits
+
+short loadexp(int inCondExp, int chkINT)
+{
+	 short ExpNo;
+//printf("loadexp(%d,%d) called \n",inCondExp,chkINT);
+
+	 le_error = 0;							// global
+     if ( inCondExp == 1 )
+          ExpNo = getorexp(1, chkINT);			// looking for an expression containing relational operators only. (and/or/not/etc.)
+     else
+          ExpNo = getaddexp(inCondExp, chkINT);	// looking for an expression containing math operators only.
+
+	 return le_error? 0 : ExpNo;
+}
+
+/*
+bool isnumop(unsigned int a1)
+{
+	//eprint("isnumop(x%08X)\n",a1);
+	switch (a1)
+	{
+	case 0x0800:
+	case 0x0C00:
+	case 0x1000:
+	case 0x1400:
+	case 0x1800:
+	case 0x3C00:
+	case 0x4400:
+	case 0x4800:
+	case 0x4C00:
+	case 0x5000:
+	case 0x5400:
+	case 0x5800:
+	case 0x5C00:
+	case 0x6000:
+	case 0x6400:
+	case 0x6800:
+	case 0x9000:
+	case 0x9400:
+	case 0x9800:
+	case 0xD800:
+	case 0xDC00:
+	case 0xE000:
+	case 0xE400:
+	case 0xE800:
+	case 0xEC00:
+		return true;	// Operation returns a numeric result
+		break;
+
+	default:
+		return false;	// or not.....
+	}
+}
+
+void warncexp()
+{
+     eprint("\"%s\", line %4d - ", FileTree->FileName, ll);
+     eprint("+-*%%/ will be unsupported on strings in future releases\n");
+}
+
+*/
+
+short getorexp(int inCondExp, int chkINT)
+{
+	ENTAB	*entab;
+	short	v2;
+	short	OpCode;
+	short	v6;
+	short	ExpNo;
+
+	v2 = getandexp(inCondExp, chkINT);
+	while (!le_error && symbol)
+	{
+		if ( symbol == 1040 )          // "or", "|", "||"
+			OpCode = 1;
+		else
+			OpCode = 0;
+		if ( OpCode )
+		{
+			 v6 = getenmem();
+			 allenpt(v6, &entab);
+			 entab->enleft	= v2;
+			 entab->TTno	= OpCode;
+			 entab->entype	= 2;
+			 symbol			= getsym();
+			 ExpNo = getandexp(inCondExp, chkINT);	// use intermediate var, as getandexp can reposition entab!
+			 entab->enright = ExpNo; 
+			 if ( intexp(entab->enleft) && intexp(entab->enright) )
+				  entab->TTno |= 0x200u;	// integer calc flag
+			 v2 = v6;
+			 dallenpt(&entab);
+		}
+		else
+			break;	// break out when OpCode == ZERO
+	}
+	return v2;
+}
+
+short getandexp(int inCondExp, int chkINT)
+{
+	ENTAB	*entab;
+	short	v2;
+	short	OpCode;
+	short	v6;
+	short	ExpNo;
+
+	v2 = getrelexp(inCondExp, chkINT);
+	while (!le_error && symbol)
+	{
+		if ( symbol == 80 )		// 'and' or '&' or '&&'
+			OpCode = 2;
+		else
+			OpCode = 0;
+		if ( OpCode )
+		{
+			 v6				= getenmem();
+			 allenpt(v6, &entab);
+			 entab->enleft	= v2;
+			 entab->TTno	= OpCode;
+			 entab->entype	= 2;
+			 symbol			= getsym();
+			 ExpNo			= getrelexp(inCondExp, chkINT);	// use intermediate var, as getrelexp can reposition entab!
+			 entab->enright = ExpNo;
+			 if ( intexp(entab->enleft) && intexp(entab->enright) )
+				  entab->TTno |= 0x200u;	// integer calc flag
+			 v2 = v6;
+			 dallenpt(&entab);
+		}
+		else
+			break;	// break out when OpCode == ZERO
+	}
+	return v2;
+}
+
+short getrelexp(int inCondExp, int chkINT)
+{
+	ENTAB	*entab;
+	short	OpCode;
+	short	ExpNo;
+	short	v2;
+	short	v8;
+
+	v2 = getaddexp(inCondExp, chkINT);
+	while (!le_error && symbol)
+	{
+		switch (symbol)
+		{
+		case 1820:						// ">"
+			OpCode = 0x20u;	
+			break;
+		case 1840:						// "<"
+			OpCode = 0x08u;
+			break;
+		case 1850:						// "<>"
+			OpCode = 0x28u;
+			break;
+		case 1830:						// "<="
+			OpCode = 0x18u;
+			break;
+		case 1800:						// "="
+			OpCode = 0x10u;
+			break;
+		case 1810:						// ">="
+			OpCode = 0x30u;
+			break;
+		case 760:						// "like"
+			OpCode = 0x14u;
+			break;
+		default:
+			OpCode = 0x00;				// error
+			break;
+		}
+		if ( OpCode )
+		{
+			 v8				= getenmem();
+			 allenpt(v8, &entab);
+			 entab->enleft	= v2;
+			 entab->TTno	= OpCode;
+			 entab->entype	= 2;
+			 symbol			= getsym();
+			 ExpNo	= getaddexp(inCondExp, chkINT);	// use intermediate var, as getaddexp can reposition entab!
+			 entab->enright = ExpNo;
+			 if ( intexp(entab->enleft) && intexp(entab->enright) )
+				  entab->TTno |= 0x200u;	// Integer calcs flag
+			 v2 = v8;
+			 dallenpt(&entab);
+		}
+		else
+			break;	// break out when OpCode == ZERO
+	}
+	return v2;
+}
+
+short getaddexp(int inCondExp, int chkINT)
+{
+	ENTAB	*entab;
+	short	v2;
+	short	OpCode;
+	short	v7;
+	short	ExpNo;
+
+	v2 = getmultexp(inCondExp, chkINT);
+	while (!le_error && symbol)
+	{
+		switch (symbol)
+		{
+		case 50:
+			OpCode = f_ADD; 			//"+"
+			break;
+		case 1580:
+			OpCode = f_SUB;				//"-"
+			break;
+		default:
+			OpCode = 0;					//error
+			break;
+		}
+		if ( OpCode )
+		{
+			 v7				= getenmem();
+			 allenpt(v7, &entab);
+			 entab->enleft	= v2;
+			 entab->TTno	= OpCode;
+			 entab->entype	= 2;
+			 symbol			= getsym();
+			 ExpNo = getmultexp(inCondExp, chkINT);	// use intermediate var, as getmultexp can reposition entab!
+			 entab->enright = ExpNo;
+			 if ( intexp(entab->enleft) && intexp(entab->enright) )
+				  entab->TTno |= 0x200u;	// integer calc flag
+			 dallenpt(&entab);
+			 v2 = v7;
+		}
+		else
+			break;	// break out when OpCode == ZERO
+	}
+	return v2;
+}
+
+short getmultexp(int inCondExp, int chkINT)
+{
+	ENTAB	*entab;
+	unsigned short OpCode;
+	short	ENTno;
+	short	v2;
+	short	v8;
+
+	v2 = getidconst(inCondExp, chkINT);
+	while (!le_error && symbol)
+	{
+		switch (symbol)
+		{
+			case 860:					// "%"
+				OpCode = f_MOD;
+				break;
+			case 330:					// "/"
+				OpCode = f_DIV;
+				break;
+			case 890:					// "*"
+				OpCode = f_MUL;
+				break;
+			case 1170:					// "**"
+				OpCode = f_POW;
+				break;
+			default:
+				OpCode = 0x0000;		// error
+				break;
+		}
+		if ( OpCode )
+		{
+			 v8 = getenmem();
+			 allenpt(v8, &entab);
+			 entab->enleft	= v2;
+			 entab->TTno	= OpCode;
+			 entab->entype	= 2;
+			 symbol			= getsym();
+			 ENTno = getidconst(inCondExp, chkINT);
+			 entab->enright = ENTno;
+			 if (chkINT && intexp(entab->enleft) && intexp(entab->enright))
+				  entab->TTno |= 0x200u;	// Flag to indicate clenter should perform integer calcs
+			 v2 = v8;
+			 dallenpt(&entab);
+		}
+		else
+			break;	// break out when OpCode == ZERO
+	}
+	return v2;
+}
+
+void chkexptype(short ENTno, char *arg, char *ValidTypes, short ErrorNo)
+{
+	int		TDno;
+	char	FLDtype;
+
+	//printf("chkexptype : ENTno = %4d, Valid = %s, ErrNo = %d \n",ENTno,ValidTypes, ErrorNo );
+
+    gettf(ENTno, &TDno, &FLDtype);		// Ensure expression points at a variable of the correct type for this parameter.
+	while (*ValidTypes)
+	{
+		if (*ValidTypes == FLDtype)		// look for a match on this expression within the valid types list
+			return;						// exit_success
+		ValidTypes++;
+	}
+	loaderr(ErrorNo, arg);				// exit_error
+	le_error = 1;
+}
+
+unsigned short funcnargs(short FunctionMask)
+{
+	
+	//	There are 6 bits of OpCode information:    XXXX XX00 0000 0000, or 63 possible functions  
+	//	63, *NOT* 64, as 0000 00.... is an error)
+
+	// Only called for:		0xCC00, 0xD000, 0xD400
+	//                    substr(), srep(), sconv()
+
+	// returns number of arguments expected for the function
+
+	switch (FunctionMask & 0xFC00)
+	{
+	case 0x0000 ... 0x5000:
+	case 0x8C00 ... 0xA000:
+		return 1;
+		break;
+	case 0x5400 ... 0x8800:
+		return 2;
+		break;
+	case 0xCC00 ... 0xD400:			// substr(), srep(), sconv()
+		return 3;
+		break;
+	default:
+		return 0;
+		break;
+	}
+}
+
+char* getfuncargtype(unsigned short OpCode, char **ValidTypes, short *ErrNo, short ArgNo)
+{
+	int		VarType = 0;		// default to no type
+	
+	switch (OpCode)
+	{
+	case 0x0800:				// sqrt
+	case 0x0C00:				// log
+	case 0x1000:				// sin
+	case 0x1400:				// cos
+	case 0x1800:				// tan
+	case 0x3800:				// chr
+	case 0x3C00:				// srandom		// x3E00	** int result flag set ** 0x0200
+	case 0x4400:				// log10
+	case 0x4800:				// asin
+	case 0x4C00:				// acos
+	case 0x5000:				// atan
+	case 0x9000:				// degrees
+	case 0x9400:				// radians
+	case 0x9800:				// exp
+        VarType = 2;		// All expect Numeric type parameters
+		break;
+	
+	case 0x1C00:				// ucase
+	case 0x2000:				// lcase
+	case 0x2400:				// slen			// x2600	** int result flag set ** 0x0200
+	case 0x2C00:				// getarg
+	case 0x3400:				// asc			// x3600	** int result flag set ** 0x0200
+	case 0x4000:				// getenv
+	case 0x6C00:				// match
+	case 0x7400:				// sdel
+	case 0x8000:				// setenv
+	case 0x8400:				// skey
+	case 0x8C00:				// getxml
+	case 0x9C00:				// trim
+	case 0xA000:				// getcgi
+	case 0xD000:				// srep
+	case 0xD400:				// sconv
+	case 0xF400:				// scat
+		VarType = 1;		// All expect String type parameters
+		break;
+
+	case 0x7C00:				// sword			both take (string, int) as parameters
+	case 0x7800:				// smult
+		switch (ArgNo)
+		{
+		case 0:
+			VarType = 1;
+			break;
+		case 1:
+			VarType = 2;
+			break;
+		}
+		break;
+	
+	case 0x8800:				// fmt				takes (string, string)
+		switch (ArgNo)
+		{
+		case 0:
+			VarType = 2;
+			break;
+		case 1:
+			VarType = 1;
+			break;
+		}
+		break;
+
+	case 0xCC00:				// substr			takes (string, num, num)
+		VarType = (ArgNo != 0) + 1;
+		break;
+
+	}
+
+	switch (VarType)
+	{
+	case 1:
+		*ValidTypes = "BCDFGILNRTX$123456789";		// Array of valid FLDtype chars
+        *ErrNo = 43;								// "must have character expression"
+		break;
+
+	case 2:
+		*ValidTypes = "IN";							// Only allow Integer types.   What about 'B' ??
+        *ErrNo = 77;								// "must have integer expression"
+		break;
+
+	default :				// 0
+		*ValidTypes = "";							// Error - no valid types
+        *ErrNo = 77;								// "must have integer expression"
+		break;
+	}
+    return *ValidTypes;
+}
+
+short getargs(short OpCode, char *arg, short nargs, int chkINT)
+{
+	ENTAB	*entab;
+	char	*ValidTypes;
+
+	short	NumArgs;
+	short	v7;
+	short	ENTno;
+	short	ErrNo;
+
+//  Only called for:
+//  0xCC00, 0xD000, 0xD400 || 0xF400, 0xF800
+//  substr(), srep(), sconv(),  scat(),  *unused*
+//nargs:  2      2       2        -1         -1		(Number of arguments remaining to collect. -1 == unlimited)
+//        3      3       3        ...
+
+	//printf("getargs - OpCode = x%04X, nargs = %d, chkINT = %d\n",(unsigned short)OpCode, nargs, chkINT);
+
+    NumArgs = -1;
+    if ( nargs >= 0 )
+	{
+        NumArgs = funcnargs(OpCode) - nargs;
+        if ( NumArgs < 0 )	// should be unreachable
+		{
+			eprint("\"%s\", line %4d - internal compiler fault [getargs]\n",FileTree->FileName,(unsigned short)ll);
+			le_error = 1;
+			return 0;
+		}
+    }
+    //v5		= funcargetype();	// always returns zero
+    //ENTno	= getparexp(v5, chkINT);	// get parentheses expression
+    ENTno	= getparexp(0, chkINT);		// get parentheses expression
+    
+	if ( le_error )			// load expression error - global variable
+		return 0;
+    
+	getfuncargtype(OpCode, &ValidTypes, &ErrNo, NumArgs);
+    chkexptype(ENTno, arg, ValidTypes, ErrNo);
+    if ( nargs <= 1 )
+	{
+        if ( symbol != 180 )		// ","
+			return ENTno;			// exit_success!
+        if ( nargs >= 0 )			// ZERO, expect no more arguments
+		{
+            loaderr(26,sym);		// "expected a '(' or ')'"
+			le_error = 1;
+			return 0;
+		}
+    }
+	assert(nargs < 0 || nargs > 1);
+	
+	if ( symbol != 180 )			// ","
+    {
+        loaderr(76, sym);			// expected "," before next argument
+        le_error = 1;
+        return 0;
+	}
+    v7 = getenmem();
+    allenpt(v7, &entab);
+    entab->entype	= 0x20u;		// Function Call param list type
+    entab->enleft	= ENTno;
+	
+	ENTno = getargs(OpCode, arg, nargs - 1, chkINT);	// *** nice bit of recursion here ***
+    
+	entab->enright = ENTno;		// use intermediate var, as getargs can reposition entab!
+    dallenpt(&entab);
+    return v7;
+}
+
+int getidconst(int inCondExp, int chkINT)
+{
+     ENTAB	*entab;
+     char	*ValidTypes;
+     char	*v5;
+	 float	f6;
+
+     short	v2;
+	 short	v4;
+	 short	v8;
+	 short	ENTno;
+	 short	ErrNo;
+	 unsigned short OpCode;
+     unsigned short v11;
+     unsigned short v18;
+
+	 char	CharStr[256];
+	 char	DecPl;
+
+#ifdef DEBUG_OUTPUT
+printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCondExp,chkINT,sym, symbol);
+#endif
+
+	if ( symbol == 730 )                       // "("
+    {
+		v18 = (unsigned short)getparexp(inCondExp, chkINT);
+		if ( le_error )
+			return 0;
+		if ( symbol == 1300 )                      // ")"
+			symbol = getsym();
+	    else                                       // expected a closing brace at end of function
+	    {
+	        loaderr(26, sym);                     // "expected a '(' or ')'"
+			le_error = 1;
+	    }
+	}
+	else
+	{
+		v2	= getenmem();
+        v18 = (unsigned short)v2;
+        allenpt(v2, &entab);
+        OpCode = 0;								// default to error
+        cdbcpystr(CharStr, sym, 0);
+		
+		switch (symbol)
+		{
+		case 270:								// day
+			OpCode = f_DAY;
+			break;
+		case 710:								// keyready
+			OpCode = f_KEYREADY;
+			break;
+		case 840:								// match
+			OpCode = f_MATCH;
+			break;
+		case 900:								// name
+			OpCode = f_NAME;
+			break;
+		case 930:								// <CR>
+			loaderr(7, sym);					// "unexpected end of line"
+			le_error = 1;
+			break;
+		case 1250:								// random
+			OpCode = f_RANDOM;
+			break;
+		case 1370:								// scat
+			OpCode = f_SCAT;
+			break;
+		case 1380:								// sconv
+			OpCode = f_SCONV;
+			break;
+		case 1435:								// fmt
+			OpCode = f_SFMT;
+			break;
+		case 1410:								// sdel
+			OpCode = f_SDEL;
+			break;
+		case 1420:								// setenv
+			OpCode = f_SETENV;
+			break;
+		case 1440:								// skey
+			OpCode = f_SKEY;
+        	break;
+		case 1480:								// smult
+			OpCode = f_SMULT;
+        	break;
+		case 1510:								// srandom		** int result flag set ** 0x0200
+			OpCode = f_SRAND | f_INTRES;		// 0x3E00u;
+			break;
+		case 1520:								// srep
+			OpCode = f_SREP;
+			break;
+		case 1570:								// substr
+			OpCode = f_SUBSTR;
+			break;
+		case 1580:								// "-"
+			entab->TTno = f_SUB;
+            entab->entype = 2;
+            symbol = getsym();
+            if ( symbol == 930 )
+            {
+				loaderr(7, sym);				// "unexpected end of line"
+				le_error = 1;
+			}
+			else
+			{
+				ENTno = getidconst(inCondExp, chkINT);		// recursion!
+                entab->enleft = ENTno;			// getid can move entab!
+			}
+			break;
+		case 1590:								// sword
+			OpCode = f_SWORD;
+			break;
+		case 1630:								// trim()
+            if ( inCondExp == 1 )
+            {
+               loaderr(28, sym);				// "not valid in conditional expression"
+               le_error = 1;
+			}
+			else
+				OpCode = f_TRIM;
+			break;
+		case 1860:								// NOT operator
+			if ( inCondExp )
+            {
+				entab->TTno		= f_NOT;		// the NOT operator flag
+				entab->entype	= 2;
+				symbol = getsym();
+				if ( symbol == 930 )
+				{
+					loaderr(7, sym);			// "unexpected end of line"
+					le_error = 1;
+				}
+				else
+				{
+					ENTno = getidconst(inCondExp, chkINT);	// ** recursion **
+				    entab->enleft = ENTno;		// getid can move entab!
+				}
+			}
+			else
+			{
+				loaderr(27, sym);				// "not valid in assignment expression"
+				le_error = 1;
+			}
+			break;
+		case 1900:								// sqrt
+			OpCode = f_SQRT;
+        	break;
+		case 1910:								// log
+			OpCode = f_LOG;
+			break;
+		case 1920:								// log10
+			OpCode = f_LOG10;
+			break;
+		case 1930:								// exp
+			OpCode = f_EXP;
+			break;
+		case 1940:								// degrees
+			OpCode = f_DEGREES;
+			break;
+		case 1950:								// radians
+			OpCode = f_RADIANS;
+			break;
+		case 1960:								// sin
+			OpCode = f_SIN;
+			break;
+		case 1970:								// cos
+			OpCode = f_COS;
+			break;
+		case 1980:								// tan
+			OpCode = f_TAN;
+			break;
+		case 1990:								// asin
+			OpCode = f_ASIN;
+			break;
+		case 2000:								// acos
+			OpCode = f_ACOS;
+			break;
+		case 2010:								// atan
+			OpCode = f_ATAN;
+			break;
+		case 2020:								// ucase
+		case 2030:								// lcase
+            if ( inCondExp == 1 )
+            {
+               loaderr(28, sym);				// "not valid in conditional expression"
+               le_error = 1;
+			}
+			else
+				OpCode = (symbol == 2030) ? f_LCASE : f_UCASE;
+			break;
+		case 2040:								// slen			** int result flag set ** 0x0200
+			OpCode = f_SLEN | f_INTRES;			// 0x2600u;
+			break;
+		case 2050:								// getarg
+			OpCode = f_GETARG;
+			break;
+		case 2060:								// getcgi
+			OpCode = f_GETCGI;
+			break;
+		case 2070:								// getenv
+			OpCode = f_GETENV;
+			break;
+		case 2075:								// getxml
+			OpCode = f_GETXML;
+			break;
+		case 2080:								// asize		** int result flag set ** 0x0200
+			OpCode = f_ASIZE | f_INTRES;		// 0x3200u;
+			break;
+		case 2090:								// asc			** int result flag set ** 0x0200
+			OpCode = f_ASC | f_INTRES;			// 0x3600u;
+			break;
+		case 2100:								// chr
+			OpCode = f_CHR;
+			break;
+		case 2200:								// integer literal. *AND* withing range limits
+			*(int *)&entab->TTno = strtol(sym, 0, 10);
+            entab->entype = 8;
+            symbol = getsym();
+			break;
+		case 2240:								// ** DC Extension **  HEX value
+			*(int *)&entab->TTno = strtol(sym, 0, 16);	// interpret as Hexadecimal, base 16
+            entab->entype = 8;
+            symbol = getsym();
+			break;
+		case 2210:								// floating point literal
+			v5 = strchr(sym, '.');
+			f6 = strtof(sym, NULL);
+			DecPl = 2;							// Default to 2 dec places
+			if (v5)
+			{
+				DecPl = strlen(v5 + 1);			// range check on number of digits after dec pt.
+				if ( DecPl < 2 )
+					DecPl = 2;					// min 2 dp
+				else if ( DecPl > 9 )
+					DecPl = 9;					// max 9 dp
+			}
+			if ( DecPl > 6 || !extendDC)		// Extended allow floats embedded in expression table (saves space/time)
+			{
+				v8 = putconst(sym, DecPl + '0');	// [ + '0'] == convert to ascii char code
+				if ( v8 < 0 )
+				{
+					le_error = 1;
+					break;
+				}
+				else
+				{
+					entab->RecNo	= v8;
+					entab->TTno		= 0;
+					entab->entype	= 1;		// Literal flag?
+				}
+			}
+			else								// **** float literal. **real** clcomp doesn't create these!!
+			{									// but clenter knows what to do with them
+				entab->entype = 0x04;			// Indicate ENTAB holds the value directly
+				*(float *)&entab->TTno = f6;	// Store it in the ENTAB
+			}
+            symbol = getsym();
+			break;
+		case 2220:								// String literal
+			v4 = loadresv(sym);					// Check the reserved string table
+            if ( v4 )
+            {
+				entab->RecNo	= v4;			// v4 is a bit mask in this case
+                entab->TTno		|= 0x100u;		// Reserved word/value flag
+                entab->entype	= 2;
+			}
+            else if ( strlen(sym) > 3 )			// String > 3 chars, store in string table
+			{
+				v8 = putconst(sym, 'C');
+				if ( v8 < 0 )
+				{
+					le_error = 1;
+					break;
+				}
+				else
+				{
+					entab->RecNo	= v8;
+					entab->TTno		= 0;
+					entab->entype	= 1;		// String Literal flag?
+				}
+			}
+			else		// If string is 3 chars or less, store it directly in the expression!
+			{
+				entab->entype = 0x10;						// Indicate ENTAB holds the value directly
+				cdbcpystr((char *)&entab->TTno, sym, 0);	// Store it in the ENTAB
+			}
+            symbol = getsym();
+			break;
+		case 2230:						// This is a Table.Field/Variable name specifier
+			if ( !gettfexp(v18) )
+				le_error = 1;
+			break;
+		default:
+			loaderr(33, sym);			// "unexpected symbol"
+			le_error = 1;
+			break;
+		}
+//----------------		
+		if ( le_error || !OpCode )
+			dallenpt(&entab);			// error exit, OpCode == 0 not necessarily an error though.
+		else
+		{
+			entab->TTno		= OpCode;
+			entab->entype	= 2;
+			symbol = getsym();
+			if ( symbol == 930 )		// return
+			{
+				loaderr(7, sym);		// "unexpected end of line"
+				le_error = 1;
+				dallenpt(&entab);
+				return 0;
+			}
+			if ( symbol != 730 )		// '('
+			{
+				loaderr(26, sym);		// "expected a '(' or ')'"
+				le_error = 1;
+				dallenpt(&entab);
+				return 0;
+			}
+
+			ENTno = getparexp(0, chkINT);
+			entab->enleft = ENTno;		// use intermediate, as entab can move
+			if ( le_error )
+			{
+				dallenpt(&entab);
+				return 0;
+			}
+
+			// Check OpCode for Sanity, seems like overkill really....
+			switch (OpCode & 0xFDFFu)		// Mask out : 1111 1101 1111 1111		mask 0x0200  Integer calc flag
+			{
+			case 0x0800:
+			case 0x0C00:
+			case 0x1000:
+			case 0x1400:
+			case 0x1800:
+			case 0x1C00:
+			case 0x2000:
+			case 0x2400:
+			case 0x2800:
+			case 0x2C00:
+			case 0x3000:
+			case 0x3400:
+			case 0x3800:
+			case 0x3C00:
+			case 0x4000:
+			case 0x4400:
+			case 0x4800:
+			case 0x4C00:
+			case 0x5000:
+			case 0x6C00:
+			case 0x7400:
+			case 0x7800:
+			case 0x7C00:
+			case 0x8000:
+			case 0x8400:
+			case 0x8800:
+			case 0x8C00:
+			case 0x9000:
+			case 0x9400:
+			case 0x9800:
+			case 0x9C00:
+			case 0xA000:
+			case 0xA400:
+			case 0xB800:
+			case 0xBC00:
+			case 0xCC00:
+			case 0xD000:
+			case 0xD400:
+			case 0xF400:
+				break;
+
+			default:
+				dallenpt(&entab);				// invalid OpCode - should be unreachable
+				goto LABEL_232;
+				break;
+			}
+
+			v11 = OpCode & 0xFC00;				// Mask out Integer/Reserve flags 0x0300
+			if ( v11 - 0x5001u < 0x3BFF )		// functions which take multi parameters
+			{
+				// 0x5400 -> 0x8800  All expect 2 arguments!
+				//printf(" getidconst 610 : OpCode & 0xFC00 = x%04X\n",OpCode & 0xFC00); 
+				if ( symbol == 180 )		// ","
+				{
+					ENTno = getparexp(0, chkINT);
+					entab->enright = ENTno;	// use intermediate var as get parexp may move entab!
+					getfuncargtype(OpCode, &ValidTypes, &ErrNo, 1);
+					chkexptype(entab->enright, CharStr, ValidTypes, ErrNo);
+				}
+				else
+				{
+					loaderr(76, sym);			// "expected ',' before next argument"
+					le_error = 1;
+				}
+			}
+			else if ( v11 - 0xC801u <= 0xBFF || v11 - 0xF001u <= 0x7FF )		//   0xCC00, 0xD000, 0xD400 || 0xF400, 0xF800
+			{																	//  substr(), srep(), sconv(),  scat(),  *unused*
+				//printf(" getidconst 629 : OpCode & 0xFC00 = x%04X\n",OpCode & 0xFC00); 
+				if ( symbol == 180 )		// ","
+				{
+					// 0xCC00, 0xD000, 0xD400  (all expect 3 args) return 2, rest -1 (unlimited args)
+					// substr(), srep(), sconv()
+					ENTno = getargs(OpCode,CharStr, v11 - 0xC801u < 0xC00 ? 2 : -1, chkINT);
+					entab->enright = ENTno;
+				}
+				else
+				{
+					loaderr(76, sym);	// "expected ',' before next argument"
+					le_error = 1;
+				}
+			}
+
+			if ( symbol == 1300 )  // ")"
+				symbol = getsym();	// success
+			else
+			{
+				loaderr(26, sym); // "expected a '(' or ')'"
+				le_error = 1;
+			}
+			dallenpt(&entab);
+		}
+	}
+
+LABEL_232:
+	return le_error ? 0 : v18;
+}
+
+short getparexp(int inCondExp, int chkINT)		// get a parentheses type expression
+{
+
+	symbol = getsym();
+	if ( symbol == 1300 )					// ")"
+		return 0;
+	else if ( inCondExp == 1 )
+		return getorexp(1, chkINT);
+	else
+		return getaddexp(inCondExp, chkINT);
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d303 1
+a303 1
+    gettf(ENTno, &TDno, &FLDtype);
+d323 2
+d419 1
+a419 1
+		*ValidTypes = "BCDFGILNRT$123456789";		// Array of valid FLDtype chars
+d449 1
+a449 1
+//nargs:  2      2       2        -1         -1
+d476 3
+a478 3
+        if ( symbol != 180 )                  // ","
+			return ENTno;
+        if ( nargs >= 0 )
+d480 1
+a480 1
+            loaderr(26,sym);                 // "expected a '(' or ')'"
+d495 1
+a495 1
+    entab->entype	= 0x20u;		// Function Call type?
+d725 5
+d907 1
+a907 1
+					// 0xCC00, 0xD000, 0xD400  (all expect 3 args) return 2, rest -1
+@

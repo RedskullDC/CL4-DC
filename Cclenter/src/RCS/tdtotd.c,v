@@ -1,0 +1,241 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.07.21.05.11.49;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.04.08.03.04.04;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.13.04.19.16;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@clean up
+@
+text
+@#ifndef TDTOTD_C
+#define TDTOTD_C
+
+#include <sys/param.h>          // for MIN/MAX
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+void DumpBlock(char* Buffer, int NumBytes);
+
+bool tdtotd(int TDdest, int TDsrc, char KeyOnly, int CopyMode)
+{
+	TDesc *TTptr_dest;
+	TDesc *TTptr_src;
+	
+	FLDdesc *fld_src;
+	FLDdesc *fld_dest;
+	FLDdesc *v13;
+	
+	char *Src;
+	char *Dest;
+	
+	short FieldNo;
+	//short v7;
+	size_t v9;
+	
+	bool DataCopied	= false;
+	bool FLDmatch	= false;
+
+	//printf("tdtotd(TDdest = %d,SrcTD = %d,a3 = %d, CopyMode = %d)\n" ,TDdest,TDsrc, a3, CopyMode);
+
+	TTptr_src	= &ttab[TDsrc];
+	TTptr_dest	= &ttab[TDdest];
+	
+	rtdget(TTptr_src);			// appears pointless code, but will throw exceptions
+	rtdget(TTptr_dest);
+	
+	Src			= TTptr_src->TDworkarea1;
+	Dest		= TTptr_dest->TDworkarea1;
+	fld_src		= TTptr_src->TTfields;
+	fld_dest	= TTptr_dest->TTfields;
+
+	for ( FieldNo = 0; fld_dest->FLDelemID; ++fld_dest )
+	{
+		if ( fld_dest->FLDstat >= 0 && (KeyOnly & 1))	// Only copy data for key Fields?
+			break;
+		
+		if ( fld_dest->FLDlen )
+		{
+			v13 = fld_src;
+			do
+			{
+				if ( fld_dest->FLDelemID == fld_src->FLDelemID )	// ok, we found a field match between src snd dest TDs
+				{
+					if ( CopyMode == 1 )	// Copy data from Src->WorkArea1 -> Dest->WorkArea1
+					{
+						//printf("tdtotd: Src FieldNo = %d\n",FieldNo);
+						if ( fld_src->FLDstat & fld_REC_LOADED )	// Data is available in src->WorkArea1?
+						{
+							DataCopied = true;
+							//v7 = fld_dest->FLDlen;		// ensure no dest buffer overrun
+							//if ( v7 > fld_src->FLDlen )
+							//	v7 = fld_src->FLDlen;
+							//cpybuf(Dest, Src, v7);
+							cpybuf(Dest, Src, MIN(fld_dest->FLDlen,fld_src->FLDlen));
+							fld_dest->FLDstat |= fld_REC_LOADED;
+						}
+						else
+							fld_dest->FLDstat &= ~fld_REC_LOADED;	// indicate no data avail in dest for this field
+					}
+					else	// Copy data from fld_src->FLDdata -> fld_dest->FLDdata for matching fields
+					{
+						if (!(fld_src->FLDstat & fld_DATA_AVAIL))	// no data in mem?
+							rectott(TDsrc, FieldNo);				// go load it to rec area
+						
+						if ( fld_dest->FLDtype == 'C' )
+							v9 = fld_dest->FLDlen + 1;
+						else
+							v9 = sizeof(double);	// 8;
+						//DumpBlock((char *)fld_src->FLDdata, v9);
+						cpybuf((char *)fld_dest->FLDdata, (char *)fld_src->FLDdata, v9);
+						
+						fld_dest->FLDstat |= 0x0018;		// set data loaded 0x10 and ??? 0x08 flags
+						DataCopied = true;
+						
+						if ( fld_src->FLDstat & fld_ZERO )	// copy quick zero flag from src to dest
+							fld_dest->FLDstat |= fld_ZERO;
+						else
+							fld_dest->FLDstat &= ~fld_ZERO;
+					}
+					FLDmatch = true;
+				}
+				Src += fld_src->FLDlen;
+				fld_src++;
+				FieldNo++;
+				// reached end of source TDefs, reset for another run through
+				// Dest fields may not be in same order as Src, so go around until fld_dest->FLDelemID == 0000
+				if ( !fld_src->FLDelemID )	
+				{
+					Src		= TTptr_src->TDworkarea1;
+					fld_src = ttab[TDsrc].TTfields;
+					FieldNo = 0;	// reset for next loop through
+				}
+			}
+			while ( !FLDmatch && fld_src != v13 );
+			FLDmatch = false;
+		}
+		Dest += fld_dest->FLDlen;
+	}
+	return DataCopied;	// return true if data was transferred from Src -> Dest
+}
+
+#endif
+@
+
+
+1.2
+log
+@intermediate version
+@
+text
+@d4 1
+d24 1
+a24 1
+	short v7;
+d27 2
+a28 2
+	bool DataCopied = false;
+	bool FLDmatch = false;
+d32 2
+a33 2
+	TTptr_src = &ttab[TDsrc];
+	TTptr_dest = &ttab[TDdest];
+d38 5
+a42 5
+	Src = TTptr_src->TDworkarea1;
+	Dest = TTptr_dest->TDworkarea1;
+	
+	fld_src = TTptr_src->TTfields;
+	fld_dest = TTptr_dest->TTfields;
+d61 5
+a65 4
+							v7 = fld_dest->FLDlen;
+							if ( v7 > fld_src->FLDlen )
+								v7 = fld_src->FLDlen;
+							cpybuf(Dest, Src, v7);
+d94 1
+a94 1
+				++fld_src;
+d100 1
+a100 1
+					Src = TTptr_src->TDworkarea1;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+int tdtotd(int TDdest, int TDsrc, char a3, int CopyMode)
+d25 3
+a27 2
+	signed int v15;
+	signed int v16;
+a30 3
+	v16 = 0;
+	v15 = 0;
+	
+d44 1
+a44 2
+		//printf("FLDlen = %2d, FLDstat = %04X , TDFtype = %04X ,FLDtype = %c\n",fld_dest->FLDlen,(unsigned short)fld_dest->FLDstat, fld_dest->TDFtype, fld_dest->FLDtype);
+		if ( fld_dest->FLDstat >= 0 && (a3 & 1))
+d46 1
+d57 1
+a57 1
+						if ( fld_src->FLDstat & fld_REC_LOADED )	// Data is available in src->WorkArea1
+d59 1
+a59 1
+							v15 = 1;
+d67 1
+a67 3
+						{
+							fld_dest->FLDstat &= ~fld_REC_LOADED;
+						}
+d69 1
+a69 1
+					else
+d82 1
+a82 1
+						v15 = 1;
+d84 1
+a84 1
+						if ( fld_src->FLDstat & fld_ZERO )	// copy quick zero flag
+d89 1
+a89 1
+					v16 = 1;
+d103 2
+a104 2
+			while ( !v16 && fld_src != v13 );
+			v16 = 0;
+d108 1
+a108 1
+	return v15;
+@

@@ -52,7 +52,7 @@ int wildmat(char *s, char *p)
 	int matched;	
 	signed int v17;
 
-	printf("wildmat(%s,%s)",s,p);
+	//printf("wildmat(%s,%s)",s,p);
 
 	if ( !*p )
 		return *s == 0;

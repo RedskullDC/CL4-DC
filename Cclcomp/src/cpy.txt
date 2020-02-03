@@ -1,0 +1,5 @@
+gettnode.c:		cpybuf(v4->VarName, (char *)VarName, namesize);
+gettnode.c:		cpybuf(v4->VarName, (char *)varname, namesize);
+lecreate.c:                    cpybuf(fld->FLDname, v23, v9);
+legetf.c:						cpybuf(fld->FLDname, elem2.FieldName, v13);
+loadvars.c:		cpybuf((char*)fld,(char*)fld2, sizeof(FLDdesc));

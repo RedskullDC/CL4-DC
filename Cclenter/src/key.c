@@ -21,7 +21,7 @@ void Key_Print(int DispChar, int NumTabs)
     {
         do
         {
-            _IO_putc('\t', stdout);
+            putc('\t', stdout);
             --v2;
         }
         while ( v2 != -1 );
@@ -75,11 +75,11 @@ int keys_lgetchar(void)
 {
     int v0; // esi@1
 
-    v0 = _IO_getc(stdin);
+    v0 = getc(stdin);
     if ( Key_Debug )
     {
         Key_Print(v0, 0);
-        _IO_putc('\n', stdout);
+        putc('\n', stdout);
     }
 	//eprint("keys_lgetchar returning %C\n",v0);
     return v0;
@@ -89,11 +89,11 @@ int keys_getchar(void)
 {
     int v0; // esi@1
 
-    v0 = KeyF_GetChar(kt_keys);	// This eventually calls through keys_lgetchar() to _IO_getc()
+    v0 = KeyF_GetChar(kt_keys);	// This eventually calls through keys_lgetchar() to getc()
     if ( Key_Debug )
     {
         Key_Print(v0, 1);
-        _IO_putc('\n', stdout);
+        putc('\n', stdout);
     }
     return v0;
 }

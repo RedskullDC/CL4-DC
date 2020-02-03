@@ -96,7 +96,7 @@ bool compile(char *FileName)
             strcat(dest, " > ");
             strcat(dest, name);
             strcat(dest, " 2>&1");
-            execlp("/bin/sh", "sh", "-c", dest, 0);	// *** doesn't return if successful ***
+            execlp("/bin/sh", "sh", "-c", dest, NULL);	// *** doesn't return if successful ***
 			syserror("pfork:execlp[%s]", dest);
         }
         else	// normal stdio environment
@@ -265,10 +265,10 @@ short getcount()
     short ptr;
 	short Dest;
 	
-    getbuf((char *)&ptr, 2u);
+    getbuf((char *)&ptr, sizeof(short));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 2, 0x44u);		// signed short
+        domtox((char *)&Dest, (char *)&ptr, sizeof(short), 0x44u);		// signed short
         return Dest;
     }
     else
@@ -280,10 +280,10 @@ unsigned short getucount()
     unsigned short ptr;
 	unsigned short Dest;
 	
-    getbuf((char *)&ptr, 2u);
+    getbuf((char *)&ptr, sizeof(unsigned short));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 2, 0x40u);		// unsigned short
+        domtox((char *)&Dest, (char *)&ptr, sizeof(unsigned short), 0x40u);		// unsigned short
         return Dest;
     }
     else
@@ -297,7 +297,7 @@ short *getarrcount(unsigned int a1)
     short *v1;
 	unsigned int i;
 	
-    v1 = (short *)mmalloc(2 * (a1 + 1));	// +1 ensures null terminated array
+    v1 = (short *)mmalloc(sizeof(short) * (a1 + 1));	// +1 ensures null terminated array
     if ( tpenc )
     {
         for ( i = 0; i < a1; v1[i++] = getcount() )
@@ -305,7 +305,7 @@ short *getarrcount(unsigned int a1)
     }
     else
     {
-        getbuf((char *)v1, 2 * a1);
+        getbuf((char *)v1, sizeof(short) * a1);
     }
     return v1;
 }
@@ -315,10 +315,10 @@ int gettable()
     int Dest;
 	int ptr;
 	
-    getbuf((char *)&ptr, 4u);
+    getbuf((char *)&ptr, sizeof(int));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 4, 0x44u);	// signed int value
+        domtox((char *)&Dest, (char *)&ptr, sizeof(int), 0x44u);	// signed int value
         return Dest;
     }
     else
@@ -330,7 +330,7 @@ int *getarrtds(unsigned int count)
     int *v1; // edi@1
     unsigned int i; // esi@2
 
-    v1 = (int *)mmalloc(4 * (count + 1));	// +1 ensures null terminated array
+    v1 = (int *)mmalloc(sizeof(int) * (count + 1));	// +1 ensures null terminated array
     if ( tpenc )
     {
         for ( i = 0; i < count; v1[i++] = gettable() )
@@ -338,7 +338,7 @@ int *getarrtds(unsigned int count)
     }
     else
     {
-        getbuf((char *)v1, 4 * count);
+        getbuf((char *)v1, sizeof(int) * count);
     }
     return v1;
 }
@@ -348,40 +348,40 @@ int getbool()		// returns int, not a 1byte bool
     int Dest;
 	int ptr;
 	
-    getbuf((char *)&ptr, 4u);
+    getbuf((char *)&ptr, sizeof(int));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 4, 0x44u);	// signed int value
+        domtox((char *)&Dest, (char *)&ptr, sizeof(int), 0x44u);	// signed int value
         return Dest;
     }
     else
         return ptr;
 }
 
-short getbits()
+unsigned short getbits()
 {
-    short ptr;
-	short Dest;
+    unsigned short ptr;
+	unsigned short Dest;
 	
-    getbuf((char *)&ptr, 2u);
+    getbuf((char *)&ptr, sizeof(unsigned short));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 2, 0x40u);	// unsigned short value
+        domtox((char *)&Dest, (char *)&ptr, sizeof(unsigned short), 0x40u);	// unsigned short value
         return Dest;
     }
     else
         return ptr;
 }
 
-int getlong()
+long getlong()
 {
-	int Dest;
-	int ptr;
+	long Dest;
+	long ptr;
 	
-    getbuf((char *)&ptr, 4u);
+    getbuf((char *)&ptr, sizeof(long));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 4, 0x44u);	// signed 4 bit int
+        domtox((char *)&Dest, (char *)&ptr, sizeof(long), 0x44u);	// 4 bytes on X86, 8 on X64
         return Dest;
     }
     else
@@ -410,13 +410,13 @@ double *getdouble(short TDFtype)
 
 float getfloat(short TDFtype)
 {
-	double	Dest;
+	float	Dest;
 	float	ptr;
 	
-    getbuf((char *)&ptr, 4u);
+    getbuf((char *)&ptr, sizeof(float));
     if ( tpenc )
     {
-        domtox((char *)&Dest, (char *)&ptr, 4, TDFtype);		// 4 bit float value
+        domtox((char *)&Dest, (char *)&ptr, sizeof(float), TDFtype);		// 4 bit float value
         return Dest;
     }
     else
@@ -784,22 +784,25 @@ ENTAB *gettabs(unsigned int NumENTABs) // expressions table
 
                 switch ( entb->entype )
                 {
-					case 1:
-					case 2:
-						entb->TTno	= getcount();
-						entb->RecNo	= getcount();
+					case 1:											// expression describing variable/table field
+						entb->Enun.Enref.TTno	= getcount();
+						entb->Enun.Enref.VarNum	= getcount();
 						break;
-					case 4:									// float literal
-						*(float *)&entb->TTno = getfloat(0x104u);
+					case 2:
+						entb->Enun.Enop.Enoper	= getcount();		// expression describing function/assignment
+						entb->Enun.Enop.RecNo	= getcount();
+						break;
+					case 4:											// float literal
+						entb->Enun.float4 = getfloat(0x104u);
                         break;
-                    case 8:									// integer literal
-						*(int *)&entb->TTno = getlong();
+                    case 8:											// long integer literal		** 8 bytes on X64, 4 on X86  **
+						entb->Enun.long8 = getlong();
                         break;
-					case 16:								// short string literal : 3 chars or less + \0
-						getbuf((char *)&entb->TTno, 4u);
+					case 16:										// short string literal : 3 chars or less + \0
+						getbuf(entb->Enun.char16, 4u);				//  could be 8 bytes long on X64
                         break;
 				}
-                entb->enleft	= getucount();				// all expression records are potentially a tree structure
+                entb->enleft	= getucount();						// all expression records are potentially a tree structure
                 entb->enright	= getucount();
                 count++;
             }

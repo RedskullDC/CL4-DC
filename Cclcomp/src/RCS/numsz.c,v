@@ -1,0 +1,46 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.03.00.52;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+..
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef NUMSIZE_C
+#define NUMSIZE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+short numsz(char *a1, unsigned int a2)
+{
+	char *v2; // edx@@1
+	short i; // ecx@@1
+
+	//printf("numsz(a1: x%08X ,MaxLen: %d )\n",a1,a2);
+	//DumpBlock(a1,a2);
+
+	v2 = a1;
+	for ( i = 0; i < a2 && (*v2 - 48) <= 9u; ++v2 )
+		i++;
+	return i;
+}
+#endif
+@

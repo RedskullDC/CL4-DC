@@ -1,0 +1,1280 @@
+head	1.5;
+access;
+symbols;
+locks
+	leslie:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2016.07.04.05.46.52;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.07.17.05.31.07;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.27.09.15.12;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.19.00.55.56;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.27.06.15.06;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.5
+log
+@clean up
+@
+text
+@#ifndef ABCD_C
+#define ABCD_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+bool hasass(int TTno)
+{
+    FLDdesc *fld; // eax@@1
+
+	for ( fld = ttab[TTno].TTfields ; fld->FLDelemID ; fld++ )
+	{
+        if ( fld->FLDstat & fld_SUBREC)		// 0x0008 Does this TT have any sub-keys?
+			return true;
+    }
+    return false;
+}
+
+int abcd(BTAB *btb, short num_fields)
+{
+    SCR		*scrn;
+	BTAB	*v18;
+	PTAB	*v22;
+	BTAB	*v23;
+	ENTAB	*v25;
+	FLDdesc *FLD_reply; 
+    FLDdesc *FLD_mode;
+    
+	char	*v15;
+	char	*v27;
+	char	*v28;
+	char	*mode_txt;
+	
+    int CurrMODE; // eax@@10
+    int TDno; // [sp+48h] [bp-80h]@@1
+    int a7; // [sp+74h] [bp-54h]@@1
+    int v44; // [sp+78h] [bp-50h]@@147
+
+    short v4; // si@@1
+    signed short v9; // ax@@27
+    short PT_End; // [sp+54h] [bp-74h]@@29
+    short PT_Start; // [sp+58h] [bp-70h]@@29
+    short PT_End2; // [sp+5Ch] [bp-6Ch]@@29
+    short PT_Start2; // [sp+60h] [bp-68h]@@29
+    short ScreenNum; // [sp+64h] [bp-64h]@@1
+    bool v40; // [sp+68h] [bp-60h]@@1
+	bool v41; // [sp+6Ch] [bp-5Ch]@@1
+    bool v42; // [sp+70h] [bp-58h]@@1
+
+    char v45; // [sp+7Eh] [bp-4Ah]@@125
+	char	SrchChar;
+    char v29; // [sp+3Fh] [bp-89h]@@2
+    char v31; // [sp+47h] [bp-81h]@@1
+	short	ScreenFields[10];	// should be an array?
+	
+    v31 = 0;
+    a7  = 0;
+    v40 = false;
+    v41 = false;
+    v42 = true;
+
+    FLD_mode	= &ttab->TTfields[v_MODE];			// Points to MODE variable
+	FLD_reply	= &ttab->TTfields[v_REPLY];			// Points to REPLY variable
+    
+	ScreenFields[0]	= num_fields;
+    TDno		= btb->TTno;
+
+    PTARR(getptabp(btb->StartLine));	// appears pointless, but will throw an assert if StartLine is out of bounds
+
+    ScreenNum = 0;
+    v4 = 0;
+    do
+    {
+        while ( 1 )
+        {
+            while ( 1 )
+            {
+LABEL_2:
+                var_cr = false;
+                v29 = *(char *)FLD_mode->FLDdata;
+                if ( v29 )
+                {
+                    if ( isupper(v29) )
+                    {
+                        btb->BTFlags = false;
+                        if ( v29 == 'E' )
+                        {
+                            *(char *)FLD_mode->FLDdata = 'e';
+                            FLD_mode->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+                            return 0;
+                        }
+                        btb->Curr_Mode = tolower(v29);
+                    }
+                    else if ( btb->Curr_Mode != *(char *)FLD_mode->FLDdata )
+                    {
+						if ( ScreenNum )
+							dscreen(btb, 0, 0);		// looks pointless, but sets/updates global nflds variable
+                        btb->BTFlags = false;
+						return 0;
+                    }
+                }
+				//eprint("abcd107\n");
+
+                CurrMODE = btb->Curr_Mode;
+				switch (CurrMODE)
+				{
+				case 'c':
+					mode_txt = "CHANGE";
+					break;
+				case 'd':
+					mode_txt = "DELETE";
+					break;
+				case 'v':
+					 mode_txt = "VIEW";
+					break;
+				case 'a':
+					mode_txt = "ADD";
+					break;
+				default:
+					mode_txt = "";
+					break;
+				}
+                exit_type = 0;
+                ScreenNum = 0;
+                if ( (btb->Scrs & 0xBFFFu) > 0 )	// 1011 1111 1111 1111   0x4000
+                    break;
+
+LABEL_167:
+                if ( btb->Curr_Mode == 'r' && !(btb->Scrs & 0x4000) )
+                    endtran();
+            } // end 1st inner loop
+
+LABEL_25:
+//========================================
+//eprint("abcd: LABEL_25 \n");
+
+            if ( !ScreenNum )
+            {
+                v40 = false;
+                v41 = false;
+            }
+            *(char *)FLD_mode->FLDdata = btb->Curr_Mode;
+            FLD_mode->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+            
+			scrn = (SCR*)btb->TYPE24;
+			for (v9 = 0; v9 < ScreenNum ; v9++)
+                scrn = scrn->NextSCR;
+            
+			PT_Start	= scrn->PT_start;
+            PT_Start2	= scrn->PT_start;
+            PT_End		= scrn->PT_end;
+            PT_End2		= scrn->PT_end;
+
+			if ( PTARR(getptabp(PT_Start2))->OpCode != 600 ) // 600 == format block_name
+                break;
+
+			while ( 1 )
+            {
+LABEL_48:
+				if ( exit_type == 882 )				// exit_block		** exit_type global var **
+				{
+					exit_type = 0;
+					setcvar(v_REPLY, "Q");	// "REPLY"
+					setcvar(v_MODE, "E");	// "MODE"
+					v31 = 'q';
+				}
+				else if ( exit_type == 886 )		// exit_process		** exit_type global var **
+				{
+					setcvar(v_REPLY, "E");
+					v31 = reply(0, "e");
+				}
+				else if ( !exit_type )
+				{
+					//printf("abcd #182 v4 = %d, btb->Curr_Mode = %C, ScreenNum = %d\n",v4,btb->Curr_Mode,ScreenNum);
+					if ( v4 == 128 )
+						goto LABEL_2;	// continue?
+
+					else if ( v4 == -22 )
+					{
+						a7 = 0;
+						go_back = -22;
+						no_fields = 0;
+						v4 = ploop(btb, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+						if ( exit_type || v4 && (ScreenNum || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+							goto LABEL_48;
+						return 0;
+					}
+					else if ( v4 == -30 )
+					{
+						ScreenNum = ScreenNum - 1;
+						ScreenNum = ScreenNum + 1;
+						if ( ScreenNum < (btb->Scrs & 0xBFFF) )		// 1011 1111 1111 1111      0x4000 flag for what??
+							goto LABEL_25;
+						goto LABEL_167;
+					}
+					else if ( PTARR(getptabp(PT_Start2))->OpCode == 600 )	// format block_name
+						v31 = 'y';
+
+					else if ( v4 == -17 || v4 == -5 )
+					{
+						setcvar(v_LREPLY, "q");
+						if ( btb->Curr_Mode == 'a' && (signed short)ScreenNum > 0 )
+							delhier(TDno, 1);
+						if ( btb->Curr_Mode != 'r' )
+						{
+							ulckrec(TDno);
+							rfree(TDno, 0);
+						}
+						if ( !(btb->Scrs & 0x4000) )
+							endtran();
+						if ( !ScreenNum && !var_cr )
+						{
+							disprec(btb, TDno, ScreenNum, 0, 0);
+							v42 = true;
+						}
+						goto LABEL_2;
+					}
+					else if ( btb->Curr_Mode == 'd' )
+					{
+						setcvar(v_REPLY, "");
+						v31 = reply("\aare you sure <y,n>", "ny");	// embedded bell char
+					}
+					else if ( btb->Curr_Mode == 'r' )
+					{
+						if ( ScreenFields[ScreenNum] <= 1 )
+							v31 = reply("<c>ontinue or <q>uit", "cq");
+						else
+							v31 = reply("<y>es <m>odify or <q>uit", "ymq");
+					}
+					else if ( btb->Curr_Mode != 'a' && !ScreenFields[ScreenNum] || btb->Curr_Mode == 'v' )
+						v31 = reply("<y>es or <q>uit", "yq");
+
+					else if ( ScreenNum && btb->Curr_Mode != 'c' )
+						v31 = reply("<y>es <m>odify or <q>uit", "ymq");
+
+					else if ( a7 && btb->Curr_Mode == 'c' )
+						v31 = reply("<y>es <m>odify or <q>uit", "myq");
+
+					else
+						v31 = reply("<y>es <m>odify or <q>uit", "ymq");
+				}
+//================================================
+
+				a7 = 0;
+
+				if ( v31 == 'q' || v31 == 'n' )	// 'n' only valid in delete mode where user answers NO to "are you sure <y,n>?"
+					goto LABEL_108;
+				if ( v31 == 'm' )
+				{
+					// if v31 == 'm'
+					if ( btb->Curr_Mode != 'r' )
+						recalt = true;
+
+					PT_Start = eafr(TDno, PT_Start2, PT_End2, &SrchChar);	// look for user to enter a field number to modify
+					if ( PT_Start >= 0 )
+					{
+						if ( PT_Start > 0 )	// true if a field number or wildcard was entered
+						{
+							PT_End = ((unsigned char)(SrchChar - 42) > 1u ) ? PT_Start : PT_End2;	// '*' or '+'
+						}
+						else
+						{
+							PT_Start = PT_Start2;
+							PT_End	 = PT_End2;
+						}
+						v4 = ploop(btb, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+						if ( exit_type || v4 && (ScreenNum || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+							goto LABEL_48;
+
+						return 0;		// exit_done. This will break the calling loop in pblock.c
+					}
+				}
+				else if ( v31 == 'y' )
+				{
+					//printf("abcd: #278 v31 = %C, currmode = %C\n",v31,btb->Curr_Mode);
+					if ( btb->Curr_Mode == 'd' )
+					{
+						if ( !btb->On_delete )
+							goto LABEL_127;
+						v18 = &btab[btb->On_delete->BlockNo];
+						v4 = ploop( v18, 0, v18->StartLine, v18->EndLine, v18->StartLine, v18->EndLine, 0);
+						if ( v4 != -5 || exit_type != 886 )
+						{
+							if ( *(char *)ttab->TTfields[5].FLDdata == 'y' )
+							{
+								setcvar(v_REPLY, "");	// "REPLY"
+	LABEL_127:
+								delhier(TDno, 1);
+							}
+							else
+							{
+								setcvar(v_REPLY, "");	// "REPLY"
+								prerr("record NOT deleted, <CR> to continue ", 0, 1);
+								while (linput(&v45, 0, 0))
+									;
+								prerr(0, 0, 0);	// clear message line
+							}
+							if ( !(btb->Scrs & 0x4000) )
+								endtran();
+
+							rfree(TDno, 0);
+							if ( !ScreenNum )
+							{
+								if ( var_cr )
+								{
+									dscreen(btb, 0, 0);	// update global nflds var
+									var_cr = false;
+								}
+								else
+								{
+									disprec(btb, TDno, ScreenNum, 0, 0);
+									v42 = true;
+								}
+								PT_Start = PT_Start2;
+								PT_End	 = PT_End2;
+								goto LABEL_38;
+							}
+							goto LABEL_2;
+						}
+					}
+	// end delete -------------------------------------------------------
+					else
+					{
+						if ( PTARR(getptabp(PT_Start2))->OpCode == 600 )	// 600 == format block_name
+						{
+							// OpCode 600 handler
+							v22 = PTARR(getptabp(PT_Start2));
+							v23 = &btab[v22->Operand];
+
+							if ( btb->Scrs & 0x4000 || btb->Curr_Mode == 'r' || ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 )
+								v23->Scrs |= 0x4000;
+							else
+								v23->Scrs &= 0xBFFF;
+
+							v4 = pblock(v23, ENARR(v22->TABno));
+							if ( v4 != -5 || exit_type != 886 )
+								goto LABEL_154;
+						}
+						else
+						{
+							if ( btb->Curr_Mode != 'r' && btb->Curr_Mode != 'v' )
+							{
+								v44 = ScreenNum == (btb->Scrs & 0xFFFFBFFF) - 1;
+								if ( recalt || hasass(TDno) )// check for record change, or sub-keys
+								{
+									repkey(TDno, 0);
+									reprec(TDno, v44);
+									v40 = true;
+								}
+								if ( v44 )
+								{
+									ulckrec(TDno);
+									if ( v40 )
+									{
+										if ( !(btb->Scrs & 0x4000) )
+										{
+											endtran();
+											v41 = true;
+										}
+									}
+								}
+							}
+	LABEL_154:
+							if ( ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 || btb->Curr_Mode == 'r' )
+								v42 = false;
+							else
+							{
+								ulckrec(TDno);
+								if ( !v41 && !(btb->Scrs & 0x4000) )
+									endtran();
+								
+								rfree(TDno, 0);
+								if ( !ScreenNum )
+								{
+									if ( var_cr )
+									{
+										dscreen(btb, 0, 0);
+										var_cr = false;
+									}
+									else
+									{
+										disprec(btb, TDno, ScreenNum, 0, 0);
+										v42 = true;
+									}
+									PT_Start = PT_Start2;
+									PT_End	 = PT_End2;
+									goto LABEL_38;
+								}
+							}
+
+							ScreenNum++;	// looks like 'default' behaviour again?
+							if ( ScreenNum < (btb->Scrs & 0xBFFF) )
+								goto LABEL_25;
+							goto LABEL_167;
+						}
+					}
+				}
+				else	// looks like 'default' behaviour?   Maybe 'C' continue?
+				{
+					ScreenNum++;
+					if ( ScreenNum < (btb->Scrs & 0xBFFF) )
+						goto LABEL_25;
+					goto LABEL_167;
+				}
+            } // end loop - while(1)
+
+LABEL_108:
+			// v31 == 'q' or 'n' land here
+//printf("abcd: LABEL_108 v31 = %C, currmode = %C\n",v31,btb->Curr_Mode);
+
+            if ( btb->Curr_Mode != 'r' )
+            {
+                if ( btb->Curr_Mode != 'a' || (signed short)ScreenNum <= 0 )
+                    ulckrec(TDno);
+                else
+                    delhier(TDno, 1);
+                rfree(TDno, 0);
+                if ( !ScreenNum )
+                {
+                    if ( var_cr )
+                    {
+                        dscreen(btb, 0, 0);
+                        var_cr = false;
+                    }
+                    else
+                    {
+                        disprec(btb, TDno, ScreenNum, 0, 0);
+                        v42 = true;
+                    }
+                    PT_Start = PT_Start2;
+                    PT_End	 = PT_End2;
+                    goto LABEL_38;
+                }
+            }
+        } // end second loop - while (1)
+
+		// 157 if ( PTARR(getptabp(PT_Start2))->OpCode != 600 ) // 600 == format block_name lands here
+
+        if ( v42 || v4 == 128 )
+            v42 = false;
+        else
+            ScreenFields[ScreenNum] = dscreen(btb, ScreenNum, 0);
+        
+		if ( v4 == -5 )
+		{
+			btb->BTFlags = false;
+            return 0;
+		}
+        if ( fld_nbrs == 1 && btb->Curr_Mode != 'r' )
+            prmsg("%s %s", mode_txt, ttab[TDno].TableName);	// Show current mode and tablename
+
+LABEL_38:
+        v29 = *(char *)FLD_mode->FLDdata;
+    } // end outer do loop
+    while (isupper(v29) && btb->Curr_Mode != v29 && !ScreenNum );
+
+    v31 = 0;
+    a7 = 1;
+    recalt = btb->Curr_Mode == 'a';
+    no_fields = 0;
+    v4 = ploop(btb, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+    if ( exit_type || v4 && (ScreenNum || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+        goto LABEL_48;
+
+    return 0;
+}
+
+
+#endif
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d17 1
+a17 1
+        if ( fld->FLDstat & fld_SUBREC)	// 0x0008 )           // Does this TT have any sub-keys?
+d25 5
+a29 5
+    SCR *scrn; // edx@@27
+    BTAB *v18; // eax@@120
+    PTAB *v22; // ecx@@134
+    BTAB *v23; // esi@@134
+    ENTAB *v25; // eax@@140
+d33 5
+a37 5
+	char *v15; // eax@@73
+    char *v27; // [sp+0h] [bp-C8h]@@52
+    char *v28; // [sp+4h] [bp-C4h]@@52
+    char *mode_txt; // [sp+40h] [bp-88h]@@19
+
+d89 1
+a89 1
+                        btb->BTFlag = false;
+d102 1
+a102 1
+                        btb->BTFlag = false;
+d106 1
+d139 1
+a139 1
+//printf("abcd: LABEL_25 \n");
+d178 1
+a178 1
+					printf("abcd #182 v4 = %d, btb->Curr_Mode = %C, ScreenNum = %d\n",v4,btb->Curr_Mode,ScreenNum);
+d279 1
+a279 1
+					printf("abcd: #278 v31 = %C, currmode = %C\n",v31,btb->Curr_Mode);
+d413 1
+a413 1
+printf("abcd: LABEL_108 v31 = %C, currmode = %C\n",v31,btb->Curr_Mode);
+d450 1
+a450 1
+			btb->BTFlag = false;
+@
+
+
+1.3
+log
+@prior to ENARR() fix
+@
+text
+@d32 2
+a33 8
+
+    short v4; // si@@1
+    int CurrMODE; // eax@@10
+    signed short v9; // ax@@27
+    char *v15; // eax@@73
+    //short v16; // dx@@102
+    //short v17; // dx@@105
+
+a35 1
+    char v29; // [sp+3Fh] [bp-89h]@@2
+d37 2
+a38 1
+    char v31; // [sp+47h] [bp-81h]@@1
+d40 5
+d53 1
+a53 2
+    int a7; // [sp+74h] [bp-54h]@@1
+    int v44; // [sp+78h] [bp-50h]@@147
+d56 2
+d83 1
+a83 1
+                var_cr = 0;
+d89 1
+a89 1
+                        btb->field_0 = 0;
+d102 1
+a102 1
+                        btb->field_0 = 0;
+d310 1
+a310 1
+									var_cr	 = 0;
+d338 1
+a338 1
+							v4 = pblock(v23, v22->TABno ? &enarr.TableAddr[v22->TABno - 1] : 0);
+d381 1
+a381 1
+										var_cr	 = 0;
+d426 1
+a426 1
+                        var_cr = 0;
+d449 1
+a449 1
+			btb->field_0 = 0;
+@
+
+
+1.2
+log
+@intermediate version.
+@
+text
+@a161 2
+                while ( 1 )
+                {
+d163 38
+a200 72
+                    if ( exit_type == 882 )				// exit_block
+                    {
+                        exit_type = 0;
+                        setcvar(v_REPLY, "Q");	// "REPLY"
+                        setcvar(v_MODE, "E");	// "MODE"
+                        v31 = 'q';
+                    }
+                    else if ( exit_type == 886 )		// exit_process
+                    {
+                        setcvar(v_REPLY, "E");
+                        v31 = reply(0, "e");
+                    }
+                    else if ( !exit_type )
+                    {
+						printf("abcd #182 v4 = %d, btb->Curr_Mode = %C, ScreenNum = %d\n",v4,btb->Curr_Mode,ScreenNum);
+                        if ( v4 == 128 )
+                            goto LABEL_2;	// continue?
+
+                        else if ( v4 == -22 )
+                        {
+                            a7 = 0;
+                            go_back = -22;
+						    no_fields = 0;
+						    v4 = ploop(btb, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+							if ( exit_type || v4 && (ScreenNum || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+							    goto LABEL_48;
+						    return 0;
+                        }
+                        else if ( v4 == -30 )
+                        {
+                            ScreenNum = ScreenNum - 1;
+			                ScreenNum = ScreenNum + 1;
+		                    if ( ScreenNum < (btb->Scrs & 0xBFFF) )		// 1011 1111 1111 1111      0x4000 flag for what??
+		                        goto LABEL_25;
+	                        goto LABEL_167;
+                        }
+                        else if ( PTARR(getptabp(PT_Start2))->OpCode == 600 )	// format block_name
+                            v31 = 'y';
+
+						else if ( v4 == -17 || v4 == -5 )
+                        {
+                            setcvar(v_LREPLY, "q");
+                            if ( btb->Curr_Mode == 'a' && (signed short)ScreenNum > 0 )
+                                delhier(TDno, 1);
+                            if ( btb->Curr_Mode != 'r' )
+                            {
+                                ulckrec(TDno);
+                                rfree(TDno, 0);
+                            }
+                            if ( !(btb->Scrs & 0x4000) )
+                                endtran();
+                            if ( !ScreenNum && !var_cr )
+                            {
+                                disprec(btb, TDno, ScreenNum, 0, 0);
+                                v42 = true;
+                            }
+                            goto LABEL_2;
+                        }
+                        else if ( btb->Curr_Mode == 'd' )
+                        {
+                            setcvar(v_REPLY, "");
+	                        v31 = reply("\aare you sure <y,n>", "ny");	// embedded bell char
+                        }
+                        else if ( btb->Curr_Mode == 'r' )
+                        {
+                            if ( ScreenFields[ScreenNum] <= 1 )
+		                        v31 = reply("<c>ontinue or <q>uit", "cq");
+                            else
+								v31 = reply("<y>es <m>odify or <q>uit", "ymq");
+                        }
+                        else if ( btb->Curr_Mode != 'a' && !ScreenFields[ScreenNum] || btb->Curr_Mode == 'v' )
+							v31 = reply("<y>es or <q>uit", "yq");
+d202 29
+a230 1
+						else if ( ScreenNum && btb->Curr_Mode != 'c' )
+d232 3
+d236 2
+a237 2
+						else if ( a7 && btb->Curr_Mode == 'c' )
+							v31 = reply("<y>es <m>odify or <q>uit", "myq");
+d239 6
+a244 3
+						else
+							v31 = reply("<y>es <m>odify or <q>uit", "ymq");
+                    }
+d247 1
+a247 1
+                    a7 = 0;
+d249 10
+a258 5
+                    if ( v31 == 'n' )	// only valid in delete mode where user answers NO to "are you sure <y,n>?"
+                        goto LABEL_108;
+                    if ( v31 > 'n' )	// y or q
+                        break;
+                    if ( v31 == 'm' )
+d260 12
+a271 3
+						// if v31 == 'm'
+						if ( btb->Curr_Mode != 'r' )
+							recalt = true;
+d273 13
+a285 2
+						PT_Start = eafr(TDno, PT_Start2, PT_End2, &SrchChar);	// look for user to enter a field number to modify
+						if ( PT_Start >= 0 )
+d287 1
+a287 1
+							if ( PT_Start > 0 )	// true if a field number or wildcard was entered
+d289 3
+a291 5
+								//v17 = PT_End2;
+								//if ( (unsigned char)(SrchChar - 42) > 1u )	
+								//	v17 = PT_Start;
+								//PT_End = v17;
+								PT_End = ((unsigned char)(SrchChar - 42) > 1u ) ? PT_Start : PT_End2;	// '*' or '+'
+d295 22
+d319 1
+d321 1
+a321 5
+							v4 = ploop(btb, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+							if ( exit_type || v4 && (ScreenNum || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+								goto LABEL_48;
+
+							return 0;		// exit_done. This will break the calling loop in pblock.c
+d324 1
+d327 5
+a331 6
+                        ScreenNum++;		// looks like 'default' behaviour?   Maybe 'C' continue?
+                        if ( ScreenNum < (btb->Scrs & 0xBFFF) )
+                            goto LABEL_25;
+                        goto LABEL_167;
+					}
+                } // end inner loop - while(1)
+d333 2
+a334 44
+                if ( v31 == 'q' )
+                    break;
+                if ( v31 != 'y' )
+				{
+					ScreenNum++;	// looks like 'default' behaviour again?
+                    if ( ScreenNum < (btb->Scrs & 0xBFFF) )
+						goto LABEL_25;
+                    goto LABEL_167;
+				}
+				// v31 == 'y'
+printf("abcd: #303 v31 = %C, currmode = %C\n",v31,btb->Curr_Mode);
+				if ( btb->Curr_Mode == 'd' )
+                {
+                    if ( !btb->On_delete )
+                        goto LABEL_127;
+                    v18 = &btab[btb->On_delete->BlockNo];
+                    v4 = ploop( v18, 0, v18->StartLine, v18->EndLine, v18->StartLine, v18->EndLine, 0);
+                    if ( v4 != -5 || exit_type != 886 )
+                    {
+                        if ( *(char *)ttab->TTfields[5].FLDdata == 'y' )
+                        {
+                            setcvar(v_REPLY, "");	// "REPLY"
+LABEL_127:
+                            delhier(TDno, 1);
+                        }
+                        else
+                        {
+                            setcvar(v_REPLY, "");	// "REPLY"
+                            prerr("record NOT deleted, <CR> to continue ", 0, 1);
+                            while (linput(&v45, 0, 0))
+                                ;
+                            prerr(0, 0, 0);	// clear message line
+                        }
+                        if ( !(btb->Scrs & 0x4000) )
+                            endtran();
+
+                        rfree(TDno, 0);
+                        if ( !ScreenNum )
+                        {
+                            if ( var_cr )
+                            {
+                                dscreen(btb, 0, 0);	// update global nflds var
+                                var_cr	 = 0;
+                            }
+d336 9
+d346 8
+a353 50
+								disprec(btb, TDno, ScreenNum, 0, 0);
+								v42 = true;
+							}
+							PT_Start = PT_Start2;
+							PT_End	 = PT_End2;
+                            goto LABEL_38;
+                        }
+                        goto LABEL_2;
+                    }
+                }
+// end delete -------------------------------------------------------
+                else
+                {
+                    if ( PTARR(getptabp(PT_Start2))->OpCode != 600 )	// 600 == format block_name
+                    {
+                        if ( btb->Curr_Mode != 'r' && btb->Curr_Mode != 'v' )
+                        {
+                            v44 = ScreenNum == (btb->Scrs & 0xFFFFBFFF) - 1;
+                            if ( recalt || hasass(TDno) )// check for record change, or sub-keys
+                            {
+                                repkey(TDno, 0);
+                                reprec(TDno, v44);
+                                v40 = true;
+                            }
+                            if ( v44 )
+                            {
+                                ulckrec(TDno);
+                                if ( v40 )
+                                {
+                                    if ( !(btb->Scrs & 0x4000) )
+                                    {
+                                        endtran();
+                                        v41 = true;
+                                    }
+                                }
+                            }
+                        }
+LABEL_154:
+                        if ( ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 || btb->Curr_Mode == 'r' )
+                            v42 = false;
+                        else
+                        {
+                            ulckrec(TDno);
+                            if ( !v41 && !(btb->Scrs & 0x4000) )
+                                endtran();
+                            
+							rfree(TDno, 0);
+                            if ( !ScreenNum )
+                            {
+                                if ( var_cr )
+d355 9
+a363 2
+									dscreen(btb, 0, 0);
+									var_cr	 = 0;
+d365 12
+a376 1
+								else
+d378 13
+a390 2
+							        disprec(btb, TDno, ScreenNum, 0, 0);
+						            v42 = true;
+d392 1
+a392 14
+ 								PT_Start = PT_Start2;
+								PT_End	 = PT_End2;
+                               goto LABEL_38;
+                            }
+                        }
+
+                        ScreenNum++;	// looks like 'default' behaviour again?
+                        if ( ScreenNum < (btb->Scrs & 0xBFFF) )
+                            goto LABEL_25;
+                        goto LABEL_167;
+                    }
+					// OpCode 600 handler
+                    v22 = PTARR(getptabp(PT_Start2));
+                    v23 = &btab[v22->Operand];
+d394 14
+a407 9
+                    if ( btb->Scrs & 0x4000 || btb->Curr_Mode == 'r' || ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 )
+                        v23->Scrs |= 0x4000;
+                    else
+                        v23->Scrs &= 0xBFFF;
+
+                    v4 = pblock(v23, v22->TABno ? &enarr.TableAddr[v22->TABno - 1] : 0);
+                    if ( v4 != -5 || exit_type != 886 )
+                        goto LABEL_154;
+                }
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a10 39
+int delhier(int TTno, int a2)
+{
+    TDesc *TTptr; // edi@@1
+    FLDdesc *fld; // esi@@3
+    short ErrCode; // ax@@10
+    int TDno; // [sp+14h] [bp-14h]@@1
+    int v11; // [sp+18h] [bp-10h]@@1
+
+    v11 = 1;
+    TTptr = &ttab[TTno];
+    TDno = rtdget(TTptr);
+    tttorec(TTno, TTptr->TDworkarea1, 1);
+    if ( a2 && TTptr->TDlocked & 0x4010 )	// indicates we have Key/Sub tables
+    {
+		fld = TTptr->TTfields;
+        while ( fld->FLDelemID )
+        {
+			if ( fld->FLDtype == 'S' )
+				delset(TTno, TTptr->DBnumber, (char *)fld->FLDdata, 0);
+            else if ( fld->FLDtype == 'K' )
+			    delset(TTno, TTptr->DBnumber, (char *)fld->FLDdata, 1);
+			++fld;
+        }
+    }
+
+	ErrCode = cldelr(TDno, TTptr->TDworkarea1, 0, TTptr);
+    if ( ErrCode <= 0 )
+    {
+        if ( ErrCode < 0 )
+            dberror(ErrCode, 0, TDno);
+        v11 = 0;
+    }
+    ulckrec(TTno);
+    rfree(TTno, 0);
+    TTptr->TDlocked &= 0xFFDFu;	// clears 0x0040
+    return v11;
+}
+
+
+a13 1
+    bool result; // eax@@3
+d15 2
+a16 3
+    fld = ttab[TTno].TTfields;
+    while ( fld->FLDelemID )
+    {
+a18 1
+        fld++;
+d23 1
+a23 1
+int abcd(BTAB *btb, short arg4)
+a35 1
+    char *v12; // ecx@@38
+d37 3
+a39 2
+    short v16; // dx@@102
+    short v17; // dx@@105
+d43 1
+a43 1
+    char *v30; // [sp+40h] [bp-88h]@@19
+d50 4
+a53 4
+    short a2; // [sp+64h] [bp-64h]@@1
+    signed int v40; // [sp+68h] [bp-60h]@@1
+    signed int v41; // [sp+6Ch] [bp-5Ch]@@1
+    signed int v42; // [sp+70h] [bp-58h]@@1
+d57 2
+a58 2
+	char	field_0;
+	short	field_1;	// should be an array?
+a59 1
+    v42 = 1;
+d62 3
+a64 2
+    v41 = 0;
+    v40 = 0;
+d69 1
+a69 1
+	field_1		= arg4;
+d74 1
+a74 1
+    a2 = 0;
+d100 2
+a101 2
+						if ( a2 )
+							dscreen(btb, 0, 0);
+d106 1
+d111 1
+a111 1
+					v30 = "CHANGE";
+d114 1
+a114 1
+					v30 = "DELETE";
+d117 1
+a117 1
+					 v30 = "VIEW";
+d120 1
+a120 1
+					v30 = "ADD";
+d123 1
+a123 1
+					v30 = "";
+d127 2
+a128 2
+                a2 = 0;
+                if ( (btb->Scrs & 0xBFFFu) > 0 )
+d138 1
+a138 1
+printf("abcd: LABEL_25 \n");
+d140 1
+a140 1
+            if ( !a2 )
+d142 2
+a143 2
+                v40 = 0;
+                v41 = 0;
+d147 3
+a149 5
+            scrn = (SCR*)btb->TYPE24;
+            v9 = 0;
+			while ( v9 < a2 )
+            {
+				++v9;
+d151 2
+a152 2
+            }
+            PT_Start	= scrn->PT_start;
+d165 13
+a177 2
+//=================================================
+                    if ( !exit_type )
+d179 2
+a180 1
+                        if ( v4 == 0x80 )
+d182 2
+a183 1
+                        if ( v4 == -22 )
+d188 2
+a189 2
+						    v4 = ploop(btb, a2, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+							if ( exit_type || v4 && (a2 || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+d193 1
+a193 1
+                        if ( v4 == -30 )
+d195 3
+a197 3
+                            a2 = a2 - 1;
+			                a2 = a2 + 1;
+		                    if ( a2 < (btb->Scrs & 0xBFFF) )
+d201 1
+a201 2
+                        if ( PTARR(getptabp(PT_Start2))->OpCode == 600 )	// format block_name
+                        {
+d203 2
+a204 3
+                            goto LABEL_93;
+                        }
+                        if ( v4 == -17 || v4 == -5 )
+d207 1
+a207 1
+                            if ( btb->Curr_Mode == 'a' && (signed short)a2 > 0 )
+d216 1
+a216 1
+                            if ( !a2 && !var_cr )
+d218 2
+a219 2
+                                disprec(btb, TDno, a2, 0, 0);
+                                v42 = 1;
+d223 1
+a223 1
+                        if ( btb->Curr_Mode == 'd' )
+a226 1
+                            goto LABEL_93;
+d228 1
+a228 1
+                        if ( btb->Curr_Mode == 'r' )
+d230 1
+a230 1
+                            if ( *(&field_1 + a2) <= 1 )	// ***** need to check variable space here *****
+a233 1
+		                    goto LABEL_93;
+d235 1
+a235 2
+                        else if ( btb->Curr_Mode != 'a' && !*(&field_1 + a2) || btb->Curr_Mode == 'v' )
+						{
+d237 8
+a244 4
+	                        goto LABEL_93;
+                        }
+                        else if ( a2 && btb->Curr_Mode != 'c' )
+                        {
+a245 22
+							goto LABEL_93;
+						}
+                        else
+                        {
+                            if ( a7 && btb->Curr_Mode == 'c' )
+								v31 = reply("<y>es <m>odify or <q>uit", "myq");
+							else
+ 								v31 = reply("<y>es <m>odify or <q>uit", "ymq");
+							goto LABEL_93;
+						}
+                    }
+                    else if ( exit_type == 882 )
+                    {
+                        exit_type = 0;
+                        setcvar(v_REPLY, "Q");	// "REPLY"
+                        setcvar(v_MODE, "E");	// "MODE"
+                        v31 = 'q';
+                    }
+                    else if ( exit_type == 886 )
+                    {
+                        setcvar(v_REPLY, "E");
+                        v31 = reply(0, "e");
+a247 2
+LABEL_93:
+printf("abcd: LABEL_93 \n");
+d250 2
+a251 1
+                    if ( v31 == 'n' )
+d253 1
+a253 1
+                    if ( v31 > 'n' )
+d255 30
+a284 1
+                    if ( v31 != 'm' )
+d286 2
+a287 2
+                        a2++;
+                        if ( a2 < (btb->Scrs & 0xBFFF) )
+d291 1
+a291 25
+					// if v31 == 'm'
+                    if ( btb->Curr_Mode != 'r' )
+                        recalt = 1;
+                    v16 = eafr(TDno, PT_Start2, PT_End2, &field_0);
+                    PT_Start = v16;
+                    if ( v16 >= 0 )
+                    {
+                        if ( v16 > 0 )
+                        {
+                            v17 = PT_End2;
+                            if ( (unsigned char)(field_0 - 42) > 1u )
+                                v17 = PT_Start;
+                            PT_End = v17;
+                        }
+                        else
+                        {
+                            PT_Start = PT_Start2;
+                            PT_End	 = PT_End2;
+                        }
+						v4 = ploop(btb, a2, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+					    if ( exit_type || v4 && (a2 || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+						    goto LABEL_48;
+					    return 0;
+                    }
+                } // end inner loop
+d297 2
+a298 2
+					a2++;
+                    if ( a2 < (btb->Scrs & 0xBFFF) )
+d302 2
+a303 1
+                
+d314 1
+a314 1
+                            setcvar(5, "");
+d322 1
+a322 1
+                            while ( linput(&v45, 0, 0) )
+d328 1
+d330 1
+a330 1
+                        if ( !a2 )
+d334 1
+a334 1
+                                dscreen(btb, 0, 0);
+a335 2
+                                PT_Start = PT_Start2;
+                                PT_End	 = PT_End2;
+d339 2
+a340 4
+								disprec(btb, TDno, a2, 0, 0);
+								v42 = 1;
+								PT_Start = PT_Start2;
+								PT_End	 = PT_End2;
+d342 2
+d349 1
+d352 1
+a352 1
+                    if ( PTARR(getptabp(PT_Start2))->OpCode != 600 )
+d356 1
+a356 1
+                            v44 = a2 == (btb->Scrs & 0xFFFFBFFF) - 1;
+d361 1
+a361 1
+                                v40 = 1;
+d371 1
+a371 1
+                                        v41 = 1;
+d377 2
+a378 2
+                        if ( a2 != (btb->Scrs & 0xFFFFBFFF) - 1 || btb->Curr_Mode == 'r' )
+                            v42 = 0;
+d384 3
+a386 2
+                            rfree(TDno, 0);
+                            if ( !a2 )
+d388 1
+a388 1
+                                if ( !var_cr )
+d390 2
+a391 4
+							        disprec(btb, TDno, a2, 0, 0);
+						            v42 = 1;
+					                PT_Start = PT_Start2;
+				                    PT_End	 = PT_End2;
+d395 2
+a396 4
+									dscreen(btb, 0, 0);
+									var_cr	 = 0;
+									PT_Start = PT_Start2;
+									PT_End	 = PT_End2;
+d398 3
+a400 1
+                                goto LABEL_38;
+d403 3
+a405 2
+                        a2++;
+                        if ( a2 < (btb->Scrs & 0xBFFF) )
+d413 1
+a413 1
+                    if ( btb->Scrs & 0x4000 || btb->Curr_Mode == 'r' || a2 != (btb->Scrs & 0xFFFFBFFF) - 1 )
+d422 2
+a423 1
+            } // end loop
+d425 3
+d430 1
+a430 1
+                if ( btb->Curr_Mode != 'a' || (signed short)a2 <= 0 )
+d435 1
+a435 1
+                if ( !a2 )
+d444 2
+a445 2
+                        disprec(btb, TDno, a2, 0, 0);
+                        v42 = 1;
+d452 6
+a457 3
+        } // end second loop
+        if ( v42 || v4 == 0x80 )
+            v42 = 0;
+d459 3
+a461 2
+            *(&field_1 + a2) = dscreen(btb, a2, 0);
+        if ( v4 == -5 )
+d467 2
+a468 1
+            prmsg("%s %s", v30, ttab[TDno].TableName);
+d470 1
+a470 1
+        v12 = (char *)FLD_mode->FLDdata;
+d472 1
+a472 2
+	//while ((*v11)[*v12] & 0x0100 && btb->Curr_Mode != *v12 && !a2 ); //isupper()  ==	0x0100
+    while (isupper(*v12) && btb->Curr_Mode != *v12 && !a2 );
+d478 2
+a479 2
+    v4 = ploop(btb, a2, PT_Start2, PT_End2, PT_Start, PT_End, a7);
+    if ( exit_type || v4 && (a2 || no_fields || isupper(*(char *)FLD_reply->FLDdata)) )
+d481 1
+@

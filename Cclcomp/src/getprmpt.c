@@ -54,11 +54,11 @@ XTAB *getprmpt(XTAB *xtab)
 			   dallenpt(&v8);
 			   return 0;
 		  }
-		  v8->RecNo	 = v4;
-		  v8->TTno	 = 0;
-		  v8->entype = 1;
+		  v8->Enun.Enref.VarNum	= v4;
+		  v8->Enun.Enref.TTno	= 0;		// normal variable
+		  v8->entype			= 1;
 		  dallenpt(&v8);
-		  xtab->Prompt_exp = ExpNo;
+		  xtab->Prompt_exp		= ExpNo;
 		  return xtab;
 	}
 	if ( symbol == 2220 )

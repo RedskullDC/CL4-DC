@@ -1,0 +1,177 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.20.03.32.12;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETRESERVE_C
+#define GETRESERVE_C
+
+#include <stdio.h>
+#include <stdarg.h>			// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+char *getresv(int VarNum)
+{
+    char *result; // eax@@22
+    char *v2; // edi@@26
+    int PID; // eax@@35
+    char *v5; // eax@@41
+    char *v6; // esi@@41
+    unsigned char v7; // cf@@41
+    unsigned char v8; // zf@@41
+    char *v9; // edi@@41
+    int v10; // ecx@@41
+    char *v11; // edi@@44
+    int v12; // eax@@45
+    char Dest[32]; // [sp+10h] [bp-38h]@@41
+
+	switch (VarNum)                 // VarNum is actually a bitmask
+	{
+		case 0x0001:
+            return cwd;
+
+		case 0x0002:
+			return getclver();
+
+		//case 0x0004:	Unallocated?
+
+		case 0x0008:
+			return sysdate(dstr);
+
+		case 0x0010:
+			return systime(tstr);
+
+		case 0x0020:
+            return pname;
+
+		case 0x0040:
+			if ( !uname_0[0] )
+				guname(uname_0);
+			result = uname_0;
+			break;
+		
+		case 0x0080:
+			if ( !pid[0] )
+				sprintf(pid, "%d", getpid());
+            result = pid;
+			break;
+
+		case 0x0100:
+			if ( !uid[0] )
+				sprintf(uid, "%d", getuid());
+            result = uid;
+			break;
+
+		case 0x0200:
+            if ( !login[0] )
+                glogin(login);
+            result = login;
+			break;
+
+		case 0x0400:
+			if ( !tty[0] )
+            {
+				v5 = ttyname(2);
+                v6 = Dest;
+                cdbcpystr(Dest, v5, 0);
+                v9 = "/dev/";
+                v10 = 5;
+                do
+                {
+					if ( !v10 )
+						break;
+					v7 = *v6 < (unsigned char)*v9;
+                    v8 = *v6++ == *v9++;
+                    --v10;
+				}
+                while ( v8 );
+                
+				v11 = &Dest[5];
+                if ( !(v7 | v8) != v7 )
+                {
+					v12 = lenstr(Dest);
+                    v11 = &Dest[v12];
+                    if ( Dest < v11 )
+                    {
+						while ( *v11 != '/' )
+                        {
+							--v11;
+                            if ( Dest >= v11 )
+								goto LABEL_50;
+                        }
+                        ++v11;
+					}
+				}
+LABEL_50:
+                cdbcpystr(tty, v11, 0);
+			}
+            result = tty;
+			break;
+
+		case 0x0800:
+			return getnodename();
+
+		//case 0x1000:	Unallocated?
+
+		case 0x2000:
+			v2 = strrchr(cwd, '/');		// find *last* occurence of '/'
+			printf("%s\n",cwd);
+			result = cwd;
+            if ( v2 )
+				result = v2 + 1;
+			break;
+		//case 0x4000:	Unallocated?
+		//case 0x8000:	Unallocated?
+		default:
+            return 0;
+	}
+    return result;
+
+}
+
+int getnresv(int a1)
+{
+	switch (a1)
+	{
+		case 0x0008:
+            sysdate(dstr);
+            return clgetdate(dstr);
+
+		case 0x0010:
+			systime(tstr);
+			return (int)gettime(tstr);
+
+		case 0x0080:
+            return getpid();
+
+		case 0x0100:
+            return getuid();
+
+		default:
+			return 0;
+	}
+}
+
+
+#endif
+@

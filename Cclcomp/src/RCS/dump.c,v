@@ -1,0 +1,714 @@
+head	1.6;
+access;
+symbols;
+locks
+	leslie:1.6; strict;
+comment	@ * @;
+
+
+1.6
+date	2016.07.26.05.54.48;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2016.05.16.23.15.51;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.08.30.08.11.29;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.06.23.23.57.30;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.01.14.01.33.08;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.08.06.36.18;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.6
+log
+@tidy up, remove debug blocks
+@
+text
+@#ifndef DUMPENC_C
+#define DUMPENC_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"                 // for bit field values
+
+int *__errno_location(void);
+
+int dumpenc(char *EncFileName)
+{
+	TDesc		*TTptr;
+	TDesc		*TTptr2;
+	FLDdesc		*fld;
+	FLDdesc		*fld2;
+	PTAB		*v21;
+	//XTAB		*xt;
+	BTAB		*btb;
+	KXTAB		*kx;
+	ONESC		*onesc;
+
+	int			*v2;
+	char		*v10;
+	char		*ptr;
+
+	int		v23;
+	int		v13;
+	int		j;
+	size_t	v19;
+	unsigned short i;
+	short	v7;
+	short	NumEscs;
+	short	PTABno;
+	short	NumTables;
+	short	TempTables;
+	short	count;
+	
+    if ( !btab->BlockName[0] )
+	{
+        eprint("This is an empty ent file - nothing to compile!\n");
+		return 1;
+    }
+    dp = fopen64(EncFileName, "w");
+    if ( !dp )
+	{
+        v2 = __errno_location();
+        eprint("can't open %s for writing - %s\n", EncFileName, strerror(*v2));
+		return -*v2;
+    }
+    putucount(0x9DD3u);							// 0x9DD3 = 40403, 0x9DD4 = 40404 = version number
+	putcount((short)(extendDC << 1 | tpenc));   // Signify if this is a Portable enc and if Extended DC features are present!!!
+												// If tpenc and extendDC both set, will producee a file unreadable by real clenter!! 
+#ifdef DEBUG_OUTPUT
+	printf("dumpenc: version = %d\n",0x9dd3);
+	printf("dumpenc: portable = %s\n",tpenc? "true":"false");
+#endif
+
+    TempTables	= 0;
+    NumTables	= 0;
+    TTptr		= ttab;
+    count		= 0;
+    while ( no_ttabs > count )
+	{
+		if ( TTptr->TableName[0] )
+        {
+			NumTables++;
+            if ( TTptr->TDlocked & ttl_CREATE) // 0x0200 // Temporary table flag
+				TempTables++;
+			fld = TTptr->TTfields;
+            if ( isclcomp )
+            {
+				while ( fld->FLDelemID )
+				{
+					if ( fld->FLDtype == 'S' )
+						TTptr->TDlocked |= ttl_HASSUB; // 0x4000 // Sub Records flag bit = 0x4000
+					else if ( fld->FLDtype == 'K' && findtd(fld->FLDname, -1) > 0)
+					{
+						TTptr->TDlocked |= ttl_HASK;	// Key Tables flag bit = 0x0010
+						if (TTptr->TDlocked & (ttl_PUT | ttl_GET))	// 0x0006  if there is a put or get on the kay table..
+							TTptr->TDlocked |= ttl_GETK;	// 0x0008	// set the getk flag
+					}
+					fld++;
+				}
+			}
+		}
+		count++;
+        TTptr++;
+    }
+//==================================
+	if ( isclcomp )
+    {
+		eprint("%5d open tables\n", NumTables - TempTables);
+		if ( TempTables )
+            eprint("%5d temp tables\n", TempTables);
+    }
+#ifdef DEBUG_OUTPUT
+printf("dumpenc: open tables = %d [x%04X]\n",NumTables,NumTables);
+#endif
+	putcount(NumTables);		// Open Tables
+    TTptr2 = ttab;
+    count = 0;
+    while ( no_ttabs > count )
+	{
+		if ( TTptr2->TableName[0] )
+        {
+			puttext(dtab[TTptr2->DBnumber].FullDBname, 0);
+            if ( TTptr2->TDlocked & ttl_FLOCK)	// 0x0040u		// File locking flag: getfile XYZ lock
+				puttext("locking", 0);
+            v10 = mstrcpy(TTptr2->TableName, "," ,TTptr2->TableAlias, 0);
+            puttext(v10, 0);
+            mfree_0(v10);
+            putbits(TTptr2->TDlocked);
+            if ( notabchks )
+				TTptr2->TableCRC = 0;	// Ignore CRC of tables. dangerous!!
+			putcount(TTptr2->TableCRC);
+		}
+        count++;
+        TTptr2++;
+	}
+//-----------------------------------
+// Dump Global Escapes next
+    onesc = oelist;
+    for ( NumEscs = 0; onesc; NumEscs++ )
+		onesc = onesc->NextESC;
+	putcount(NumEscs);
+#ifdef DEBUG_OUTPUT
+printf("dumpenc: Global Escapes = %d [x%04X]\n",NumEscs,NumEscs);
+#endif
+    if ( NumEscs )
+		dumpoe(oelist);
+//-----------------------------------
+// Dump Variables
+	v13 = last_var;
+    if ( isclcomp )
+		eprint("%5d variables\n", last_var);
+    putcount(v13);
+	//printf("dumpenc: Variables = %d [x%04X]\n",v13,v13);
+    putftabs(ttab->TTfields, v13);			// **** puts one too many to disk. Null terminated list ****
+    
+	fld2 = ttab->TTfields;					// Variables hang off Table 0 as regular fields
+    count = v13 - 1;
+    while ( count >= 0 )
+	{
+		if ( !(fld2->FLDstat & fld_ZERO) )	// check quick zero flag.
+        {
+			if ( fld2->FLDtype == 'C' )
+				puttext((char *)fld2->FLDdata, fld2->FLDlen);
+			else
+				putdouble(*(double *)fld2->FLDdata, fld2->TDFtype);
+		}
+        fld2++;
+        count--;
+	}
+//-------------------------------------------
+// Next dump number of program steps
+    count = 0;
+	i = getptabp(count); 
+	while((PTARR(i))->OpCode )
+		i = getptabp(++count);
+
+    if ( isclcomp )
+		eprint("%5d steps\n", count);
+#ifdef DEBUG_OUTPUT
+	printf("dumpenc: Steps = %d [x%04X]\n",count,count);
+	printf("dumpenc: putptabs\n");
+#endif
+	// Dump program steps array
+	putptabs(&ptarr);
+
+//-------------------------------------------
+// Next dump program nodes
+    if ( isclcomp )
+		eprint("%5d nodes\n", enarr.NextElement);
+	putenodes(&enarr);						// enodes = expressions
+
+#ifdef DEBUG_OUTPUT
+	printf("dumpenc: putxtabs\n");
+	    putxtabs(&xtarr);					// Accept field defs
+	printf("dumpenc: putrtabs\n");
+	    putrtabs(&rtarr);					// Redisplay defs
+	printf("dumpenc: putratabs\n");
+	    putratabs(&raarr);					// Range Defs
+	printf("dumpenc: putxftabs\n");
+	    putxftabs(&xfarr);					// XFER defs.  Copy command defs
+	printf("dumpenc: putsftabs\n");
+	    putsftabs(&sfarr);					// FCBs:  Files we open/read/write
+	printf("dumpenc: putprtabs\n");
+	    putprtabs(&prarr);					// print statements
+	printf("dumpenc: putrdtabs\n");
+	    putrdtabs(&rdarr);					// read statements
+	printf("dumpenc: putkxtabs\n");
+	    putkxtabs(&kxarr);					// Create statement defs
+#else 
+    putxtabs(&xtarr);                       // Accept field defs
+    putrtabs(&rtarr);                       // Redisplay defs
+    putratabs(&raarr);                      // Range Defs
+    putxftabs(&xfarr);                      // XFER defs.  Copy command defs
+    putsftabs(&sfarr);                      // FCBs:  Files we open/read/write
+    putprtabs(&prarr);                      // print statements
+    putrdtabs(&rdarr);                      // read statements
+    putkxtabs(&kxarr);                      // Create statement defs
+#endif
+
+    
+	count = 0;
+	while ( count < kxarr.NextElement )			// kx = Create statements
+    {
+		kx = &kxarr.TableAddr[count];
+        putcount(kx->NumKeyFields);
+        putarrcount(kx->KeyElemIDs, kx->NumKeyFields);
+        putarrcount(kx->TkeyTy, kx->NumKeyFields);
+        putcount(kx->NumDataFields);
+        putarrcount(kx->DataElemIDs, kx->NumDataFields);
+        putcount(kx->NumTTs);
+        putarrtds(kx->TTlist, kx->NumTTs);
+        count++;
+	}
+    if ( isclcomp )
+		eprint("%5ld strings\n", strarr.StrTableSize);
+
+	//printf("%5ld [x%04X] strings\n", strarr.StrTableSize,strarr.StrTableSize);
+    putLong(strarr.StrTableSize);              // 4 bytes of string table size
+    ptr = strarr.StringTable;
+    for ( j = strarr.StrTableSize; j; j -= v19 )
+    {
+		v19 = 15000;                          // Dump 15000 bytes at a time
+        if ( j < 15001 )
+			v19 = j;
+		//DumpBlock(ptr,v19);
+		putbuf(ptr, v19);
+        ptr += v19;
+	}
+
+	count = 0;
+    for ( PTABno = (unsigned short)getptabp(0); ; PTABno = (unsigned short)getptabp(count) )
+    {
+		v21 = PTARR(PTABno);
+		if ( !v21->OpCode )		// end of instruction steps, break out
+			break;
+		/*v23 = v21->OpCode;
+		switch (v23)
+		{
+			case 1 ... 49:
+				printf("dumpenc#245 OpCode = %4d\n",v23);
+				break;
+			default:
+				break;		
+		}*/
+		if ( (unsigned short)(v21->OpCode - 1) > 48u )		// [1 ... 49]
+        {
+			if (v21->TABno)
+			{
+				v23 = v21->OpCode;
+				if ( v23 == 250 || v23 == 260 )  // 250 = refresh, 260 = screen
+				{
+					puttext(STRARR(v21->TABno),0);			// Save a "screen_name" here
+				}
+				else if ( (unsigned short)(v21->OpCode - 650) <= 48u)	// Not sure this is reachable in V4?  [650 ... 698]
+				{
+					printf("dumpenc OpCode = %4d, pt->TABno = %d\n",v23,v21->TABno);
+					putbuf(STRARR(v21->TABno), 20u);		// Put a block name here? (max 20chars)
+				}
+			}
+		}
+        else	// Screen display type opcodes
+        {
+			dumpoe(XTARR(v21->TABno)->onesc);			// Dump On-Escape
+		}
+		count++;
+	}
+    
+	btb = btab;
+    for ( count = 0; btb->BlockName[0]; ++btb )
+		count++;
+	if ( isclcomp )
+		eprint("%5d process blocks\n", count);
+
+#ifdef DEBUG_OUTPUT
+	printf("dumpenc: putbtabs\n");
+	printf("dumpenc: onEscapes:\n");
+#endif	
+	putbtabs(count);
+    for ( btb = btab; btb->BlockName[0]; btb++ )
+    {
+		dumpscr(btb->TYPE24);                   // screens
+        dumpoe(btb->On_delete);                 // global escapes follow for this block
+        dumpoe(btb->On_exit);
+        dumpoe(btb->On_excep);
+        dumpoe(btb->On_entry);
+	}
+    fclose(dp);
+    return 0;
+}
+
+#endif
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d19 1
+a19 1
+	XTAB		*xt;
+d28 12
+a39 12
+	int v23; // eax@@70
+	int v13; // edi@@37
+	int j; // edi@@58
+	size_t v19; // esi@@59
+	unsigned short i; // edx@@45
+	short v7; // ax@@12
+	short NumEscs; // si@@33
+	short PTABno; // edx@@62
+	short NumTables; // [sp+20h] [bp-18h]@@5
+	short TempTables; // [sp+24h] [bp-14h]@@5
+	short count; // [sp+28h] [bp-10h]@@5
+
+d52 3
+a54 2
+    putucount(0x9DD3u);                        // 0x9DD3 = 40403, 0x9DD4 = 40404 = version number
+	putcount(tpenc);                           // Signify if this is a Portable enc
+d119 2
+a120 2
+        ++count;
+        ++TTptr2;
+d140 1
+a140 1
+    putftabs(ttab->TTfields, v13);			// **** puts too many to disk??? ****
+a148 1
+			{
+a149 2
+				//printf("dumpenc: Var# %d [%s], String = [%s], Length = %d [x%04X]\n",count,fld2->FLDname,(char *)fld2->FLDdata,fld2->FLDlen,fld2->FLDlen);
+			}
+a150 1
+			{
+a151 2
+				//printf("dumpenc: Var# %d [%s], Double = [%G], Length = %d [x%04X]\n",count,fld2->FLDname,*(double *)fld2->FLDdata,fld2->FLDlen,fld2->FLDlen);
+			}
+d153 2
+a154 2
+        ++fld2;
+        --count;
+d176 1
+a176 1
+	putenodes(&enarr);                         // enodes = expressions
+d180 1
+a180 1
+	    putxtabs(&xtarr);                          // Accept field defs
+d182 1
+a182 1
+	    putrtabs(&rtarr);                          // Redisplay defs
+d184 1
+a184 1
+	    putratabs(&raarr);                         // Range Defs
+d186 1
+a186 1
+	    putxftabs(&xfarr);                         // XFER defs.  Copy command defs
+d188 1
+a188 1
+	    putsftabs(&sfarr);                         // FCBs:  Files we open/read/write
+d190 1
+a190 1
+	    putprtabs(&prarr);                         // print statements
+d192 1
+a192 1
+	    putrdtabs(&rdarr);                         // read statements
+d194 1
+a194 1
+	    putkxtabs(&kxarr);                         // Create statement defs
+d196 8
+a203 8
+    putxtabs(&xtarr);                          // Accept field defs
+    putrtabs(&rtarr);                          // Redisplay defs
+    putratabs(&raarr);                         // Range Defs
+    putxftabs(&xfarr);                         // XFER defs.  Copy command defs
+    putsftabs(&sfarr);                         // FCBs:  Files we open/read/write
+    putprtabs(&prarr);                         // print statements
+    putrdtabs(&rdarr);                         // read statements
+    putkxtabs(&kxarr);                         // Create statement defs
+d208 1
+a208 1
+	while ( count < kxarr.NextElement ) // kx = Create statements
+a234 1
+	//printf("strings dumped\n");
+d242 10
+a251 1
+		if ( (unsigned short)(v21->OpCode - 1) > 48u )
+d253 12
+a264 10
+			v23 = v21->OpCode;
+            if ( v23 == 250 || v23 == 260 )  // 250 = refresh, 260 = screen
+            {
+				if ( v21->TABno )  // pointer to Screen name
+					puttext(v21->TABno ? &strarr.StringTable[v21->TABno - 1] : 0, 0);		// Save a "screen_name" here
+			}
+            else
+            {
+				if ( (unsigned short)(v21->OpCode - 650) <= 48u && v21->TABno )
+					putbuf(v21->TABno ? &strarr.StringTable[v21->TABno - 1] : 0, 20u);      // Put a block name here? (max 20chars)
+d267 1
+a267 1
+        else
+d269 1
+a269 2
+			xt = XTARR(v21->TABno);
+			dumpoe(xt->onesc);			// Dump On-Escape
+d271 1
+a271 1
+		++count;
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d14 25
+a38 27
+     TDesc		*TTptr;
+	 TDesc		*TTptr2;
+	 FLDdesc	*fld;
+	 FLDdesc	*fld2;
+	 PTAB		*v21;
+	 XTAB		*xt;
+	 BTAB		*btb;
+	 KXTAB		*kx;
+	 ONESC		*onesc;
+	 
+	 int		*v2;
+	 char		*v10;
+	 char		*ptr;
+	 
+
+     int v23; // eax@@70
+     int v13; // edi@@37
+     int j; // edi@@58
+     size_t v19; // esi@@59
+     unsigned short i; // edx@@45
+     short v7; // ax@@12
+     short v8; // dx@@15
+     short NumEscs; // si@@33
+     short PTABno; // edx@@62
+     short NumTables; // [sp+20h] [bp-18h]@@5
+     short TempTables; // [sp+24h] [bp-14h]@@5
+     short count; // [sp+28h] [bp-10h]@@5
+d58 5
+a62 4
+    TempTables = 0;
+    NumTables = 0;
+    TTptr = ttab;
+    count = 0;
+d68 1
+a68 1
+            if ( TTptr->TDlocked & 0x0200 )	// Temporary table flag
+d76 2
+a77 2
+						TTptr->TDlocked |= 0x4000;	// Sub Records flag bit = 0x4000
+					else
+d79 3
+a81 4
+						// Key Tables flag bit = 0x0010
+						if ( fld->FLDtype != 'K' || findtd(fld->FLDname, -1) <= 0 || (v8 = TTptr->TDlocked | 0x0010, TTptr->TDlocked = v8, !(v8 & 0x0006)) )
+							goto LABEL_18;
+						TTptr->TDlocked = v8 | 0x0008;	// ????
+a82 1
+LABEL_18:
+d108 1
+a108 1
+            if ( TTptr2->TDlocked & 0x0040 )
+d145 1
+a145 1
+		if ( !(fld2->FLDstat & 0x0004) )	// check quick zero flag.
+d265 1
+a265 1
+			dumpoe(xt->onesc);	// Dump On-Escape
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d8 1
+d14 14
+a27 17
+     TDesc *TTptr; // edi@@5
+     FLDdesc *fld; // esi@@9
+     TDesc *TTptr2; // edi@@25
+     FLDdesc *fld2; // esi@@39
+     PTAB *v21; // ecx@@63
+     PTAB *v16; // eax@@47
+     XTAB *xt; // eax@@67
+     BTAB *v27; // esi@@87
+     BTAB *k; // esi@@91
+     KXTAB *kx; // esi@@55
+     int *v2; // eax@@4
+     int *v3; // esi@@4
+     char *v4; // eax@@4
+     char *v10; // esi@@29
+     ONESC *onesc; // edx@@33
+     char *ptr; // [sp+18h] [bp-20h]@@58
+
+d51 2
+a52 4
+        v3 = v2;
+        v4 = strerror(*v2);
+        eprint("can't open %s for writing - %s\n", EncFileName, v4);
+		return -*v3;
+d54 1
+a54 1
+    putucount(0x9DD3u);                        // 0x9DD4 = 40404 = version number
+d86 1
+a86 1
+					++fld;
+d90 2
+a91 2
+		++count;
+        ++TTptr;
+d111 1
+a111 1
+            if ( TTptr2->TDlocked & 0x40 )
+d127 1
+a127 1
+    for ( NumEscs = 0; onesc; ++NumEscs )
+d167 4
+a170 7
+    for ( i = getptabp(0); ; i = getptabp(count) )
+    {
+		v16 = PTARR(i);
+		if ( !v16->OpCode )
+			break;
+		count++;
+	}
+d249 1
+a249 1
+		if ( !v21->OpCode )
+d256 1
+a256 1
+				if ( v21->TABno )  // 250 = refresh, 260 = screen
+d273 2
+a274 2
+	v27 = btab;
+    for ( count = 0; v27->BlockName[0]; ++v27 )
+d284 1
+a284 1
+    for ( k = btab; k->BlockName[0]; ++k )
+d286 5
+a290 5
+		dumpscr(k->TYPE24);                   // screens
+        dumpoe(k->On_delete);                 // global escapes follow for this block
+        dumpoe(k->On_exit);
+        dumpoe(k->On_excep);
+        dumpoe(k->On_entry);
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@a58 1
+printf("dumpenc: version = %d\n",0x9dd3);
+d60 4
+a63 2
+printf("dumpenc: portable = %s\n",tpenc? "true":"false");
+
+d104 1
+d106 2
+a107 1
+    putcount(NumTables);		// Open Tables
+d134 1
+d136 1
+d148 1
+a148 1
+	fld2 = ttab->TTfields;                     // Variables hang off Table 0 as regular fields
+d173 1
+a173 1
+		v16 = i ? &ptarr.TableAddr[i - 1] : 0;
+d180 5
+a184 4
+printf("dumpenc: Steps = %d [x%04X]\n",count,count);
+
+// Dump program steps array
+printf("dumpenc: putptabs\n");
+d193 18
+a210 1
+printf("dumpenc: putxtabs\n");
+a211 1
+printf("dumpenc: putrtabs\n");
+a212 1
+printf("dumpenc: putratabs\n");
+a213 1
+printf("dumpenc: putxftabs\n");
+a214 1
+printf("dumpenc: putsftabs\n");
+a215 1
+printf("dumpenc: putprtabs\n");
+a216 1
+printf("dumpenc: putrdtabs\n");
+a217 1
+printf("dumpenc: putkxtabs\n");
+d219 2
+d255 1
+a255 1
+		v21 = PTABno ? &ptarr.TableAddr[PTABno - 1] : 0;
+d274 1
+a274 1
+			xt = v21->TABno ? &xtarr.TableAddr[v21->TABno - 1] : 0;
+d285 5
+a289 1
+printf("dumpenc: putbtabs\n");
+a290 1
+printf("dumpenc: onEscapes:\n");
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d8 1
+d17 6
+a25 2
+     short v7; // ax@@12
+     short v8; // dx@@15
+d28 4
+a31 1
+     short NumEscs; // si@@33
+a32 3
+     unsigned short i; // edx@@45
+     PTAB *v16; // eax@@47
+     KXTAB *kx; // esi@@55
+d35 4
+a39 6
+     PTAB *v21; // ecx@@63
+     XTAB *xt; // eax@@67
+     int v23; // eax@@70
+     BTAB *v27; // esi@@87
+     BTAB *k; // esi@@91
+     char *ptr; // [sp+18h] [bp-20h]@@58
+d168 1
+a168 1
+		v16 = i ? (PTAB *)&ptarr.TableAddr[8 * (i - 1)] : 0;
+d207 1
+a207 1
+		kx = (KXTAB *)&kxarr.TableAddr[64 * count];
+d228 1
+a228 1
+		DumpBlock(ptr,v19);
+d237 1
+a237 1
+		v21 = PTABno ? (PTAB *)&ptarr.TableAddr[8 * (PTABno - 1)] : 0;
+d256 1
+a256 1
+			xt = v21->TABno ? (XTAB *)&xtarr.TableAddr[52 * (v21->TABno - 1)] : 0;
+@

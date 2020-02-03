@@ -3,12 +3,14 @@
 
 //#define _LARGEFILE64_SOURCE
 #include <sys/stat.h>
+#include <linux/limits.h>
 #include <unistd.h>
 #include <string.h>	// for strncmp()
 #include "DBdefs.h"
 #include "cl4.h"
 
 char	file_0[8192];
+char	cwd[PATH_MAX];	// normally 4096 on Linux
 
 // a1 must be in global mem, not on caller's stack since we are modding directly!!
 // segment violation will occur if a1 on caller's stack!!

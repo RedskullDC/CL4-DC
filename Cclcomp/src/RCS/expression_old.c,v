@@ -1,0 +1,1446 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.09.09.03.30.39;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin. No longer used
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef EXPRESSION_C
+#define EXPRESSION_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+unsigned short funcnargs(short FunctionMask)
+{
+     unsigned short OpCode; // edx@@1
+     unsigned short NumArgs; // edx@@3
+
+     OpCode = FunctionMask & 0xFC00;
+     if ((OpCode - 1) > 0x4FFF && OpCode - 0x8C00u > 0x1400 )
+     {
+          NumArgs = 2;
+          if ( OpCode - 0x5001u > 0x3BFE )
+               NumArgs = OpCode - 0xC801u < 0xC00 ? 3 : 0;
+     }
+     else
+          NumArgs = 1;
+
+	 return NumArgs;
+}
+
+int funcargetype(void)
+{
+     return 0;
+}
+
+short getargs(short OpCode, char *arg, unsigned short arg8, int a4)
+{
+     short NumArgs; // si@@1
+     short v5; // ax@@4
+     short v7; // si@@17
+     short ENTno; // [sp+18h] [bp-20h]@@4
+     ENTAB *entab; // [sp+20h] [bp-18h]@@17
+     char *ValidTypes; // [sp+24h] [bp-14h]@@5
+     short ErrNo; // [sp+2Ah] [bp-Eh]@@5
+
+    NumArgs = -1;
+    if ( (arg8 & 0x8000u) == 0 )
+	{
+        NumArgs = funcnargs(OpCode) - arg8;
+        if ( NumArgs < 0 )
+		{
+			eprint("\"%s\", line %4d - internal compiler fault [getargs]\n",FileTree->FileName,(unsigned short)ll);
+			le_error = 1;
+			return 0;
+		}
+    }
+    v5 = funcargetype();
+    ENTno = getparexp(v5, a4);
+    if ( le_error )
+		return 0;
+    getfuncargtype(OpCode, &ValidTypes, &ErrNo, NumArgs);
+    chkexptype(ENTno, arg, ValidTypes, ErrNo);
+    if ( (signed short)arg8 <= 1 )
+	{
+        if ( symbol != 180 )                  // ","
+			return ENTno;
+        if ( (arg8 & 0x8000u) == 0 )
+		{
+            loaderr(26,sym);                 // "expected a '(' or ')'"
+			le_error = 1;
+			return 0;
+		}
+    }
+	if ( arg8 <= 1u )
+          __assert_fail("nargs < 0 || nargs > 1", "loadexp.c", 0x219u, "getargs");
+	if ( symbol != 180 )             // ","
+    {
+        loaderr(76, sym);			// expected "," before next argument
+        le_error = 1;
+        return 0;
+	}
+    v7 = getenmem();
+    allenpt(v7, &entab);
+    entab->entype = 0x20u;
+    entab->Dest = ENTno;
+    entab->Src = getargs(OpCode, arg, arg8 - 1, a4);// nice bit of recursion here
+    dallenpt(&entab);
+    return v7;
+}
+
+
+void chkexptype(short ENTno, char *arg, char *ValidTypes, short ErrorNo)
+{
+     char *v4; // esi@@1
+     int TDno; // [sp+14h] [bp-14h]@@1
+     char FLDtype; // [sp+1Bh] [bp-Dh]@@1
+
+     v4 = ValidTypes;
+     gettf(ENTno, &TDno, &FLDtype);
+     if ( !*ValidTypes )
+          goto LABEL_6;
+     while ( FLDtype != *v4 )                   // look for a match on this expression with the valid types list
+     {
+          ++v4;
+          if ( !*v4 )
+               goto LABEL_6;
+     }
+     if ( !*v4 )
+     {
+LABEL_6:
+          loaderr(ErrorNo, arg);
+          le_error = 1;
+     }
+}
+
+char* getfuncargtype(unsigned short a1, char **ValidTypes, short *ErrNo, short NumArgs)
+{
+	int v4; // eax@@1
+    char v5; // zf@@9
+    char v6; // zf@@14
+    char *result; // eax@@65
+
+    v4 = 0;
+	switch (a1)
+	{
+	case 0x5000:
+	case 0x1400:
+	case 0x0C00:
+	case 0x0800:
+	case 0x1000:
+	case 0x1800:
+	case 0x3C00:
+	case 0x4400:
+	case 0x4800:
+	case 0x4C00:
+	case 0x3800:
+	case 0x9000:
+	case 0x9800:
+	case 0x9400:
+        v4 = 2;
+		break;
+	
+	case 0x2400:
+	case 0x1C00:
+	case 0x2000:
+	case 0x4000:
+	case 0x3400:
+	case 0x2C00:
+	case 0x7400:
+	case 0x6C00:
+	case 0x8400:
+	case 0xA000:
+	case 0x9C00:
+	case 0xD000:
+	case 0xD400:
+	case 0xF400:
+	case 0x8000:
+	case 0x8C00:
+		v4 = 1;
+		break;
+
+	case 0x7C00:
+	case 0x7800:
+        if ( !NumArgs )
+		{
+			v4 = 1;
+		    break;
+		}
+        v5 = NumArgs == 1;
+		if ( !v5 )
+			break;
+		v4 = 2;
+		break;
+	
+	case 0x8800:
+		if ( !NumArgs )
+		{
+			v4 = 2;
+			break;
+		}
+        v6 = NumArgs == 1;
+        if ( !v6 )
+			break;
+		v4 = 1;
+		break;
+
+	case 0xCC00:
+		v4 = (NumArgs != 0) + 1;
+		break;
+
+	default:
+		break;
+	}
+
+     if ( v4 == 1 )
+     {
+          result = "BCDFGILNRT$123456789";      // Array of valid FLDtype chars
+          *ValidTypes = "BCDFGILNRT$123456789";
+          *ErrNo = 43;                          // "must have character expression"
+     }
+     else
+     {
+          if ( v4 == 2 )
+               result = "IN";
+          else
+               result = "";
+          *ValidTypes = result;
+          *ErrNo = 77;                          // "must have integer expression"
+     }
+     return result;
+}
+
+int getidconst(int arg0, int a4)
+{
+     short v2; // ax@@6
+     char v3; // zf@@40
+     short v4; // dx@@137
+     char *v5; // eax@@144
+     char v6; // edx@@144
+     unsigned int v7; // ecx@@145
+     short v8; // dx@@150
+     int v9; // eax@@165
+     char v10; // zf@@173
+     int v11; // edx@@223
+     int v13; // [sp+0h] [bp-2048h]@@84
+     char *v14; // [sp+4h] [bp-2044h]@@84
+     int v15; // [sp+4h] [bp-2044h]@@86
+     char v16; // [sp+4h] [bp-2044h]@@141
+     unsigned int OpCode; // [sp+1Ch] [bp-202Ch]@@6
+     unsigned short v18; // [sp+20h] [bp-2028h]@@2
+     char *ValidTypes; // [sp+24h] [bp-2024h]@@222
+     ENTAB *entab; // [sp+28h] [bp-2020h]@@6
+	 short ErrNo;
+	 char CharStr[256];
+
+     if ( symbol != 730 )                       // "("
+     {
+          v2 = getenmem();
+          v18 = (unsigned short)v2;
+          allenpt(v2, &entab);
+          OpCode = 0;
+          cdbcpystr(CharStr, sym, 0);
+          if ( symbol == 1920 )                 // log10
+          {
+               OpCode = 0x4400u;
+               goto LABEL_159;
+          }
+          if ( symbol <= 1920 )
+          {
+               if ( symbol == 1435 )            // fmt
+               {
+                    OpCode = 0x8800u;
+                    goto LABEL_159;
+               }
+               if ( symbol <= 1435 )
+               {
+                    if ( symbol != 930 )
+                    {
+                         if ( symbol > 930 )
+                         {
+                              if ( symbol == 1380 )// sconv
+                                   OpCode = 0xD400u;
+                              else
+                              {
+                                   if ( symbol > 1380 )
+                                   {
+                                        if ( symbol == 1410 )
+                                             OpCode = 0x7400u;
+                                        else
+                                        {
+                                             if ( symbol != 1420 )
+                                                  goto LABEL_156;
+                                             OpCode = 0x8000u;
+                                        }
+                                   }
+                                   else
+                                   {
+                                        if ( symbol == 1250 )
+                                             OpCode = 0xB800u;
+                                        else
+                                        {
+                                             if ( symbol != 1370 )
+                                                  goto LABEL_156;
+                                             OpCode = 0xF400u;
+                                        }
+                                   }
+                              }
+                         }
+                         else
+                         {
+                              if ( symbol == 710 )
+                                   OpCode = 0xBC00u;
+                              else
+                              {
+                                   if ( symbol > 710 )
+                                   {
+                                        if ( symbol == 840 )
+                                             OpCode = 0x6C00u;
+                                        else
+                                        {
+                                             if ( symbol != 900 )
+                                                  goto LABEL_156;
+                                             OpCode = 0xA400u;
+                                        }
+                                   }
+                                   else
+                                   {
+                                        if ( symbol != 270 )
+                                        {
+LABEL_156:
+                                             //v14 = sym;
+                                             //v13 = 33;
+											 loaderr(33, sym);	// "unexpected symbol"
+											 le_error = 1;
+								             goto LABEL_159;
+                                        }
+                                        OpCode = 0x2800u;
+                                   }
+                              }
+                         }
+LABEL_159:
+                         if ( le_error || !OpCode )
+                              goto LABEL_231;
+                         entab->TTno = OpCode;
+                         entab->entype = 2;
+                         symbol = getsym();
+                         if ( symbol == 930 )
+                         {
+                              loaderr(7, sym);
+                              le_error = 1;
+LABEL_231:
+                              dallenpt(&entab);
+                              goto LABEL_232;
+                         }
+                         if ( symbol != 730 )
+                         {
+                              loaderr(26, sym); // "expected a '(' or ')'"
+                              le_error = 1;
+                              goto LABEL_231;
+                         }
+                         entab->Dest = getparexp(0, a4);
+                         if ( le_error )
+                              goto LABEL_231;
+                         v9 = OpCode & 0xFFFFFDFF;
+                         if ( (OpCode & 0xFFFFFDFF) != 0x6C00 )
+                         {
+                              if ( v9 > (signed int)0x6C00u )
+                              {
+                                   if ( v9 == 0x9800 )
+                                        goto LABEL_220;
+                                   if ( v9 > (signed int)0x9800u )
+                                   {
+                                        if ( v9 == 0xBC00 )
+                                             goto LABEL_220;
+                                        if ( v9 > (signed int)0xBC00u )
+                                        {
+                                             if ( v9 == 0xD000 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0xD000u )
+                                             {
+                                                  if ( v9 == 0xD400 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0xF400;
+                                             }
+                                             else
+                                                  v10 = v9 == 0xCC00;
+                                        }
+                                        else
+                                        {
+                                             if ( v9 == 0xA000 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0xA000u )
+                                             {
+                                                  if ( v9 == 0xA400 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0xB800;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x9C00;
+                                        }
+                                   }
+                                   else
+                                   {
+                                        if ( v9 == 0x8400 )
+                                             goto LABEL_220;
+                                        if ( v9 > (signed int)0x8400u )
+                                        {
+                                             if ( v9 == 0x8C00 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0x8C00u )
+                                             {
+                                                  if ( v9 == 0x9000 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0x9400;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x8800;
+                                        }
+                                        else
+                                        {
+                                             if ( v9 == 0x7800 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0x7800u )
+                                             {
+                                                  if ( v9 == 0x7C00 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0x8000;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x7400;
+                                        }
+                                   }
+                              }
+                              else
+                              {
+                                   if ( v9 == 0x2C00 )
+                                        goto LABEL_220;
+                                   if ( v9 > (signed int)0x2C00u )
+                                   {
+                                        if ( v9 == 0x4000 )
+                                             goto LABEL_220;
+                                        if ( v9 > (signed int)0x4000u )
+                                        {
+                                             if ( v9 == 0x4800 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0x4800u )
+                                             {
+                                                  if ( v9 == 0x4C00 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0x5000;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x4400;
+                                        }
+                                        else
+                                        {
+                                             if ( v9 == 0x3400 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0x3400u )
+                                             {
+                                                  if ( v9 == 0x3800 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0x3C00;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x3000;
+                                        }
+                                   }
+                                   else
+                                   {
+                                        if ( v9 == 0x1800 )
+                                             goto LABEL_220;
+                                        if ( v9 > (signed int)0x1800u )
+                                        {
+                                             if ( v9 == 0x2000 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0x2000u )
+                                             {
+                                                  if ( v9 == 0x2400 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0x2800;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x1C00;
+                                        }
+                                        else
+                                        {
+                                             if ( v9 == 0xC00 )
+                                                  goto LABEL_220;
+                                             if ( v9 > (signed int)0xC00u )
+                                             {
+                                                  if ( v9 == 0x1000 )
+                                                       goto LABEL_220;
+                                                  v10 = v9 == 0x1400;
+                                             }
+                                             else
+                                                  v10 = v9 == 0x800;
+                                        }
+                                   }
+                              }
+                              if ( !v10 )
+                                   goto LABEL_231;
+                         }
+LABEL_220:
+                         if ( (unsigned short)(OpCode & 0xFC00) - 0x5001u <= 0x3BFE )
+                         {
+                              if ( symbol == 180 )// ","
+                              {
+                                   entab->Src = getparexp(0, a4);
+                                   getfuncargtype(OpCode, &ValidTypes, &ErrNo, 1);
+                                   chkexptype(entab->Src, CharStr, ValidTypes, ErrNo);
+                                   goto LABEL_228;
+                              }
+                              goto LABEL_226;
+                         }
+                         v11 = OpCode & 0xFC00;
+                         if ( v11 - 0xC801u <= 0xBFF || v11 - 0xF001u <= 0x7FF )
+                         {
+                              if ( symbol != 180 )// ","
+                              {
+LABEL_226:
+                                   loaderr(76, sym);// "expected ',' before next argument"
+                                   le_error = 1;
+                                   goto LABEL_228;
+                              }
+                              entab->Src = getargs(OpCode,CharStr,(unsigned short)(OpCode & 0xFC00) - 0xC801u < 0xC00 ? 2 : -1, a4);
+                         }
+LABEL_228:
+                         if ( symbol == 1300 )  // ")"
+                         {
+                              symbol = getsym();
+                              goto LABEL_231;
+                         }
+                         loaderr(26, sym); // "expected a '(' or ')'"
+                         le_error = 1;
+                         goto LABEL_231;
+                    }	// end if ( symbol != 930 )
+                    goto LABEL_155;
+               } // end if ( symbol <= 1435 )
+               if ( symbol == 1580 )            // "-"
+               {
+                    entab->TTno = 0x5800u;
+                    entab->entype = 2;
+                    symbol = getsym();
+                    if ( symbol != 930 )
+                    {
+                         v15 = a4;
+                         entab->Dest = getidconst(arg0, v15);
+                         goto LABEL_159;
+                    }
+               }
+               else
+               {
+                    if ( symbol <= 1580 )
+                    {
+                         if ( symbol == 1510 )  // srandom
+                              OpCode = 0x3E00u;
+                         else
+                         {
+                              if ( symbol > 1510 )
+                              {
+                                   if ( symbol == 1520 )// srep
+                                        OpCode = 0xD000u;
+                                   else
+                                   {
+                                        if ( symbol != 1570 )// substr
+                                             goto LABEL_156;
+                                        OpCode = 0xCC00u;
+                                   }
+                              }
+                              else
+                              {
+                                   if ( symbol == 1440 )// skey
+                                        OpCode = 0x8400u;
+                                   else
+                                   {
+                                        if ( symbol != 1480 )// smult
+                                             goto LABEL_156;
+                                        OpCode = 0x7800u;
+                                   }
+                              }
+                         }
+                         goto LABEL_159;
+                    }
+                    if ( symbol != 1860 )
+                    {
+                         if ( symbol > 1860 )
+                         {
+                              if ( symbol == 1900 )// sqrt
+                                   OpCode = 0x800u;
+                              else
+                              {
+                                   if ( symbol != 1910 )// log
+                                        goto LABEL_156;
+                                   OpCode = 0xC00u;
+                              }
+                              goto LABEL_159;
+                         }
+                         if ( symbol == 1590 )  // sword
+                         {
+                              OpCode = 0x7C00u;
+                              goto LABEL_159;
+                         }
+                         v3 = symbol == 1630;   // trim
+                         goto LABEL_63;
+                    }
+                    if ( !arg0 )
+                    {
+                         v14 = sym;
+                         v13 = 27;              // "not valid in assignment expression"
+						loaderr(v13, v14);
+					       le_error = 1;
+			               goto LABEL_159;
+                    }
+                    entab->TTno = 0x400u;
+                    entab->entype = 2;
+                    symbol = getsym();
+                    if ( symbol != 930 )
+                    {
+                         v15 = a4;
+                         entab->Dest = getidconst(arg0, v15);
+                         goto LABEL_159;
+                    }
+               }
+LABEL_155:
+               v14 = sym;
+               v13 = 7;
+               loaderr(v13, v14);
+               le_error = 1;
+               goto LABEL_159;
+          }	// end if symbol <= 1920 
+          if ( symbol == 2040 )                 // slen
+          {
+               OpCode = 0x2600u;
+               goto LABEL_159;
+          }
+          if ( symbol <= 2040 )
+          {
+               if ( symbol == 1980 )            // tan
+               {
+                    OpCode = 0x1800u;
+                    goto LABEL_159;
+               }
+               if ( symbol <= 1980 )
+               {
+                    if ( symbol == 1950 )       // radians
+                         OpCode = 0x9400u;
+                    else
+                    {
+                         if ( symbol > 1950 )
+                         {
+                              if ( symbol == 1960 )// sin
+                                   OpCode = 0x1000u;
+                              else
+                              {
+                                   if ( symbol != 1970 )// cos
+                                        goto LABEL_156;
+                                   OpCode = 0x1400u;
+                              }
+                         }
+                         else
+                         {
+                              if ( symbol == 1930 )// exp
+                                   OpCode = 0x9800u;
+                              else
+                              {
+                                   if ( symbol != 1940 )// degrees
+                                        goto LABEL_156;
+                                   OpCode = 0x9000u;
+                              }
+                         }
+                    }
+                    goto LABEL_159;
+               }
+               if ( symbol == 2010 )            // atan
+               {
+                    OpCode = 0x5000u;
+                    goto LABEL_159;
+               }
+               if ( symbol <= 2010 )
+               {
+                    if ( symbol == 1990 )       // asin
+                         OpCode = 0x4800u;
+                    else
+                    {
+                         if ( symbol != 2000 )  // acos
+                              goto LABEL_156;
+                         OpCode = 0x4C00u;
+                    }
+                    goto LABEL_159;
+               }
+               if ( symbol == 2020 )            // ucase
+                    goto LABEL_104;
+               v3 = symbol == 2030;             // lcase
+LABEL_63:
+               if ( !v3 )
+                    goto LABEL_156;
+LABEL_104:
+               if ( arg0 != 1 )
+               {
+                    if ( symbol == 2020 )       // ucase
+                         OpCode = 0x1C00u;
+                    else
+                    {
+                         if ( symbol > 2020 )
+                         {
+                              if ( symbol == 2030 )// lcase
+                                   OpCode = 0x2000u;
+                         }
+                         else
+                         {
+                              if ( symbol == 1630 )// trim
+                                   OpCode = 0x9C00u;
+                         }
+                    }
+                    goto LABEL_159;
+               }
+               v14 = sym;
+               v13 = 28;
+               loaderr(v13, v14);
+               le_error = 1;
+               goto LABEL_159;
+          }
+          if ( symbol == 2090 )                 // asc
+          {
+               OpCode = 0x3600u;
+               goto LABEL_159;
+          }
+          if ( symbol <= 2090 )
+          {
+               if ( symbol == 2070 )            // getenv
+                    OpCode = 0x4000u;
+               else
+               {
+                    if ( symbol > 2070 )
+                    {
+                         if ( symbol == 2075 )  // getxml
+                              OpCode = 0x8C00u;
+                         else
+                         {
+                              if ( symbol != 2080 )// asize
+                                   goto LABEL_156;
+                              OpCode = 0x3200u;
+                         }
+                    }
+                    else
+                    {
+                         if ( symbol == 2050 )  // getarg
+                              OpCode = 0x2C00u;
+                         else
+                         {
+                              if ( symbol != 2060 )// getcgi
+                                   goto LABEL_156;
+                              OpCode = 0xA000u;
+                         }
+                    }
+               }
+               goto LABEL_159;
+          }
+          if ( symbol != 2210 )
+          {
+               if ( symbol > 2210 )
+               {
+                    if ( symbol != 2220 )
+                    {
+                         if ( symbol != 2230 )
+                              goto LABEL_156;
+                         if ( !gettfexp(v18) )
+						{
+                            le_error = 1;
+                            goto LABEL_159;
+						}
+                         goto LABEL_159;
+                    }
+                    v4 = loadresv(sym);
+                    if ( v4 )
+                    {
+                         entab->RecNo = v4;
+                         entab->TTno |= 0x100u;
+                         entab->entype = 2;
+                    }
+                    else
+                    {
+                         if ( strlen(sym) > 3 )
+                         {
+                              v16 = 'C';
+LABEL_150:
+                              v8 = putconst(sym, v16);
+                              if ( v8 < 0 )
+                              {
+                                   le_error = 1;
+                                   goto LABEL_159;
+                              }
+                              entab->RecNo = v8;
+                              entab->TTno = 0;
+                              entab->entype = 1;
+						      symbol = getsym();
+			                  goto LABEL_159;
+                         }
+                         entab->entype = 16;
+                         cdbcpystr((char *)&entab->TTno, sym, 0);
+                    }
+                    symbol = getsym();
+                    goto LABEL_159;
+               }
+               if ( symbol == 2100 )            // chr
+               {
+                    OpCode = 0x3800u;
+                    goto LABEL_159;
+               }
+               if ( symbol != 2200 )
+                    goto LABEL_156;
+          }
+          if ( symbol == 2200 )
+          {
+               *(int *)&entab->TTno = __strtol_internal(sym, 0, 10, 0);
+               entab->entype = 8;
+               symbol = getsym();
+               goto LABEL_159;
+          }
+          v5 = strchr(sym, '.');
+          v6 = 2;
+          if ( v5 )
+          {
+               v7 = strlen(v5 + 1) + 1;
+               v6 = v7 - 1;
+               if ( v7 == 1 )
+               {
+                    v6 = 2;
+               }
+               else
+               {
+                    if ( (unsigned int)v6 >= 0xA )
+                         v6 = 9;
+               }
+          }
+          v16 = v6 + 48;
+          goto LABEL_150;
+     }
+     v18 = (unsigned short)getparexp(arg0, a4);
+     if ( le_error )
+          return 0;
+     if ( symbol == 1300 )                      // ")"
+     {
+          symbol = getsym();
+     }
+     else                                       // expected a closing brace at end of function
+     {
+          loaderr(26, sym);                     // "expected a '(' or ')'"
+          le_error = 1;
+     }
+LABEL_232:
+     if ( !le_error )
+          return v18;
+     return 0;
+}
+
+short getparexp(int a3, int a4)
+{
+     short result; // ax@@2
+
+     symbol = getsym();
+     if ( symbol == 1300 )                      // ")"
+     {
+          result = 0;
+     }
+     else
+     {
+          if ( a3 == 1 )
+               result = getorexp(1, a4);
+          else
+               result = getaddexp(a3, a4);
+     }
+     return result;
+}
+
+short getmultexp(int arg0, int a4)
+{
+     short v2; // di@@1
+     short *v3; // edx@@2
+     signed int v4; // eax@@3
+     short Operation; // si@@3
+     char v6; // zf@@5
+     short v8; // [sp+14h] [bp-14h]@@11
+     ENTAB *entab; // [sp+18h] [bp-10h]@@11
+
+     v2 = getidconst(arg0, a4);
+     if ( !le_error )
+     {
+          v3 = &symbol;
+          if ( symbol )
+          {
+               while ( 1 )
+               {
+                    v4 = *v3;
+                    Operation = 0x6800u;
+                    if ( v4 != 860 )            // "%"
+                    {
+                         if ( v4 <= 860 )
+                         {
+                              Operation = 0x6400u;
+                              v6 = v4 == 330;   // "/"
+                              goto LABEL_8;
+                         }
+                         Operation = 0x6000u;
+                         if ( v4 != 890 )       // "*"
+                         {
+                              Operation = 0x5C00u;
+                              v6 = v4 == 1170;  // "**"
+LABEL_8:
+                              if ( !v6 )
+                                   Operation = 0;
+                              goto LABEL_10;
+                         }
+                    }
+LABEL_10:
+                    if ( Operation )
+                    {
+                         v8 = getenmem();
+                         allenpt(v8, &entab);
+                         entab->Dest = v2;
+                         entab->TTno = Operation;
+                         entab->entype = 2;
+                         symbol = getsym();
+                         entab->Src = getidconst(arg0, a4);
+                         if ( intexp(entab->Dest) && intexp(entab->Src) && a4 )
+                              entab->TTno |= 0x200u;
+                         v2 = v8;
+                         dallenpt(&entab);
+                    }
+                    if ( !le_error )
+                    {
+                         v3 = &symbol;
+                         if ( symbol )
+                         {
+                              if ( Operation )
+                                   continue;
+                         }
+                    }
+                    return v2;
+               }
+          }
+     }
+     return v2;
+}
+
+// Get Table/Field Expression
+short gettfexp(short a1)
+{
+     short FieldNo; // ax@@4
+     int v2; // edi@@4
+     char FLDtype; // al@@6
+     short v4; // ax@@21
+     signed int v5; // eax@@25
+     ENTAB *v7; // eax@@31
+     int v8; // [sp+0h] [bp-D8h]@@3
+     char *v9; // [sp+4h] [bp-D4h]@@3
+     int TDno; // [sp+28h] [bp-B0h]@@2
+     int MemSize; // [sp+2Ch] [bp-ACh]@@1
+     FLDdesc *v12; // [sp+30h] [bp-A8h]@@1
+     FLDdesc *fld; // [sp+30h] [bp-A8h]@@13
+     ENTAB *v14; // [sp+38h] [bp-A0h]@@18
+     ENTAB *ent; // [sp+3Ch] [bp-9Ch]@@18
+     char TableBlock[64]; // [sp+40h] [bp-98h]@@10
+     char TableName[64]; // [sp+80h] [bp-58h]@@1
+
+     v12 = 0;
+     cdbcpystr(TableName, sym, 0);
+     MemSize = (signed short)(syml + 1);
+     symbol = getsym();
+     if ( symbol == 1080 )                      // "."
+     {
+          TDno = findtd(TableName, -1);
+          if ( TDno < 0 )
+          {
+               v9 = TableName;
+               v8 = 14;                         // "table not open"
+LABEL_28:
+               loaderr(v8, v9);
+               return 0;
+          }
+          symbol = getsym();
+          cdbcpystr(TableName, TableName, ".", sym, 0);
+          FieldNo = findfno(TDno, sym);
+          v2 = FieldNo;
+          if ( FieldNo < 0 )
+          {
+               v9 = TableName;
+               v8 = 8;                          // "invalid field name or number"
+               goto LABEL_28;
+          }
+          FLDtype = ttab[TDno].TTfields[FieldNo].FLDtype;
+          if ( FLDtype == 'S' || FLDtype == 'K' )// Error!!!
+          {
+               v9 = TableName;
+               v8 = 24;                         // "invalid operation on 'set' or 'key' field"
+               goto LABEL_28;
+          }
+          symbol = getsym();
+     }
+     else
+     {
+          sprintf(TableBlock, "%s#%d", TableName, cur_block);
+          troot = gettnode(troot, TableBlock, strlen(TableBlock) + 1, 0);
+          if ( !tnodewasfound )
+               troot = gettnode(troot, TableName, MemSize, 1);
+          v2 = last_fnd;
+          v12 = getvars(last_fnd);
+          if ( !v12 )
+          {
+               fld = getvarmem();
+               if ( fld != getvars(v2) )
+                    __assert_fail("vv == getvars(fno)", "gettfexp.c", 0x7Fu, "gettfexp");
+               fld->FLDname = getmem(MemSize);
+               cdbcpystr(fld->FLDname, TableName, 0);
+               v9 = TableName;
+               v8 = 30;                         // "undefined variable"
+               goto LABEL_28;
+          }
+          TDno = 0;
+          v12->FLDstat |= 0x10u;
+     }
+     if ( symbol == 740 )                       // "[" - Array subscript follows
+     {
+          symbol = getsym();
+          allenpt(a1, &ent);
+          ent->TTno = 0xAC00u;
+          ent->entype = 2;
+          ent->Dest = getenmem();
+          allenpt(ent->Dest, &v14);
+          v14->TTno = TDno;
+          v14->RecNo = v2;
+          v14->entype = 1;
+          dallenpt(&v14);
+          if ( !TDno && !v12->FLDelemID )
+               loaderr(69, TableName);          // "not an array"
+          v4 = loadexp(0, 1);
+          if ( !v4 )
+          {
+               dallenpt(&ent);
+               return 0;
+          }
+          ent->Src = v4;
+          dallenpt(&ent);
+          if ( symbol != 1310 )                 // "]"
+          {
+               v9 = sym;
+               if ( symbol == 930 )
+                    v5 = 7;
+               else
+                    v5 = 33;
+               v8 = v5;
+               goto LABEL_28;
+          }
+          symbol = getsym();
+     }
+     else
+     {
+          v7 = 0;
+          if ( a1 )
+               v7 = (ENTAB *)&enarr.TableAddr[12 * (unsigned short)a1 - 12];
+          ent = v7;
+          v7->TTno = TDno;
+          ent->RecNo = v2;
+          ent->entype = 1;
+     }
+     return a1;
+}
+
+short gettf(short ENTno, int *TDno, char *FieldType)
+{
+     ENTAB *entab; // edx@@1
+     short FieldNo; // esi@@10
+     int v5; // eax@@18
+     FLDdesc *fld; // eax@@19
+
+     entab = 0;
+     if ( ENTno )
+          entab = (ENTAB *)&enarr.TableAddr[12 * (ENTno - 1)];
+     if ( !entab )
+          goto LABEL_22;
+     while ( entab->Dest )
+     {
+          entab = (ENTAB *)&enarr.TableAddr[12 * (entab->Dest - 1)];
+          if ( !entab )
+               goto LABEL_22;
+     }
+     if ( !entab )
+          goto LABEL_22;
+     if ( entab->entype == 2 && entab->TTno & 0x0100 )
+     {
+LABEL_22:
+          FieldNo = -1;
+          *TDno = 0;
+          *FieldType = 0;
+          return FieldNo;
+     }
+     *TDno = 0;
+     FieldNo = -1;
+     switch ( entab->entype )
+     {
+          case 4:
+               *FieldType = '6';
+               break;
+          case 8:
+               *FieldType = 'N';
+               break;
+          case 0x10:
+               *FieldType = 'C';
+               break;
+          default:
+               if ( entab->entype != 1 )
+                    __assert_fail("((t)->entype == 0x1)", "gettf.c", 0x2Au, "gettf");
+               v5 = entab->TTno;
+               *TDno = v5;
+               FieldNo = entab->RecNo;
+               if ( v5 )
+                    fld = &ttab[*TDno].TTfields[FieldNo];
+               else
+                    fld = getvars(entab->RecNo);
+               *FieldType = fld->FLDtype;
+               break;
+     }
+     return FieldNo;
+}
+
+int intexp(short ENTABno)
+{
+     int	v1;
+     char	v3;
+     int	TDno;
+     ENTAB	*v5;
+	 char	FLDtype;
+
+     allenpt(ENTABno, &v5);
+     if ( !v5 )
+          goto LABEL_23;
+     if ( v5->entype != 2 )
+     {
+          if ( !v5 )
+               goto LABEL_23;
+          goto LABEL_17;
+     }
+     if ( v5->TTno & 0x0100 )
+     {
+LABEL_22:
+          dallenpt(&v5);
+          return 0;
+     }
+     if ( !(v5->TTno & 0x0200) )
+     {
+          v1 = v5->TTno & 0xFC00;
+          if ( v1 != 0x3000 )
+          {
+               if ( v1 <= (signed int)0x3000u )
+               {
+                    if ( !(v5->TTno & 0xFC00) )
+                    {
+                         if ( !(v5->TTno & 0x003F) )
+                              __assert_fail(
+                                   "(((exp->enun.Enop.Enoper) & 0x3FF) & (02|01|04|010|040|020))",
+                                   "intexp.c",
+                                   0x3Au,
+                                   "intexp");
+                         goto LABEL_15;
+                    }
+                    if ( v1 != 0x2400 )
+                    {
+LABEL_15:
+                         dallenpt(&v5);
+                         return (v5->TTno >> 9) & 1;
+                    }
+                    goto LABEL_23;
+               }
+               if ( v1 != 0x6C00 )
+               {
+                    if ( v1 != 0xAC00 )
+                         goto LABEL_15;
+LABEL_17:
+                    gettf(ENTABno, &TDno,&FLDtype);
+                    if ( FLDtype != 'I' )
+                    {
+                         v3 = FLDtype > 'I' ? FLDtype == 'N' : FLDtype == 'B';
+                         if ( !v3 )
+                              goto LABEL_22;
+                    }
+                    goto LABEL_23;
+               }
+          }
+     }
+LABEL_23:
+     dallenpt(&v5);
+     return 1;
+}
+
+short getrelexp(int a1, int a2)
+{
+     short v2; // di@@1
+     short *v3; // edx@@2
+     signed int v4; // eax@@3
+     short v5; // si@@3
+     char v6; // zf@@7
+     short v8; // [sp+14h] [bp-14h]@@16
+     ENTAB *entab; // [sp+18h] [bp-10h]@@16
+
+     v2 = getaddexp(a1, a2);
+     if ( !le_error )
+     {
+          v3 = &symbol;
+          if ( symbol )
+          {
+               while ( 1 )
+               {
+                    v4 = *v3;
+                    v5 = 32;
+                    if ( v4 != 1820 )           // ">"
+                    {
+                         if ( v4 > 1820 )
+                         {
+                              v5 = 8;
+                              if ( v4 != 1840 )
+                              {
+                                   if ( v4 > 1840 )// "<"
+                                   {
+                                        v5 = 40;
+                                        v6 = v4 == 1850;// "<>"
+                                   }
+                                   else
+                                   {
+                                        v5 = 24;
+                                        v6 = v4 == 1830;// "<="
+                                   }
+LABEL_13:
+                                   if ( !v6 )
+                                        v5 = 0;
+                                   goto LABEL_15;
+                              }
+                         }
+                         else
+                         {
+                              v5 = 16;
+                              if ( v4 != 1800 ) // "="
+                              {
+                                   if ( v4 > 1800 )
+                                   {
+                                        v5 = 48;
+                                        v6 = v4 == 1810;// ">="
+                                   }
+                                   else
+                                   {
+                                        v5 = 20;
+                                        v6 = v4 == 760;// "like"
+                                   }
+                                   goto LABEL_13;
+                              }
+                         }
+                    }
+LABEL_15:
+                    if ( v5 )
+                    {
+                         v8 = getenmem();
+                         allenpt(v8, &entab);
+                         entab->Dest = v2;
+                         entab->TTno = v5;
+                         entab->entype = 2;
+                         symbol = getsym();
+                         entab->Src = getaddexp(a1, a2);
+                         if ( intexp(entab->Dest) && intexp(entab->Src) )
+                              entab->TTno |= 0x200u;
+                         v2 = v8;
+                         dallenpt(&entab);
+                    }
+                    if ( !le_error )
+                    {
+                         v3 = &symbol;
+                         if ( symbol )
+                         {
+                              if ( v5 )
+                                   continue;
+                         }
+                    }
+                    return v2;
+               }
+          }
+     }
+     return v2;
+}
+
+short getaddexp(int a1, int a2)
+{
+     short v2; // si@@1
+     short *v3; // edx@@2
+     int v4; // eax@@3
+     short v5; // di@@3
+     short v7; // [sp+14h] [bp-14h]@@7
+     ENTAB *entab; // [sp+18h] [bp-10h]@@7
+
+     v2 = getmultexp(a1, a2);
+     if ( !le_error )
+     {
+          v3 = &symbol;
+          if ( symbol )
+          {
+               do
+               {
+                    v4 = *v3;
+                    v5 = 0x5400u;
+                    if ( v4 != 50 )		//"+"
+                    {
+                         v5 = 0x5800u;
+                         if ( v4 != 1580 )	//"-"
+                              v5 = 0;
+                    }
+                    if ( v5 )
+                    {
+                         v7 = getenmem();
+                         allenpt(v7, &entab);
+                         entab->Dest = v2;
+                         entab->TTno = v5;
+                         entab->entype = 2;
+                         symbol = getsym();
+                         entab->Src = getmultexp(a1, a2);
+                         if ( intexp(entab->Dest) && intexp(entab->Src) )
+                              entab->TTno |= 0x200u;
+                         dallenpt(&entab);
+                         v2 = v7;
+                    }
+                    if ( le_error )
+                         break;
+                    v3 = &symbol;
+                    if ( !symbol )
+                         break;
+               }
+               while ( v5 );
+          }
+     }
+     return v2;
+}
+
+short getandexp(int a1, int a2)
+{
+     short v2; // di@@1
+     short *v3; // edx@@2
+     short v4; // si@@3
+     short v6; // [sp+14h] [bp-14h]@@6
+     ENTAB *entab; // [sp+18h] [bp-10h]@@6
+
+     v2 = getrelexp(a1, a2);
+     if ( !le_error )
+     {
+          v3 = &symbol;
+          if ( symbol )
+          {
+               do
+               {
+                    v4 = 0;
+                    if ( *v3 == 80 )
+                         v4 = 2;
+                    if ( v4 )
+                    {
+                         v6 = getenmem();
+                         allenpt(v6, &entab);
+                         entab->Dest = v2;
+                         entab->TTno = v4;
+                         entab->entype = 2;
+                         symbol = getsym();
+                         entab->Src = getrelexp(a1, a2);
+                         if ( intexp(entab->Dest) && intexp(entab->Src) )
+                              entab->TTno |= 0x200u;
+                         v2 = v6;
+                         dallenpt(&entab);
+                    }
+                    if ( le_error )
+                         break;
+                    v3 = &symbol;
+                    if ( !symbol )
+                         break;
+               }
+               while ( v4 );
+          }
+     }
+     return v2;
+}
+
+short getorexp(int a1, int a2)
+{
+     short v2; // di@@1
+     short *v3; // edx@@2
+     short v4; // si@@3
+     short v6; // [sp+14h] [bp-14h]@@6
+     ENTAB *entab; // [sp+18h] [bp-10h]@@6
+
+     v2 = getandexp(a1, a2);
+     if ( !le_error )
+     {
+          v3 = &symbol;
+          if ( symbol )
+          {
+               do
+               {
+                    v4 = 0;
+                    if ( *v3 == 1040 )          // "or", "|", "||"
+                         v4 = 1;
+                    if ( v4 )
+                    {
+                         v6 = getenmem();
+                         allenpt(v6, &entab);
+                         entab->Dest = v2;
+                         entab->TTno = v4;
+                         entab->entype = 2;
+                         symbol = getsym();
+                         entab->Src = getandexp(a1, a2);
+                         if ( intexp(entab->Dest) && intexp(entab->Src) )
+                              entab->TTno |= 0x200u;
+                         v2 = v6;
+                         dallenpt(&entab);
+                    }
+                    if ( le_error )
+                         break;
+                    v3 = &symbol;
+                    if ( !symbol )
+                         break;
+               }
+               while ( v4 );
+          }
+     }
+     return v2;
+}
+
+short loadexp(int a1, int a2)
+{
+     short v2; // ax@@2
+     short v3; // dx@@4
+
+     le_error = 0;
+     if ( a1 == 1 )
+          v2 = getorexp(1, a2);
+     else
+          v2 = getaddexp(a1, a2);
+     v3 = v2;
+     if ( le_error )
+          v3 = 0;
+     return v3;
+}
+
+#endif
+@

@@ -1,0 +1,176 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.09.06.09.49;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef XFIELDS_C
+#define XFIELDS_C
+
+int getxflds(KXTAB *kxtab)
+{
+     short FieldNo; // ax@@2
+     int v2; // esi@@2
+     int result; // eax@@3
+     int v4; // ecx@@4
+     int *v5; // edx@@4
+     FLDdesc *fld; // ecx@@10
+     int v7; // eax@@11
+     short *v8; // edx@@13
+     short v9; // si@@13
+     short *v10; // edx@@19
+     short v11; // si@@19
+     int *v12; // edx@@28
+     FLDdesc *fld2; // ecx@@34
+     short *v14; // [sp+10h] [bp-18h]@@1
+     int TTno; // [sp+14h] [bp-14h]@@2
+     char FieldType; // [sp+1Bh] [bp-Dh]@@2
+
+     v14 = &kxtab->DataElemIDs[kxtab->NumDataFields];
+     if ( symbol == 2230 )                      // string literal
+     {
+          while ( 1 )
+          {
+               FieldNo = getident(sym, &TTno, &FieldType);
+               v2 = FieldNo;
+               if ( FieldNo < 0 )               // <0 if we want all fields from the table
+               {
+                    result = -1;                // error not found!
+                    if ( v2 == -1 )
+                         return result;
+                    v4 = -v2;
+                    TTno = -v2;
+                    v5 = kxtab->TTlist;
+                    if ( *v5 )
+                    {
+                         while ( *v5 != v4 )
+                         {
+                              ++v5;
+                              if ( !*v5 )
+                                   goto LABEL_9;
+                         }
+                         if ( !*v5 )
+                              goto LABEL_9;
+                    }
+                    else
+                    {
+LABEL_9:
+                         *v5 = TTno;
+                         ++kxtab->NumTTs;
+                    }
+                    fld = ttab[TTno].TTfields;
+                    if ( fld->FLDelemID )
+                    {
+                         while ( 1 )
+                         {
+                              v7 = fld->TDFtype & 0x3000;
+                              if ( v7 == 0x2000 || v7 == 0x3000 )
+                                   goto LABEL_26;
+                              v8 = kxtab->KeyElemIDs;
+                              v9 = 0;
+                              if ( kxtab->NumKeyFields > 0 )
+                              {
+                                   if ( *v8 == fld->FLDelemID )
+                                        goto LABEL_26;
+                                   while ( 1 )
+                                   {
+                                        ++v9;
+                                        ++v8;
+                                        if ( kxtab->NumKeyFields <= v9 )
+                                             break;
+                                        if ( *v8 == fld->FLDelemID )
+                                             goto LABEL_26;
+                                   }
+                              }
+                              if ( *v8 != fld->FLDelemID )
+                              {
+                                   v10 = kxtab->DataElemIDs;
+                                   v11 = 0;
+                                   if ( kxtab->NumDataFields <= 0 )
+                                        goto LABEL_24;
+                                   if ( *v10 != fld->FLDelemID )
+                                   {
+                                        do
+                                        {
+                                             ++v11;
+                                             ++v10;
+                                             if ( kxtab->NumDataFields <= v11 )
+                                                  break;
+                                        }
+                                        while ( *v10 != fld->FLDelemID );
+LABEL_24:
+                                        if ( *v10 != fld->FLDelemID )
+                                        {
+                                             *v14 = fld->FLDelemID;
+                                             ++v14;
+                                             ++kxtab->NumDataFields;
+                                             kxtab->RecSize += fld->FLDlen;
+                                        }
+                                        goto LABEL_26;
+                                   }
+                              }
+LABEL_26:
+                              ++fld;
+                              if ( !fld->FLDelemID )
+                                   goto LABEL_35;
+                         }
+                    }
+                    goto LABEL_35;
+               }
+               v12 = kxtab->TTlist;             // Land here if we just want one field from the Table
+               if ( !*v12 )
+                    goto LABEL_33;
+               if ( *v12 != TTno )
+                    break;
+LABEL_32:
+               if ( !*v12 )
+                    goto LABEL_33;
+LABEL_34:
+               fld2 = &ttab[TTno].TTfields[FieldNo];
+               *v14 = fld2->FLDelemID;
+               ++v14;
+               ++kxtab->NumDataFields;
+               kxtab->RecSize += fld2->FLDlen;
+LABEL_35:
+               if ( symbol != 2230 )
+                    goto LABEL_36;
+          }
+          while ( 1 )
+          {
+               ++v12;
+               if ( !*v12 )
+                    break;
+               if ( *v12 == TTno )
+                    goto LABEL_32;
+          }
+LABEL_33:
+          *v12 = TTno;
+          ++kxtab->NumTTs;
+          goto LABEL_34;
+     }
+LABEL_36:
+     *v14 = 0;
+     return 0;
+}
+
+
+#endif
+@

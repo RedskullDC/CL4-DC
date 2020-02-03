@@ -1,0 +1,148 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.03.02.32;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETSHAPE_C
+#define GETSHAPE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+unsigned short maptype(short a1)
+{
+	unsigned short result;
+
+	result = a1 & 3;
+	if ( (char)a1 >= 0 )
+	{
+		if ( a1 & 0x0200 )
+			result |= 0x0044u;
+		
+		else if ( a1 & 0x0040 )
+			result |= 0x0200u;
+		
+		else if (a1 & 0x0400 )
+			result |= 0x0018u;
+	}
+	else
+		result |= 0x84u;
+	return result;
+}
+
+unsigned short map41type(short a1)
+{
+	unsigned short result; // ax@@1
+
+	result = a1;
+	if ( a1 & 0x4000 )
+		result = a1 & 0xBFFF | 0x3000;
+	return result;
+}
+
+TDef* ldshape(DBinfo *DBptr, short TDno)
+{
+	TDinfo *TDptr;
+	FIELD *v4;
+	FIELD *v5;
+	FIELD *v7;
+	FIELD *v11;
+
+	TDef *tdef;
+	TDef *v12;
+
+	short v6;
+	short TDFtype;
+	EXPR *Expr;
+	short NumFields;
+	short ExprData;
+
+	TDptr = _chktd(1);
+	TDptr->TDDBinfo = DBptr;
+	
+	if ( DBptr->DBvflag == 2 )
+		TDptr->TableDefs = _xfshape;           // pre-defined shape tables for system dbases
+	else
+		TDptr->TableDefs = _fshape;
+
+	ExprData = (unsigned char)TDno | ExprData & 0xFF00;
+// ------------
+// Read all the entries for this TDno
+	Expr = newexpr(106, 0x10u, (char *)&ExprData, 1u); // 106 == part of Key in 'fields'
+	cdbrestrict(1, Expr);	// fixed 'fields' table
+	v4 = (FIELD *)alloc(12u, 0);
+	v11 = v4;
+	for ( NumFields = 0; ; NumFields++ )
+	{
+		v6 = nxtr(1, (char *)v4, My_pos_0, Expr);
+		if ( v6 <= 0 )	// error or no more entries
+			break;
+		v5 = (FIELD *)alloc(12u, 0);
+		v4->NextFIELD = v5;
+		v4 = v5;
+	}
+	
+	fretre(Expr, 0);
+//-------------
+	v12 = 0;
+	if ( v6 >= 0 ) // <0 if read error above
+	{
+		v12 = (TDef *)alloc(6 * (NumFields + 1), 0);
+		v7 = v11;
+		for ( tdef = v12; v7->NextFIELD; ++tdef )
+		{
+			tdef->TDFentry = v7->TDFentry;
+			tdef->TDFsize = v7->TDFsize;
+
+// Do some tricky re-mapping of the TDFtype value, depending on DBase version
+			if ( DBptr->DBvflag == 2 )
+				TDFtype = maptype(v7->TDFtype);
+
+			else if ( DBptr->DBversion == 1765 )
+				TDFtype = map41type(v7->TDFtype);
+			
+			else
+				TDFtype = v7->TDFtype;
+			
+			tdef->TDFtype = TDFtype;
+			v7 = v7->NextFIELD;
+		}
+		tdef->TDFentry = 0;	// mark end of the TDef table with a ZERO entry
+	}
+	frelst(v11, 0);
+	return v12;
+}
+
+//-----
+
+TDef *_getshape(DBinfo *DBptr,short TableIdx)
+{
+	TDef *result;
+
+	result = _chkindex(TableIdx, DBptr);
+	if ( !result )
+		result = ldshape(DBptr, TableIdx);
+	return result;
+}
+
+#endif
+@

@@ -58,14 +58,14 @@ int toscreen(short Column, short Line, bool allow_mask, int MaxLen, char *Messag
             {
                 if ( num_glitch >= a4 )
                 {
-                    zap(CharBuff, num_glitch);
+					memset(CharBuff, 0, num_glitch);
                     CharBuff += num_glitch;
                 }
                 else
                 {
                     AttrBuff -= num_glitch;
                     _cx -= num_glitch;
-                    zap(&CharBuff[-num_glitch], num_glitch);
+					memset(&CharBuff[-num_glitch], 0, num_glitch);
                 }
             }
 
@@ -80,7 +80,7 @@ int toscreen(short Column, short Line, bool allow_mask, int MaxLen, char *Messag
                 MessageString[MaxLen] = 0;										// *** modifies caller string buffer directly ***
             }
             
-			fillbuf(AttrBuff, MaxLen + num_glitch, v25);						// Fill attribute buffer with required info
+			memset(AttrBuff, v25, MaxLen + num_glitch);							// Fill attribute buffer with required info
             AttrBuff = &AttrBuff[MaxLen] + num_glitch;
             _cx += MaxLen + num_glitch;
             
@@ -90,7 +90,7 @@ int toscreen(short Column, short Line, bool allow_mask, int MaxLen, char *Messag
             
 			cpybuf(CharBuff, MessageString, MaxLen);							// copy message into screen buffer.
             
-			if ( num_glitch && (*AttrBuff = v25 | 0x80, zap(&CharBuff[MaxLen], num_glitch), (_cx += num_glitch) != 0) && _YF == 1 )
+			if ( num_glitch && (*AttrBuff = v25 | 0x80, memset(&CharBuff[MaxLen], 0, num_glitch), (_cx += num_glitch) != 0) && _YF == 1 )
             {
                 qat(glt_cx, glt_cy);
                 scat(Attr, false, FieldType, 0, a5);	// attr off

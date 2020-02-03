@@ -1,0 +1,78 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.27.05.40.14;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETYX_C
+#define GETYX_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+void clgetyx(XTAB *xt, int *Column, int *Line, int ArgType)
+{
+	// clgetyx assumes that xtab variable is valid, unlike almost every other routine.
+	// Not very OOP using that nasty global variable var_cr!!
+
+    if ( ArgType == 1 )           // if ArgType == 1, return the *answer* values
+    {
+        if ( xt->ACol_exp )
+        {
+            *Column = evalint(&enarr.TableAddr[xt->ACol_exp - 1]);
+            var_cr = 1;
+        }
+        else
+            *Column = xt->ACol;		// Answer Column
+
+		if ( xt->ALine_exp )
+        {
+            *Line = evalint(&enarr.TableAddr[xt->ALine_exp - 1]);
+            var_cr = 1;
+        }
+		else
+			*Line = xt->ALine;		// Answer Line
+    }
+    else                          // else return the Prompt values
+    {
+        if ( xt->PCol_exp )
+        {
+            *Column = evalint(&enarr.TableAddr[xt->PCol_exp - 1]);
+            var_cr = 1;
+        }
+        else
+            *Column = xt->PCol;	// Prompt Column
+        
+		if ( xt->PLine_exp )
+        {
+            *Line = evalint(&enarr.TableAddr[xt->PLine_exp - 1]);
+            var_cr = 1;
+        }
+		else
+			*Line = xt->PLine;	// Prompt Line
+    }
+	return;
+}
+
+
+#endif
+
+@

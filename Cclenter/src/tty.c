@@ -90,7 +90,7 @@ bool Tty_KeyIsReady(void)
 
     setblock(fileno(stdin), false);
     
-	nextc = _IO_getc(stdin);
+	nextc = getc(stdin);
     if ( nextc != -1 )
         ungetc(nextc, stdin);
     

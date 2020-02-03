@@ -1,0 +1,1081 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2020.01.21.13.07.32;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2016.01.15.02.37.35;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.2
+log
+@Prior to implementing libeti code
+@
+text
+@#ifndef REEXAMINE_C
+#define REEXAMINE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+#define SSIZE		50
+#define TGRP		48
+#define A256		01
+#define A512		02
+#define A768		03
+#define	NBRA		10
+#define CIRCFL		32
+
+#define	CBRA		60
+#define GRP			40
+#define SGRP		56
+#define PGRP		68
+#define EGRP		44
+#define RNGE		03
+#define	CCHR		20
+#define	CDOT		64
+#define	CCL			24
+#define	NCCL		8
+#define	CDOL		28
+#define	CAEOF		52	// dodge re-def error in /usr/include/sys/ttydefaults.h
+#define	CKET		12
+
+#define	STAR		01
+#define PLUS		02
+#define MINUS		16
+
+char		*__braslist[NBRA];
+char		*__braelist[NBRA];
+char		*__loc1;
+intptr_t	__bravar[NBRA];
+intptr_t	*__st[SSIZE + 1];
+intptr_t	*__eptr_,*__lptr_;
+intptr_t	__cflg;
+
+char *__execute(char *addrc, char *addrl)
+{
+    register char *p1, *p2;
+	char *v3;
+	char v4;
+	char v5;
+	char v7;
+	
+    p1 = addrl;
+	p2 = addrc;
+    __eptr_ = &__st[SSIZE];
+    __lptr_ = &__st[0];
+    
+	if ( *addrc == CIRCFL )
+    {
+        __loc1 = p1;
+        return (v3 = __advance(p1, ++p2))? v3 : addrl;
+    }
+    else
+    {
+        if ( *p2 == CCHR )
+        {	// fast check for first character
+            v7 = p2[1];
+            while ( 1 )
+            {
+                if ( *p1 == v7 )
+                {
+                    __eptr_ = &__st[SSIZE];
+                    __lptr_ = &__st[0];
+                    v3 = __advance(p1, p2);
+                    if ( v3 )
+                        break;
+                }
+                v4 = *p1++;
+                v3 = addrl;
+                if ( !v4 )
+                    return v3;
+            }
+        }
+        else
+        {	// regular algorithm
+            while ( 1 )
+            {
+                __eptr_ = &__st[SSIZE];
+                __lptr_ = &__st[0];
+                v3 = __advance(p1, p2);
+                if ( v3 )
+                    break;
+                v5 = *p1++;
+                if ( !v5 )
+                    return addrl;
+            }
+        }
+        __loc1 = p1;
+    }
+    return v3;
+}
+
+char *__advance(char *lp, char *ep)
+{
+	char *v7;
+	char *v10;
+	char *v11;
+	char *v12;
+	char *v28;
+	char *v29;
+	char *sep;
+	char *curlp;
+	
+    int v9; // edx@@13
+    int v19; // eax@@37
+    int v27; // edx@@61
+    int v34; // [sp+8h] [bp-30h]@@45
+	signed int gflg; // [sp+18h] [bp-20h]@@1
+    int v38; // [sp+24h] [bp-14h]@@13
+    int dcnt; // [sp+28h] [bp-10h]@@13
+
+    char v24; // al@@54
+    char v32; // ST04_1@@67
+
+    gflg = 0;
+    while ( 2 )
+    {
+        switch ( *ep++ )
+        {
+			case CCHR:					// 20
+                if ( *ep++ == *lp++ )
+                    continue;
+                return 0;
+            
+			case EGRP|RNGE:				// 44 | 03
+                return lp;
+             
+			case EGRP:					// 44
+			case GRP:					// 40
+                ep++;
+                continue;
+           
+			case EGRP|STAR:				// 44 | 01
+                __xpop(0);				// falls thru...
+			case EGRP|PLUS:				// 44 | 02
+                __xpush(0, ep + 1);
+                return lp;
+            
+			case CDOT:					// 64
+                if ( *lp++ )
+                    continue;
+                return 0;
+            
+			case CDOL:					// 28
+                if ( !*lp )
+                    continue;
+                return 0;				// **********************************
+			
+			case CAEOF:					// 52
+                __cflg = 1;		// comma flag
+                return lp;
+            
+			case TGRP:					// 48
+			case TGRP|A768:				// 48 | 03
+			case TGRP|A512:				// 48 | 02
+			case TGRP|A256:				// 48 | 01
+                v9 = (unsigned char)*ep + ((*(ep - 1) & 3) << 8);
+                v10 = ep + 1;
+                v11 = &v10[v9];
+                __xpush(0, &v10[v9 + 2]);
+                gflg = 1;
+                __getrnge(&v38, &dcnt, v11);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_16;
+                while ( 1 )
+                {
+                    lp = __advance(lp, v10);
+                    v7 = 0;
+                    if ( !lp )
+                        return v7;
+                    --v38;
+                    if ( v38 == -1 )
+                    {
+LABEL_16:
+                        curlp = lp;
+                        __xpush(1, lp);
+                        --dcnt;
+                        for ( ; dcnt != -1; --dcnt )
+                        {
+                            v12 = __advance(lp, v10);
+                            if ( !v12 )
+                                break;
+                            lp = v12;
+                            __xpush(1, v12);
+                        }
+                        ep = (char *)__xpop(0);
+                        goto star;
+                    }
+                }
+			case CCHR|RNGE:				// 20 | 03
+                sep = ep++;
+                __getrnge(&v38, &dcnt, ep);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_23;
+                do
+                {
+                    if ( *lp++ != *sep )
+                        return 0;
+                    --v38;
+                }
+                while ( v38 != -1 );
+LABEL_23:
+                curlp = lp;
+                --dcnt;
+                for ( ; dcnt != -1; --dcnt )
+                {
+                    v24 = *lp++;
+                    if ( v24 != *sep )
+                        break;
+                }
+				if ( dcnt < 0 ) lp++;
+				ep += 2;
+				goto star;
+			
+			case CDOT|RNGE:				// 64 | 03
+                __getrnge(&v38, &dcnt, ep);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_30;
+                while ( 1 )
+                {
+                    v7 = 0;
+                    if ( !*lp++)
+                        return v7;
+                    --v38;
+                    if ( v38 == -1 )
+                    {
+LABEL_30:
+                        curlp = lp;
+                        --dcnt;
+                        for ( ; dcnt != -1; --dcnt )
+                        {
+                            if ( !*lp++ )
+                                break;
+                        }
+                        if ( dcnt < 0 )
+                            ++lp;
+                        ep += 2;
+                        goto star;
+                    }
+                }
+			
+			case CCL|RNGE:				// 24 | 03
+			case NCCL|RNGE:				// 8 | 03
+                __getrnge(&v38, &dcnt, &ep[(unsigned char)*ep]);
+                --v38;
+                if ( v38 == -1 )
+                    goto LABEL_39;
+                break;
+            
+			case CCL:					// 24
+                if ( (__cclass(ep, *lp++, 1)))
+				{
+					ep += *ep;
+					continue;
+				}
+				return 0;
+
+			case NCCL:					// 8
+                v34 = 0;
+                if ( (__cclass(ep, *lp++, 0)))
+				{
+					ep += *ep;
+					continue;
+				}
+				return 0;
+			
+			case CBRA:					// 60
+                __braslist[*ep++] = lp;
+                continue;
+
+			case CKET:					// 12
+                __braelist[*ep] = lp;
+                __bravar[*ep] = 0;		// ***********************
+                ++ep;
+                continue;
+
+			case CDOT|PLUS:				// 64 | 02
+				if (*lp++ == '\0') return(0);
+										// fall through
+			case CDOT|STAR:				// 64 | 01
+                curlp = lp;
+                while ( *lp++ );		// while not zero
+                goto star;
+            
+			case CCHR|PLUS:				// 20 | 02
+				if (*lp++ != *ep) return(0);
+            
+			case CCHR|STAR:				// 20 | 01
+                curlp = lp;
+                while ( *lp++ == *ep );
+                ep++;
+                goto star;
+
+			case PGRP:					// 68
+			case PGRP|A256:				// 68 | 01
+			case PGRP|A512:				// 68 | 02
+			case PGRP|A768:				// 68 | 03
+				if (!(lp=__advance(lp,ep+1))) return(0);
+			case SGRP|A768:				// 56 | 03
+			case SGRP|A512:				// 56 | 02
+			case SGRP|A256:				// 56 | 01
+			case SGRP:					// 56
+                v27 = (unsigned char)*ep + ((*(ep - 1) & 3) << 8);
+                v28 = ep + 1;
+                __xpush(0, &v28[v27]);
+                curlp = lp;
+                while ( 1 )
+                {
+                    __xpush(1, lp);
+                    v29 = __advance(lp, v28);
+                    if ( !v29 )
+                        break;
+                    lp = v29;
+                }
+                ep = (char *)__xpop(0);
+                gflg = 1;
+                goto star;
+            
+			case NCCL|PLUS:
+            case CCL|PLUS:
+                if ( !__cclass(ep, *lp++, *(ep - 1) == (CCL|PLUS))) return 0;
+            
+			case CCL|STAR:
+            case NCCL|STAR:
+                curlp = lp;
+                while ( __cclass(ep, *lp++, ((ep[-1]==(CCL|STAR)) || (ep[-1]==(CCL|PLUS)))));
+                ep += *ep;
+                goto star;
+            
+			default:
+                return 0;
+        }
+        break;
+    }
+
+//---------------------------
+    while ( 1 )
+    {
+        v19 = __cclass(ep, *lp++, *(ep - 1) == 27);
+        v7 = 0;
+        if ( !v19 )
+            break;
+        --v38;
+        if ( v38 == -1 )
+        {
+LABEL_39:
+            curlp = lp;
+            --dcnt;
+            for ( ; dcnt != -1; --dcnt )
+            {
+                if ( !__cclass(ep, *lp++, *(ep - 1) == 27) )
+                    break;
+            }
+            if ( dcnt < 0 )
+                ++lp;
+            ep += *ep + 2;
+            
+			do
+            {
+star:
+                if ( gflg )
+                {
+                    lp = (char *)__xpop(1);
+                    if ( !lp )
+                        return 0;
+                }
+                else
+                {
+                    --lp;
+                }
+                v7 = __advance(lp, ep);
+                if ( v7 )
+                    return v7;
+            }
+            while ( lp > curlp );
+            return 0;
+        }
+    }
+    return v7;
+}
+
+int __cclass(char *a1, char ac, int af)
+{
+    char	*set;
+	char	*v6;
+	char	*v7;
+	int		v3;
+	int		v5;
+	
+    v3 = 0;
+    if ( ac )
+    {
+        set = a1 + 1;
+        v5 = *a1 - 1;
+        if ( *a1 == 1 )
+            return af == 0;
+        
+		while ( 1 )
+        {
+            if ( *set == MINUS )
+            {
+                if ( set[2] - set[1] < 0 )
+                    return 0;
+                
+				v6 = set + 1;
+                if ( *v6 > ac )
+                {
+                    v7 = v6 + 1;
+                }
+                else
+                {
+                    v7 = v6 + 1;
+                    if ( ac <= *v7 )
+                        return af;
+                }
+                set = v7 + 1;
+                v5 -= 2;
+            }
+            else
+            {
+                v3 = af;
+                if ( *set++ == ac )
+                    return v3;
+            }
+            --v5;
+            if ( !v5 )
+                return af == 0;
+        }
+    }
+    return v3;
+}
+
+int __xpush(int a1, char* p)
+{
+    if ( __lptr_ >= __eptr_ )
+    {
+        write(2, "stack overflow\n", 15);
+        exit(1);
+    }
+    if ( a1 ) *__lptr_++ = p;
+    else      *__eptr_-- = p;
+    return 1;
+}
+
+int __xpop(int a1)
+{
+    int *v1; // edx@@3
+
+    if ( a1 )
+    {
+        if ( (unsigned int)__lptr_ >= (unsigned int)__st )
+        {
+            v1 = __lptr_;
+            --__lptr_;
+            return v1[-1];
+        }
+    }
+    else
+    {
+        if ( (unsigned int)__eptr_ <= (unsigned int)&__st[200] )
+        {
+            v1 = __eptr_;
+            ++__eptr_;
+            return v1[1];
+        }
+    }
+    return 0;
+}
+
+
+void __getrnge(int *low, int *size, char *str)
+{
+    *low = (unsigned char)*str++;
+    if ( *str == -1 )
+        *size = 20000;
+    else
+        *size = (unsigned char)*str - *low;
+}
+
+//getrnge(char *str)
+//{
+//	low = *str++ & 0377;
+//	size = *str == 255 ? 20000 : (*str &0377) - low;
+//}
+
+char *reexec(char *addrc, char *addrl, char **a3)
+{
+    char	*p1;
+	char	*p2;
+	char	*result;
+	char	*cur;
+	
+	int		in;
+	char	v8;
+	
+    *a3 = 0;
+	for (in = 0; in < NBRA ; in++)
+	{
+        __braslist[in] = 0;
+        __bravar[in] = -1;
+	}
+    
+	__cflg = 0;
+    cur = __execute(addrc, addrl);                     // sets _cflg!
+    
+	for (in = 0; in < NBRA; in++)
+    {
+        if ( (p1 = __braslist[in]) && __bravar[in] >= 0 )
+        {
+            p2 = (char *)mmalloc(__braelist[in] - p1 + 1);	// *****************
+            *a3 = p2;										// a3 never advanced?
+			while( p1 < __braelist[in] )
+                *p2++ = *p1++;
+            *p2 = 0;
+        }
+    }
+    
+	if ( __cflg )
+    {
+        result = cur;
+    }
+    else
+    {
+        result = 0;
+        if ( addrl != cur )
+            result = cur;
+    }
+    return result;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 35
+a46 1
+char *__execute(char *a1, char *a2)
+d48 15
+a62 15
+    char *v2; // esi@@1
+    char *v3; // edx@@2
+    char v4; // al@@9
+    char v5; // al@@13
+    char v7; // [sp+2Bh] [bp-Dh]@@6
+
+    v2 = a2;
+    __eptr_ = &__st[50];
+    __lptr_ = __st;
+    if ( *a1 == ' ' )
+    {
+        __loc1 = a2;
+        v3 = __advance(a2, a1 + 1);
+        if ( !v3 )
+            v3 = a2;
+d66 3
+a68 3
+        if ( *a1 == 20 )
+        {
+            v7 = a1[1];
+d71 1
+a71 1
+                if ( *v2 == v7 )
+d73 3
+a75 3
+                    __eptr_ = &__st[50];
+                    __lptr_ = __st;
+                    v3 = __advance(v2, a1);
+d79 2
+a80 2
+                v4 = *v2++;
+                v3 = a2;
+d86 1
+a86 1
+        {
+d89 3
+a91 3
+                __eptr_ = &__st[50];
+                __lptr_ = __st;
+                v3 = __advance(v2, a1);
+d94 1
+a94 1
+                v5 = *v2++;
+d96 1
+a96 1
+                    return a2;
+d99 1
+a99 1
+        __loc1 = v2;
+d104 1
+a104 1
+char *__advance(char *a1, char *a2)
+d106 9
+a114 7
+    char *v2; // edi@@1
+    char *v3; // esi@@1
+    int v4; // edx@@2
+    char v5; // dl@@3
+    char v6; // al@@3
+    char *v7; // ecx@@3
+    char v8; // al@@7
+a115 9
+    char *v10; // esi@@13
+    char *v11; // ST14_4@@13
+    char *v12; // eax@@17
+    char *v13; // eax@@20
+    char v14; // al@@21
+    char v15; // al@@24
+    char v16; // al@@28
+    char v17; // al@@31
+    char v18; // ST04_1@@37
+a116 7
+    char v20; // ST04_1@@40
+    char v21; // ST04_1@@47
+    int v22; // eax@@47
+    char v23; // al@@52
+    char v24; // al@@54
+    char v25; // al@@56
+    char v26; // al@@58
+a117 5
+    char *v28; // esi@@61
+    char *v29; // eax@@63
+    char v30; // ST04_1@@65
+    int v31; // eax@@65
+    char v32; // ST04_1@@67
+d119 1
+a119 3
+    signed int v35; // [sp+18h] [bp-20h]@@1
+    char *v36; // [sp+1Ch] [bp-1Ch]@@20
+    char *v37; // [sp+20h] [bp-18h]@@16
+d121 1
+a121 1
+    int v39; // [sp+28h] [bp-10h]@@13
+d123 4
+a126 3
+    v2 = a1;
+    v3 = a2;
+    v35 = 0;
+d129 1
+a129 2
+        v4 = *v3++ - 8;
+        switch ( v4 )
+d131 2
+a132 5
+            case '\f':
+                v5 = *v2++;
+                v6 = *v3++;
+                v7 = 0;
+                if ( v6 == v5 )
+d134 18
+a151 12
+                return v7;
+            case '%':
+                __xpop(0);
+                __xpush(0, v3 + 1);
+                return v2;
+            case '&':
+                __xpush(0, v3 + 1);
+                return v2;
+            case '8':
+                v8 = *v2++;
+                v7 = 0;
+                if ( v8 )
+d153 4
+a156 3
+                return v7;
+            case '\x14':
+                if ( !*v2 )
+d158 3
+a160 2
+                return 0;
+            case ',':
+d162 8
+a169 9
+                return v2;
+            case '\'':
+                return v2;
+            case '(':
+            case ')':
+            case '*':
+            case '+':
+                v9 = (unsigned char)*v3 + ((*(v3 - 1) & 3) << 8);
+                v10 = v3 + 1;
+d172 2
+a173 2
+                v35 = 1;
+                __getrnge(&v38, &v39, v11);
+d179 1
+a179 1
+                    v2 = __advance(v2, v10);
+d181 1
+a181 1
+                    if ( !v2 )
+d187 4
+a190 4
+                        v37 = v2;
+                        __xpush(1, v2);
+                        --v39;
+                        for ( ; v39 != -1; --v39 )
+d192 1
+a192 1
+                            v12 = __advance(v2, v10);
+d195 1
+a195 1
+                            v2 = v12;
+d198 2
+a199 2
+                        v3 = (char *)__xpop(0);
+                        goto LABEL_69;
+d202 3
+a204 4
+            case '\x0F':
+                v13 = v3++;
+                v36 = v13;
+                __getrnge(&v38, &v39, v3);
+d210 1
+a210 2
+                    v14 = *v2++;
+                    if ( v14 != *v36 )
+d216 3
+a218 3
+                v37 = v2;
+                --v39;
+                for ( ; v39 != -1; --v39 )
+d220 2
+a221 2
+                    v15 = *v2++;
+                    if ( v15 != *v36 )
+d224 6
+a229 3
+                goto LABEL_33;
+            case ';':
+                __getrnge(&v38, &v39, v3);
+a234 1
+                    v16 = *v2++;
+d236 1
+a236 1
+                    if ( !v16 )
+d242 3
+a244 3
+                        v37 = v2;
+                        --v39;
+                        for ( ; v39 != -1; --v39 )
+d246 1
+a246 2
+                            v17 = *v2++;
+                            if ( !v17 )
+d249 4
+a252 5
+LABEL_33:
+                        if ( v39 < 0 )
+                            ++v2;
+                        v3 += 2;
+                        goto LABEL_69;
+d255 4
+a258 3
+            case '\x03':
+            case '\x13':
+                __getrnge(&v38, &v39, &v3[(unsigned char)*v3]);
+d263 10
+a272 4
+            case '\x10':
+                v34 = 1;
+                goto LABEL_47;
+            case '\0':
+d274 9
+a282 7
+LABEL_47:
+                v21 = *v2++;
+                v22 = __cclass(v3, v21, v34);
+                v7 = 0;
+                if ( !v22 )
+                    return v7;
+                v3 += *v3;
+d284 5
+a288 3
+            case '4':
+                __braslist[*v3] = v2;
+                ++v3;
+d290 29
+a318 51
+            case '\x04':
+                __braelist[*v3] = v2;
+                __bravar[*v3] = 0;
+                ++v3;
+                continue;
+            case ' ':
+            case '$':
+                ++v3;
+                continue;
+            case ':':
+                v23 = *v2++;
+                v7 = 0;
+                if ( v23 )
+                    goto _L123_0;
+                return v7;
+            case '9':
+_L123_0:
+                v37 = v2;
+                do
+                    v24 = *v2++;
+                while ( v24 );
+                goto LABEL_69;
+            case '\x0E':
+                v25 = *v2++;
+                if ( v25 == *v3 )
+                    goto _L129;
+                return 0;
+            case '\r':
+_L129:
+                v37 = v2;
+                do
+                    v26 = *v2++;
+                while ( v26 == *v3 );
+                ++v3;
+                goto LABEL_69;
+            case '<':
+            case '=':
+            case '>':
+            case '?':
+                v2 = __advance(v2, v3 + 1);
+                v7 = 0;
+                if ( v2 )
+                    goto _L141;
+                return v7;
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+_L141:
+                v27 = (unsigned char)*v3 + ((*(v3 - 1) & 3) << 8);
+                v28 = v3 + 1;
+d320 1
+a320 1
+                v37 = v2;
+d323 2
+a324 2
+                    __xpush(1, v2);
+                    v29 = __advance(v2, v28);
+d327 1
+a327 1
+                    v2 = v29;
+d329 16
+a344 21
+                v3 = (char *)__xpop(0);
+                v35 = 1;
+                goto LABEL_69;
+            case '\x02':
+            case '\x12':
+                v30 = *v2++;
+                v31 = __cclass(v3, v30, *(v3 - 1) == 0x1A);
+                v7 = 0;
+                if ( v31 )
+                    goto _L150;
+                return v7;
+            case '\x01':
+            case '\x11':
+_L150:
+                v37 = v2;
+                do
+                    v32 = *v2++;
+                while ( __cclass(v3, v32, (unsigned char)(*(v3 - 1) - 25) <= 1u) );
+                v3 += *v3;
+                goto LABEL_69;
+            default:
+d349 1
+d353 1
+a353 2
+        v18 = *v2++;
+        v19 = __cclass(v3, v18, *(v3 - 1) == 27);
+d361 3
+a363 3
+            v37 = v2;
+            --v39;
+            for ( ; v39 != -1; --v39 )
+d365 1
+a365 2
+                v20 = *v2++;
+                if ( !__cclass(v3, v20, *(v3 - 1) == 27) )
+d368 5
+a372 4
+            if ( v39 < 0 )
+                ++v2;
+            v3 += *v3 + 2;
+            do
+d374 2
+a375 2
+LABEL_69:
+                if ( v35 )
+d377 2
+a378 2
+                    v2 = (char *)__xpop(1);
+                    if ( !v2 )
+d383 1
+a383 1
+                    --v2;
+d385 1
+a385 1
+                v7 = __advance(v2, v3);
+d389 1
+a389 1
+            while ( v2 > v37 );
+d396 1
+a396 1
+int __cclass(char *a1, char a2, int a3)
+d398 6
+a403 7
+    int v3; // edi@@1
+    char *v4; // ecx@@2
+    int v5; // esi@@2
+    char *v6; // ecx@@5
+    char *v7; // ecx@@6
+    char v8; // al@@10
+
+d405 1
+a405 1
+    if ( a2 )
+d407 1
+a407 1
+        v4 = a1 + 1;
+d410 3
+a412 2
+            return a3 == 0;
+        while ( 1 )
+d414 1
+a414 1
+            if ( *v4 == 0x10 )
+d416 5
+a420 5
+                v3 = 0;
+                if ( v4[2] - v4[1] < 0 )
+                    return v3;
+                v6 = v4 + 1;
+                if ( *v6 > a2 )
+d427 2
+a428 2
+                    if ( a2 <= *v7 )
+                        return a3;
+d430 1
+a430 1
+                v4 = v7 + 1;
+d435 2
+a436 3
+                v8 = *v4++;
+                v3 = a3;
+                if ( v8 == a2 )
+d441 1
+a441 1
+                return a3 == 0;
+d447 1
+a447 1
+int __xpush(int a1, int a2)
+d451 1
+a451 1
+        write(2, "stack overflow\n", 0xFu);
+d454 2
+a455 10
+    if ( a1 )
+    {
+        *__lptr_ = a2;
+        ++__lptr_;
+    }
+    else
+    {
+        *__eptr_ = a2;
+        --__eptr_;
+    }
+d485 1
+a485 1
+int __getrnge(int *a1, int *a2, char *a3)
+d487 3
+a489 3
+    *a1 = (unsigned char)*a3;
+    if ( a3[1] == -1 )
+        *a2 = 20000;
+d491 1
+a491 2
+        *a2 = (unsigned char)a3[1] - *a1;
+    return 1;
+d494 7
+a500 1
+char *reexec(char *a1, char *a2, char **a3)
+d502 8
+a509 9
+    int v3; // edi@@1
+    int v4; // edi@@3
+    char *v5; // esi@@4
+    char *v6; // eax@@6
+    char *i; // edx@@6
+    char v8; // al@@7
+    char *result; // eax@@11
+    char *v10; // [sp+18h] [bp-10h]@@3
+
+d511 10
+a520 11
+    v3 = 0;
+    do
+    {
+        __braslist[v3] = 0;
+        __bravar[v3++] = -1;
+    }
+    while ( v3 <= 9 );
+    __cflg = 0;
+    v10 = __execute(a1, a2);                     // sets _cflg!
+    v4 = 0;
+    do
+d522 1
+a522 2
+        v5 = __braslist[v4];
+        if ( v5 && __bravar[v4] >= 0 )
+d524 5
+a528 8
+            v6 = (char *)mmalloc(__braelist[v4] - v5 + 1);
+            *a3 = v6;
+            for ( i = v6; v5 < __braelist[v4]; ++i )
+            {
+                v8 = *v5++;
+                *i = v8;
+            }
+            *i = 0;
+a529 1
+        ++v4;
+d531 2
+a532 2
+    while ( v4 <= 9 );
+    if ( __cflg )
+d534 1
+a534 1
+        result = v10;
+d539 2
+a540 2
+        if ( a2 != v10 )
+            result = v10;
+@

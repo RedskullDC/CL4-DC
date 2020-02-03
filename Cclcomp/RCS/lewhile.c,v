@@ -1,0 +1,276 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.03.11.05.30.57;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.18.31;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@tidy-up of continue/end_loop code
+@
+text
+@#ifndef LEWHILE_C
+#define LEWHILE_C
+
+int lewhile(int *a1)
+{
+    PTAB *ptab; // edi@@4
+    PTAB *v12; // edi@@28
+    PTAB *v13; // eax@@29
+    PTAB *ptb2; // edi@@36
+    
+	short wend_start;
+	short wend_after;
+
+    short v1; // ax@@4
+    short v3; // ax@@11
+    short v19; // edx@@35
+    //int v21; // eax@@38
+
+	if ( &itab[no_itabs] <= it ) // "it" is some nice global goodness
+    {
+		newitab();
+        if ( it >= &itab[no_itabs] )
+			__assert_fail("it < max_it", "lewhile.c", 36, "lewhile");
+	}
+    it->itType = 2;				// 1 = 'if', 2 = 'while'
+
+    v1 = getptabp(*(short *)a1);
+	ptab = PTARR(v1);
+	ptab->Operand = *(short *)a1;
+    it->PTfalse = v1;			// Jump here when "WHILE" expression evaluates to *false*
+								// *wrong value*, save v1 for later. link will be fixed below.
+    ++it;
+
+    if ( &itab[no_itabs] <= it )	// Allocate another ITAB where necessary
+    {
+		newitab();
+        if ( it >= &itab[no_itabs] )
+			__assert_fail("it < max_it", "lewhile.c", 48, "lewhile");
+	}
+
+    do						
+		symbol = getsym();		// skip past any blank lines
+	while ( symbol == 930 );	// <CR>
+
+	ptab->OpCode	= 310;		// 310 = "while"
+    ptab->SrcLineNo	= lla;
+    v3 = loadexp(1, 1);
+    ptab->TABno		= v3;
+    if ( !v3 || symbol != 930 )
+    {
+		//printf("lewhile 51 - v3 = %d, symbol = %d, sym = %s\n",v3,symbol,sym);
+		while ( symbol )
+        {
+			if ( v3 )					// We loaded expression ok, but was something else before the <CR>
+				loaderr(33, sym);		// unexpected symbol error
+			
+			symbol = getsym();
+            if ( comp_abort )
+				return 0;				// error_exit
+			if ( symbol == 930 )
+				goto LABEL_18;
+		}
+	}
+
+LABEL_18:
+	while (symbol == 930)
+		symbol = getsym();
+    
+	++*a1;								// Bump currPTAB ptr
+    
+	while ( symbol != 1710 )            // "wend"
+    {
+		loadstate(a1);					// many levels of recursion possible here
+        if ( comp_abort )
+			return 0;					// error_exit
+		while (symbol == 930)			// <CR> skip blank lines
+			symbol = getsym();
+	}
+
+DO_WEND:									// wend symbol found, back up ITAB, and fix links
+    symbol = getsym();
+    --it;
+    if ( it->itType != 2 )					// 1 = 'if', 2 = 'while' ?
+    {
+		loaderr(23, sym);					// "wend without while"
+        return 0;
+	}
+	
+	v12 = PTARR(getptabp((*a1)++));			// Insert a goto instruction, back to the initial "while" instruction
+    v12->OpCode = 700;						// 700 = "goto"  Branch always
+    
+	v13 = PTARR(it->PTfalse);
+	wend_start = v13->Operand;				// Recover first instruction from ITAB record.
+    v12->Operand = wend_start;				// brach back to wend instruction
+
+	wend_after = *(short *)a1;
+    v13->Operand = wend_after;				// fix false link in original wend instruction!
+    
+	// Look for any continue/end_loop instructions inside while/wend block, and fix links
+	v19 = wend_start + 1;
+	while ( v19 <= wend_after )
+	{
+		ptb2 = PTARR(v19);
+		switch (ptb2->OpCode)
+		{
+		case 320:								// 320 = continue
+			if ( !ptb2->Operand )
+				ptb2->Operand = wend_start;		// first instruction of the loop
+			break;
+		case 330:								// 330 = end_loop
+			if ( !ptb2->Operand )
+				ptb2->Operand = wend_after;		// instruction *after* the loop
+			break;		
+		}
+		/*v21 = ptb2->OpCode;
+        if ( v21 == 320 )						// 320 = continue
+        {
+			if ( !ptb2->Operand )
+				ptb2->Operand = wend_start;		// first instruction of the loop
+		}
+        else if ( v21 == 330 )					// 330 = end_loop
+		{
+			if ( !ptb2->Operand )
+				ptb2->Operand = wend_after;		// instruction *after* the loop
+		}
+		*/
+		v19++;
+	}
+    return 1;	// exit_success
+}
+
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 1
+a6 1
+    PTAB *v2; // edi@@4
+d10 3
+a15 4
+    short *v7; // edx@@20
+    short v10; // ST00_2@@28
+    short v14; // ax@@31
+	short v17; // ax@@35
+d17 1
+a17 1
+    int v21; // eax@@38
+d25 2
+a26 1
+    it->field_C = 2;
+d28 7
+a34 6
+	v2 = v1 ? (PTAB *)&ptarr.TableAddr[8 * (unsigned short)v1 - 8] : 0;
+	v2->Operand = *(short *)a1;
+    it->PTno = v1;
+    
+	++it;
+    if ( &itab[no_itabs] <= it )
+a39 3
+    do							// find end of line
+		symbol = getsym();
+	while ( symbol == 930 );
+d41 6
+a46 2
+	v2->OpCode = 310;                          // 310 = "while"
+    v2->SrcLineNo = lla;
+d48 1
+a48 1
+    v2->TABno = v3;
+d51 1
+d54 3
+a56 2
+			if ( v2->TABno )
+				loaderr(33, sym);
+d59 1
+a59 1
+				break;
+a62 1
+        return 0;
+d69 3
+a71 2
+	++*a1;
+    if ( symbol != 1710 )                   // "wend"
+d73 5
+a77 12
+		while ( symbol )
+        {
+			loadstate(a1);					// many levels of recursion possible here
+            if ( comp_abort )
+				break;
+			while (symbol == 930)
+				symbol = getsym();
+
+            if ( symbol == 1710 )           // wend
+				goto LABEL_26;
+		}
+        return 0;
+d80 1
+a80 1
+LABEL_26:
+d83 1
+a83 1
+    if ( it->field_C != 2 )
+d85 1
+a85 1
+		loaderr(23, sym);                     // "wend without while"
+d88 3
+a90 3
+    v10 = (*a1)++;
+    v12 = PTARR(getptabp(v10));
+    v12->OpCode = 700;                         // 700 = "goto"  Branch always
+d92 3
+a94 3
+	v13 = it->PTno ? (PTAB *)&ptarr.TableAddr[8 * (it->PTno - 1)] : 0;
+	v14 = v13->Operand;
+    v12->Operand = v14;
+d96 2
+a97 2
+	v17 = *(short *)a1;
+    v13->Operand = v17;
+d99 3
+a101 2
+	v19 = v14 + 1;
+	while ( v19 <= v17 )
+d103 14
+a116 4
+		ptb2 = v19 ? (PTAB *)&ptarr.TableAddr[8 * (v19 - 1)] : 0;
+
+		v21 = ptb2->OpCode;
+        if ( v21 == 320 )				// 320 = continue
+d119 1
+a119 1
+				ptb2->Operand = v14;	// first instruction of the loop
+d121 1
+a121 1
+        else if ( v21 == 330 )			// 330 = end_loop
+d124 1
+a124 1
+				ptb2->Operand = v17;	// instruction after the loop
+d126 1
+@

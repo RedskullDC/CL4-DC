@@ -6,7 +6,7 @@
 #include "cl4.h"
 #include "lvarnames.h"	// for bit field values
 
-void DumpBlock(char* Buffer, int NumBytes);
+//void DumpBlock(char* Buffer, int NumBytes);
 
 // Copy data from *fld->FLDdata to WorkArea in preparation for writing to DBase.
 // Optionally: Only update the Key fields, and convert strings to uppercase

@@ -1,0 +1,1782 @@
+head	1.5;
+access;
+symbols;
+locks
+	leslie:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2020.01.29.13.18.34;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.07.27.00.41.46;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.05.16.23.40.25;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.10.26.00.09.47;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.13.23.58.12;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.5
+log
+@prior to X64
+@
+text
+@#ifndef DUMP_ROUTINES_C
+#define DUMP_ROUTINES_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+void putbuf(const void *ptr, size_t arg);
+void putcount(short a1);
+void putucount(unsigned short a1);
+void puttext(char *ptr, size_t len);
+void dumpoe(ONESC *ptr);
+void putdouble(double a1, short TDFtype);
+void putbits(short a1);
+void putfloat(float a1, short TDFtype);
+void putLong(int ptr);
+
+void putptabs(PTAB_ArrPtr *a1);
+void putrdtabs(RDTAB_ArrPtr *a1);
+void putxtabs(XTAB_ArrPtr *a1);
+void putenodes(ENTAB_ArrPtr *a1);
+void putrtabs(RTAB_ArrPtr *a1);
+void putprtabs(PRTAB_ArrPtr *a1);
+void putxftabs(XFTAB_ArrPtr *a1);
+void putsftabs(SFTAB_ArrPtr *a1);
+void putratabs(RATAB_ArrPtr *a1);
+void putkxtabs(KXTAB_ArrPtr *a1);
+void putftabs(FLDdesc *ptr, int Count);
+
+void puttable(int ptr);
+void putarrcount(short *ptr, short a2);
+void putarrtds(int *ptr, int a2);
+void putbtabs(short count);
+void dumpscr(SCR *ptr);
+void putbool(int ptr);
+
+void dumpscr(SCR *t24)
+{
+	while (t24)
+	{
+		if ( tpenc )
+		{
+			putcount(t24->PT_start);
+			putcount(t24->PT_end);
+			putcount(t24->NextSCR != 0);     // bool to indicate further T24's follow
+		}
+		else
+			putbuf(t24, sizeof(SCR));
+
+		t24 = t24->NextSCR;
+	}
+}
+
+void putbtabs(short count)
+{
+    BTAB *btb;
+	signed int i;
+	
+    putcount(count);
+    if ( tpenc )
+	{
+        btb = btab;
+        for ( i = 0; i < count; btb++ )
+		{
+            putbool(btb->BTFlags);				// never set in clcomp 
+            putcount(btb->EndLine);
+            putcount(btb->fmts);
+            putcount(btb->StartLine);
+            putcount(btb->TTno);
+            putcount(btb->Scrs);
+            putcount(btb->EXPR != 0);			// never set in clcomp
+            putcount(btb->On_delete != 0);
+            putcount(btb->On_exit != 0);
+            putcount(btb->On_excep != 0);
+            putcount(btb->On_entry != 0);
+            putbuf(btb->Maintain, 7u);
+            putbuf(btb->BlockName, 21u);
+			i++;
+		}
+    }
+    else
+    {
+        putbuf(btab, sizeof(BTAB) * count);			// 72
+		#ifdef DEBUG_DUMP
+		eprint("BTABS - [%d] StructSize = %d\n",count, sizeof(BTAB));
+		DumpBlock((char*)btab, sizeof(BTAB) * count, sizeof(BTAB));
+		#endif
+	}
+}
+
+void putarrtds(int *ptr, int a2)
+{
+     int *v2;
+	 int i;
+	 
+     if ( tpenc )
+     {
+          v2 = ptr;
+          for ( i = 0; i < a2; v2++ )
+          {
+               puttable(*v2);
+               i++;
+          }
+     }
+     else
+     {
+          putbuf(ptr, 4 * a2);
+     }
+}
+
+void putarrcount(short *ptr, short a2)
+{
+     short	*v2;
+	 int	i;
+	 
+     if ( tpenc )
+     {
+          v2 = ptr;
+          for ( i = 0; i < a2; v2++ )
+          {
+               putcount(*v2);
+               i++;
+          }
+     }
+     else
+     {
+          putbuf(ptr, 2 * a2);
+     }
+}
+
+void putkxtabs(KXTAB_ArrPtr *a1)
+{
+	KXTAB *kxtb;
+	int i;
+	int count;
+	
+	count = a1->NextElement;
+    putucount(count);
+    if ( tpenc )
+    {
+		kxtb = a1->TableAddr;
+        for ( i = 0; i < count; ++kxtb )
+        {
+			putbits(kxtb->KXFlags);
+            putucount(kxtb->WhereEXP);
+            putcount(kxtb->NumTTs);
+            putcount(kxtb->NumKeyFields);
+            putcount(kxtb->NumDataFields);
+            putcount(kxtb->KeySize);
+            putcount(kxtb->RecSize);
+            puttable(kxtb->TTno);
+            puttext(kxtb->TableName, 0);
+            ++i;
+        }
+	}
+    else
+    {
+		//putbuf(a1->TableAddr, count << 6); count * sizeof(KXTAB) == 64
+		putbuf(a1->TableAddr, count * sizeof(KXTAB)); //  == 64
+    }
+}
+void putrdtabs(RDTAB_ArrPtr *a1)
+{
+     RDTAB *rdtb; // esi@@2
+     int i; // edi@@2
+     int count; // [sp+8h] [bp-10h]@@1
+
+     count = a1->NextElement;
+     putucount(count);
+     if ( tpenc )
+     {
+          rdtb = a1->TableAddr;
+          for ( i = 0; i < count; rdtb++ )
+          {
+               putcount(rdtb->RDTFlags);
+               putucount(rdtb->ENTno);
+               puttable(rdtb->TTno);
+               putucount(rdtb->NextRD);
+               i++;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(RDTAB) * count);		// 12
+     }
+}
+void putprtabs(PRTAB_ArrPtr *a1)
+{
+	PRTAB	*prtb;
+	int	i;
+	int	count;
+
+	count = a1->NextElement;
+	putucount(count);
+	if ( tpenc )
+	{
+		prtb = a1->TableAddr;
+		for ( i = 0; i < count; ++prtb )
+		{
+			putucount(prtb->VAR_ENTno);
+			putucount(prtb->WIDTH_ENTno);
+			putucount(prtb->WIDTH_FLAGS);
+			putucount(prtb->ReservedFlags);
+			putucount(prtb->NextPR);
+			i++;
+		}
+	}
+	else
+	{
+		putbuf(a1->TableAddr, sizeof(PRTAB) * count);		// 10
+		#ifdef DEBUG_DUMP
+		eprint("PRTABS - [%d] StructSize = %d\n",count, sizeof(PRTAB));
+		DumpBlock((char*)a1->TableAddr, sizeof(PRTAB) * count, sizeof(PRTAB));
+		#endif
+	}
+}
+
+void putsftabs(SFTAB_ArrPtr *a1)
+{
+    SFTAB	*sftb;
+	int		j;
+	int		count;
+	
+    count = a1->NextElement;
+    putucount(count);
+    if ( tpenc )
+	{
+        sftb = a1->TableAddr;
+        for ( j = 0; j < count; sftb++ )
+		{
+            putbits(sftb->cmd_flags);
+            putucount(sftb->PRTno);
+            putucount(sftb->AliasEnt);
+            putucount(sftb->FileNameEnt);
+			j++;
+		}
+    }
+    else
+	{
+        putbuf(a1->TableAddr, sizeof(SFTAB) * count);			//  8
+		#ifdef DEBUG_DUMP
+		eprint("SFTABS - [%d] StructSize = %d\n",count, sizeof(SFTAB));
+		DumpBlock((char*)a1->TableAddr, sizeof(SFTAB) * count, sizeof(SFTAB));
+		#endif
+
+	}
+}
+
+// transfer table records : copy x from y
+void putxftabs(XFTAB_ArrPtr *a1)
+{
+	XFTAB *xftb;
+	int i;
+	int count;
+
+	count = a1->NextElement;
+	putucount(count);
+	if ( tpenc )
+	{
+		xftb = a1->TableAddr;
+		for ( i = 0; i < count; xftb++ )
+		{
+			puttable(xftb->TTno_to);
+			puttable(xftb->TTno_from);
+			i++;
+		}
+	}
+	else
+	{
+		putbuf(a1->TableAddr, sizeof(XFTAB) * count);		// 8
+		#ifdef DEBUG_DUMP
+		eprint("XFTABS - [%d] StructSize = %d\n",count, sizeof(XFTAB));
+		DumpBlock((char*)a1->TableAddr, sizeof(XFTAB) * count, sizeof(XFTAB));
+		#endif
+	}
+}
+
+// range records
+void putratabs(RATAB_ArrPtr *a1)
+{
+	RATAB *ratb;
+	int i;
+	int count;
+
+	count = a1->NextElement;
+	putucount(a1->NextElement);
+	if ( tpenc )
+	{
+		ratb = a1->TableAddr;
+		for ( i = 0; i < count; ratb++ )
+		{
+			putcount(ratb->RangeType);
+			putucount(ratb->RangeFrom);
+			putucount(ratb->RangeTo);
+			putucount(ratb->StringOffset);
+			i++;
+		}
+	}
+	else
+	{
+		putbuf(a1->TableAddr, sizeof(RATAB) * count);		// 12
+		#ifdef DEBUG_DUMP
+		eprint("RATABS - [%d] StructSize = %d\n",count, sizeof(RATAB));
+		DumpBlock((char*)a1->TableAddr, sizeof(RATAB) * count, sizeof(RATAB));
+		#endif
+	}
+}
+
+void putrtabs(RTAB_ArrPtr *a1)
+{
+	RTAB	*rt;
+	int	count;
+	int	i;
+
+	count = a1->NextElement;
+	putucount(a1->NextElement);
+	if ( tpenc )
+	{
+		rt = a1->TableAddr;
+		for ( i = 0; i < count; rt++ )
+		{
+			putbits(rt->LockType);
+			putbits(rt->OpType);
+			putucount(rt->WhereEXP);
+			puttable(rt->TTno);
+			putucount(rt->enleft);
+			putucount(rt->enright);
+			putucount(rt->NextRT);
+			i++;
+		}
+	}
+	else
+	{
+		putbuf(a1->TableAddr, sizeof(RTAB) * count);		// 20
+		#ifdef DEBUG_DUMP
+		eprint("RTABS  - [%d] StructSize = %d\n",count, sizeof(RTAB));
+		DumpBlock((char*)a1->TableAddr, sizeof(RTAB) * count, sizeof(RTAB));
+		#endif
+	}
+}
+
+void putxtabs(XTAB_ArrPtr *a1)
+{
+    int count;
+	XTAB *xt;
+	int i;
+	
+    count = a1->NextElement;
+    putucount(count);
+	xt = a1->TableAddr;
+    if ( tpenc )
+    {
+          for ( i = 0; i < count; xt++ )
+          {
+               putbits(xt->Flags);
+               putbits(xt->Attr);
+               putbits(xt->ScrAttrib);
+               putbits(xt->field_32);
+               putcount(xt->FLDnum);
+               putcount(xt->Width);
+               putcount(xt->width);
+               putcount(xt->PCol);
+               putcount(xt->PLine);
+               putcount(xt->ACol);
+               putcount(xt->ALine);
+               putcount(xt->C_X);
+               putcount(xt->C_Y);
+               putcount(xt->onesc != 0);        // bool
+               putucount(xt->RangeID);
+               putucount(xt->VarExpNo);
+               putucount(xt->widthEXP);
+               putucount(xt->PCol_exp);
+               putucount(xt->PLine_exp);
+               putucount(xt->ACol_exp);
+               putucount(xt->ALine_exp);
+               putucount(xt->Prompt_exp);
+               i++;
+          }
+    }
+    else
+    {
+		putbuf(xt, sizeof(XTAB) * count);		// 52
+		#ifdef DEBUG_DUMP
+		eprint("XTABS  - [%d] StructSize = %d\n",count, sizeof(XTAB));
+		DumpBlock((char*)xt, sizeof(XTAB) * count, sizeof(XTAB));
+		#endif
+    }
+}
+
+void putenodes(ENTAB_ArrPtr *a1)
+{
+	ENTAB	*entab;
+	int		count;
+	int		i;
+	
+	count = a1->NextElement;
+	putucount(count);
+	entab = a1->TableAddr;
+	if ( tpenc )
+	{
+		for ( i = 0; i < count; entab++ )
+		{
+			putucount(entab->entype);		
+			if (extendDC)						// break compatiblity with real ENC file here!!
+				putucount(entab->extOpCode);	// unused in real CL4 - used for extended opcodes in DC version
+			switch ( entab->entype )
+			{
+				case 1:
+				case 2:
+					putcount(entab->TTno);
+					putcount(entab->RecNo);
+					break;
+				case 4:
+					putfloat(*(float *)&entab->TTno, 0x104u);	// *real* clcomp doesn't create these
+					break;
+				case 8:
+					putLong(*(int *)&entab->TTno);
+					break;
+				case 16:
+					putbuf(&entab->TTno, 4u);
+					break;
+			}
+			putucount(entab->enleft);
+			putucount(entab->enright);
+			i++;
+		}
+	}
+	else
+	{
+		putbuf(entab, sizeof(ENTAB) * count);	// 12
+		#ifdef DEBUG_DUMP
+		eprint("ENTABS - [%d] StructSize = %d\n",count, sizeof(ENTAB));
+		DumpBlock((char*)entab, sizeof(ENTAB) * count, sizeof(ENTAB));		// 12
+		#endif
+
+	}
+}
+
+void putptabs(PTAB_ArrPtr *a1)
+{
+	PTAB	*ptb;
+	int		i;
+	int		count;
+	
+	count = a1->NextElement;
+	putucount(count);
+	ptb = a1->TableAddr;
+	if ( tpenc )
+	{
+		for ( i = 0; i < count; ptb++ )
+		{
+			putucount(ptb->SrcLineNo);
+			putcount(ptb->OpCode);
+			putucount(ptb->Operand);
+			putucount(ptb->TABno);
+			i++;
+		}
+	}
+	else
+	{
+		putbuf(ptb, sizeof(PTAB) * count);		// 8
+		#ifdef DEBUG_DUMP
+		eprint("PTABS  - [%d] StructSize = %d\n",count, sizeof(PTAB));
+		DumpBlock((char*)ptb, sizeof(PTAB) * count, sizeof(PTAB));
+		#endif
+	}
+}
+
+void putftabs(FLDdesc *fld, int count)
+{
+    int i;
+	
+    if ( tpenc )
+	{
+        for ( i = 0; i < count; fld++ )
+		{
+            putbits(fld->TDFtype);
+            putbits(fld->FLDstat);
+            putcount(fld->FLDelemID);
+            putcount(fld->FLDlen);
+            putcount(fld->FLDtype);
+            putcount(fld->field_15);		// not currently used by anything....
+			i++;
+		}
+    }
+    else
+    {
+		putbuf(fld, sizeof(FLDdesc) * count);				// 24
+		#ifdef DEBUG_DUMP
+		eprint("Fields - [%d] StructSize = %d\n",count, sizeof(FLDdesc));
+		DumpBlock((char*)fld, sizeof(FLDdesc) * count, sizeof(FLDdesc));		// 24
+		#endif
+	}
+}
+
+void dumpoe(ONESC *esc)
+{
+	while (esc)
+	{
+		if ( tpenc )
+		{
+			putcount(esc->OESCFlags);
+			putcount(esc->BlockNo);
+			putcount(esc->KeyNumber);
+			putcount(esc->NextESC != 0);   // bool to indicate more OnEsc's follow
+		}
+		else
+			putbuf(esc, sizeof(ONESC));		// 16
+
+		esc = esc->NextESC;
+	}
+}
+
+// =============================================================
+// Low level put routines follow
+
+void putbuf(const void *ptr, size_t len)
+{
+     size_t actual;
+	 
+     *__errno_location() = 0;
+     actual = fwrite(ptr, 1u, len, dp);
+     if ( actual != len )
+     {
+          syserror("dumpenc: fwrite tried %u, did %u", len, actual);
+          mexit(1);
+     }
+}
+
+void putbool(int ptr)	// only called from putbtabs(). Expects 4 byte value, *NOT* a 1 byte boolean!!
+{
+	if ( tpenc )
+		xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);	// allow signed value
+	putbuf(&ptr, 4u);
+}
+
+void puttable(int ptr)
+{
+     if ( tpenc )
+          xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);		// allowed signed value
+
+	 putbuf(&ptr, 4u);
+}
+
+void putdouble(double ptr, short TDFtype)
+{
+	if ( tpenc )
+		xtodom((char *)&ptr, 8u, TDFtype, (char *)&ptr);
+	putbuf(&ptr, 8u);
+}
+
+void putbits(short ptr)
+{
+    if ( tpenc )
+		xtodom((char *)&ptr, 2u, 0x40u, (char *)&ptr);		// unsigned allowed
+	putbuf(&ptr, 2u);
+}
+
+void putLong(int ptr)
+{
+	if ( tpenc )
+		xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);	// signed value
+	putbuf(&ptr, 4u);
+}
+
+void putfloat(float Src, short TDFtype)
+{
+	int ptr;
+	if ( tpenc )
+		xtodom((char *)&ptr, 4u, TDFtype, (char *)&Src);
+	putbuf(&ptr, 4u);									// float stored in 4 bytes
+}
+
+void puttext(char *ptr, size_t len)
+{
+	if ( !len )						// If no len specified, calc the zero-terminated length
+	{
+		len = strlen(ptr) + 1;
+		putcount(len);				// put two bytes of length
+	}
+	putbuf(ptr, len);
+}
+
+void putcount(short ptr)
+{
+	if ( tpenc )
+		xtodom((char *)&ptr, 2u, 0x44u, (char *)&ptr);
+	putbuf(&ptr, 2u);
+}
+
+void putucount(unsigned short ptr)
+{
+	if ( tpenc )
+		xtodom((char *)&ptr, 2u, 0x40u, (char *)&ptr);
+	putbuf(&ptr, 2u);
+}
+
+
+#endif
+@
+
+
+1.4
+log
+@tidyup
+@
+text
+@d12 1
+a12 1
+void puttext(char *ptr, size_t arg);
+d14 1
+a14 1
+void putdouble(double a1, short a2);
+d16 1
+a16 1
+void putfloat(float a1, short a2);
+d34 1
+a34 1
+void putbtabs(short NumBTABs);
+a37 14
+
+
+void putbuf(const void *ptr, size_t len)
+{
+     size_t actual;
+	 
+     *__errno_location() = 0;
+     actual = fwrite(ptr, 1u, len, dp);
+     if ( actual != len )
+     {
+          syserror("dumpenc: fwrite tried %u, did %u", len, actual);
+          mexit(1);
+     }
+}
+d55 1
+a55 9
+void putbool(int ptr)	// only called from putbtabs(). Expects 4 byte value, *NOT* a 1 byte boolean!!
+{
+
+	if ( tpenc )
+		xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);
+	putbuf(&ptr, 4u);
+}
+
+void putbtabs(short NumBTABs)
+d60 1
+a60 1
+    putcount(NumBTABs);
+d64 1
+a64 1
+        for ( i = 0; i < NumBTABs; btb++ )
+d84 1
+a84 1
+        putbuf(btab, sizeof(BTAB) * NumBTABs);			// 72
+d86 2
+a87 1
+		DumpBlock((char*)btab, sizeof(BTAB) * NumBTABs);
+d100 1
+a100 1
+          for ( i = 0; i < a2; ++v2 )
+d103 1
+a103 1
+               ++i;
+d190 27
+a216 26
+     PRTAB	*prtb;
+	 int	i;
+	 int	count;
+	 
+     count = a1->NextElement;
+     putucount(count);
+     if ( tpenc )
+     {
+          prtb = a1->TableAddr;
+          for ( i = 0; i < count; ++prtb )
+          {
+               putucount(prtb->VAR_ENTno);
+               putucount(prtb->WIDTH_ENTno);
+               putucount(prtb->WIDTH_FLAGS);
+               putucount(prtb->ReservedFlags);
+               putucount(prtb->NextPR);
+               ++i;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(PRTAB) * count);		// 10
+		  #ifdef DEBUG_DUMP
+  		  DumpBlock(a1->TableAddr, sizeof(PRTAB) * count);
+		  #endif
+     }
+d218 1
+d221 3
+a223 3
+    SFTAB *sftb;
+	int count;
+	int NumSFT;
+d225 2
+a226 2
+    NumSFT = a1->NextElement;
+    putucount(NumSFT);
+d230 1
+a230 1
+        for ( count = 0; count < NumSFT; sftb++ )
+d236 1
+a236 1
+			count++;
+d241 1
+a241 1
+        putbuf(a1->TableAddr, sizeof(SFTAB) * NumSFT);			//  8
+d243 2
+a244 1
+  		DumpBlock(a1->TableAddr, sizeof(SFTAB) * NumSFT);
+d246 1
+a249 8
+void puttable(int ptr)
+{
+     if ( tpenc )
+          xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);
+
+	 putbuf(&ptr, 4u);
+}
+
+d253 24
+a276 23
+     XFTAB *xftb;
+	 int i;
+	 int count;
+	 
+     count = a1->NextElement;
+     putucount(count);
+     if ( tpenc )
+     {
+          xftb = a1->TableAddr;
+          for ( i = 0; i < count; ++xftb )
+          {
+               puttable(xftb->TTno_to);
+               puttable(xftb->TTno_from);
+               ++i;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(XFTAB) * count);		// 8
+  		  #ifdef DEBUG_DUMP
+   		  DumpBlock(a1->TableAddr, sizeof(XFTAB) * count);
+		  #endif
+     }
+d282 26
+a307 25
+     RATAB *ratb;
+	 int i;
+	 int count;
+	 
+     count = a1->NextElement;
+     putucount(a1->NextElement);
+     if ( tpenc )
+     {
+          ratb = a1->TableAddr;
+          for ( i = 0; i < count; ratb++ )
+          {
+               putcount(ratb->RangeType);
+               putucount(ratb->RangeFrom);
+               putucount(ratb->RangeTo);
+               putucount(ratb->StringOffset);
+               i++;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(RATAB) * count);		// 12
+ 		  #ifdef DEBUG_DUMP
+   		  DumpBlock(a1->TableAddr, sizeof(RATAB) * count);
+		  #endif
+     }
+d312 3
+a314 3
+     int count; // edi@@1
+     RTAB *rt; // esi@@2
+     int i; // [sp+8h] [bp-10h]@@2
+d316 25
+a340 24
+     count = a1->NextElement;
+     putucount(a1->NextElement);
+     if ( tpenc )
+     {
+          rt = a1->TableAddr;
+          for ( i = 0; i < count; ++rt )
+          {
+               putbits(rt->LockType);
+               putbits(rt->OpType);
+               putucount(rt->WhereEXP);
+               puttable(rt->TTno);
+               putucount(rt->field_C);
+               putucount(rt->field_E);
+               putucount(rt->NextRT);
+               ++i;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(RTAB) * count);		// 20
+  		  #ifdef DEBUG_DUMP
+		  DumpBlock(a1->TableAddr, sizeof(RTAB) * count);
+		  #endif
+     }
+d354 1
+a354 1
+          for ( i = 0; i < count; ++xt )
+d378 1
+a378 1
+               ++i;
+d385 2
+a386 1
+		DumpBlock(xt, sizeof(XTAB) * count);
+a390 21
+void putLong(int ptr)
+{
+
+	if ( tpenc )
+		xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);
+	
+	putbuf(&ptr, 4u);
+}
+
+void putfloat(float a1, short a2)
+{
+	int ptr;
+	float Src;
+	
+	Src = a1;
+	if ( tpenc )
+		xtodom((char *)&ptr, 4u, a2, (char *)&Src);
+
+	putbuf(&ptr, 4u);				// float stored in 4 bytes
+}
+
+d432 5
+d464 2
+a465 1
+		DumpBlock(ptb, sizeof(PTAB) * count);
+d470 1
+a470 22
+void putdouble(double a1, short a2)
+{
+	double ptr;
+	
+	ptr = a1;
+	if ( tpenc )
+		xtodom((char *)&ptr, 8u, a2, (char *)&ptr);
+	putbuf(&ptr, 8u);
+}
+
+void putbits(short a1)
+{
+    short ptr; // [sp+12h] [bp-6h]@@1
+
+	ptr = a1;
+    if ( tpenc )
+		xtodom((char *)&ptr, 2u, 0x40u, (char *)&ptr);
+	
+	putbuf(&ptr, 2u);
+}
+
+void putftabs(FLDdesc *fld, int Count)
+d476 1
+a476 1
+        for ( i = 0; i < Count; fld++ )
+d489 1
+a489 1
+		putbuf(fld, sizeof(FLDdesc) * Count);				// 24
+d491 2
+a492 1
+		DumpBlock((char*)fld, sizeof(FLDdesc) * Count);		// 24
+d499 18
+a516 1
+     ONESC *onesc; // esi@@1
+d518 7
+a524 1
+     for ( onesc = esc; onesc; onesc = onesc->NextESC )
+d526 2
+a527 11
+          if ( tpenc )
+          {
+               putcount(onesc->OESCFlags);
+               putcount(onesc->BlockNo);
+               putcount(onesc->KeyNumber);
+               putcount(onesc->NextESC != 0);   // bool to indicate more OnEsc's follow
+          }
+          else
+          {
+               putbuf(onesc, sizeof(ONESC));		// 16
+          }
+d531 16
+a546 1
+void puttext(char *ptr, size_t size)
+d548 4
+a551 3
+	char	*v3;
+	short	v4;
+	char	v5;
+d553 25
+a577 1
+	if ( !size )						// If no size specified, calc the zero-terminated length
+d579 2
+a580 16
+		/*
+		v3 = ptr;
+		v4 = -1;
+		do
+		{
+		   if ( !v4 )				// unreachable, v4 starts at -1
+				break;
+		   v5 = *v3++ == 0;
+		   --v4;
+		}
+		while ( !v5 );
+		size = ~v4;
+		putcount(size);				// put two bytes of length
+		*/
+		size = strlen(ptr) + 1;
+		putcount(size);
+d582 1
+a582 1
+	putbuf(ptr, size);
+d585 1
+a585 1
+void putcount(short a1)
+a586 3
+	short ptr;
+	
+	ptr = a1;
+a588 1
+
+d592 1
+a592 1
+void putucount(unsigned short a1)
+a593 3
+	unsigned short ptr; // [sp+12h] [bp-6h]@@1
+
+	ptr = a1;
+a595 1
+
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d35 2
+a36 2
+void dumpscr(TYPE24 *ptr);
+void putbool(bool ptr);
+d40 1
+a40 1
+void putbuf(const void *ptr, size_t arg)
+d42 2
+a43 2
+     size_t v2; // eax@@1
+
+d45 2
+a46 3
+     v2 = fwrite(ptr, 1u, arg, dp);
+//printf("putbuf arg = %d, v2 = %d [x%04X]\n",arg,v2,v2);
+     if ( v2 != arg )
+d48 1
+a48 1
+          syserror("dumpenc: fwrite tried %u, did %u", arg, v2);
+d52 1
+a52 1
+void dumpscr(TYPE24 *ptr)
+d54 10
+a63 1
+     TYPE24 *t24;
+d65 2
+a66 13
+     for ( t24 = ptr; t24; t24 = t24->NextT24 )
+     {
+          if ( tpenc )
+          {
+               putcount(t24->PT_start);
+               putcount(t24->PT_end);
+               putcount(t24->NextT24 != 0);     // bool to indicate further T24's follow
+          }
+          else
+          {
+               putbuf(t24, sizeof(TYPE24));
+          }
+     }
+d69 1
+a69 1
+void putbool(bool ptr)
+d71 4
+a74 3
+     if ( tpenc )
+          xtodom((char *)&ptr, 4u, 0x44u, (char *)&ptr);
+     putbuf(&ptr, 4u);
+d79 3
+a81 3
+    BTAB *btb; // esi@@2
+    signed int i; // [sp+8h] [bp-10h]@@2
+
+d88 1
+a88 1
+            putbool(btb->BTFlags);
+d115 3
+a117 3
+     int *v2; // esi@@2
+     int i; // edi@@2
+
+d132 1
+d135 3
+a137 3
+     short *v2; // esi@@2
+     signed int i; // edi@@2
+
+d141 1
+a141 1
+          for ( i = 0; i < a2; ++v2 )
+d144 1
+a144 1
+               ++i;
+d155 4
+a158 4
+	KXTAB *kxtb; // esi@@2
+	int i; // edi@@2
+	int count; // [sp+8h] [bp-10h]@@1
+
+d211 4
+a214 4
+     PRTAB *prtb; // esi@@2
+     int i; // edi@@2
+     int count; // [sp+8h] [bp-10h]@@1
+
+d275 1
+d278 4
+a281 4
+     XFTAB *xftb; // esi@@2
+     int i; // edi@@2
+     int count; // [sp+8h] [bp-10h]@@1
+
+d302 2
+d306 4
+a309 4
+     RATAB *ratb; // esi@@2
+     int i; // edi@@2
+     int count; // [sp+8h] [bp-10h]@@1
+
+d315 1
+a315 1
+          for ( i = 0; i < count; ++ratb )
+d321 1
+a321 1
+               ++i;
+d367 4
+a370 4
+    int count; // edi@@1
+    XTAB *xt; // esi@@2
+    int i; // [sp+8h] [bp-10h]@@2
+
+d372 1
+a372 1
+    putucount(a1->NextElement);
+d423 3
+a425 3
+	int ptr; // [sp+18h] [bp-10h]@@5
+	float Src; // [sp+1Ch] [bp-Ch]@@1
+
+d430 1
+a430 1
+	putbuf(&ptr, 4u);		// This doesn't look right ************* 
+d435 4
+a438 4
+	int count; // edi@@1
+	ENTAB *entab; // esi@@2
+	int i; // [sp+18h] [bp-10h]@@2
+
+d446 3
+a448 1
+			putucount(entab->entype);		// not compatible with extended OpCodes field!!
+d457 1
+a457 1
+					putfloat(*(float *)&entab->TTno, 0x104u);
+d479 4
+a482 4
+	PTAB *ptb; // esi@@2
+	int i; // edi@@2
+	int count; // [sp+8h] [bp-10h]@@1
+
+d508 2
+a509 2
+	double ptr; // [sp+18h] [bp-10h]@@1
+
+d552 2
+a553 1
+void dumpoe(ONESC *ptr)
+d557 1
+a557 1
+     for ( onesc = ptr; onesc; onesc = onesc->NextESC )
+d572 2
+a573 1
+void puttext(char *ptr, size_t arg)
+d575 24
+a598 22
+     size_t v2; // esi@@1
+     char *v3; // edi@@2
+     short v4; // ecx@@2
+     char v5; // zf@@4
+
+     v2 = arg;
+     if ( !arg )                 // If no size specified, calc the zero-terminated length
+     {
+          v3 = ptr;
+          v4 = -1;
+          do
+          {
+               if ( !v4 )
+                    break;
+               v5 = *v3++ == 0;
+               --v4;
+          }
+          while ( !v5 );
+          v2 = ~v4;
+          putcount(~v4);                 // put two bytes of length
+     }
+     putbuf(ptr, v2);
+d603 2
+a604 2
+	short ptr; // [sp+12h] [bp-6h]@@1
+
+d608 1
+a608 1
+	
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d90 1
+a90 1
+            putbool(btb->field_0);
+d96 1
+a96 1
+            putcount(btb->field_10 != 0);
+d102 1
+a102 1
+            putbuf(btb->BlockName, 0x15u);
+d158 1
+a158 1
+	int v3; // [sp+8h] [bp-10h]@@1
+d160 2
+a161 2
+	v3 = a1->NextElement;
+    putucount(v3);
+d165 1
+a165 1
+        for ( i = 0; i < v3; ++kxtb )
+d167 1
+a167 1
+			putbits(kxtb->field_0);
+d181 2
+a182 2
+		//putbuf(a1->TableAddr, v3 << 6); v3 * sizeof(KXTAB) == 64
+		putbuf(a1->TableAddr, v3 * sizeof(KXTAB)); //  == 64
+d189 1
+a189 1
+     int v3; // [sp+8h] [bp-10h]@@1
+d191 2
+a192 2
+     v3 = a1->NextElement;
+     putucount(v3);
+d196 1
+a196 1
+          for ( i = 0; i < v3; rdtb++ )
+d198 2
+a199 2
+               putcount(rdtb->field_0);
+               putucount(rdtb->field_2);
+d207 1
+a207 1
+          putbuf(a1->TableAddr, sizeof(RDTAB) * v3);		// 12
+d214 1
+a214 1
+     int v3; // [sp+8h] [bp-10h]@@1
+d216 2
+a217 2
+     v3 = a1->NextElement;
+     putucount(v3);
+d221 1
+a221 1
+          for ( i = 0; i < v3; ++prtb )
+d233 1
+a233 1
+          putbuf(a1->TableAddr, sizeof(PRTAB) * v3);		// 10
+d235 1
+a235 1
+  		  DumpBlock(a1->TableAddr, sizeof(PRTAB) * v3);
+d280 1
+a280 1
+     int v3; // [sp+8h] [bp-10h]@@1
+d282 2
+a283 2
+     v3 = a1->NextElement;
+     putucount(v3);
+d287 1
+a287 1
+          for ( i = 0; i < v3; ++xftb )
+d296 1
+a296 1
+          putbuf(a1->TableAddr, sizeof(XFTAB) * v3);		// 8
+d298 1
+a298 1
+   		  DumpBlock(a1->TableAddr, sizeof(XFTAB) * v3);
+d306 1
+a306 1
+     int v3; // [sp+8h] [bp-10h]@@1
+d308 1
+a308 1
+     v3 = a1->NextElement;
+d313 1
+a313 1
+          for ( i = 0; i < v3; ++ratb )
+d324 1
+a324 1
+          putbuf(a1->TableAddr, sizeof(RATAB) * v3);		// 12
+d326 1
+a326 1
+   		  DumpBlock(a1->TableAddr, sizeof(RATAB) * v3);
+d333 1
+a333 1
+     int rtb; // edi@@1
+d337 1
+a337 1
+     rtb = a1->NextElement;
+d342 1
+a342 1
+          for ( i = 0; i < rtb; ++rt )
+d356 1
+a356 1
+          putbuf(a1->TableAddr, sizeof(RTAB) * rtb);		// 20
+d358 1
+a358 1
+		  DumpBlock(a1->TableAddr, sizeof(RTAB) * rtb);
+d365 10
+a374 10
+     int xtb; // edi@@1
+     XTAB *xt; // esi@@2
+     int i; // [sp+8h] [bp-10h]@@2
+
+     xtb = a1->NextElement;
+     putucount(a1->NextElement);
+     if ( tpenc )
+     {
+          xt = a1->TableAddr;
+          for ( i = 0; i < xtb; ++xt )
+d400 8
+a407 8
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(XTAB) * xtb);		// 52
+  		  #ifdef DEBUG_DUMP
+   		  DumpBlock(a1->TableAddr, sizeof(XTAB) * xtb);
+		  #endif
+     }
+d433 38
+a470 41
+     int v1; // edi@@1
+     ENTAB *entab; // esi@@2
+     int i; // [sp+18h] [bp-10h]@@2
+
+     v1 = a1->NextElement;
+     putucount(a1->NextElement);
+     if ( tpenc )
+     {
+          entab = a1->TableAddr;
+          for ( i = 0; i < v1; entab++ )
+          {
+               putucount(entab->entype);
+               if ( entab->entype != 1 && entab->entype != 2 )
+               {
+                    switch ( entab->entype )
+                    {
+                         case 4:
+                              putfloat(*(float *)&entab->TTno, 0x104u);
+                              break;
+                         case 8:
+                              putLong(*(int *)&entab->TTno);
+                              break;
+                         case 16:
+                              putbuf(&entab->TTno, 4u);
+                              break;
+                    }
+               }
+               else
+               {
+                    putcount(entab->TTno);
+                    putcount(entab->RecNo);
+               }
+               putucount(entab->Dest);
+               putucount(entab->Src);
+               i++;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(ENTAB) * v1);	// 12
+     }
+d475 3
+a477 3
+     PTAB *ptb; // esi@@2
+     int i; // edi@@2
+     int v3; // [sp+8h] [bp-10h]@@1
+d479 21
+a499 22
+     v3 = a1->NextElement;
+     putucount(v3);
+     if ( tpenc )
+     {
+          ptb = a1->TableAddr;
+          for ( i = 0; i < v3; ptb++ )
+          {
+               putucount(ptb->SrcLineNo);
+               putcount(ptb->OpCode);
+               putucount(ptb->Operand);
+               putucount(ptb->TABno);
+               i++;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, sizeof(PTAB) * v3);		// 8
+  		  #ifdef DEBUG_DUMP
+  		  DumpBlock(a1->TableAddr, sizeof(PTAB) * v3);
+		  #endif
+
+     }
+d556 1
+a556 1
+               putcount(onesc->field_0);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d16 1
+a16 1
+void putfloat(double a1, short a2);
+d55 1
+a55 1
+     TYPE24 *t24; // esi@@1
+d67 1
+a67 1
+               putbuf(t24, 8u);
+a73 2
+     short v1; // ax@@3
+
+d75 1
+a75 7
+     {
+          if ( tpenc )
+               v1 = 0x44u;
+          else
+               v1 = 0;
+          xtodom((char *)&ptr, 4u, v1, (char *)&ptr);
+     }
+d88 1
+a88 1
+        for ( i = 0; i < NumBTABs; ++btb )
+d103 1
+a103 1
+			++i;
+d108 1
+a108 1
+        putbuf(btab, 72 * NumBTABs);
+d110 1
+a110 1
+		DumpBlock((char*)btab, 72 * NumBTABs);
+d156 3
+a158 3
+     KXTAB *v1; // esi@@2
+     int i; // edi@@2
+     int v3; // [sp+8h] [bp-10h]@@1
+d160 24
+a183 23
+     v3 = a1->NextElement;
+     putucount(a1->NextElement);
+     if ( tpenc )
+     {
+          v1 = a1->TableAddr;
+          for ( i = 0; i < v3; ++v1 )
+          {
+               putbits(v1->field_0);
+               putucount(v1->WhereEXP);
+               putcount(v1->NumTTs);
+               putcount(v1->NumKeyFields);
+               putcount(v1->NumDataFields);
+               putcount(v1->KeySize);
+               putcount(v1->RecSize);
+               puttable(v1->TTno);
+               puttext(v1->TableName, 0);
+               ++i;
+          }
+     }
+     else
+     {
+          putbuf(a1->TableAddr, v3 << 6);
+     }
+d187 1
+a187 1
+     RDTAB *v1; // esi@@2
+d192 1
+a192 1
+     putucount(a1->NextElement);
+d195 2
+a196 2
+          v1 = a1->TableAddr;
+          for ( i = 0; i < v3; ++v1 )
+d198 5
+a202 5
+               putcount(v1->field_0);
+               putucount(v1->field_2);
+               puttable(v1->TTno);
+               putucount(v1->NextRD);
+               ++i;
+d207 1
+a207 1
+          putbuf(a1->TableAddr, 12 * v3);
+d212 1
+a212 1
+     PRTAB *v1; // esi@@2
+d217 1
+a217 1
+     putucount(a1->NextElement);
+d220 2
+a221 2
+          v1 = a1->TableAddr;
+          for ( i = 0; i < v3; ++v1 )
+d223 5
+a227 5
+               putucount(v1->VAR_ENTno);
+               putucount(v1->WIDTH_ENTno);
+               putucount(v1->WIDTH_FLAGS);
+               putucount(v1->ReservedFlags);
+               putucount(v1->NextPR);
+d233 1
+a233 1
+          putbuf(a1->TableAddr, 10 * v3);
+d235 1
+a235 1
+  		  DumpBlock(a1->TableAddr, 10 * v3);
+d241 6
+a246 6
+    SFTAB *v1; // esi@@2
+    int i; // edi@@2
+    int v3; // [sp+8h] [bp-10h]@@1
+
+    v3 = a1->NextElement;
+    putucount(a1->NextElement);
+d249 2
+a250 2
+        v1 = a1->TableAddr;
+        for ( i = 0; i < v3; ++v1 )
+d252 5
+a256 5
+            putbits(v1->field_0);
+            putucount(v1->field_2);
+            putucount(v1->field_4);
+            putucount(v1->field_6);
+			++i;
+d261 1
+a261 1
+        putbuf(a1->TableAddr, 8 * v3);
+d263 1
+a263 1
+  		DumpBlock(a1->TableAddr, 8 * v3);
+d270 2
+a271 1
+     short v1; // ax@@3
+d273 1
+a273 9
+     if ( tpenc )
+     {
+          if ( tpenc )
+               v1 = 68;
+          else
+               v1 = 0;
+          xtodom((char *)&ptr, 4u, v1, (char *)&ptr);
+     }
+     putbuf(&ptr, 4u);
+d278 1
+a278 1
+     XFTAB *v1; // esi@@2
+d283 1
+a283 1
+     putucount(a1->NextElement);
+d286 2
+a287 2
+          v1 = a1->TableAddr;
+          for ( i = 0; i < v3; ++v1 )
+d289 2
+a290 2
+               puttable(v1->TTno_to);
+               puttable(v1->TTno_from);
+d296 1
+a296 1
+          putbuf(a1->TableAddr, 8 * v3);
+d298 1
+a298 1
+   		  DumpBlock(a1->TableAddr, 8 * v3);
+d304 1
+a304 1
+     RATAB *v1; // esi@@2
+d312 2
+a313 2
+          v1 = a1->TableAddr;
+          for ( i = 0; i < v3; ++v1 )
+d315 4
+a318 4
+               putcount(v1->RangeType);
+               putucount(v1->RangeFrom);
+               putucount(v1->RangeTo);
+               putucount(v1->StringOffset);
+d324 1
+a324 1
+          putbuf(a1->TableAddr, 12 * v3);
+d326 1
+a326 1
+   		  DumpBlock(a1->TableAddr, 12 * v3);
+d333 1
+a333 1
+     int v1; // edi@@1
+d337 1
+a337 1
+     v1 = a1->NextElement;
+d342 1
+a342 1
+          for ( i = 0; i < v1; ++rt )
+d344 2
+a345 2
+               putbits(rt->field_0);
+               putbits(rt->field_2);
+d356 1
+a356 1
+          putbuf(a1->TableAddr, 20 * v1);
+d358 1
+a358 1
+		  DumpBlock(a1->TableAddr, 20 * v1);
+d365 1
+a365 1
+     int v1; // edi@@1
+d369 1
+a369 1
+     v1 = a1->NextElement;
+d374 1
+a374 1
+          for ( i = 0; i < v1; ++xt )
+d403 1
+a403 1
+          putbuf(a1->TableAddr, 52 * v1);
+d405 1
+a405 1
+   		  DumpBlock(a1->TableAddr, 52 * v1);
+a411 1
+     short v1; // ax@@3
+d413 4
+a416 9
+     if ( tpenc )
+     {
+          if ( tpenc )
+               v1 = 0x44u;
+          else
+               v1 = 0;
+          xtodom((char *)&ptr, 4u, v1, (char *)&ptr);
+     }
+     putbuf(&ptr, 4u);
+d419 1
+a419 1
+void putfloat(double a1, short a2)
+d421 6
+a426 3
+     short v2; // ax@@3
+     int ptr; // [sp+18h] [bp-10h]@@5
+     float Src; // [sp+1Ch] [bp-Ch]@@1
+d428 1
+a428 10
+     Src = a1;
+     if ( tpenc )
+     {
+          if ( tpenc )
+               v2 = a2;
+          else
+               v2 = 0;
+          xtodom((char *)&ptr, 4u, v2, (char *)&Src);
+     }
+     putbuf(&ptr, 4u);		// This doesn't look right ************* 
+d442 1
+a442 1
+          for ( i = 0; i < v1; ++entab )
+d450 1
+a450 1
+                              putfloat(*(float *)&entab->TTno, 260);
+d455 1
+a455 1
+                         case 0x10:
+d467 1
+a467 1
+               ++i;
+d472 1
+a472 1
+          putbuf(a1->TableAddr, 12 * v1);
+d478 1
+a478 1
+     PTAB *v1; // esi@@2
+d483 1
+a483 1
+     putucount(a1->NextElement);
+d486 2
+a487 2
+          v1 = a1->TableAddr;
+          for ( i = 0; i < v3; ++v1 )
+d489 5
+a493 5
+               putucount(v1->SrcLineNo);
+               putcount(v1->OpCode);
+               putucount(v1->Operand);
+               putucount(v1->TABno);
+               ++i;
+d498 1
+a498 1
+          putbuf(a1->TableAddr, 8 * v3);
+d500 1
+a500 1
+  		  DumpBlock(a1->TableAddr, 8 * v3);
+d508 1
+a508 2
+     short v2; // ax@@3
+     double ptr; // [sp+18h] [bp-10h]@@1
+d510 4
+a513 10
+     ptr = a1;
+     if ( tpenc )
+     {
+          if ( tpenc )
+               v2 = a2;
+          else
+               v2 = 0;
+          xtodom((char *)&ptr, 8u, v2, (char *)&ptr);
+     }
+     putbuf(&ptr, 8u);
+d518 1
+a518 2
+     short v1; // ax@@3
+     short ptr; // [sp+12h] [bp-6h]@@1
+d520 5
+a524 10
+     ptr = a1;
+     if ( tpenc )
+     {
+          if ( tpenc )
+               v1 = 0x40u;
+          else
+               v1 = 0;
+          xtodom((char *)&ptr, 2u, v1, (char *)&ptr);
+     }
+     putbuf(&ptr, 2u);
+d526 2
+a527 1
+void putftabs(FLDdesc *ptr, int Count)
+d529 2
+a530 3
+    FLDdesc *v2; // esi@@2
+    int i; // edi@@2
+
+d533 1
+a533 2
+        v2 = ptr;
+        for ( i = 0; i < Count; ++v2 )
+d535 7
+a541 7
+            putbits(v2->TDFtype);
+            putbits(v2->FLDstat);
+            putcount(v2->FLDelemID);
+            putcount(v2->FLDlen);
+            putcount(v2->FLDtype);
+            putcount(v2->field_15);
+			++i;
+d546 1
+a546 1
+		putbuf(ptr, 24 * Count);
+d548 1
+a548 1
+		DumpBlock((char*)ptr, 24 * Count);
+d567 1
+a567 1
+               putbuf(onesc, 0x10u);
+d599 1
+a599 2
+     short VarType; // ax@@3
+     short ptr; // [sp+12h] [bp-6h]@@1
+d601 5
+a605 10
+     ptr = a1;
+     if ( tpenc )
+     {
+          if ( tpenc )
+               VarType = 0x44u;
+          else
+               VarType = 0;
+          xtodom((char *)&ptr, 2u, VarType, (char *)&ptr);
+     }
+     putbuf(&ptr, 2u);
+d610 1
+a610 2
+     short v1; // ax@@3
+     unsigned short ptr; // [sp+12h] [bp-6h]@@1
+d612 5
+a616 10
+     ptr = a1;
+     if ( tpenc )
+     {
+          if ( tpenc )
+               v1 = 0x40u;
+          else
+               v1 = 0;
+          xtodom((char *)&ptr, 2u, v1, (char *)&ptr);
+     }
+     putbuf(&ptr, 2u);
+@

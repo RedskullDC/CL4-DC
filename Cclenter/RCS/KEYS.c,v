@@ -1,0 +1,927 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2014.09.05.11.15.26;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.29.02.31.46;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@starting work on KEY_Elist stuff. process() etc.
+@
+text
+@#ifndef KEYS_C
+#define KEYS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+KEYTAB KeyTable[] = {
+"NextWord", 0x0802,
+"Undo", 0x0801,
+"Toggle", 0x0800,
+"Find", 0x07FF,
+"Exit", 0x07FE,
+"EraseEOL", 0x07FD,
+"InvertCase", 0x07FC,
+"PrevWord", 0x07FB,
+"Abort", 0x07FA,
+"Help", 0x07F8,
+"Print", 0x07F9,
+"Insert", 0x07D2,
+"Delete", 0x07D1,
+"Home", 0x07D9,
+"End", 0x07D3,
+"PageDown", 0x07D5,
+"PageUp", 0x07DB,
+"CursorUp", 0x07DA,
+"CursorDown", 0x07D4,
+"CursorLeft", 0x07D6,
+"CursorRight", 0x07D8,
+"Key5", 0x07D7,
+"Interrupt", 0x07E5,
+"Bell", 0x07E6,
+"BackSpace", 0x07E7,
+"Tab", 0x07E8,
+"LineFeed", 0x07E9,
+"FormFeed", 0x07EA,
+"Enter", 0x07EB,
+"Escape", 0x07EC,
+"Refresh", 0x00AF1,
+"Fk1", 0x0835,
+"Fk2", 0x0836,
+"Fk3", 0x0837,
+"Fk4", 0x0838,
+"Fk5", 0x0839,
+"Fk6", 0x083A,
+"Fk7", 0x083B,
+"Fk8", 0x083C,
+"Fk9", 0x083D,
+"Fk10", 0x083E,
+"Fk11", 0x083F,
+"Fk12", 0x0840,
+"S_Fk1", 0x0899,
+"S_Fk1", 0x0899,
+"S_Fk2", 0x089A,
+"S_Fk3", 0x089B,
+"S_Fk4", 0x089C,
+"S_Fk5", 0x089D,
+"S_Fk6", 0x089E,
+"S_Fk7", 0x089F,
+"S_Fk8", 0x08A0,
+"S_Fk9", 0x08A1,
+"S_Fk10", 0x08A2,
+"S_Fk11", 0x08A3,
+"S_Fk12", 0x08A4,
+"C_Fk1", 0x08FD,
+"C_Fk2", 0x08FE,
+"C_Fk3", 0x08FF,
+"C_Fk4", 0x0900,
+"C_Fk5", 0x0901,
+"C_Fk6", 0x0902,
+"C_Fk7", 0x0903,
+"C_Fk8", 0x0904,
+"C_Fk9", 0x0905,
+"C_Fk10", 0x0906,
+"C_Fk11", 0x0907,
+"C_Fk12", 0x0908,
+"C_Delete", 0x00A8D,
+"C_Insert", 0x00A8E,
+"C_End", 0x00A8F,
+"C_CursorDown", 0x00A90,
+"C_PageDown", 0x00A91,
+"C_CursorLeft", 0x00A92,
+"C_Key5", 0x00A93,
+"C_CursorRight", 0x00A94,
+"C_Home", 0x00A95,
+"C_CursorUp", 0x00A96,
+"C_PageUp", 0x00A97,
+"A_Fk1", 0x0961,
+"A_Fk2", 0x0962,
+"A_Fk3", 0x0963,
+"A_Fk4", 0x0964,
+"A_Fk5", 0x0965,
+"A_Fk6", 0x0966,
+"A_Fk7", 0x0967,
+"A_Fk8", 0x0968,
+"A_Fk9", 0x0969,
+"A_Fk10", 0x096A,
+"A_Fk11", 0x096B,
+"A_Fk12", 0x096C,
+"A_1", 0x09C5,
+"A_2", 0x09C6,
+"A_3", 0x09C7,
+"A_4", 0x09C8,
+"A_5", 0x09C9,
+"A_6", 0x09CA,
+"A_7", 0x09CB,
+"A_8", 0x09CC,
+"A_9", 0x09CD,
+"A_0", 0x09CE,
+"A_Minus", 0x09CF,
+"A_Equals", 0x09D0,
+"C_A", 0x00A5B,
+"C_B", 0x00A5C,
+"C_C", 0x00A5D,
+"C_D", 0x00A5E,
+"C_E", 0x00A5F,
+"C_F", 0x00A60,
+"C_G", 0x00A61,
+"C_H", 0x00A62,
+"C_I", 0x00A63,
+"C_J", 0x00A64,
+"C_K", 0x00A65,
+"C_L", 0x00A66,
+"C_M", 0x00A67,
+"C_N", 0x00A68,
+"C_O", 0x00A69,
+"C_P", 0x00A6A,
+"C_Q", 0x00A6B,
+"C_R", 0x00A6C,
+"C_S", 0x00A6D,
+"C_T", 0x00A6E,
+"C_U", 0x00A6F,
+"C_V", 0x00A70,
+"C_W", 0x00A71,
+"C_X", 0x00A72,
+"C_Y", 0x00A73,
+"C_Z", 0x00A74,
+"A_A", 0x00A29,
+"A_B", 0x00A2A,
+"A_C", 0x00A2B,
+"A_D", 0x00A2C,
+"A_E", 0x00A2D,
+"A_F", 0x00A2E,
+"A_G", 0x00A2F,
+"A_H", 0x00A30,
+"A_I", 0x00A31,
+"A_J", 0x00A32,
+"A_K", 0x00A33,
+"A_L", 0x00A34,
+"A_M", 0x00A35,
+"A_N", 0x00A36,
+"A_O", 0x00A37,
+"A_P", 0x00A38,
+"A_Q", 0x00A39,
+"A_R", 0x00A3A,
+"A_S", 0x00A3B,
+"A_T", 0x00A3C,
+"A_U", 0x00A3D,
+"A_V", 0x00A3E,
+"A_W", 0x00A3F,
+"A_X", 0x00A40,
+"A_Y", 0x00A41,
+"A_Z", 0x00A42,
+"Esc_Nul", 0x00B54,
+"Esc_Space", 0x00B74,
+"Esc_0", 0x00B84,
+"Esc_A", 0x00B95,
+"Esc_B", 0x00B96,
+"Esc_C", 0x00B97,
+"Esc_D", 0x00B98,
+"Esc_E", 0x00B99,
+"Esc_F", 0x00B9A,
+"Esc_G", 0x00B9B,
+"Esc_H", 0x00B9C,
+"Esc_I", 0x00B9D,
+"Esc_J", 0x00B9E,
+"Esc_K", 0x00B9F,
+"Esc_L", 0x00BA0,
+"Esc_M", 0x00BA1,
+"Esc_N", 0x00BA2,
+"Esc_O", 0x00BA3,
+"Esc_P", 0x00BA4,
+"Esc_Q", 0x00BA5,
+"Esc_R", 0x00BA6,
+"Esc_S", 0x00BA7,
+"Esc_T", 0x00BA8,
+"Esc_U", 0x00BA9,
+"Esc_V", 0x00BAA,
+"Esc_W", 0x00BAB,
+"Esc_X", 0x00BAC,
+"Esc_Y", 0x00BAD,
+"Esc_Z", 0x00BAE,
+"Esc_a", 0x00BB5,
+"Esc_b", 0x00BB6,
+"Esc_c", 0x00BB7,
+"Esc_d", 0x00BB8,
+"Esc_e", 0x00BB9,
+"Esc_f", 0x00BBA,
+"Esc_g", 0x00BBB,
+"Esc_h", 0x00BBC,
+"Esc_i", 0x00BBD,
+"Esc_j", 0x00BBE,
+"Esc_k", 0x00BBF,
+"Esc_l", 0x00BC0,
+"Esc_m", 0x00BC1,
+"Esc_n", 0x00BC2,
+"Esc_o", 0x00BC3,
+"Esc_p", 0x00BC4,
+"Esc_q", 0x00BC5,
+"Esc_r", 0x00BC6,
+"Esc_s", 0x00BC7,
+"Esc_t", 0x00BC8,
+"Esc_u", 0x00BC9,
+"Esc_v", 0x00BCA,
+"Esc_w", 0x00BCB,
+"Esc_x", 0x00BCC,
+"Esc_y", 0x00BCD,
+"Esc_z", 0x00BCE,
+"S_Tab", 0x07ED,
+"Null", 0x07D0,
+"Junk", 0x00AF2
+};
+
+int Key_GetChar(void)
+{
+    return KeyF_GetChar(kt_macros);
+}
+
+int KeyToNumber(char *KeyName)
+{
+     unsigned int KeyNo; // esi@@1
+
+     KeyNo = 0;
+     do
+     {
+          if ( !strcmp(KeyTable[KeyNo].KeyName, KeyName) )
+               return KeyTable[KeyNo].KeyNo;
+          ++KeyNo;
+     }
+     while ( KeyNo <= 212 );
+     return 0;
+}
+
+char *KeyToName(short a1)
+{
+    unsigned int KeyNo; // eax@@1
+
+    KeyNo = 0;
+    do
+    {
+        if ( a1 == KeyTable[KeyNo].KeyNo )
+            return KeyTable[KeyNo].KeyName;
+        ++KeyNo;
+    }
+    while ( KeyNo <= 212 );
+
+    sprintf(errorbuf_0, "No such keynumber %d", a1);
+    return errorbuf_0;
+}
+
+char *Key_GetEscMacroName(short a1)
+{
+    int v1; // eax@@1
+    char *v2; // edx@@1
+
+    v1 = Key_Lookup(a1 + 2900);
+    v2 = 0;
+    if ( v1 >= 0 )
+        v2 = KeyToName(v1);
+    return v2;
+}
+
+Elist* KeyF_ReadFile(Elist *KeyElist, char *FileName, KEYFUNC *a3)
+{
+    FILE *stream; // esi@@1
+    Elist* result; // eax@@2
+
+    stream = fopen64(FileName, "r");
+    if ( stream )
+    {
+		printf("KeyF_ReadFile : Calling ReadKeyList() \n");
+        ReadKeyList(KeyElist, stream, a3, FTable);
+        fclose(stream);
+		printf("KeyF_ReadFile : returned from ReadKeyList() \n");
+
+		DumpBlock(KeyElist, sizeof(Elist));
+		DumpBlock(KeyElist->Next, sizeof(Elist_Elem));
+		DumpBlock(KeyElist->Next->UserData, sizeof(KEY_Elem));
+		DumpBlock(((KEY_Elem*)KeyElist->Next->UserData)->lx_elist, sizeof(Elist));
+		//DumpBlock(((Elist_Elem*)((KEY_Elem*)KeyElist->Next->UserData)->field_C)->Prev, sizeof(Elist_Elem));
+		DumpBlock((((KEY_Elem*)KeyElist->Next->UserData)->lx_elist)->Prev, sizeof(Elist_Elem));
+		DumpBlock( (KEYPTR*)(((KEY_Elem*)KeyElist->Next->UserData)->lx_elist)->Prev->UserData, sizeof(KEYPTR));	// First KEYPTR is always an Elist type!
+		DumpBlock( ((KEYPTR*)(((KEY_Elem*)KeyElist->Next->UserData)->lx_elist)->Prev->UserData)->u_Ptr.List, sizeof(Elist));
+
+
+        //result = KeyElist	->field_C	->field_4	->field_C	->field_8	->field_4	->Size;
+		//**** NEED TO FIX THIS ****//
+		result = 0;
+//                  Elist   Elist_Elem   KEY_Elem*	   Elist	Elist_Elem	KEYPTR*		 ????
+//        result = KeyElist	->Next		->UserData	->lx_elist	->Prev		->UserData	->field_0;
+
+		result = ((KEYPTR*)(((KEY_Elem*)KeyElist->Next->UserData)->lx_elist)->Prev->UserData)->u_Ptr.List;
+		printf("KeyF_ReadFile : x%08X\n", result);
+		result = 0;
+    }
+    else
+    {
+        fwrite("KeyF_ReadFile(): ", 1u, 17u, stderr);
+        perror(FileName);
+        result = 0;
+    }
+    return result;
+}
+
+int keys_lgetchar(void)
+{
+    int v0; // esi@@1
+
+    v0 = _IO_getc(stdin);
+    if ( Key_Debug )
+    {
+        Key_Print(v0, 0);
+        _IO_putc('\n', stdout);
+    }
+	//eprint("keys_lgetchar returning %C\n",v0);
+    return v0;
+}
+
+int keys_getchar(void)
+{
+    int v0; // esi@@1
+
+    v0 = KeyF_GetChar(kt_keys);	// This eventually calls through keys_lgetchar() to _IO_getc()
+    if ( Key_Debug )
+    {
+        Key_Print(v0, 1);
+        _IO_putc('\n', stdout);
+    }
+    return v0;
+}
+
+void Key_Print(int DispChar, int NumTabs)
+{
+    int v2; // esi@@1
+
+    v2 = NumTabs - 1;
+    if ( NumTabs )
+    {
+        do
+        {
+            _IO_putc('\t', stdout);
+            --v2;
+        }
+        while ( v2 != -1 );
+    }
+    if ( DispChar <= 1999 )
+    {
+        switch ( DispChar )
+        {
+            case 8:
+                printf("'\\b'");	// BELL?
+                break;
+            case 9:
+                printf("'\\t'");	// <TAB>
+                break;
+            case 27:
+                printf("'\\e'");	// <ESC>
+                break;
+            case 12:
+                printf("'\\f'");	// form feed
+                break;
+            case 10:
+                printf("'\\n'");	// NL
+                break;
+            case 13:
+                printf("'\\r'");	// <RET>
+                break;
+            case 32:
+                printf("'\\s'");	// <SPC>
+                break;
+            default:
+                //if ((*__ctype_b_loc())[DispChar] & 0x4000 )	// isprint()
+                if (isprint(DispChar))	// isprint()
+				    printf("'%c'", DispChar);
+                else
+				{
+					if ( DispChar > 31 )
+						printf("%d", DispChar);			// show as keynumber
+					else
+		 			    printf("'^%c'", DispChar + 64);	// control chars
+                }
+				break;
+        }
+    }
+	else
+	{
+		printf("%s", KeyToName(DispChar));
+	}
+}
+
+
+intfnptr Function_Bind(const char *s1, KEYFUNC *Kfunc)
+{
+    KEYFUNC *v2; // esi@@1
+
+    v2 = Kfunc;
+    if ( Kfunc->KeyFnName )
+    {
+        while ( strcmp(s1, v2->KeyFnName) )
+        {
+            ++v2;
+            if ( !v2->KeyFnName )
+                return 0;
+        }
+        return v2->Key_Fn;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+KEY_Elist *KeyF_Construct(char *FileName, int (*ReadFunction)(void), KEYFUNC *KeyFns)
+{
+    KEY_Elist *key_el; // edi@@1
+    KEY_Elem *KeyElem; // esi@@1
+    Elist *v6; // eax@@1
+    Elist *KeyElist; // [sp+18h] [bp-10h]@@1
+
+    key_el = (KEY_Elist *)mmalloc(20u);
+    KeyElist = elist_Create();
+	
+	//DumpBlock(KeyElist, sizeof(Elist));
+
+	KeyElem = (KEY_Elem *)mmalloc(20u);
+    KeyElem->lx_CRstart = 0xFFu;
+    KeyElem->lx_CRend	= 0xFFu;
+    KeyElem->lx_elist	= elist_Create();
+    elist_Add(KeyElist, 0, KeyElem);
+
+	v6 = 0;
+    if ( FileName )
+	{
+		printf("KeyF_Construct : Calling KeyF_ReadFile(%s) \n", FileName);
+        v6 = KeyF_ReadFile(KeyElist, FileName, KeyFns);
+	}
+    key_el->field_0 = v6;
+    key_el->field_8 = KeyElist;
+    key_el->field_4 = elist_Create();
+    key_el->FileName = FileName;
+    key_el->RdFunc = ReadFunction;
+    return key_el;
+}
+
+Elist *ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncArr)
+{
+    KEY_Elem *lxelem; // esi@@2
+    KEYPTR *v5; // edi@@6
+
+    int (*v6)(void); // eax@@6
+    void *v9; // eax@@10
+    Elist *v11; // esi@@12
+    Elist *v14; // [sp+0h] [bp-28h]@@2
+
+    while ( 1 )
+    {
+        switch ( Lex(stream) + 1 )
+        {
+            default:
+				printf("ReadKeyList case:default\n");
+                continue;
+            case 4:
+				printf("ReadKeyList case:4, New element added. Lex_KeyType = %d, Lex_CommRStart = %c, Lex_CommREnd = %c \n", Lex_KeyType, Lex_CommRStart, Lex_CommREnd);
+				lxelem				= (KEY_Elem *)mmalloc(20u);
+                lxelem->lx_KeyType	= Lex_KeyType;
+                lxelem->lx_CRstart	= Lex_CommRStart;
+                lxelem->lx_CRend	= Lex_CommREnd;
+                lxelem->lx_keyno	= 0;
+                lxelem->lx_elist	= elist_Create();
+
+                elist_Add(ListHhead, 0, lxelem);
+                break;
+            case 9:
+				printf("ReadKeyList case:9, , Lex_CommRStart = %c (%4d)\n", Lex_CommRStart, Lex_CommRStart);
+                //*((int *)ListHhead->Prev->UserData + 4) = Lex_CommRStart;
+				((KEY_Elem *)ListHhead->Prev->UserData)->lx_keyno = Lex_CommRStart;	// This is the KeyNo that starts the sequence
+                continue;
+            case 5:                             // function name is returned.
+                if ( !a2 )
+                {
+                    fwrite("Function not allowed in key file\n", 1u, 0x21u, stderr);
+                    exit(1);
+                }
+				printf("ReadKeyList case:5, FN name = %s\n",Lex_CommFunctionName);
+                v5 = (KEYPTR *)mmalloc(8u);
+                v5->Type = 1;  // signify that first field is a function pointer
+                v6 = Function_Bind(Lex_CommFunctionName, a2);// a2 and KfuncArr are both set to global FTable[] by caller
+                v5->u_Ptr.Func = v6;
+                if ( !v6 )
+                {
+                    v6 = Function_Bind(Lex_CommFunctionName, KfuncArr);
+                    v5->u_Ptr.Func = v6;
+                    if ( !v6 )
+                    {
+                        fprintf(stderr, "Unknown function '%s'\n", Lex_CommFunctionName);
+                        exit(1);
+                    }
+                }
+				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist
+                elist_Add(v14, 0, v5);
+                break;
+            case 6:                             // Lex returned 5. String Value
+				printf("ReadKeyList case:6, Lex_CommString = %s\n",Lex_CommString);
+                v5 = (KEYPTR *)mmalloc(8u);
+                v5->Type = 2;
+                v5->u_Ptr.Name = mstrcpy(Lex_CommString, 0);// string pointer type
+				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist
+                elist_Add(v14, 0, v5);
+                break;
+            case 7:                             // Lex returned 6. Numeric Value
+				printf("ReadKeyList case:7, Lex_CommDigit = %d\n",Lex_CommDigit);
+                v5 = (KEYPTR *)mmalloc(8u);
+                v5->Type = 4;
+                v5->u_Ptr.Count = Lex_CommDigit; // int type
+				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist
+                elist_Add(v14, 0, v5);
+                break;
+            case 2:                             // Lex returned 1.  "{" was detected, which means a sub-array of keys.
+				printf("ReadKeyList case:2, Adding a new sub-list\n");
+                v11 = elist_Create();
+                v5 = (KEYPTR *)mmalloc(8u);
+                v5->Type = 3;					// Elist* type
+                v5->u_Ptr.List = ReadKeyList(v11, stream, a2, KfuncArr);		// *** recursion here ***
+				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist
+                elist_Add(v14, 0, v5);
+                break;
+            case 0:
+            case 3:					// '}' found. end of sub-list
+                return ListHhead;
+        }
+    }
+}
+
+int Key_Lookup(int KeyNo)
+{
+    Elist_Elem	*v1; // edx@@3
+    KEY_Elem	*kelem; // eax@@4
+    int result; // eax@@5
+
+    if ( kt_macros && kt_macros->field_0 && (v1 = kt_macros->field_0->Next, (Elist *)v1 != kt_macros->field_0) )
+    {
+        while ( 1 )
+        {
+            kelem = (KEY_Elem*)v1->UserData;	// 
+            if ( KeyNo == kelem->lx_keyno )
+                break;
+            v1 = v1->Next;
+            if ( (Elist *)v1 == kt_macros->field_0 )	// end of list or list empty
+                return -1;
+        }
+        result = kelem->lx_CRstart;
+    }
+    else
+    {
+        result = -1;
+    }
+    return result;
+}
+
+int process(KEY_Elist *KeyEL, Elist *a2)
+{
+    Elist_Elem *v2; // edi@@5
+    KEY_Elem *kelem; // esi@@6
+    signed int v4; // eax@@6
+    signed int v5; // eax@@13
+    int v7; // eax@@30
+    int v9; // [sp+Ch] [bp-1Ch]@@5
+    int v10; // [sp+10h] [bp-18h]@@1
+    int v11; // [sp+14h] [bp-14h]@@1
+    int v12; // [sp+18h] [bp-10h]@@3
+
+    v10 = -3;
+    v11 = 0;
+    do
+    {
+        if ( PushBackChar )
+        {
+            v12 = PushBackChar;
+            CharRegister = PushBackChar;
+            PushBackChar = 0;
+        }
+        else
+        {
+            v12 = KeyEL->RdFunc();
+            CharRegister = v12;
+        }
+        v2 = a2->Next;
+        v9 = 0;
+        if ( (Elist *)v2 != a2 )
+        {
+            while ( 1 )
+            {
+                kelem = v2->UserData;
+                v4 = kelem->lx_KeyType;
+                if ( kelem->lx_KeyType == 2 )
+                {
+                    if ( v12 < kelem->lx_CRstart || v12 > kelem->lx_CRend )
+                        goto LABEL_26;
+                }
+                else
+                {
+                    if ( v4 <= 2 )
+                    {
+                        if ( v4 != 1 || kelem->lx_CRstart != v12 )
+                            goto LABEL_26;
+                        //v5 = DoActions(KeyEL, kelem->lx_elist);
+                        if ( kelem->lx_keyno )
+						{
+							++v11;
+							if ( GlobalReturnValue == -1 )
+							{
+							    if ( kelem->lx_keyno == -1 )
+							        v10 = v5;
+							    else
+							        v10 = kelem->lx_keyno;
+							}
+							else
+							{
+								v10 = GlobalReturnValue;
+								GlobalReturnValue = -1;
+							}
+						}
+						goto LABEL_25;
+                    }
+                    if ( v4 != 3 )
+                        goto LABEL_26;
+                }
+                //v5 = DoActions(KeyEL, kelem->lx_elist);
+                if ( kelem->lx_keyno )
+                {
+                    ++v11;
+                    if ( GlobalReturnValue == -1 )
+					{
+						if ( kelem->lx_keyno == -1 )
+							v10 = v5;
+						else
+							v10 = kelem->lx_keyno;
+						goto LABEL_25;
+					}
+                    v10 = GlobalReturnValue;
+                    GlobalReturnValue = -1;
+                }
+LABEL_25:
+                ++v9;
+LABEL_26:
+                v2 = v2->Next;
+                if ( (Elist *)v2 == a2 )
+                    break;
+                if ( v9 )
+                    goto LABEL_33;
+            }
+        }
+        if ( !v9 )
+        {
+            v7 = v11 + 1;
+            if ( (Elist *)v2 != a2 )
+                v7 = v11;
+            v11 = v7;
+        }
+LABEL_33:
+        ;
+    }
+    while ( !v11 );
+    return v10;
+}
+
+
+int KeyF_GetChar(KEY_Elist *KeyEL)
+{
+    Elist *v2; // edx@@3
+    void *v3; // edi@@4
+
+    if ( !KeyEL->field_0 )	// ZERO if no keydef file could be read.
+        return KeyEL->RdFunc();		// Just calls keys_lgetchar();
+
+    v2 = KeyEL->field_4;
+    if ( v2->Size )
+    {
+        v2->Current = v2->Next;
+        v3 = KeyEL->field_4->Current->UserData;
+        elist_Delete(KeyEL->field_4);
+    }
+    else
+    {
+        //v3 = (void *)process(KeyEL, KeyEL->field_0);	*** TO DO **
+        if ( KeyEL->field_4->Size )
+            return KeyF_GetChar(KeyEL);         // Some nice recursion here.
+    }
+    return (int)v3;
+}
+
+void Key_Construct(void)
+{
+    char *KeyDefFileName; // esi@@1
+    char *v1; // eax@@1
+    const char *v3; // eax@@4
+    char *MacroDefFileName; // esi@@12
+
+    KeyDefFileName = 0;
+    v1 = getevar("KEYDEFS");
+    if ( v1 && *v1 )
+    {
+		printf("Key_Construct : KEYDEFS = %s\n",v1);
+        KeyDefFileName = mstrcpy(getdirname(v1), 0);
+        if ( Key_Debug )
+			printf("KEYDEFS:  [%s]\n", KeyDefFileName);
+    }
+    else
+    {
+		printf("Key_Construct : KEYDEFS = <null>!!\n");
+        v1 = getevar("KEYINFO");
+        if ( v1 && *v1 )
+        {
+			printf("Key_Construct : KEYINFO = %s\n",v1);
+            KeyDefFileName = mstrcpy(getdirname(v1), "/", getenv("TERM"), 0);
+            if ( Key_Debug )
+				printf("KEYINFO:  [%s]\n", KeyDefFileName);
+        }
+        else
+        {
+            if ( Key_Debug )
+                puts("KEYINFO:  undefined");
+        }
+    }
+
+	
+	printf("Key_Construct : KeyDefFileName = %s\n",KeyDefFileName);
+	printf("Key_Construct : Calling KeyF_Construct on kt_keys\n");
+
+	kt_keys = KeyF_Construct(KeyDefFileName, keys_lgetchar, FTable);
+    MacroDefFileName = 0;
+    v1 = getevar("KEYMACRO");
+    if ( v1 && *v1 )
+    {
+        MacroDefFileName = mstrcpy(getdirname(v1), 0);
+        if ( Key_Debug )
+            printf("KEYMACRO: [%s]\n", MacroDefFileName);
+    }
+    else
+    {
+        if ( Key_Debug )
+            puts("KEYMACRO: udefined");
+    }
+	printf("Key_Construct : Calling KeyF_Construct on kt_macros\n");
+    kt_macros = KeyF_Construct(MacroDefFileName, keys_getchar, FTable);
+}
+
+void cleanup(int val)
+{
+    //Tty_Destruct();
+    mexit(val);
+}
+
+int KeyF_Ready(KEY_Elist *a1)
+{
+    return a1->field_4->Size;
+}
+
+int Key_Ready()
+{
+    return KeyF_Ready(kt_macros);
+}
+
+void Key_Debugem()
+{
+    int ReadChar; // esi@@2
+    int NumTabs; // [sp+4h] [bp-14h]@@2
+
+    //Tty_Construct();		// sets stdio to return after each char
+    Key_Construct();
+    signal(2, cleanup);              // set <CTRL>-C handler (signal 2) to cleanup()
+    while ( 1 )
+    {
+        print("actual..keydef..macro\n");
+        ReadChar = Key_GetChar();	// without Tty_Construct(), will block till <RTN>
+
+        for ( NumTabs = 2; ; NumTabs = 0 )
+        {
+            Key_Print(ReadChar, NumTabs);
+            if ( !Key_Ready() )
+                break;
+            ReadChar = Key_GetChar();
+            _IO_putc(' ', stdout);
+        }
+        _IO_putc('\n', stdout);
+        if ( ReadChar == 'q' )
+            cleanup(0);                         // time to get out of here......
+    }
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d274 1
+a274 1
+int KeyF_ReadFile(Elist *KeyElist, char *FileName, KEYFUNC *a3)
+d277 1
+a277 1
+    int result; // eax@@2
+d286 12
+a297 1
+        //result = KeyElist->field_C->field_4->field_C->field_8->field_4->Size;
+d300 6
+d326 1
+d334 1
+a334 1
+    v0 = KeyF_GetChar(kt_keys);
+d426 1
+a426 1
+    KEY_Elist *v3; // edi@@1
+d431 1
+a431 1
+    v3 = (KEY_Elist *)mmalloc(20u);
+d437 3
+a439 3
+    KeyElem->field_4 = 0xFFu;
+    KeyElem->field_8 = 0xFFu;
+    KeyElem->field_C = elist_Create();
+d448 6
+a453 6
+    v3->field_0 = v6;
+    v3->field_8 = KeyElist;
+    v3->field_4 = elist_Create();
+    v3->FileName = FileName;
+    v3->RdFunc = ReadFunction;
+    return v3;
+d458 1
+a458 1
+    void *v4; // esi@@2
+d475 8
+a482 7
+                v4 = mmalloc(20u);
+                *(int *)v4 = Lex_KeyType;
+                *((int *)v4 + 1) = Lex_CommRStart;
+                *((int *)v4 + 2) = Lex_CommREnd;
+                *((int *)v4 + 4) = 0;
+                *((int *)v4 + 3) = elist_Create();
+                elist_Add(ListHhead, 0, v4);
+d485 3
+a487 2
+				printf("ReadKeyList case:9\n");
+                *((int *)ListHhead->Prev->UserData + 4) = Lex_CommRStart;
+d510 1
+a510 1
+                v14 = (Elist *)*((int *)ListHhead->Prev->UserData + 3);
+d518 1
+a518 1
+                v14 = (Elist *)*((int *)ListHhead->Prev->UserData + 3);
+d526 1
+a526 1
+                v14 = (Elist *)*((int *)ListHhead->Prev->UserData + 3);
+d534 2
+a535 2
+                v5->u_Ptr.List = ReadKeyList(v11, stream, a2, KfuncArr);  // *** recursion here ***
+                v14 = (Elist *)*((int *)ListHhead->Prev->UserData + 3);
+d539 1
+a539 1
+            case 3:
+d545 1
+a545 1
+int Key_Lookup(int a1)
+d547 2
+a548 2
+    Elist_Elem *v1; // edx@@3
+    void *v2; // eax@@4
+d555 2
+a556 2
+            v2 = v1->UserData;
+            if ( a1 == *((int *)v2 + 4) )
+d559 1
+a559 1
+            if ( (Elist *)v1 == kt_macros->field_0 )
+d562 1
+a562 1
+        result = *((int *)v2 + 1);
+d571 108
+d684 3
+a686 2
+    if ( !KeyEL->field_0 )
+        return KeyEL->RdFunc();
+@

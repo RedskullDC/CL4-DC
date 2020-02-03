@@ -1,0 +1,158 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2019.04.05.03.53.27;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2016.07.22.06.23.32;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@minor tidyup
+@
+
+
+1.2
+log
+@tidy up
+@
+text
+@#ifndef DBGLOG_C
+#define DBGLOG_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+//#define DB_MAX 255			// max size of open databases array in DBdefs.h
+
+DBinfo* _chkdb(unsigned int DBno)
+{
+	return (DBno < DB_MAX) ? _dbase[DBno] : 0;	// return DBptr. may be null
+}
+
+signed int _nxtdb(DBinfo *DBptr)	// Store DBptr in next available slot
+{
+	int DBno;
+	
+	/*DBno = 0;
+	while ( _dbase[DBno] )
+	{
+		DBno++;
+		if ( DBno > 254 )
+			return -1;
+	}
+	_dbase[DBno] = DBptr;
+	return DBno;
+	*/
+	for ( DBno = 0; DBno < DB_MAX ; DBno++)
+	{
+		if (!_dbase[DBno])
+		{
+			_dbase[DBno] = DBptr;
+			return DBno;
+		}
+	}
+	return -1;	// no space available!
+
+}                             
+
+DBinfo* _rmdb(int DBno)
+{
+	DBinfo *DBptr;
+
+	DBptr = _chkdb(DBno);
+	if ( DBptr )
+		_dbase[DBno] = 0;
+	return DBptr;
+}
+
+int fdf2db(DBinfo *DBptr)
+{
+	int DBno;
+
+	for ( DBno = 0 ; DBno < DB_MAX ; DBno++)
+	{
+		if ( _dbase[DBno] == DBptr )
+			return DBno;	// exit_success
+	}
+	return 0;	// not found		 *** can't DBno == ZERO be valid though?
+}
+
+signed int _chkdbname(char *DBname)
+{
+	DBinfo *DBptr; 
+	signed int DBno; 
+
+	for ( DBno = 0; DBno < DB_MAX ; DBno++)
+	{
+		DBptr = _chkdb(DBno);
+		if ( DBptr && cmpstr(DBname, DBptr->DBname))
+			return DBno;	// exit_success
+	}
+	return -1;	// no match on DBname
+}
+
+char* _dbname(int DBno)
+{
+	DBinfo *DBptr; 
+	//printf("_dbname(DBno : %d)\n" ,DBno);
+
+	DBptr = _chkdb(DBno);
+	return (DBptr) ? DBptr->DBname : 0;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 1
+a11 6
+
+	//printf("_chkdb(DBno : %d)\n" ,DBno);
+	//if ( DBno < 255 )
+	//	return _dbase[DBno];
+	//return 0;
+	return (DBno < 255) ? _dbase[DBno] : 0;
+d16 3
+a18 3
+	int DBno; // edx@@1
+
+	DBno = 0;
+d27 11
+d42 1
+a42 1
+	DBinfo *DBptr; // eax@@1
+d52 1
+a52 1
+	int DBno; // eax@@1
+d54 1
+a54 1
+	for ( DBno = 0 ; DBno < 255 ; DBno++)
+d59 1
+a59 1
+	return 0;	// not found
+d67 1
+a67 1
+	for ( DBno = 0; DBno < 255 ; DBno++)
+a78 1
+
+a81 3
+	//if ( DBptr )
+	//	return DBptr->DBname;
+	//return 0;
+@

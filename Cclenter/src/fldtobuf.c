@@ -57,9 +57,9 @@ char *fldtobuf(char *Dest, FLDdesc *fld, unsigned int MaxLen)
 //-------------------------
 		case 'N':
             if ( MaxLen )
-                sprintf(Dest, "%*ld", MaxLen, (int)DoubVal);
+                sprintf(Dest, "%*ld", MaxLen, (long)DoubVal);
             else
-				sprintf(Dest, "%ld", (int)DoubVal);
+				sprintf(Dest, "%ld", (long)DoubVal);
 			break;
 //-------------------------
 		case 'P':				// DC extension! 4 byte POINTER value

@@ -1,0 +1,72 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.07.14.03.29.29;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Trim leading/trailing spaces from a string
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef TRIM_C
+#define TRIM_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+#include "ctype.h"	// for isspace()
+
+char * ftrim(char *a1)
+{
+	short v1; // di@@1
+
+	//printf("ftrim(%s)\n",a1);
+
+	v1 = trim_it;
+	trim_it = 1;
+	trim(a1);
+	trim_it = v1;
+	return a1;
+}
+
+char* trim(char *a1)
+{
+	char *v1;
+	char *v2;
+	char v4;
+	char *i;
+
+	//printf("trim(%s)\n",a1);
+
+	if ( a1 && *a1 && trim_it != 2 )
+	{
+		v1 = a1;
+		v2 = a1;
+		while ( isspace(*v2) )
+			++v2;
+		do
+		{
+			v4 = *v2++;
+			*v1++ = v4;
+		}
+		while ( v4 );
+		for ( i = v1 - 2; a1 < i && isspace(*i); --i )
+			*i = 0;
+	}
+	return a1;
+}
+
+#endif
+@

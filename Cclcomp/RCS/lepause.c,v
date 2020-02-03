@@ -1,0 +1,57 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.13.05.24.53;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef LEPAUSE_C
+#define LEPAUSE_C
+
+int lepause(PTAB *pt)
+{
+     short v1; // si@@2
+     short v3; // di@@4
+     unsigned short ENno; // ecx@@6
+     ENTAB *entb; // eax@@6
+
+	symbol = getsym();
+    if ( symbol == 930 )			// pause with no arguments is permissible
+		return 1;
+
+	v1 = loadexp(0, 1);
+    if ( v1 )
+    {
+		if ( symbol == 930 )		// <CR>, means only one argument
+			v3 = 0;
+		else
+			v3 = loadexp(0, 1);		// optional second expression. Not defined in Manual
+		ENno = getenmem();
+        entb = ENno ? &enarr.TableAddr[ENno - 1] : 0;
+        entb->Dest = v1;
+        entb->Src = v3;
+        pt->TABno = ENno;
+        return 1;
+     }
+     return 0;	// error exit
+}
+
+#endif
+@

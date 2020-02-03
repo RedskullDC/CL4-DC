@@ -1,0 +1,40 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.20.04.47.10;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initital checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef OPENSHARE_C
+#define OPENSHARE_C
+
+#include <fcntl.h>
+#include "DBdefs.h"
+#include "cl4.h"
+//#define _LARGEFILE64_SOURCE
+
+short _oshare(char *a1,char *a2)
+{
+	*a2 = 0;
+	return open64(a1, 2);
+}
+
+#endif
+@

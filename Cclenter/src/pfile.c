@@ -213,7 +213,7 @@ LABEL_13:
 
             if ( isalist(a1) )
             {
-                execlp("/bin/sh", "sh", "-c", a1, 0);	// *** does not return on success ***
+                execlp("/bin/sh", "sh", "-c", a1, NULL);	// *** does not return on success ***
 				syserror("pfile:execlp[%s]", a1);
             }
             else

@@ -1,0 +1,157 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.01.13.23.23.11;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.08.25.03.15.56;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef EXTRACT_STR_C
+#define EXTRACT_STR_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+char buf_0_1[8192];
+
+char *extstr(char *src, int Seperator, char **a3)
+{
+    char v4;
+	char *v8;
+	char *v12;
+	
+    buf_0_1[0] = 0;
+
+    if ( !src )
+        goto LABEL_29;
+
+    if ( Seperator == 32 )	// space
+    {
+        while ( *src && isspace(*src))		// isspace()  ==	0x2000
+            ++src;
+
+        if ( ((v4 = *src, v4 == '\'') || v4 == '"') && (v12 = strchr(src + 1, v4)) != 0 )		// look for quoted string
+        {
+            v12++;
+            strncpy(buf_0_1, src, v12 - src);
+            buf_0_1[v12 - src] = 0;
+            src = v12;
+        }
+        else	// not a quoted string
+        {
+            v8 = buf_0_1;
+            while ( *src && !isspace(*src) )		// isspace()  ==	0x2000
+                *v8++ = *src++;
+            *v8 = 0;
+        }
+    }
+    else
+    {
+        v8 = buf_0_1;
+        while ( *src && *src != Seperator )
+			*v8++ = *src++;
+        *v8 = 0;
+        if ( *src )
+            ++src;
+    }
+
+    if ( src && *src )	// more data left in the string after the sep char.
+        *a3 = src;
+    else
+LABEL_29:
+        *a3 = 0;
+
+    return buf_0_1;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 1
+a14 1
+char *extstr(char *src, int a2, char **a3)
+d16 4
+a19 8
+    char *v3; // edi@@1
+    char v4; // al@@7
+    char *v5; // ST18_4@@10
+    char *v6; // esi@@11
+    char *v8; // esi@@16
+    char *v10; // edx@@24
+    char *v12; // [sp+18h] [bp-10h]@@9
+
+a21 1
+    v3 = src;
+d25 1
+a25 1
+    if ( a2 == 32 )	// space
+d27 4
+a30 3
+        while ( *v3 && (*__ctype_b_loc())[*v3] & 0x2000 )		// isspace()  ==	0x2000
+            ++v3;
+        if ( ((v4 = *v3, v4 == '\'') || v4 == '"') && (v12 = strchr(v3 + 1, v4)) != 0 )
+d32 4
+a35 4
+            v5 = v12 + 1;
+            strncpy(buf_0_1, v3, v5 - v3);
+            buf_0_1[v5 - v3] = 0;
+            v3 = v5;
+d37 1
+a37 1
+        else
+d39 4
+a42 4
+            v6 = buf_0_1;
+            while ( *v3 && !((*__ctype_b_loc())[*v3] & 0x2000) )		// isspace()  ==	0x2000
+                *v6++ = *v3++;
+            *v6 = 0;
+d48 2
+a49 2
+        while ( *v3 && *v3 != a2 )
+			*v8++ = *v3++;
+d51 2
+a52 2
+        if ( *v3 )
+            ++v3;
+d55 2
+a56 2
+    if ( v3 && *v3 )
+        v10 = v3;
+d59 1
+a59 1
+        v10 = 0;
+a60 1
+    *a3 = v10;
+@

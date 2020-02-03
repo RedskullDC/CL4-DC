@@ -53,7 +53,7 @@ TDef *newdesc(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *TD
         ;
     NumDataIDs = j - DataIDs;					// pointer arithmetic
 
-    tdef = (TDef *)ealloc(6 * (NumDataIDs + NumKeyIDs + 1), 0);					// 6 = sizeof(TDef)
+    tdef = (TDef *)ealloc(sizeof(TDef) * (NumDataIDs + NumKeyIDs + 1), 0);					// 6 = sizeof(TDef)
     v17 = tdef;									// v17 is returned at the end
 
 	// Copy Key fields to TDef Array first
@@ -107,9 +107,9 @@ DBinfo *newfdf(int TDno)
     signed int v10; // esi@15
     unsigned int v12; // [sp+18h] [bp-420h]@3
     DBinfo *DBptr; // [sp+1Ch] [bp-41Ch]@1
-    char Buffer[1048]; // [sp+20h] [bp-418h]@3
+    char Buffer[1024]; // [sp+20h] [bp-418h]@3
 
-    DBptr = (DBinfo *)ealloc(372, 0);
+    DBptr = (DBinfo *)ealloc(sizeof(DBinfo), 0);
     DBptr->DBpgsize = _psize;				// careful!!!   _psize, not psize
     v1 = _mktmp(TDno);
     DBptr->DBfilehandle = v1;
@@ -126,7 +126,7 @@ DBinfo *newfdf(int TDno)
     DBptr->DBopenflg = -1;
     DBptr->DBtableaddress = 16;
     _whead(DBptr, 0, 0, 0);
-    fill(Buffer, 1024, 0);
+    fill(Buffer, sizeof(Buffer), 0);
 //print("newfdf - _fsize = %d, _psize = %d\n",_fsize, _psize);
     v2 = (unsigned int)(_fsize + 7) >> 3;        // default DBsize = 500000
     v12 = (_psize + v2 + 31) / _psize;            // default pagesize = 4096
@@ -155,7 +155,7 @@ DBinfo *newfdf(int TDno)
         v9 = v8;
         if ( write(DBptr->DBfilehandle, Buffer, v8) != v8 )
             derror(31, 0, 0);
-        fill(Buffer, 1024, 0);
+        fill(Buffer, sizeof(Buffer), 0);
     }
 
     v10 = 0;
@@ -183,37 +183,36 @@ int _mktable(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *a5)
 
     tdef = newdesc(TTnos, NumTTs, KeyIDs, DataIDs, a5);
     v6 = _keysize(tdef);
-    TDptr = (TDinfo *)ealloc(v6 + 76, 0);	// variable size record
-    
-	fill((char *)TDptr, 76, 0);			// Zeroes structure, so lot of what follows is unnecessary!
+    TDptr = (TDinfo *)ealloc(v6 + sizeof(TDinfo), 0);	// variable size record
+	fill((char *)TDptr, sizeof(TDinfo), 0);			// Zeroes structure, so lot of what follows is unnecessary!
 
-    TDptr->TDFlags = 0x0088u;			// 0000-0000-1000-1000
-    TDptr->TDindexOff = 0;
-    TDptr->TableDefs = tdef;
-    TDptr->TDRecSize = _rowsize(tdef);
-    TDptr->TDKeySize = v6;
-    TDptr->TDKeyDefs = (char *)&TDptr[1];	// Key data stored after main record
-    TDptr->KeyDefSize = 0;
+    TDptr->TDFlags			= 0x0088u;			// 0000-0000-1000-1000
+    TDptr->TDindexOff		= 0;
+    TDptr->TableDefs		= tdef;
+    TDptr->TDRecSize		= _rowsize(tdef);
+    TDptr->TDKeySize		= v6;
+    TDptr->TDKeyDefs		= (char *)&TDptr[1];	// Key data stored after main record
+    TDptr->KeyDefSize		= 0;
     v8 = _rowmin(tdef);
-    TDptr->TDRecMin = v8;
+    TDptr->TDRecMin			= v8;
     if ( v8 != TDptr->TDRecSize )
         TDptr->TDFlags |= tdp_RecVar;	// 0x40u;	// Indicates record contains strings, so may vary in length
     v9 = _keymin(tdef);
-    TDptr->TDKeyMin = v9;
+    TDptr->TDKeyMin			= v9;
     if ( v9 != TDptr->TDKeySize )		// Indicates Key fields include strings, so may vary in length
         TDptr->TDFlags |= tdp_KeyVar;	// 0x80u;	// already set above in TDptr->TDFlags = 0x0088u;  ??
-    TDptr->TDNodePtr	= 0;
-    TDptr->KeyBuf1		= 0;
-    TDptr->Key1Size		= 0;
-    TDptr->KeyBuf2		= 0;
-    TDptr->Key2Size		= 0;
-    TDptr->TDSallocBuf	= 0;
+    TDptr->TDNodePtr		= 0;
+    TDptr->KeyBuf1			= 0;
+    TDptr->Key1Size			= 0;
+    TDptr->KeyBuf2			= 0;
+    TDptr->Key2Size			= 0;
+    TDptr->TDSallocBuf		= 0;
     TDno = _nxttd(TDptr);
     if ( TDno >= 0 )
     {
-        v12 = newfdf(TDno);
-        TDptr->TDDBinfo = v12;
-        TDptr->Rec_plus_DB = v12->DBpgsize;
+        v12					= newfdf(TDno);
+        TDptr->TDDBinfo		= v12;
+        TDptr->Rec_plus_DB	= v12->DBpgsize;
         TDptr->HalfPageSize = TDptr->TDRecSize;
         result = TDno;
     }

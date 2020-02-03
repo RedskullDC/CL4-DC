@@ -1,0 +1,89 @@
+head	1.3;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.3
+date	2015.01.07.04.25.25;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.09.09.02.26.14;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.21.13;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@changed to macro
+@
+text
+@#ifndef PTAB_C
+#define PTAB_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+PTAB *PTARR(unsigned short PTABno)
+{
+  PTAB *ptab; // eax@@1
+
+  ptab = 0;
+  if ( PTABno )
+    ptab = (PTAB *)&ptarr.TableAddr[8 * (PTABno - 1)];
+  return ptab;
+}
+
+#endif
+@
+
+
+1.2
+log
+@tidy-up. no longer used
+@
+text
+@d11 1
+a11 1
+	PTAB *ptab; // eax@@1
+d13 4
+a16 6
+	//	ptab = 0;
+	//if ( PTABno )
+	//	ptab = &ptarr.TableAddr[PTABno - 1];
+	
+	ptab = PTABno ? &ptarr.TableAddr[PTABno - 1] : 0;
+	return ptab;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 1
+a11 1
+  PTAB *ptab; // eax@@1
+d13 6
+a18 4
+  ptab = 0;
+  if ( PTABno )
+    ptab = (PTAB *)&ptarr.TableAddr[8 * (PTABno - 1)];
+  return ptab;
+@

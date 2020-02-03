@@ -1,0 +1,1485 @@
+head	1.5;
+access;
+symbols;
+locks
+	leslie:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2016.06.22.07.11.01;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2016.06.09.01.56.42;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.01.21.03.44.21;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.07.03.04.06.43;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.06.16.05.07.09;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.5
+log
+@clean up main
+@
+text
+@//#define __USE_LARGEFILE64
+//#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE 1
+//#define _LARGE_FILE_API
+
+#include <stdio.h>		// printf etc.
+#include <stdlib.h>		// getenv, putenv
+#include <fcntl.h>
+//#include <curses.h>		// for terminal handling
+#include <termcap.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <float.h>		// for FLT_MIN, FLT_MAX
+#include <stdbool.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h> /* for mode_t */
+#include <ctype.h>
+#include <time.h>       // for struct tm
+#include <sys/times.h>  // for times()
+
+//#define DEBUG_DUMP		// allow dump routines to send tables to stdio
+//#define DEBUG_OUTPUT		// allow dump routines to send various stuff stdio
+//#define CL4_STRICT		// Only allow canonical CL4 functionality, no extensions
+
+// Test some undocumented CL4 lib routines
+#include "DBdefs.h"
+#include "funcdefs.h"
+#include "lvarnames.h"
+#include "tblglo.c"
+#include "cl4.h"
+
+#ifdef DEBUG_DUMP
+#include "UTIL_FUNCTIONS.h"
+#endif
+
+#include "trim.c"
+#include "mstrings.c"
+#include "getflags.c"
+#include "cpystr.c"
+#include "cmpbuf.c"
+#include "guname.c"
+#include "derror.c"
+#include "bupsem.c"
+#include "cllogerr.c"
+#include "error.c"
+#include "putstr.c"
+#include "getosbuf.c"
+#include "getfmode.c"
+#include "termcap.c"
+
+// files in generic source location
+#include "gettype.c"
+#include "alloc.c"
+#include "mkfree.c"
+#include "dbopen.c"
+#include "cmpkey.c"
+#include "picknx.c"		// testing
+#include "pickpr.c"		// testing
+#include "addtup.c"
+#include "rdhdr.c"
+#include "newexp.c"
+#include "newjun.c"
+#include "balanc.c"
+#include "rmlock.c"
+#include "fclear.c"
+#include "restri.c"
+#include "chkite.c"
+#include "captur.c"
+#include "oshare.c"
+#include "relsha.c"
+#include "onexit.c"
+#include "shutdb.c"
+#include "cmpatt.c"
+#include "putnod.c"   //** Need to work out rdata/roffset use of NODE_1 structure
+#include "dbsize.c"
+#include "dbspac.c"
+#include "dbglob.c"
+#include "dbclose.c"
+#include "spread.c"
+#include "split.c"
+#include "whead.c"
+#include "promot.c"
+#include "redist.c"
+#include "movele.c"
+#include "moveri.c"
+#include "repos.c"
+#include "diffke.c"			//untested, needs work
+#include "usage.c"
+#include "numsz.c"
+#include "writep.c"
+#include "diffat.c"
+#include "chkind.c"
+#include "sync.c"
+#include "clrtab.c"			// _sparetree()
+#include "setvar.c"
+#include "times.c"
+
+#include "getevar.c"
+#include "getdirname.c"
+#include "lock.c"
+#include "lockr.c"
+#include "readf.c"
+#include "fill.c"
+
+#include "chkpath.c"
+#include "loadent.c"
+#include "loadvars.c"
+#include "loadstate.c"
+#include "errors.c"
+#include "alllower.c"
+#include "getr.c"
+#include "putr.c"
+#include "delr.c"
+#include "tdopen.c"
+#include "SYMBOLS.c"
+#include "getch.c"
+#include "nextchr.c"
+#include "dump_routines.c"
+#include "dump.c"
+#include "TABS.c"
+#include "KEYS.c"
+#include "chkoelist.c"
+#include "extstr.c"		// only required if DBrename option is specified
+#include "cafuncs.c"		// only required if DBrename option is specified
+#include "dbrename.c"		// only required if DBrename option is specified
+#include "col_row.c"
+#include "expression.c"
+#include "getdwid.c"
+#include "getatt.c"
+#include "getsha.c"
+#include "gettype.c"
+#include "fretre.c"
+#include "frelst.c"
+#include "seq.c"
+#include "relnod.c"
+#include "ealloc.c"
+#include "cmpstr.c"
+
+// clcomp specific includes
+#include "getfile.c"
+#include "lecreate.c"
+#include "leselect.c"
+#include "leulck.c"
+#include "lemsg.c"
+#include "lepause.c"
+#include "lefresh.c"
+#include "leprint.c"
+#include "lerange.c"
+#include "leopen.c"
+#include "leset.c"
+#include "lejoin.c"
+#include "leif.c"
+#include "leread.c"
+#include "lerfile.c"
+#include "lecopy.c"
+#include "lewhile.c"
+#include "leredisp.c"
+#include "leeop.c"
+#include "leformat.c"
+#include "ledefine.c"
+#include "leblock.c"
+#include "prdebug.c"
+#include "closedb.c"
+
+#include "getkflds.c"
+#include "getxflds.c"
+#include "getident.c"
+#include "findfno.c"
+#include "cpytuc.c"
+#include "getnod.c"
+#include "freshn.c"
+#include "stepba.c"
+#include "stepfw.c"
+
+#include "newtabs.c"
+#include "identi.c"
+#include "keysiz.c"
+#include "rowsiz.c"
+
+#include "rhead.c"
+#include "rindex.c"
+#include "bound.c"
+#include "ifetch.c"
+#include "dfetch.c"
+#include "ipos.c"
+#include "dpos.c"
+#include "dmerge.c"
+#include "imerge.c"
+
+// conversion routines follow
+#include "domtox.c"			// Needs more work
+#include "xtodom.c"			// Needs more work
+#include "mstoi.c"
+#include "mstol.c"
+#include "mstod.c"
+#include "mstoxi.c"
+#include "mstoxl.c"
+#include "xitoms.c"
+#include "xltoms.c"
+#include "itoms.c"
+#include "ltoms.c"
+#include "dtoms.c"
+#include "addexp.c"
+#include "negate.c"
+#include "nextr.c"
+#include "prevr.c"
+#include "getpat.c"
+#include "indexp.c"
+#include "getpg.c"
+#include "datapg.c"
+#include "chkpag.c"		// requires more testing
+#include "itoptr.c"
+#include "scanpg.c"
+#include "itosz.c"
+#include "readpg.c"
+#include "scnbuf.c"
+#include "modpag.c"
+#include "addpag.c"
+#include "delpag.c"
+#include "rtokey.c"
+#include "match.c"
+#include "beyond.c"
+#include "tuptor.c"
+#include "rtotup.c"
+#include "fwidth.c"
+#include "mktmp.c"
+#include "mktabl.c"
+
+#include "owildm.c"
+#include "zap.c"
+#include "round.c"		// OK to 7 decimal places, then gets stuffed up!
+#include "print.c"
+#include "lenstr.c"
+#include "cpybuf.c"
+#include "cpyseq.c"
+#include "compare.c"
+#include "update.c"
+#include "uptupl.c"
+#include "ulock.c"
+#include "ulockr.c"
+
+#include "dates.c"
+#include "typedp.c"
+#include "releas.c"   // need to understand sallocbuf better
+#include "getclver.c"
+
+
+//#include "util.c"			// debug routines 
+#include <setjmp.h>     /* jmp_buf, setjmp, longjmp */
+
+char	ename[128];
+//char	_ebuf[8192];
+//char	_obuf[8192];
+
+jmp_buf	sjbuf;
+
+main(int argc, char **argv)
+{
+	FLDdesc	*fld;
+	char	*Version;
+	char	v55[144];
+	char	v56[132];
+	char	*v7;
+
+	int		v6;
+	int		NumErrors;
+	int		NumVars;
+	int		jmp_error;
+	int		Verbose = 0;
+
+	//setbuf(stderr, _ebuf);	// stderr defaults to *no* buffering
+	//setbuf(stdout, _obuf);	// stdout default to line buffering
+	_pname = (char *)*argv;
+	if (!getflags(&argc, &argv,	"D,y,I*,n,v,C,r*,s,x,E", &codeb, &yflag, &incl_dir, &noWarnings, &Verbose, &notabchks, &dbrename, &tpenc, &exact, &extendDC, 0) || !argc)
+	{
+        Version = getclver();
+		printf("usage: %s (%s) [options] ent_file[.ent]\n", clbasename(_pname), Version);
+        printf("options:\n");
+        printf("  -D               debug mode\n");
+        printf("  -I {dir}         find include files in directory {dir}\n");
+        printf("  -n               suppress warning messages\n");
+        printf("  -r {db1=db2,..}  process enc file with database db2 in place of db1\n");
+        printf("  -s               compile to portable enc file\n");
+        printf("  -v               verbose\n");
+        printf("  -x               exact match on field names\n");
+        printf("  -y               display widths of 'D' type input/output fields\n");
+        printf("  ===================================================================\n");
+        printf("  -C               ignore CRC of tables. **Undocumented**\n");
+        printf("  -E               enable DC extensions to CL4. **Gefahr!!**\n");
+        exit(1);
+	}
+	//getflags() advances argc and argv past the flags 
+	
+	//printf("extendDC = %d\n",extendDC);
+
+	//printf("Hello %d\t %s\n",argc, argv[argc-1]);
+
+/*
+	int count27;
+	for (count27 = 0; count27 < 800 ; count27++ )
+	{
+		printf("count = %3d, (count - 650) <= 48u = %s\n",count27, ((count27 - 650) <= 48u) ? "true" : "false");
+	}
+*/
+/*
+	unsigned short count27;
+	for (count27 = 0; count27 < 64 ; count27++ )
+	{
+		funcnargs(count27 << 10);
+		//printf("count = %3d, (count - 1)    > 48u = %s\n",count27, ((count27 - 1) > 48u) ? "true" : "false");
+	}
+*/
+/*
+	float f27 = 8.924;
+	printf("f27 = %f, sizeof(f27) = %d, sizeof(float = %d)\n",f27, sizeof(f27),sizeof(float));
+	printf("FLT_MIN = %f, FLT_MAX = %f\n",FLT_MIN, FLT_MAX);
+	printf("Storage size for float : %d \n", sizeof(float));
+	printf("Minimum float positive value: %E\n", FLT_MIN );
+	printf("Maximum float positive value: %E\n", FLT_MAX );
+	printf("Precision value: %d\n", FLT_DIG );
+ */ 
+
+	v7 = getenv("LANG");
+	if (!v7 || !*v7)
+		putenv("LANG=en_AU");
+	getcwd(cwd, 128);
+	termcap();
+    loadMonthArrays(0);			// load months, but don't init CLvars
+    dateCheck(0);
+
+	//printf("sizeof(INCLUDE) = %d\n",sizeof(INCLUDE));
+	v6 = strlen(*argv);
+	if ( v6 > 3 && cmpbuf((char *)&(*argv)[v6 - 4], ".ent", 4u) )
+		(*argv)[v6 - 4] = 0;
+
+	cdbcpystr(v55, (char *)*argv, ".ent", 0);     // ensure filename passed has ".ent" on the end
+	v7 = chkpath(v55, 0, "CLEPATH", 0, 256);
+	cdbcpystr(ename, v7, 0);
+	ename[strlen(ename) - 4] = 0;
+
+	if ( !yflag )	// display width of 'D' fields
+		eprint("cl (%s) compiling %s:\n", getclver(), *ename ? ename : *argv);
+
+	// ensure all mandatory table pointers are initialised.
+	ttab = (TDesc *)mmalloc(0);
+	while ( no_ttabs < 3 )				// 3 system tables 0-2		"tables","fields","locks"
+		newttab();
+	dtab = (DBase *)mmalloc(0);
+	btab = (BTAB *)mmalloc(0);
+	_files = (FCB *)mmalloc(0);
+
+	jmp_error = setjmp(sjbuf);			// 0 on first run though. Non-Zero if we had a seg-violation causing crash!
+	if (!jmp_error)
+	{	
+		NumErrors = loadent(ename);		// Load in the ENT file and compile program
+		if (!NumErrors)					// Compilation was successful!
+		{	
+			if (!yflag)					// only checking date fields
+			{
+				NumVars = 0;
+				while((fld = getvars(NumVars), fld) )
+				{
+					if ( !noWarnings && !(fld->FLDstat & fld_VAR_USED) )	// 0x0010  used to indicate variable accessed in clcomp
+						eprint("warning: variable [%s] not used\n", fld->FLDname);
+					//if ( fldvar->field_15 )
+					//	LOWORD(NumVars) = NumVars + fldvar->field_15;	// Nothing appears to set this field?
+					NumVars++;
+				}
+				tdlocks();							// Show any possible table conflicts/issues
+				fflush(stderr);
+				cdbcpystr(v56, ename, ".enc", 0);
+				NumErrors = dumpenc(v56);
+			}
+		}
+		if (NumErrors)	// possible to get errors when dumping the file
+		{
+			eprint("n_errs = %d\n", NumErrors);
+			Verbose = 0;
+		}
+	}
+	else
+		Verbose = 0;
+//--------------------
+	if ( codeb )
+		prvars(1);							// show variable names as tree structure
+
+	if (Verbose)
+	{
+		print("No. of variables = %d\n", NumVars);
+        prvars(0);							// show variable names normally
+		ProgDump();							// Dump program details
+		prtds();                            // Show Block details
+	}
+
+	closedb(1);
+}
+
+VARTREE *chknode(VARTREE *a1, char *TableName, short MaxLen)
+{
+	VARTREE *v3;
+    int v4;
+
+    if ( !a1 || (v3 = chknode(a1->VarPrev, TableName, MaxLen)) == 0	&& (v4 = compare(TableName, a1->VarName), v3 = a1, v4) && (v3 = chknode(a1->VarNext, TableName, MaxLen)) == 0 )
+		v3 = 0;
+	return v3;
+}
+
+void tdlocks()
+{
+	TDesc	*TTptr;
+	TDesc	*LastTTptr;
+	TDesc	*TTptr2;
+	FLDdesc *fld;
+	VARTREE	*v8; 
+	char	*Alias;
+
+	short v0;
+	short v10;
+	bool v14;
+
+    LastTTptr = &ttab[no_ttabs - 1];
+	for ( TTptr = ttab; TTptr <= LastTTptr; TTptr++ )
+    {
+		v0 = TTptr->TDlocked;
+        if ( v0 & ttl_LOCK )
+        {
+			// lock on table, but no "put" or "delete" commands on the table
+			if ( !(v0 & ttl_PUT) && !(v0 & ttl_DEL) )
+				eprint("warning: possible redundant lock on %s %s '%s'\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+			
+			// look for any tablename contention which have locks as well!
+			for ( TTptr2 = ttab; TTptr2 <= LastTTptr; TTptr2++ )
+            {	
+				if ( TTptr2->TDlocked & ttl_LOCK && TTptr != TTptr2 && TTptr->DBnumber == TTptr2->DBnumber && !compare(TTptr->TableName, TTptr2->TableName) )
+					eprint("warning: possible lock contention - %s %s '%s' and '%s'\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias, TTptr2->TableAlias);
+			}
+		}
+		// no lock on the table, we *didn't* create the table, and there are "put" or "delete" commands on the table, flag it!
+        else if ( !(v0 & ttl_CREATE) && (v0 & ttl_PUT || v0 & ttl_DEL) )
+			eprint("WARNING: no lock when updating %s %s '%s'\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+
+//==================================================================
+        if ( TTptr->TableName[0] )
+        {
+			for ( fld = TTptr->TTfields; fld->FLDelemID; ++fld )
+            {
+				if ( fld->FLDtype == 'S' || fld->FLDtype == 'K' )
+                {
+					TTptr2 = ttab;
+                    v14 = false;
+                    while ( TTptr2 <= LastTTptr )
+                    {
+						if ( TTptr2->TableName[0] && TTptr->DBnumber == TTptr2->DBnumber )
+							v14 = (compare(fld->FLDname, TTptr2->TableName) == 0);
+
+						if ( v14 )
+							break;
+						TTptr2++;
+					}
+					if ( !v14 && (TTptr->TDlocked & ttl_PUT && fld->FLDtype == 'K' || TTptr->TDlocked & ttl_DEL) )
+						eprint("warning: %s %s %s table '%s' not open\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, (fld->FLDtype == 'S') ? "set" : "key" , fld->FLDname);
+				}
+			}
+			// check for variable name/tablename conflicts
+			v8 = chknode(troot, TTptr->TableName, strlen(TTptr->TableName) + 1);
+			if ( v8 )
+				eprint("warning: table and variable conflict [%s,%s]\n", TTptr->TableName, v8->VarName);
+		}
+		// ditto for any Alias/variable name conflicts
+        if ( TTptr->TableAlias[0] )
+        {
+			v8 = chknode(troot, TTptr->TableAlias, strlen(TTptr->TableAlias) + 1);
+            if ( v8 )
+				eprint("warning: alias and variable conflict [%s,%s]\n", TTptr->TableAlias, v8->VarName);
+		}
+//=================================================================
+		Alias = TTptr->TableAlias;
+        v10 = strlen(Alias);
+        TTptr2 = TTptr + 1;
+        while ( v10 && TTptr2 <= LastTTptr )
+        {
+			if ( cmpbuf(Alias, TTptr2->TableAlias, v10 + 1) )	// also compares the trailing \0 byte to ensure no partial matches
+				eprint("warning: duplicate alias [%s] in %s %s and %s %s\n", Alias, dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, dtab[TTptr2->DBnumber].FullDBname, TTptr2->TableName);
+			TTptr2++;
+		}
+	}
+}
+
+void ProgDump()
+{
+	TDesc	*TTptr;
+	PTAB	*ptab;
+	ENTAB	*entb;
+	RTAB	*rtab;
+	XFTAB	*xftb;
+	SFTAB	*sftab;
+	XTAB	*xtab;
+	
+	int		OpCode;
+	short	PTno = 0;
+
+	//PTno Line OpCd\tInstruction\n"
+	//   0   10  200	testn[N]  (=) ~56756767~
+	//   1   12  200	testn2[N]  (=) testn[N]  ([7]%) ~1000000~
+
+	print("PTno SrcL OpCd\tInstruction\n");
+	while ((ptab = PTARR(getptabp(PTno)),ptab->OpCode))
+    {
+		print("%4d %4d %4d\t", PTno, ptab->SrcLineNo, ptab->OpCode);
+        fflush(stdout);
+		if ( (unsigned short)(ptab->OpCode - 500) <= 98u )	// file operations
+        {
+			rtab = RTARR(ptab->TABno);
+            TTptr = &ttab[rtab->TTno];
+            if ( rtab->OpType == rtb_SELECT )		// 0x0080
+				print("select %s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+
+            else if ( rtab->OpType & rtb_GET )		// 0x0001
+				print("get %s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+
+            else if ( rtab->OpType & rtb_GETNEXT )	// 0x0002
+				print("getnext %s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+
+			// not in real clcomp:
+			else if ( rtab->OpType & rtb_GETPREV )	// 0x0004
+				print("getprev %s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+
+            else if ( rtab->OpType & rtb_PUT )		// 0x0008
+				print("put %s.%s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+
+			else if ( rtab->OpType & rtb_DELETE )	// 0x0010
+				print("delete %s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+                
+			else if ( rtab->OpType & rtb_CLEAR )	// 0x0020
+				print("clear %s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+                
+			else if ( rtab->OpType & rtb_REPLACE )	// 0x0800		// the *EVIL* replace command......
+				print("replace '%s'", TTptr->TableAlias);
+
+			//----------------
+			if ( rtab->LockType & rtb_LOCK )		// 0x0200
+				print(" lock");
+			else if ( rtab->LockType & rtb_LOCKR )	// 0x0400
+				print(" lockr");
+                         
+			if ( rtab->WhereEXP )
+            {
+				print(" where ");
+                prtfid(rtab->WhereEXP);
+			}
+            
+			else if ( rtab->OpType & rtb_REPLACE )	// 0x0800 Mutually exclusive with "where" and "all" 
+				prrt(rtab->NextRT);
+
+			else if ( rtab->OpType & rtb_SEL_ALL )	// 0x0100
+				print(" all");
+		}
+		else
+		{
+			OpCode = ptab->OpCode;
+			switch (OpCode)
+			{
+			case 720:
+				print("do (block %d) ", ptab->Operand);
+                if ( ptab->TABno )
+                    print("%s", &strarr.StringTable[ptab->TABno - 1]);
+				break;
+
+			case 880:
+				print("sleep ");
+                if ( ptab->TABno )
+					prtfid(ptab->TABno);
+				break;
+
+			case 882:
+				print("exit_block");
+				break;
+
+			case 884:
+				print("exit_do");
+				break;
+			
+			case 886:
+				print("exit_process");
+				break;
+
+			case 888:
+				print("restart_block");
+				break;
+
+			case 910:
+				print("unlock ");
+                if ( ptab->Operand )
+                {
+					TTptr = &ttab[ptab->Operand];
+					print("%s %s,%s", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+				}
+				else
+					print("all");
+				break;
+
+			case 950:
+				print("break");
+				break;
+
+			case 999:
+				print("end");
+				break;
+
+			case 900:
+				print("print ");
+                prpf(ptab->TABno);
+				break;
+
+			case 760:
+				print("srandom(");
+                if ( ptab->TABno )
+					prtfid(ptab->TABno);
+				print(")");
+				break;
+			
+			case 730:
+				print("redisplay ");
+                prrd(ptab->TABno);
+				break;
+			
+			case 750:
+				print("fork ");
+			    if ( ptab->TABno )
+					prtfid(ptab->TABno);
+				break;
+
+			case 800:
+				xftb = XFARR(ptab->TABno);
+				if ( xftb )
+				{
+					TTptr = &ttab[xftb->TTno_to];
+					print("copy %s %s '%s' from ", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+					//print("copy %s %s '%s' from ", dtab[ttab[xftb->TTno_to].DBnumber].FullDBname, ttab[xftb->TTno_to].TableName, ttab[xftb->TTno_to].TableAlias);
+					TTptr = &ttab[xftb->TTno_from];
+					print("%s %s '%s'", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+				}
+				break;
+
+			case 850:
+			case 860:
+				sftab = SFARR(ptab->TABno);
+				prpipe(sftab);
+				break;
+
+			case 400:						// not sure this is actually reachable?
+				print("no-op");
+				break;
+
+			case 320:
+				print("continue (%d)", ptab->Operand);
+				break;
+
+			case 330:
+				print("end_loop (%d)", ptab->Operand);
+				break;
+
+			case 300:
+				print("if ");
+				prtfid(ptab->TABno);
+				print(" (goto %d)", ptab->Operand);	// go to this PTAB if condition false
+				break;
+
+			case 310:
+				print("while ");
+				prtfid(ptab->TABno);
+				print(" (goto %d)", ptab->Operand);	// go to this PTAB if condition false
+				break;
+
+			case 265:
+				print("no_form");
+				break;
+
+			case 140:
+				print("clear_eos");
+				break;
+
+			case 130:
+				print("clear_eol");
+				break;
+
+			case 200:		// OpCode 200 is assignment.  ie.  X = Y 
+				prcalc(ENARR(ptab->TABno));
+				break;
+
+			case 250:
+				print("refresh ");			// no 'screen' name is legal
+				if ( ptab->TABno )
+					print("%s", &strarr.StringTable[ptab->TABno - 1]);
+				break;
+
+			case 260:
+				print("screen ");			// no 'screen' name is legal
+				if ( ptab->TABno )
+		            print("%s", &strarr.StringTable[ptab->TABno - 1]);
+				break;
+
+			case 600:
+				print("format %s ", btab[ptab->Operand].BlockName);
+                prtfid(ptab->TABno);
+				break;
+
+			case 700:
+                print("goto %d", ptab->Operand);
+				break;
+
+			case 450:
+				print("create: ");
+				prkx(KXARR(ptab->TABno));
+				break;
+
+			case 1:		// 1 = "accept" field
+			case 3:		// 3 = "head" 
+			case 4:		// 4 = "text"
+				xtab = XTARR(ptab->TABno);
+				switch (OpCode)
+				{
+				case 1:
+		            prxt(xtab, 0);
+					break;
+				case 3:
+					print("head ");
+		            prxt(xtab, 1);
+					break;
+				case 4:
+					print("text ");
+		            prxt(xtab, 1);
+					break;
+				}
+				break;
+
+			case 870:
+				print("pause ");
+                if ( ptab->TABno )					// pause with no variable following is legal
+				{
+					entb = ENARR(ptab->TABno);
+					if ( entb->enleft )				// Pause with two variables following
+                    {
+						prtfid(entb->enleft);
+						print(" ");
+						prtfid(entb->enright);
+					}
+					else							// pause with one variable following
+					{
+						prtfid(ptab->TABno);
+					}
+				}
+				break;
+
+			case 270:
+				print("message ");
+                if ( ptab->TABno )
+                {
+					entb = ENARR(ptab->TABno);
+					prtfid(entb->enleft);
+                    print(" ");
+                    prtfid(entb->enright);
+				}
+				break;
+
+			default:
+				//if ( (unsigned short)(ptab->OpCode - 650) <= 48u )	// code in real clcomp is incorrect. set csv 630 ,dos 640 are unreachable!
+				if ( ptab->OpCode >= 630 && ptab->OpCode <= 698 )
+					prset(ptab);
+				break;
+			}
+		}
+
+        print("\n");
+        PTno++;
+	}
+}
+
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d27 5
+a31 5
+#include "src/DBdefs.h"
+#include "src/funcdefs.h"
+#include "src/lvarnames.h"
+#include "src/tblglo.c"
+#include "src/cl4.h"
+d34 1
+a34 1
+#include "src/UTIL_FUNCTIONS.h"
+d37 14
+a50 13
+#include "src/trim.c"
+#include "src/mstrings.c"
+#include "src/getflags.c"
+#include "src/cpystr.c"
+#include "src/cmpbuf.c"
+#include "src/guname.c"
+#include "src/derror.c"
+#include "src/bupsem.c"
+#include "src/cllogerr.c"
+#include "src/error.c"
+#include "src/putstr.c"
+#include "src/getosbuf.c"
+#include "src/termcap.c"
+d53 86
+a138 86
+#include "src/gettype.c"
+#include "src/alloc.c"
+#include "src/mkfree.c"
+#include "src/dbopen.c"
+#include "src/cmpkey.c"
+#include "src/picknx.c"		// testing
+#include "src/pickpr.c"		// testing
+#include "src/addtup.c"
+#include "src/rdhdr.c"
+#include "src/newexp.c"
+#include "src/newjun.c"
+#include "src/balanc.c"
+#include "src/rmlock.c"
+#include "src/fclear.c"
+#include "src/restri.c"
+#include "src/chkite.c"
+#include "src/captur.c"
+#include "src/oshare.c"
+#include "src/relsha.c"
+#include "src/onexit.c"
+#include "src/shutdb.c"
+#include "src/cmpatt.c"
+#include "src/putnod.c"   //** Need to work out rdata/roffset use of NODE_1 structure
+#include "src/dbsize.c"
+#include "src/dbspac.c"
+#include "src/dbglob.c"
+#include "src/dbclose.c"
+#include "src/spread.c"
+#include "src/split.c"
+#include "src/whead.c"
+#include "src/promot.c"
+#include "src/redist.c"
+#include "src/movele.c"
+#include "src/moveri.c"
+#include "src/repos.c"
+#include "src/diffke.c"			//untested, needs work
+#include "src/usage.c"
+#include "src/numsz.c"
+#include "src/writep.c"
+#include "src/diffat.c"
+#include "src/chkind.c"
+#include "src/sync.c"
+#include "src/clrtab.c"			// _sparetree()
+#include "src/setvar.c"
+#include "src/times.c"
+
+#include "src/getevar.c"
+#include "src/getdirname.c"
+#include "src/lock.c"
+#include "src/lockr.c"
+#include "src/readf.c"
+#include "src/fill.c"
+
+#include "src/chkpath.c"
+#include "src/loadent.c"
+#include "src/loadvars.c"
+#include "src/loadstate.c"
+#include "src/errors.c"
+#include "src/alllower.c"
+#include "src/getr.c"
+#include "src/putr.c"
+#include "src/delr.c"
+#include "src/tdopen.c"
+#include "src/SYMBOLS.c"
+#include "src/getch.c"
+#include "src/nextchr.c"
+#include "src/dump_routines.c"
+#include "src/dump.c"
+#include "src/TABS.c"
+#include "src/KEYS.c"
+#include "src/chkoelist.c"
+#include "src/extstr.c"		// only required if DBrename option is specified
+#include "src/cafuncs.c"		// only required if DBrename option is specified
+#include "src/dbrename.c"		// only required if DBrename option is specified
+#include "src/col_row.c"
+#include "src/expression.c"
+#include "src/getdwid.c"
+#include "src/getatt.c"
+#include "src/getsha.c"
+#include "src/gettype.c"
+#include "src/fretre.c"
+#include "src/frelst.c"
+#include "src/seq.c"
+#include "src/relnod.c"
+#include "src/ealloc.c"
+#include "src/cmpstr.c"
+d141 49
+a189 49
+#include "src/getfile.c"
+#include "src/lecreate.c"
+#include "src/leselect.c"
+#include "src/leulck.c"
+#include "src/lemsg.c"
+#include "src/lepause.c"
+#include "src/lefresh.c"
+#include "src/leprint.c"
+#include "src/lerange.c"
+#include "src/leopen.c"
+#include "src/leset.c"
+#include "src/lejoin.c"
+#include "src/leif.c"
+#include "src/leread.c"
+#include "src/lerfile.c"
+#include "src/lecopy.c"
+#include "src/lewhile.c"
+#include "src/leredisp.c"
+#include "src/leeop.c"
+#include "src/leformat.c"
+#include "src/ledefine.c"
+#include "src/leblock.c"
+#include "src/prdebug.c"
+#include "src/closedb.c"
+
+#include "src/getkflds.c"
+#include "src/getxflds.c"
+#include "src/getident.c"
+#include "src/findfno.c"
+#include "src/cpytuc.c"
+#include "src/getnod.c"
+#include "src/freshn.c"
+#include "src/stepba.c"
+#include "src/stepfw.c"
+
+#include "src/newtabs.c"
+#include "src/identi.c"
+#include "src/keysiz.c"
+#include "src/rowsiz.c"
+
+#include "src/rhead.c"
+#include "src/rindex.c"
+#include "src/bound.c"
+#include "src/ifetch.c"
+#include "src/dfetch.c"
+#include "src/ipos.c"
+#include "src/dpos.c"
+#include "src/dmerge.c"
+#include "src/imerge.c"
+d192 55
+a246 55
+#include "src/domtox.c"			// Needs more work
+#include "src/xtodom.c"			// Needs more work
+#include "src/mstoi.c"
+#include "src/mstol.c"
+#include "src/mstod.c"
+#include "src/mstoxi.c"
+#include "src/mstoxl.c"
+#include "src/xitoms.c"
+#include "src/xltoms.c"
+#include "src/itoms.c"
+#include "src/ltoms.c"
+#include "src/dtoms.c"
+#include "src/addexp.c"
+#include "src/negate.c"
+#include "src/nextr.c"
+#include "src/prevr.c"
+#include "src/getpat.c"
+#include "src/indexp.c"
+#include "src/getpg.c"
+#include "src/datapg.c"
+#include "src/chkpag.c"		// requires more testing
+#include "src/itoptr.c"
+#include "src/scanpg.c"
+#include "src/itosz.c"
+#include "src/readpg.c"
+#include "src/scnbuf.c"
+#include "src/modpag.c"
+#include "src/addpag.c"
+#include "src/delpag.c"
+#include "src/rtokey.c"
+#include "src/match.c"
+#include "src/beyond.c"
+#include "src/tuptor.c"
+#include "src/rtotup.c"
+#include "src/fwidth.c"
+#include "src/mktmp.c"
+#include "src/mktabl.c"
+
+#include "src/owildm.c"
+#include "src/zap.c"
+#include "src/round.c"		// OK to 7 decimal places, then gets stuffed up!
+#include "src/print.c"
+#include "src/lenstr.c"
+#include "src/cpybuf.c"
+#include "src/cpyseq.c"
+#include "src/compare.c"
+#include "src/update.c"
+#include "src/uptupl.c"
+#include "src/ulock.c"
+#include "src/ulockr.c"
+
+#include "src/dates.c"
+#include "src/typedp.c"
+#include "src/releas.c"   // need to understand sallocbuf better
+#include "src/getclver.c"
+d249 1
+a249 1
+//#include "src/util.c"			// debug routines 
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d13 1
+d24 1
+a250 1
+//char	cwd[128];
+d259 1
+a259 1
+	char	*v5;	
+a260 1
+	int		v6;
+d262 1
+d264 2
+a267 2
+	int		CurrVarNum;
+	FLDdesc	*fld;
+a268 1
+	char	v56[132];
+a269 1
+	unsigned short OpCode;
+d274 1
+a274 13
+	if (!getflags(&argc, &argv,
+			"D,y,I*,n,v,C,r*,s,x",
+			&codeb,
+			&yflag,
+			&incl_dir,
+			&noWarnings,
+			&Verbose,
+			&notabchks,
+			&dbrename,
+			&tpenc,
+			&exact,
+			0)
+		|| !argc)
+d287 3
+a289 2
+        printf("  -C               Ignore CRC of tables. **Undocumented, Gefahr!!**\n");
+
+d294 2
+d298 27
+a324 2
+	v5 = getenv("LANG");
+	if (!v5 || !*v5)
+d328 1
+a328 1
+    loadMonthArrays(0);                        // load months, but don't init CLvars
+a330 4
+#ifdef DEBUG_OUTPUT
+printf("*argv = %s\n",*argv);
+#endif
+
+a335 4
+#ifdef DEBUG_OUTPUT
+	printf("*argv = %s\n",*argv);
+#endif
+
+d341 2
+a342 11
+#ifdef DEBUG_OUTPUT
+	printf("v7 = %s\nename = %s\n",v7,ename);
+#endif
+
+	if ( !yflag )
+	{
+		v7 = ename;
+		if ( !*v7 )
+			v7 = *argv;
+		eprint("cl (%s) compiling %s:\n", getclver(), v7);
+	}
+d344 1
+d346 1
+a346 1
+	while ( no_ttabs <= 2 )				// 3 system tables 0-2		"tables","fields","locks"
+d360 2
+a361 2
+				CurrVarNum = 0;
+				while((fld = getvars(CurrVarNum), fld) )
+d363 1
+a363 1
+					if ( !noWarnings && !(fld->FLDstat & 0x0010) )
+d366 2
+a367 2
+					//	LOWORD(CurrVarNum) = CurrVarNum + fldvar->field_15;// Nothing appears to set this field?
+					CurrVarNum++;
+d369 1
+a369 2
+				NumVars = CurrVarNum;
+				tdlocks();
+d410 10
+a419 12
+     TDesc *TTptr;
+     TDesc *LastTTptr;
+     TDesc *TTptr2;
+     
+	 FLDdesc *fld; // edi@@19
+
+     char *Alias;
+     VARTREE *v8; 
+
+     short v0;
+     short v10;
+     bool v14;
+d511 1
+a511 1
+		if ( (unsigned short)(ptab->OpCode - 500) <= 98u )
+d515 1
+a515 1
+            if ( rtab->OpType == 0x0080 )
+d518 1
+a518 1
+            else if ( rtab->OpType & 0x0001 )
+d521 1
+a521 1
+            else if ( rtab->OpType & 0x0002 )
+d524 5
+a528 1
+            else if ( rtab->OpType & 0x0008 )
+d531 1
+a531 1
+			else if ( rtab->OpType & 0x0010 )
+d534 1
+a534 1
+			else if ( rtab->OpType & 0x0020 )
+d537 1
+a537 1
+			else if ( rtab->OpType & 0x0800 )	// replace command appears to have been removed from CL4
+d541 1
+a541 1
+			if ( rtab->LockType & 0x0200 )
+d543 1
+a543 1
+			else if ( rtab->LockType & 0x0400 )
+d552 1
+a552 1
+			else if ( rtab->OpType & 0x0800 )	// Same flag as 'replace' command above. mutually exclusive with "where" and "all" 
+d555 1
+a555 1
+			else if ( rtab->OpType & 0x0100 )
+d637 3
+a639 1
+					print("copy %s %s '%s' from ",dtab[ttab[xftb->TTno_to].DBnumber].FullDBname,ttab[xftb->TTno_to].TableName,ttab[xftb->TTno_to].TableAlias);
+d663 1
+a663 1
+			case 300:	// 300 = "if"
+d669 1
+a669 1
+			case 310:	// 310 = "while"
+d742 1
+a742 1
+					if ( entb->Dest )				// Pause with two variables following
+d744 1
+a744 1
+						prtfid(entb->Dest);
+d746 1
+a746 1
+						prtfid(entb->Src);
+d760 1
+a760 1
+					prtfid(entb->Dest);
+d762 1
+a762 1
+                    prtfid(entb->Src);
+a773 1
+LABEL_219:
+@
+
+
+1.2
+log
+@added some fixes, termcap support
+@
+text
+@d121 3
+a123 1
+//#include "src/dbrename.c"		// only required if DBrename option is specified
+a248 5
+int		DFlag;
+int		IFlag;
+//char	LFlag[20];
+char	*LFlag;
+char	CFlag;
+d251 2
+a255 10
+
+//'D,y,I*,n,v,C,r*,s,x'
+
+// ? = char, # = int
+
+//getflags(&argc,&argv, "i,a,v,h?,c?,l*,p*,b#,d#:F",
+//	&iflg, &aflg, &vflg, &hflg, &cflg, &ttyname, &ph_num, &speed, &debug);
+
+
+
+a259 1
+	char	*v4;
+d272 2
+d275 13
+a287 1
+	if (!getflags(&argc, &argv, "D,I#,L*,C?,v,y", &codeb, &IFlag, &LFlag,&CFlag,&Verbose,&yflag, 0) || !argc)
+d290 1
+a290 2
+        v4 = clbasename(_pname);
+		printf("usage: %s (%s) [options] ent_file[.ent]\n", v4, Version);
+d295 1
+a295 1
+        //printf("  -r {db1=db2,..}  process enc file with database db2 in place of db1\n");
+d300 2
+a306 1
+	//printf("LFlag = %s\n",LFlag);
+d320 1
+a320 1
+	//printf("sizeof(TDesc) = %d\n",sizeof(TDesc));
+a345 17
+
+	/*int test1 = 0;
+	while (test1 <= 0xFFFF)
+	{
+		//printf("OpCode = x%04X, OpCode & 0xFC00 x%04X, result = %2d\n",test1,(test1 & 0xFC00),(test1 & 0xFC00) - 0xC801u < 0xC00 ? 2 : -1);
+		//if ((test1&0xFC00) - 0xC801u < 0xC00 || (test1&0xFC00) - 0xF001u < 0x800 )
+		//if((test1&0xFC00) - 0x5001u < 0x3BFF)
+		OpCode = test1 & 0xFC00u;
+		//if ( (OpCode - 1) <= 0x4FFF || OpCode - 0x8C00u <= 0x1400)
+		//if ( OpCode - 0x5001u <= 0x3BFE || OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
+		if ( OpCode - 0xD401u <= 0x1BFF)
+		{
+			printf("OpCode = x%04X, OpCode & 0xFC00 x%04X, \n",test1,(test1 & 0xFC00));
+		}
+		test1++;
+	}*/
+	
+d359 1
+a359 2
+			CurrVarNum = 0;
+			while((fld = getvars(CurrVarNum), fld) )
+d361 14
+a374 5
+				if ( !noWarnings && !(fld->FLDstat & 0x0010) )
+					eprint("warning: variable [%s] not used\n", fld->FLDname);
+				//if ( fldvar->field_15 )
+				//	LOWORD(CurrVarNum) = CurrVarNum + fldvar->field_15;// Nothing appears to set this field?
+				CurrVarNum++;
+a375 5
+			NumVars = CurrVarNum;
+			tdlocks();
+			fflush(stderr);
+			cdbcpystr(v56, ename, ".enc", 0);
+			NumErrors = dumpenc(v56);
+d765 2
+a766 1
+				if ( (unsigned short)(ptab->OpCode - 650) <= 48u )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+d27 1
+a34 1
+//#include "src/termcap.c"
+d46 2
+d308 1
+a308 4
+	{
+		v5 = "LANG=en_AU";
+		putenv(v5);
+	}
+d310 1
+a310 1
+	//termcap();
+d336 9
+d362 1
+a362 1
+	while ( no_ttabs <= 2 )				// 3 system tables 0-2
+d389 1
+a389 1
+		if (NumErrors)
+d414 2
+a415 2
+	VARTREE *v3; // edx@@2
+    int v4; // eax@@3
+d424 44
+a467 42
+     short v0; // ax@@2
+     TDesc *TTptr2; // esi@@6
+     short v2; // ax@@14
+     FLDdesc *fld; // edi@@19
+     TDesc *v4; // esi@@22
+     char v5; // zf@@25
+     signed int v6; // eax@@25
+     char *v7; // eax@@35
+     VARTREE *v8; // eax@@40
+     VARTREE *v9; // eax@@43
+     short v10; // kr14_4@@45
+     TDesc *v11; // esi@@45
+     char *arg; // [sp+1Ch] [bp-1Ch]@@47
+     TDesc *LastTTptr; // [sp+20h] [bp-18h]@@1
+     signed int v14; // [sp+24h] [bp-14h]@@22
+     TDesc *TTptr; // [sp+28h] [bp-10h]@@1
+
+     LastTTptr = &ttab[no_ttabs - 1];
+     for ( TTptr = ttab; TTptr <= LastTTptr; ++TTptr )
+     {
+          v0 = TTptr->TDlocked;
+          if ( v0 & 1 )
+          {
+               if ( !(v0 & 2) && TTptr->TDlocked >= 0 )
+                    eprint("warning: possible redundant lock on %s %s '%s'\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+               for ( TTptr2 = ttab; TTptr2 <= LastTTptr; ++TTptr2 )
+               {
+                    if ( TTptr2->TDlocked & 1 && TTptr != TTptr2 && TTptr->DBnumber == TTptr2->DBnumber && !compare(TTptr->TableName, TTptr2->TableName) )
+                         eprint("warning: possible lock contention - %s %s '%s' and '%s'\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias, TTptr2->TableAlias);
+               }
+          }
+          else
+          {
+               v2 = TTptr->TDlocked;
+               if ( !(v2 & 0x0200) && (v2 & 2 || TTptr->TDlocked < 0) )
+                    eprint("WARNING: no lock when updating %s %s '%s'\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+          }
+          if ( TTptr->TableName[0] )
+          {
+               for ( fld = TTptr->TTfields; fld->FLDelemID; ++fld )
+               {
+                    if ( fld->FLDtype == 'S' || fld->FLDtype == 'K' )
+d469 34
+a502 62
+                         v4 = ttab;
+                         v14 = 0;
+                         if ( ttab > LastTTptr )
+                         {
+LABEL_30:
+                              if ( !v14 && (TTptr->TDlocked & 2 && fld->FLDtype == 'K' || TTptr->TDlocked < 0) )
+                              {
+                                   if ( fld->FLDtype == 'S' )
+                                        v7 = "set";
+                                   else
+                                        v7 = "key";
+                                   eprint("warning: %s %s %s table '%s' not open\n", dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, v7, fld->FLDname);
+                              }
+                         }
+                         else
+                         {
+                              while ( 1 )
+                              {
+                                   if ( v4->TableName[0] && TTptr->DBnumber == v4->DBnumber )
+                                   {
+                                        v5 = compare(fld->FLDname, v4->TableName) == 0;
+                                        v6 = 1;
+                                        if ( !v5 )
+                                             v6 = v14;
+                                        v14 = v6;
+                                   }
+                                   ++v4;
+                                   if ( v14 )
+                                        break;
+                                   if ( v4 > LastTTptr )
+                                        goto LABEL_30;
+                              }
+                         }
+                    }
+               }
+               if ( TTptr->TableName[0] )
+               {
+                    v8 = chknode(troot, TTptr->TableName, strlen(TTptr->TableName) + 1);
+                    if ( v8 )
+                         eprint("warning: table and variable conflict [%s,%s]\n", TTptr->TableName, v8->VarName);
+               }
+          }
+          if ( TTptr->TableAlias[0] )
+          {
+               v9 = chknode(troot, TTptr->TableAlias, strlen(TTptr->TableAlias) + 1);
+               if ( v9 )
+                    eprint("warning: alias and variable conflict [%s,%s]\n", TTptr->TableAlias, v9->VarName);
+          }
+          v10 = strlen(TTptr->TableAlias) + 1;
+          v11 = TTptr + 1;
+          if ( v10 != 1 && v11 <= LastTTptr )
+          {
+               arg = TTptr->TableAlias;
+               do
+               {
+                    if ( cmpbuf(arg, v11->TableAlias, (signed short)(v10 - 1) + 1) )
+                         eprint("warning: duplicate alias [%s] in %s %s and %s %s\n", arg, dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, dtab[v11->DBnumber].FullDBname, v11->TableName);
+                    ++v11;
+               }
+               while ( v10 != 1 && v11 <= LastTTptr );
+          }
+     }
+d522 1
+a522 1
+	printf("PTno SrcL OpCd\tInstruction\n");
+d529 1
+a529 1
+			rtab = ptab->TABno ? &rtarr.TableAddr[ptab->TABno - 1] : 0;
+d564 1
+a564 1
+			else if ( rtab->OpType & 0x0800 )	// *** looks incorrect. Same flag as replace command above *** 
+d661 1
+a661 1
+			case 400:
+d702 1
+a702 1
+				print("refresh ");
+d708 1
+a708 1
+				print("screen ");
+d749 1
+a749 1
+                if ( ptab->TABno )
+d752 1
+a752 1
+					if ( !entb->Dest )	// not sure how to produce this case?
+d754 6
+a760 1
+                        break;
+a761 3
+					prtfid(entb->Dest);
+                    print(" ");
+                    prtfid(entb->Src);
+@

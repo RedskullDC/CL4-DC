@@ -1,0 +1,265 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.21.00.06.46;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.05.05.19.10;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@started clean-up
+@
+text
+@#ifndef CHECK_LIT_C
+#define CHECK_LIT_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+const char *chklt(const char *a1)	// only called from pfork.c
+{
+    char *v1;
+	char *v2;
+    char *v8; // edx@@13
+    
+    char *j; // edx@@30
+    
+	char *v18; // [sp+18h] [bp-70h]@@7
+    char *Dest; // [sp+1Ch] [bp-6Ch]@@10
+
+	signed int v3; // ecx@@2
+    signed int v9; // eax@@20
+
+	unsigned int v12; // kr04_4@@27
+
+    unsigned char v4; // cf@@4
+    unsigned char v5; // zf@@4
+    
+	char v6; // al@@13
+    
+	char Src[32]; // [sp+30h] [bp-58h]@@30
+    char v22[32]; // [sp+50h] [bp-38h]@@27
+
+    for ( Dest = a1; ; Dest = v18 + 1 )
+    {
+        v18 = strchr(Dest, 'c');
+        v4 = 0;
+        v5 = v18 == 0;
+        if ( !v18 )
+            return a1;	// no 'c' on command line, couldn't have been called as "clenter....."
+        v1 = v18;
+        v2 = "clenter";
+        v3 = 7;
+        do
+        {
+            if ( !v3 )
+                break;
+            v4 = *v1 < (unsigned char)*v2;
+            v5 = *v1++ == *v2++;
+            --v3;
+        }
+        while ( v5 );
+        if ( !(v4 | v5) == v4 )
+            break;
+    }
+    if ( v18 )		// make sure we were invoked as "clenter ...... blah blah"
+    {
+        for ( Dest = v18 + 7; *Dest; Dest++ )		// skip past 'clenter' on cmdline
+        {
+            if ( *Dest != '\'' && *Dest != '"' )
+            {
+                if ( *Dest == '-' )	// some command line options were passed in
+                {
+                    v8 = Dest + 1;
+                    Dest = v8;
+                    v9 = *v8;
+                    if ( v9 == 'L' )				// -L {pid} = log file process ID
+                    {
+                        Dest++;
+                        sprintf(v22, "%d", lpid);
+                        
+						v12 = strlen(v22) + 1;
+                        for ( j = (char *)&a1[strlen(a1)]; Dest <= j; --j )
+                            j[v12 - 1] = *j;
+
+						cpybuf(Dest, v22, (v12 - 1));
+                        continue;
+                    }
+                    if ( v9 <= 'L' )
+                    {
+                        if ( !v9 )
+                            --Dest;
+                        continue;
+                    }
+                    if ( v9 == 'T' )				// -T {tran} = log file transaction number
+                    {
+                        ++Dest;
+                        sprintf(Src, "%ld", cl_tx);
+                        
+						v12 = strlen(Src) + 1;
+                        for ( j = (char *)&a1[strlen(a1)]; Dest <= j; --j )
+                            j[v12 - 1] = *j;
+                        
+                        cpybuf(Dest, Src, (v12 - 1));
+                        continue;
+                    }
+                }
+            }
+            else	// *Dest == '\'' || *Dest == '"' )
+            {
+                v6 = *Dest;
+                v8 = Dest + 1;
+                Dest = v8;
+                if ( !*v8 )
+                    return a1;
+
+                if ( *v8 != v6 )
+                {
+                    do
+                    {
+                        ++Dest;
+                        if ( !*Dest )
+                            return a1;
+                    }
+                    while ( *Dest != v6 );
+                }
+                if ( !*Dest )
+                    return a1;
+            }
+        }
+    }
+    return a1;
+}
+
+#endif
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+const char *chklt(const char *a1)
+d12 14
+a25 3
+    char *v1; // esi@@2
+    char *v2; // edi@@2
+    signed int v3; // ecx@@2
+d28 4
+a31 15
+    char v6; // al@@13
+    char *v7; // edx@@13
+    char *v8; // eax@@20
+    signed int v9; // eax@@20
+    unsigned int v10; // kr04_4@@27
+    char *i; // edx@@27
+    unsigned int v12; // kr14_4@@30
+    char *j; // edx@@30
+    char *v15; // [sp+0h] [bp-88h]@@29
+    char *v16; // [sp+4h] [bp-84h]@@29
+    int v17; // [sp+8h] [bp-80h]@@29
+    char *v18; // [sp+18h] [bp-70h]@@7
+    const char *Dest; // [sp+1Ch] [bp-6Ch]@@1
+    char *Desta; // [sp+1Ch] [bp-6Ch]@@10
+    char Src[32]; // [sp+30h] [bp-58h]@@30
+d40 1
+a40 1
+            return a1;
+d56 1
+a56 1
+    if ( v18 )
+d58 1
+a58 1
+        for ( Desta = v18 + 7; *Desta; ++Desta )
+d60 1
+a60 1
+            if ( *Desta != '\'' && *Desta != '"' )
+d62 1
+a62 1
+                if ( *Desta == '-' )
+d64 2
+a65 2
+                    v8 = Desta + 1;
+                    Desta = v8;
+d67 1
+a67 1
+                    if ( v9 == 'L' )
+d69 1
+a69 1
+                        ++Desta;
+d71 7
+a77 7
+                        v10 = strlen(v22) + 1;
+                        for ( i = (char *)&a1[strlen(a1)]; Desta <= i; --i )
+                            i[v10 - 1] = *i;
+                        v17 = v10 - 1;
+                        v16 = v22;
+                        v15 = Desta;
+                        goto LABEL_33;
+d82 1
+a82 1
+                            --Desta;
+d85 1
+a85 1
+                    if ( v9 == 'T' )
+d87 1
+a87 1
+                        ++Desta;
+d89 3
+a91 2
+                        v12 = strlen(Src) + 1;
+                        for ( j = (char *)&a1[strlen(a1)]; Desta <= j; --j )
+d93 2
+a94 5
+                        v17 = v12 - 1;
+                        v16 = Src;
+                        v15 = Desta;
+LABEL_33:
+                        cpybuf(v15, v16, v17);
+d99 1
+a99 1
+            else
+d101 4
+a104 4
+                v6 = *Desta;
+                v7 = Desta + 1;
+                Desta = v7;
+                if ( !*v7 )
+d106 2
+a107 1
+                if ( *v7 != v6 )
+d111 2
+a112 2
+                        ++Desta;
+                        if ( !*Desta )
+d115 1
+a115 1
+                    while ( *Desta != v6 );
+d117 1
+a117 1
+                if ( !*Desta )
+@

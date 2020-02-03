@@ -1,0 +1,706 @@
+head	1.8;
+access;
+symbols;
+locks
+	leslie:1.8; strict;
+comment	@ * @;
+
+
+1.8
+date	2016.08.29.06.48.54;	author leslie;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2016.02.02.03.01.56;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2015.10.29.03.35.24;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2015.06.28.11.31.14;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.06.15.04.53.08;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.27.06.07.56;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.08.28.04.11.47;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.08.28.04.10.02;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial checkin
+@
+
+
+1.8
+log
+@clean-up
+./
+@
+text
+@#ifndef REFFILE_C
+#define REFFILE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+short reffile(RTAB *rtab)
+{
+	DBase	*DTptr;
+	TDesc	*TTptr;
+
+	RTAB	*v20;
+	RTAB	*v23;
+	RTAB	*v26;
+	
+	ENTAB	*ent;
+	FLDdesc *fld;
+	
+	int		v15;
+	int		v18;
+	int		DBno;
+	short	OpCode;
+	short	v9;
+	short	v17;
+	short	v14;
+
+	int		TDrp;	// TD to be replaced
+	int		TDno;
+	int		Lock;
+
+	short	ErrorCode;
+
+	// used by replace command
+	char	Aliasname[1008];
+	char	TableName[1008];
+	char	DBname[1008];
+
+	ErrorCode = 0;	// default success
+	TDno = rtab->TTno;
+	TTptr = &ttab[TDno];
+    if ( !(TTptr->TDlocked & ttl_OPEN))			//	0x0800u Indicates table has been opened with a getfile statement
+    {											// clcomp should trap all these errors.
+        setvar(v_ERROR, 12);		// "ERROR" 1
+        return 12;
+    }
+    
+	OpCode	= rtab->OpType;			// Specifies the operation type.
+    Lock	= rtab->LockType;		// Lock type. May be a lockr
+
+	//printf("reffile OpCode = x%04X, Lock = x%04X\n",OpCode,Lock);
+	if (OpCode & rtb_SELECT)	// select command	0x0080u
+	{
+		TTptr->TTselect = (EXPR *)fretre(TTptr->TTselect, 0);	// get rid of previous expression
+		TTptr->TTselect = getexpr(ENARR(rtab->WhereEXP), TDno);
+		v9 = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+		if ( v9 < 0 && !(TTptr->TDlocked & 0x0200))
+			ErrorCode = 1;
+	}
+    else if ( OpCode & rtb_GET) // 0x0001 ) GET command (also NOJOIN) 
+    {
+		while ( 1 )
+        {
+			v9 = rdrec(TDno, Lock);
+            if ( v9 != -10 || Lock == 1024 )  // -10 return code == locked by another user, Lock == 1024 means called with lockr (Lock Request)
+				break;
+			sleep(1u);
+			//printf("reffile - OpCode & rtb_GET stuck in lock loop!!\n");
+		}
+        if ( v9 > 0 )			// exit_success
+			goto LABEL_102;
+		else if ( v9 == -10 )	// record was locked, but we must have been called with lockr to get here
+			ErrorCode = 4;
+		else
+		{
+			rfree(TDno, 0);
+			ErrorCode = 1;
+		}
+	}
+    else if ( OpCode & rtb_JOIN)				// 0x0040 JOIN
+    {
+		if (OpCode & 0x0002)	// direction bit
+		{
+			if ((short) rdnxt(TDno, TTptr->TTselect, Lock, 1) > 0 )
+				goto LABEL_102;
+		}
+		else
+		{
+			if ((short) rdprev(TDno, TTptr->TTselect, Lock, 1) > 0 )
+				goto LABEL_102;
+		}
+	    ErrorCode = 2;	// no more data
+	}
+	else if ( OpCode & (rtb_GETNEXT|rtb_GETPREV))	// 0x0006 )	// checks 2 bits  0000-0000-0000-0110    0002 is getnext, 0004 is getprev
+    {
+		//printf("reffile : OpCode & (rtb_GETNEXT|rtb_GETPREV)\n");
+		ErrorCode = 0;	// default success
+        if ( OpCode & rtb_SEL_ALL || rtab->WhereEXP )			// rtab->field_2 & 0x100 == "all" flag
+        {
+			TTptr->TTselect = (EXPR *)fretre(TTptr->TTselect, 0);
+            ent = 0;
+            if ( !(OpCode & rtb_SEL_ALL) )	// if "all" not specified, get the "where" expression
+            {
+				ent = ENARR(rtab->WhereEXP);
+			}
+            TTptr->TTselect = getexpr(ent, TDno);
+            v14 = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+            v15 = v14;
+			if ( v14 < 0 )
+				dberror(v15, 0, rtdget(TTptr));		// dead end
+		}
+			
+		if (OpCode & rtb_GETNEXT)	// 0x0002)		// check direction 
+			v9 = rdnxt(TDno, TTptr->TTselect, Lock, 0);	// rdnxt clobbers KeyTablenames :o(
+		else
+			v9 = rdprev(TDno, TTptr->TTselect, Lock, 0);
+                
+		if ( v9 > 0 )			// exit_success
+			goto LABEL_102;
+		else if ( v9 == -10 )	// locked
+			ErrorCode = 4;
+		else
+		{
+			rfree(TDno, 0);
+			ErrorCode = 2;	// no more data
+		}
+	}
+	else if ( OpCode & rtb_PUT)		// 0x0008  put command
+    {
+		repkey(TDno, 0);								// ensure key fields are updated in record area
+        if ( reprec(TDno, Lock == 0) < 0 )				// Error if we couldn't put the record back to disk
+			ErrorCode = 3;
+	}
+	else if ( OpCode & rtb_DELETE )	// 0x0010  delete command
+    {
+		//printf("reffile : OpCode & rtb_DELETE\n");
+        v17 = TTptr->TDlocked;
+        if ( v17 & ttl_HASK )	//	0x0010u	 Has Key Tables
+        {
+            //if ( (v17 & 0x0021) == 0x0021 && cmpbuf(TTptr->TDworkarea1, TTptr->TDworkarea2, TTptr->TDrecsize) )
+            if ( (v17 & (ttl_AVAIL|ttl_LOCK)) == ttl_AVAIL|ttl_LOCK && cmpbuf(TTptr->TDworkarea1, TTptr->TDworkarea2, TTptr->TDrecsize) )
+				v18 = 1;
+			else
+				v18 = 0;
+			
+			if ( !v18 && (short)rdrec(TDno, 0) <= 0 )
+            {
+				rfree(TDno, 0);
+                ErrorCode = 1;	// error_exit
+                ulckrec(TDno);
+			}
+		}
+        if ( ErrorCode )
+			goto LABEL_102;
+		if ( delhier(TDno, 1) == 0 )
+			ErrorCode = 1;
+	}
+    else if ( OpCode & rtb_CLEAR )		// 0x0020 clear record
+    {
+		//printf("reffile : OpCode & rtb_CLEAR - OpCode = %04X\n",(unsigned int)OpCode );
+		rfree(TDno, 0);	// bit clunky.  rfree(TD,0) frees all Fields, but also clears fld_DATA_AVAIL bits
+		// so we have to go and turn them all back on again. :o(
+		for ( fld = TTptr->TTfields; fld->FLDelemID; fld++ )
+			fld->FLDstat |= fld_DATA_AVAIL;	// 0x0010u; *** Seems like the wrong flag to set ?? ***
+	}
+    else if ( OpCode & rtb_REPLACE )			// replace command. ** Undocumented in CL4 manuals **  GEFAHR!
+    {
+        DBname[0]		= 0;
+        TableName[0]	= 0;
+        Aliasname[0]	= 0;
+
+        TDrp = rtab->TTno;				// TTno to be replaced
+        v20 = RTARR(rtab->NextRT);		// RTAB chain of table details to replace TTno
+        if ( v20 )
+        {
+            exptobuf(DBname, ENARR(v20->enright), 0);
+            v23 = RTARR(v20->NextRT);
+            if ( v23 )
+            {
+                exptobuf(TableName, ENARR(v23->enright), 0);
+                v26 = RTARR(v23->NextRT);
+                if ( v26 )
+					exptobuf(Aliasname, ENARR(v26->enright), 0);
+			}
+		}
+
+        DTptr	= dtab;
+        DBno	= 0;
+        while ( no_dtabs > DBno && *DTptr->FullDBname )
+        {
+			if ( !compare(DBname, clbasename(DTptr->FullDBname)) )		// break when a match found
+				break;
+			DTptr++;
+            DBno++;
+		}
+        if ( DBno == no_dtabs )	// reached end of dtabs with no name match!
+		{
+			ErrorCode = 1;	// error_exit
+		}
+		else	// found match on DBname, look for TableName match
+		{
+			TTptr	= ttab;
+			TDno	= 0;
+			if ( no_ttabs > 0 )
+			{
+				// look for a match on DBname and TableName. Match on Alias is optional
+				while ( TTptr->DBnumber != DBno || compare(TableName, TTptr->TableName) || Aliasname[0] && compare(Aliasname, TTptr->TableAlias) )
+				{
+					++TDno;
+					++TTptr;
+					if ( TDno >= no_ttabs )// error_exit
+					{
+						ErrorCode = 2;	// no more data
+						goto LABEL_102;
+					}
+				}
+				if ( TDno < no_ttabs )
+				{
+					printf("replace 235\n");
+					if ( ttab[TDno].TTrtd < 0 )	// make sure replacing Table is actually open!
+						getfile(DBname, TableName);
+
+					cpybuf((char *)&ttab[TDrp], (char *)&ttab[TDno], sizeof(TDesc));	// 80  copy TDesc record over the top of another - bit hacky :o)
+					*(short *)&ttab[TDrp].TableAlias[0] = 0x003E;						// '>'	tell closedb() not to close DB associated with this TT (avoid double close) 
+					goto LABEL_102;
+				}
+			}
+			ErrorCode = 2;	// no more data error_exit
+		}
+	}
+	else
+	{
+		printf("reffile : Unknown command!!!\n");	// should be unreachable
+        ErrorCode = 9;
+	}
+
+//=======================================
+LABEL_102:
+    if ( Lock == 1024 )					// Lock request -> lockr  0x400
+    {
+        if ( ErrorCode == 4 )
+        {
+            setvar(v_LOCKED, 1);		// "LOCKED"
+            ErrorCode = 0;
+        }
+        else
+            setvar(v_LOCKED, 0);		// "LOCKED"
+    }
+    setvar(v_ERROR, ErrorCode);			// "ERROR"
+
+	//printf("reffile exiting. returned ErrorCode = %d\n",ErrorCode);
+    return ErrorCode;
+}
+
+#endif
+@
+
+
+1.7
+log
+@intermediate
+@
+text
+@d10 2
+a11 10
+    RTAB	*v20; // eax@@61
+    RTAB	*v23; // eax@@68
+    RTAB	*v26; // eax@@75
+
+    ENTAB	*v27; // eax@@79
+    ENTAB	*ent; // eax@@29
+    FLDdesc *fld; // edx@@56
+    DBase	*v28; // esi@@82
+    TDesc	*TTptr; // [sp+1Ch] [bp-BFCh]@@1
+    void	*v10; // eax@@20
+d13 7
+a19 1
+    //int		v6;
+d27 1
+a27 1
+	
+d31 1
+a31 1
+	
+d33 1
+a33 1
+	
+d39 3
+a41 3
+    ErrorCode = 0;	// default success
+    TDno = rtab->TTno;
+    TTptr = &ttab[TDno];
+d60 1
+a60 1
+    else if ( OpCode & rtb_GET) // 0x0001 ) get command
+d80 1
+a80 1
+    else if ( OpCode & 0x0040 )		//??????? Not sure if this is reachable with V4?
+a81 1
+		printf("reffile : OpCode & 0x0040\n");
+d166 1
+a166 1
+    else if ( OpCode & 0x0800 )			// replace command. ** Undocumented in CL4 manuals **  GEFAHR!
+d176 1
+a176 1
+            exptobuf(DBname, ENARR(v20->field_E), 0);
+d180 1
+a180 1
+                exptobuf(TableName, ENARR(v23->field_E), 0);
+d183 1
+a183 1
+					exptobuf(Aliasname, ENARR(v26->field_E), 0);
+d187 1
+a187 1
+        v28		= dtab;
+d189 1
+a189 1
+        while ( no_dtabs > DBno && *v28->FullDBname )
+d191 1
+a191 1
+			if ( !compare(DBname, clbasename(v28->FullDBname)) )		// break when a match found
+d193 2
+a194 2
+			++v28;
+            ++DBno;
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@d6 1
+d44 2
+a45 2
+    if ( !(TTptr->TDlocked & 0x0800) )
+    {
+a55 1
+		printf("reffile :(OpCode & 0x0080)\n");
+a58 1
+		printf("reffile : select v9 = %d, TTptr->TDlocked & 0x0200 = %04X \n",v9,(TTptr->TDlocked & 0x0200));
+a60 13
+
+		/*v6 = v9;
+		if ( v9 >= 0 )
+		{
+		    if ( v9 < 0 )	
+		    {
+		        dberror(v6, 0, rtdget(TTptr));	// shouldn't be reachable
+		    }
+		    goto LABEL_102;
+		}
+		else if ( (TTptr->TDlocked & 0x0200) == 0x0000 )
+			ErrorCode = 1;
+		*/
+d141 1
+a141 1
+        if ( v17 & 0x0010 )
+d143 2
+a144 2
+			v18 = 0;
+            if ( (v17 & 0x0021) == 0x0021 && cmpbuf(TTptr->TDworkarea1, TTptr->TDworkarea2, TTptr->TDrecsize) )
+d146 2
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d9 3
+a11 3
+    RTAB *v20; // eax@@61
+    RTAB *v23; // eax@@68
+    RTAB *v26; // eax@@75
+d13 2
+a14 2
+    ENTAB *v27; // eax@@79
+    ENTAB *ent; // eax@@29
+d16 23
+a38 24
+    DBase *v28; // esi@@82
+    TDesc *TTptr; // [sp+1Ch] [bp-BFCh]@@1
+    TDesc *TTptra; // [sp+1Ch] [bp-BFCh]@@89
+
+    short OpCode; // si@@3
+    short v5; // ax@@7
+    int v6; // esi@@7
+    char v7; // zf@@8
+    short v9; // si@@15
+    void *v10; // eax@@20
+    short v14; // ax@@33
+    int v15; // esi@@33
+    short v17; // ax@@44
+    signed int v18; // esi@@45
+    signed int v29; // edi@@82
+    int v34; // [sp+20h] [bp-BF8h]@@60
+    int TDno; // [sp+24h] [bp-BF4h]@@1
+    signed int TDnoa; // [sp+24h] [bp-BF4h]@@89
+    short ErrorCode; // [sp+28h] [bp-BF0h]@@1
+    int Lock; // [sp+2Ch] [bp-BECh]@@3
+    
+	char v39[1008]; // [sp+30h] [bp-BE8h]@@60
+    char Src[1008]; // [sp+420h] [bp-7F8h]@@60
+    char s[1008]; // [sp+810h] [bp-408h]@@60
+d55 1
+a55 1
+		//printf("reffile :(OpCode & 0x0080)\n");
+d58 4
+a61 1
+		v5 = cdbrestrict(rtdget(TTptr), TTptr->TTselect);
+d63 2
+a64 2
+		v6 = v5;
+		if ( v5 >= 0 )
+d66 1
+a66 1
+		    if ( v5 < 0 )	
+d72 1
+a72 2
+		v7 = (TTptr->TDlocked & 0x0200) == 0x0000;
+		if ( v7 )
+d74 1
+d170 1
+a170 2
+		v7 = delhier(TDno, 1) == 0;
+		if ( v7 )
+d178 1
+a178 1
+		for ( fld = TTptr->TTfields; fld->FLDelemID; ++fld )
+d181 1
+a181 1
+    else if ( OpCode & 0x0800 )			// replace command. Removed from CL4?
+d183 6
+a188 6
+		//printf("reffile : v39[0] = 0 (OpCode & 0x0800)\n");
+        v39[0]	= 0;
+        Src[0]	= 0;
+        s[0]	= 0;
+        v34 = rtab->TTno;
+        v20 = RTARR(rtab->NextRT);
+d191 1
+a191 1
+            exptobuf(s, ENARR(v20->field_E), 0);
+d195 1
+a195 1
+                exptobuf(Src, ENARR(v23->field_E), 0);
+d198 1
+a198 1
+					exptobuf(v39, ENARR(v26->field_E), 0);
+d202 3
+a204 3
+        v28 = dtab;
+        v29 = 0;
+        while ( no_dtabs > v29 && *v28->FullDBname )
+d206 1
+a206 1
+			if ( !compare(s, clbasename(v28->FullDBname)) )		// break when a match found
+d209 1
+a209 1
+            ++v29;
+d211 1
+a211 1
+        if ( v29 == no_dtabs )	// reached end of dtabs with no name match!
+a213 1
+            goto LABEL_102;
+d215 22
+d238 3
+a240 12
+        TTptra	= ttab;
+        TDnoa	= 0;
+        if ( no_ttabs > 0 )
+        {
+			while ( TTptra->DBnumber != v29 || compare(Src, TTptra->TableName) || v39[0] && compare(v39, TTptra->TableAlias) )
+            {
+				++TDnoa;
+                ++TTptra;
+                if ( TDnoa >= no_ttabs )// error_exit
+				{
+					ErrorCode = 2;	// no more data
+				    goto LABEL_102;
+d243 1
+a243 8
+            if ( TDnoa < no_ttabs )
+            {
+				if ( ttab[TDnoa].TTrtd < 0 )	// check to see if Table is actually open!
+					getfile(s, Src);
+				cpybuf((char *)&ttab[v34], (char *)&ttab[TDnoa], 80);
+                *(short *)&ttab[v34].TableAlias[0] = '>';	// this is some sneaky functionality.......
+                goto LABEL_102;
+			}
+a244 1
+		ErrorCode = 2;	// no more data error_exit
+d248 1
+a248 1
+		printf("reffile : Unknown command!!!\n");
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d36 2
+a37 1
+    char v39[1008]; // [sp+30h] [bp-BE8h]@@60
+a53 1
+
+d96 1
+a96 1
+		//printf("reffile : OpCode & 0x0040\n");
+d145 2
+a146 3
+		//printf("reffile : OpCode & rtb_PUT\n");
+		repkey(TDno, 0);			// ensure key fields are updated in record area
+        if ( reprec(TDno, Lock == 0) < 0 )
+d205 1
+a205 1
+			if ( !compare(s, clbasename(v28->FullDBname)) )
+d249 1
+a249 1
+    if ( Lock == 1024 )					// Lock request -> lockr
+d259 1
+a259 1
+    setvar(v_ERROR, ErrorCode);				// "ERROR"
+@
+
+
+1.3
+log
+@prior to ENARR() fixes
+@
+text
+@a12 2
+    ENTAB *v22; // eax@@65
+    ENTAB *v25; // eax@@72
+d58 1
+a58 1
+		TTptr->TTselect = getexpr(rtab->WhereEXP ? &enarr.TableAddr[rtab->WhereEXP - 1] : 0, TDno);
+d119 1
+a119 1
+				ent = rtab->WhereEXP ? &enarr.TableAddr[rtab->WhereEXP - 1] : 0;
+d125 1
+a125 1
+				dberror(v15, 0, rtdget(TTptr));
+d188 1
+a188 1
+        v20 = rtab->NextRT ? &rtarr.TableAddr[rtab->NextRT - 1] : 0;
+d191 2
+a192 3
+			v22 = v20->field_E ? &enarr.TableAddr[v20->field_E - 1] : 0;
+            exptobuf(s, v22, 0);
+            v23 = v20->NextRT ? &rtarr.TableAddr[v20->NextRT - 1] : 0;
+d195 2
+a196 3
+				v25 = v23->field_E ? &enarr.TableAddr[v23->field_E - 1] : 0;
+                exptobuf(Src, v25, 0);
+                v26 = v23->NextRT ? &rtarr.TableAddr[v23->NextRT - 1] : 0;
+d198 1
+a198 1
+					exptobuf(v39, v26->field_E ? &enarr.TableAddr[v26->field_E - 1] : 0, 0);
+@
+
+
+1.2
+log
+@removed debug stuff
+@
+text
+@d50 3
+a52 2
+    OpCode = rtab->field_2;		// Specifies the operation type.
+    Lock = rtab->field_0;		// Lock type. May be a lockr
+a74 2
+	    goto LABEL_102;
+
+d84 1
+a84 1
+			printf("reffile - OpCode & rtb_GET stuck in lock loop!!\n");
+a94 1
+		goto LABEL_102;
+a109 1
+		goto LABEL_102;
+d137 1
+a137 1
+		else if ( v9 == -10 )
+a143 1
+		goto LABEL_102;
+a150 1
+		goto LABEL_102;
+d161 1
+a173 1
+		goto LABEL_102;
+a181 1
+		goto LABEL_102;
+d186 3
+a188 3
+        v39[0] = 0;
+        Src[0] = 0;
+        s[0] = 0;
+d205 1
+d220 3
+a222 2
+        TTptra = ttab;
+        TDnoa = 0;
+a244 1
+        goto LABEL_102;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d53 1
+a53 1
+printf("reffile OpCode = x%04X, Lock = x%04X\n",OpCode,Lock);
+d57 1
+a57 1
+		printf("reffile :(OpCode & 0x0080)\n");
+d100 1
+a100 1
+		printf("reffile : OpCode & 0x0040\n");
+d116 1
+a116 1
+		printf("reffile : OpCode & (rtb_GETNEXT|rtb_GETPREV)\n");
+d151 1
+a151 1
+		printf("reffile : OpCode & rtb_PUT\n");
+d159 1
+a159 1
+		printf("reffile : OpCode & rtb_DELETE\n");
+d182 1
+a182 1
+		printf("reffile : OpCode & rtb_CLEAR - OpCode = %04X\n",(unsigned int)OpCode );
+d191 1
+a191 1
+		printf("reffile : v39[0] = 0 (OpCode & 0x0800)\n");
+d270 2
+a271 1
+printf("reffile exiting. returned ErrorCode = %d\n",ErrorCode);
+@

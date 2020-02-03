@@ -191,7 +191,7 @@ int dumpenc(char *EncFileName)
     if ( isclcomp )
 		eprint("%5ld strings\n", strarr.StrTableSize);
 
-    putLong(strarr.StrTableSize);              // 4 bytes of string table size
+    putLong(strarr.StrTableSize);              // 4 bytes of string table size (*** 8 on X64 ***)
     ptr = strarr.StringTable;
     for ( j = strarr.StrTableSize; j; j -= v19 )
     {

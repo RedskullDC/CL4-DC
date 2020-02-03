@@ -1,0 +1,44 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.20.04.46.29;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef MSTOL_C
+#define MSTOL_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int mstol(int *a1)
+{
+	unsigned char *LUC = (unsigned char *)a1;
+	//printf("mstol( *a1 = x%08X)\n" ,*a1);
+	
+	return (unsigned int)(*(LUC + 3) | (*(LUC + 2) << 8)) + ((unsigned int)(*(LUC + 1) | (*LUC << 8)) << 16);
+}
+
+
+#endif
+
+
+
+@

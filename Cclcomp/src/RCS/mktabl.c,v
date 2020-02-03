@@ -1,0 +1,263 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2015.01.07.02.47.41;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef MAKE_TABLE_C
+#define MAKE_TABLE_C
+
+#include <stdlib.h>		// for mkstemp()
+#include <unistd.h>		// for unlink()
+#include <stdarg.h>		// for var args stuff
+#include <string.h>
+#include <errno.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+TDef *scntbl(int *TTnos, short NumTTs, short TDFentry)
+{
+    int *v3; // edi@@1
+    short v4; // si@@1
+    TDef *result; // eax@@2
+
+    v3 = TTnos;
+    v4 = NumTTs;
+	result = 0;
+    if ( NumTTs > 0 )
+    {
+        while ( 1 )
+        {
+            result = tblrow(*v3);
+            if ( result )
+            {
+                if ( result->TDFentry )
+                    break;
+            }
+LABEL_6:
+            ++v3;
+            --v4;
+            if ( v4 <= 0 )
+                return 0;
+        }
+        while ( result->TDFentry != TDFentry )
+        {
+            ++result;
+            if ( !result->TDFentry )
+                goto LABEL_6;
+        }
+    }
+    return result;
+}
+
+TDef *newdesc(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *TDFtypes)
+{
+    short *i; // esi@@1
+    short NumKeyIDs; // dx@@5
+    short *j; // esi@@5
+    TDef *v8; // edi@@9
+    short *v9; // esi@@9
+    TDef *v10; // eax@@11
+    short v11; // ax@@12
+    short TDFtype; // ax@@14
+    short *v13; // eax@@16
+    short *TDFentries; // esi@@21
+    TDef *v15; // eax@@23
+    TDef *v17; // [sp+10h] [bp-18h]@@9
+    short *Types; // [sp+14h] [bp-14h]@@9
+
+    for ( i = KeyIDs; i && *i; ++i )
+        ;
+    NumKeyIDs = i - KeyIDs;
+    for ( j = DataIDs; j && *j; ++j )
+        ;
+    v17 = (TDef *)ealloc(6 * (signed short)(j - DataIDs + NumKeyIDs) + 6, 0);
+    v8 = v17;
+    v9 = KeyIDs;
+    for ( Types = TDFtypes; v9 && *v9; ++v9 )
+    {
+        v10 = scntbl(TTnos, NumTTs, *v9);
+        if ( v10 )
+        {
+            v8->TDFentry = v10->TDFentry;
+            v8->TDFsize = v10->TDFsize;
+            v11 = v10->TDFtype | 1;
+            v8->TDFtype = v11;
+            if ( Types && *Types == 0x4000 )
+                TDFtype = v11 | 0x4000;
+            else
+                TDFtype = v8->TDFtype & 0xBFFF;
+            v8->TDFtype = TDFtype;
+            ++v8;
+            v13 = Types + 1;
+            if ( !Types )
+                v13 = 0;
+            Types = v13;
+        }
+    }
+    for ( TDFentries = DataIDs; TDFentries && *TDFentries; ++TDFentries )
+    {
+        v15 = scntbl(TTnos, NumTTs, *TDFentries);
+        if ( v15 )
+        {
+            v8->TDFentry = v15->TDFentry;
+            v8->TDFsize = v15->TDFsize;
+            v8->TDFtype = v15->TDFtype & 0xBFFE;
+            ++v8;
+        }
+    }
+    v8->TDFentry = 0;
+    return v17;
+}
+
+DBinfo *newfdf(int TDno)
+{
+    short v1; // ax@@1
+    unsigned int v2; // edi@@3
+    int i; // esi@@3
+    signed int v4; // edx@@4
+    signed int v5; // edx@@6
+    char v6; // al@@6
+    unsigned int j; // esi@@9
+    signed short v8; // ax@@10
+    int v9; // edi@@12
+    signed int v10; // esi@@15
+    unsigned int v12; // [sp+18h] [bp-420h]@@3
+    DBinfo *DBptr; // [sp+1Ch] [bp-41Ch]@@1
+    char Buffer[1048]; // [sp+20h] [bp-418h]@@3
+
+    DBptr = (DBinfo *)ealloc(372, 0);
+    DBptr->DBpgsize = _psize;				// careful!!!   _psize, not psize
+    v1 = _mktmp(TDno);
+    DBptr->DBfilehandle = v1;
+    if ( v1 < 0 )
+        derror(47, 0, 0);
+    DBptr->DBmaxpages = _fsize;
+    DBptr->DBvflag = 3;
+    DBptr->DBversion = 1766;
+    DBptr->DBmaxtables = 1;
+    DBptr->PageList2[0] = 0;
+    DBptr->PageList3[0] = 0;
+    DBptr->PageList1[0] = 0;
+    *(char*)DBptr->DBopenflg = -1;
+    DBptr->DBtableaddress = 16;
+    _whead(DBptr, 0, 0, 0);
+    fill(Buffer, 1024, 0);
+    v2 = (unsigned int)(_fsize + 7) >> 3;        // default DBsize = 500000
+    v12 = (_psize + v2 + 31) / _psize;            // default pagesize = 4096
+    for ( i = v12 + 31; i >= 0; --i )           // preset the volume bit map
+    {
+        v4 = i + 7;
+        if ( i > -1 )
+            v4 = i;
+        v5 = v4 >> 3;
+        v6 = i + 7;
+        if ( i > -1 )
+            v6 = i;
+        Buffer[v5] |= (signed int)0x80u >> (i - (v6 & 0xF8));
+    }
+    DBptr->DBfreeaddress = 32;
+    lseek64(DBptr->DBfilehandle, 32LL, 0);
+    for ( j = v2; (signed int)j > 0; j -= v9 )
+    {
+        v8 = 1024;
+        if ( j < 1025 )
+            v8 = j;
+        v9 = v8;
+        if ( write(DBptr->DBfilehandle, Buffer, v8) != v8 )
+            derror(31, 0, 0);
+        fill(Buffer, 1024, 0);
+    }
+    v10 = 0;
+    do
+    {
+        DBptr->SpareList[v10] = v12 + v10;
+        ++v10;
+    }
+    while ( v10 <= 32 );
+    DBptr->SpareList[32] = 0;
+    return DBptr;
+}
+
+
+int _mktable(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *a5)
+{
+    TDef *tdef; // edi@@1
+    int v6; // ST18_4@@1
+    TDinfo *TDptr; // esi@@1
+    int v8; // eax@@1
+    int v9; // eax@@3
+    int TDno; // edi@@5
+    int result; // eax@@6
+    DBinfo *v12; // eax@@7
+
+    tdef = newdesc(TTnos, NumTTs, KeyIDs, DataIDs, a5);
+    v6 = _keysize(tdef);
+    TDptr = (TDinfo *)ealloc(v6 + 76, 0);	// variable size record
+    fill((char *)TDptr, 76, 0);
+    TDptr->field_0 = 0x0088u;			// 0000-0000-1000-1000
+    TDptr->TDindexOff = 0;
+    TDptr->TableDefs = tdef;
+    TDptr->TDRecSize = _rowsize(tdef);
+    TDptr->TDKeySize = v6;
+    TDptr->TDKeyDefs = (char *)&TDptr[1];	// Key data stored after main record
+    TDptr->KeyDefSize = 0;
+    v8 = _rowmin(tdef);
+    TDptr->TDRecMin = v8;
+    if ( v8 != TDptr->TDRecSize )
+        TDptr->field_0 |= 0x40u;
+    v9 = _keymin(tdef);
+    TDptr->TDKeyMin = v9;
+    if ( v9 != TDptr->TDKeySize )
+        TDptr->field_0 |= 0x80u;	// already set above in TDptr->field_0 = 0x0088u;  ??
+    TDptr->TDNodePtr	= 0;
+    TDptr->KeyBuf1		= 0;
+    TDptr->Key1Size		= 0;
+    TDptr->KeyBuf2		= 0;
+    TDptr->Key2Size		= 0;
+    TDptr->TDSallocBuf	= 0;
+    TDno = _nxttd(TDptr);
+    if ( TDno >= 0 )
+    {
+        v12 = newfdf(TDno);
+        TDptr->TDDBinfo = v12;
+        TDptr->Rec_plus_DB = v12->DBpgsize;
+        TDptr->HalfPageSize = TDptr->TDRecSize;
+        result = TDno;
+    }
+    else
+    {
+        nfree(TDptr->TableDefs, 0);
+        nfree(TDptr, 0);
+        result = -1;
+    }
+    return result;
+}
+
+int mktable(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *a5)
+{
+	//return xenter((int)mktable);
+	return _mktable(TTnos, NumTTs, KeyIDs, DataIDs, a5);
+
+}
+
+#endif
+@

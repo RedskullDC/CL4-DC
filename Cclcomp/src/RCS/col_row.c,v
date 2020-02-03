@@ -1,0 +1,1144 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.07.27.04.50.56;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.06.18.06.01.02;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.12.24.11.53.05;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.06.44.22;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@clean-up
+@
+text
+@#ifndef COL_ROW_C
+#define COL_ROW_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>         // for strtol()
+#include <assert.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+void fixstr(char *a1)	// called by getprmt. removes any unprintable chars
+{
+     char *i; // edx@@1
+
+     for ( i = a1; *i; ++i )
+     {
+          if ( (unsigned char)(*i - 94) <= 1u )
+               *i = ' ';
+     }
+}
+
+XTAB *getprmpt(XTAB *xtab)
+{
+	FLDdesc *fld;
+	ENTAB	*v8;
+	short	FieldNo;
+	short	v3;
+	short	v4;
+	short	v6;
+	int		TDno;
+	char	FLDtype;
+	char	nptr[45];
+	
+	if ( symbol == 930 )		// <CR>
+	{
+		  if ( !xtab->VarExpNo )
+		  {
+			   loaderr(7, sym);
+			   return 0;
+		  }
+		  FieldNo = gettf(xtab->VarExpNo, &TDno, &FLDtype);
+		  //if ( FieldNo < 0 )
+		  //     __assert_fail("fno >= 0", "getprmpt.c", 0x2Bu, "getprmpt");
+		  assert(FieldNo >= 0);
+
+		  if ( TDno )
+			   fld = &ttab[TDno].TTfields[FieldNo];
+		  else
+			   fld = getvars(FieldNo);	// 
+
+		  cdbcpystr(nptr, fld->FLDname, 0);	// Use the FieldName instead
+		  fixstr(nptr);
+		  v3 = getenmem();
+		  allenpt(v3, &v8);
+		  v4 = putconst(nptr, 'C');
+		  if ( v4 < 0 )
+		  {
+			   dallenpt(&v8);
+			   return 0;
+		  }
+		  v8->RecNo	 = v4;
+		  v8->TTno	 = 0;
+		  v8->entype = 1;
+		  dallenpt(&v8);
+		  xtab->Prompt_exp = v3;
+		  return xtab;
+	}
+	if ( symbol == 2220 )
+		fixstr(sym);
+	v6 = loadexp(0, 1);
+	if ( v6 )
+	{
+		xtab->Prompt_exp = v6;
+		return xtab;
+	}
+	return 0;
+}
+
+#define row_ANSWER	1
+#define row_PROMPT	2
+#define row_HEAD    4
+
+XTAB *getrow(XTAB *xtab, int type)
+{
+	short TestSym; // di@@1
+	short v8; // cx@@20
+	short v9; // dx@@35
+
+	if (symbol == 2230)			// variable/Field def
+	{
+	    v8 = loadexp(0, 1);
+	    if ( !v8 )
+			return 0;
+
+		if ( type == row_ANSWER )
+			xtab->ALine_exp = v8;
+		else
+			xtab->PLine_exp = v8;
+	}
+	else if ( symbol == 1800 || symbol == 930)	// '=' or <CR>
+	{
+        if ( type == row_ANSWER )
+			v8 = prow_0;				// don't bump for the answer column
+		else
+			v8 = prow_0 + 1;			// bump prow for PROMPT and HEAD 
+		
+        if ( v8 <= 0 || _li < v8 )		// range check on row calculated
+			v8 = 1;
+		
+		if ( type != row_HEAD )
+			prow_0 = v8;
+          
+		if ( type == row_ANSWER )		// a2 ==1 to get Answer Row, 2 to get Prompt Row
+			xtab->ALine = v8;
+		else
+			xtab->PLine = v8;
+
+		if ( symbol != 930 )			// if symbol was a <CR> don't advance
+			symbol = getsym();
+	}
+    
+	else if ( symbol == 1820 || symbol == 1840 || symbol == 2200 || symbol == 50 || symbol == 1580)
+	{		// 1820 = ">", 1840 = "<" (runtime relative) or 2200 = Integer literal, 50 = '+', 1580 = '-' 
+		TestSym = 0;
+		if ( symbol != 2200 )
+		{
+			TestSym = symbol;
+			symbol = getsym();
+			if ( symbol != 2200 )
+			{
+				loaderr(35, sym);	// "invalid row specification"
+				return 0;
+			}
+		}
+		   
+		v8 = strtol(sym, 0, 10);
+		if ( v8 < 0 )
+			TestSym = 1580;	// '-'
+
+		if (type == row_HEAD)	// Ignore runtime relative specifiers in HEAD/TEXT
+		{
+			if ( TestSym == 50 || TestSym == 1580 )	// if '-' or '+'
+				v8 += prow_0;
+			
+			if ( v8 <= 0 || _li < v8 )		// range check on row value parsed
+				v8 = 1;
+		}
+		else
+		{
+			switch (TestSym)
+			{
+			case 1840:
+			case 1820:
+				if (TestSym == 1840)	// '<'	runtime relative to last address
+					v9 = 0x0400u;
+				else
+					v9 = 0x200u;		// TestSym = '>' (token 1820)
+				if ( v8 < 0 )
+				{
+					if ( v9 == 0x400 )	// switch flag bits for negative values
+						v9 = 0x200u;
+					else
+						v9 = 0x400u;
+					v8 = -v8;
+				}
+				v8 |= v9;		// these are bitmask flags
+				break;
+
+			case 50 :
+			case 1580:
+				v8 += prow_0;
+				// fall through to default case, to set v9 = 0;
+			default :
+				v9 = 0;
+				break;
+
+			}
+			if ( !v9 )
+			{
+				if ( v8 <= 0 || _li < v8 )
+					v8 = 1;
+			}
+			
+			if ( type == row_PROMPT )		// only update static variable for ROW
+				prow_0 = v8;
+		}
+		if ( type == row_ANSWER )
+			xtab->ALine = v8;
+		else
+			xtab->PLine = v8;
+		
+		symbol = getsym();
+		return xtab;
+	}
+	else
+	{
+		loaderr(35, sym);	// "invalid row specification"
+        return 0;
+	}
+    return xtab;
+}
+
+XTAB *getadwid(XTAB *xtab)
+{
+	FLDdesc *fld;
+	int TDno;
+	short v3;
+	short FieldNo;
+	char FLDtype;
+
+	//eprint("getadwid - symbol = %d\n",symbol);
+	if ( symbol == 930 || symbol == 50 )		// <CR> or '+'
+    {
+		if ( !xtab->VarExpNo )
+        {
+			loaderr(37, sym);	// "invalid field width"
+            return 0;
+		}
+        FieldNo = gettf(xtab->VarExpNo, &TDno, &FLDtype);
+        //if ( FieldNo < 0 )
+		//	__assert_fail("fno >= 0", "getadwid.c", 0x28u, "getadwid");
+		assert(FieldNo >= 0);
+		
+		if ( TDno )
+			fld = &ttab[TDno].TTfields[FieldNo];	// Field in a table
+		else
+			fld = getvars(FieldNo);					// normal variable
+          
+		if ( fld->FLDtype == 'D' )
+			xtab->width = 0x0400;           // bit mask to signify special behaviour
+		else
+			xtab->width = getdwid(fld);		// default width
+          
+		if ( symbol != 930 )
+			symbol = getsym();
+		return xtab;
+    }
+	else if ( symbol == 2200 )		// numeric literal follows
+    {
+		xtab->width = strtol(sym, 0, 10);
+        symbol = getsym();
+        return xtab;
+	}
+    else if ( symbol == 2230 )		// variable/field name follows
+	{
+		v3 = loadexp(0, 1);
+		if ( v3 )
+		{
+			xtab->widthEXP = v3;
+			return xtab;
+		}
+	}
+	else
+		loaderr(37, sym);			// "invalid field width"
+
+	return 0;
+}
+
+#define col_ANSWER	1
+#define col_PROMPT	2
+#define col_HEAD    4
+
+XTAB *getcol(XTAB *xt, int type)	// type 1 = Answer, 2 = prompt, 4 = Head/Text commands (don't update statics) 
+{
+	XTAB *v5; // edx@@18
+	short TestSym; // di@@1
+	char v3; // zf@@9
+	short v4; // cx@@18
+	signed short v6; // ax@@25
+	signed short v7; // cx@@27
+	short v9; // ax@@44
+	short v10; // cx@@44
+	unsigned short v11; // dx@@47
+	short v13;
+	short v22;
+	bool FindAttr;
+
+    TestSym = 0;
+     
+	if ( syml == 1 && symbol == 2230 && sym[0] == 'c' )	// is there a system variable called 'c' ????
+		symbol = 170;		// ?????
+
+	if ( symbol == 2230 )				// variable/table field
+	{
+		v4 = loadexp(0, 1);
+		if ( !v4 )
+			return 0;	// error
+
+		if ( type == col_ANSWER )
+			xt->ACol_exp = v4;
+		else
+			xt->PCol_exp = v4;
+	}
+	else if ( symbol == 1800 || symbol == 930)  // 1800 (=) or 930 <CR>
+	{
+        if ( type == col_ANSWER )
+		{
+			if ( picol_0 <= 0 || _co < picol_0 )
+				v7 = 1;
+			else
+				v7 = picol_0;
+			picol_0 = v7;			// update static input column value
+			xt->ACol = v7;
+        }
+        else
+        {
+			if ( ppcol_1 <= 0 || _co < ppcol_1 )
+				v7 = 1;
+			else
+				v7 = ppcol_1;
+			
+			if ( type != col_HEAD )
+				ppcol_1 = v7;		// update static prompt column value
+			xt->PCol = v7;
+        }
+		if ( symbol != 930 )		// not <CR>
+			symbol = getsym();
+
+	}
+	else if ( symbol == 1820 || symbol == 1840 || symbol == 2200 || symbol == 50 || symbol == 1580)
+	{	
+		// 1820 = ">", 1840 = "<" (runtime relative) or 2200 = Integer literal, 50 = '+', 1580 = '-' 
+		if ( symbol != 2200 )		// numeric value
+		{
+			TestSym = symbol;
+			symbol = getsym();
+			if ( symbol != 2200 )	// Integer literal
+			{
+				loaderr(34, sym);	// "invalid column specification"
+				return 0;
+			}
+		}
+		v9 = strtol(sym, 0, 10);
+		v10 = v9;
+		
+		if ( v9 < 0 )
+			TestSym = 1580;             // "-"
+
+		if ( type == col_ANSWER )
+		{
+			switch (TestSym)
+			{
+			case 1840:					// "<"	runtime relative
+			case 1820:					// ">"	runtime relative
+				if ( TestSym == 1840 )
+					v11 = 0x2000u;
+				else
+					v11 = 0x1000u;
+				if ( v9 < 0 )				
+				{
+					v3 = v11 == 0x2000;
+					v11 = 0x1000u;
+					if ( !v3 )
+						v11 = 0x2000u;
+					v10 = -v9;
+				}
+				v10 |= v11;
+				break;
+			
+			case 50:				// '+' or '-' = compile time relative
+			case 1580:
+				v10 = picol_0 + v9;
+				// fall into default case to set V11 = 0
+			default:
+				v11 = 0;
+				break;
+			}
+			
+			if ( !v11 )		// no runtime relative attributes specified
+			{
+				if ( v10 <= 0 || _co < v10 )	// range sanity check
+					v10 = 1;
+				picol_0 = v10;		// update static input column counter
+			}
+			
+			xt->ACol = v10;
+		}
+		else		// != col_ANSWER
+		{
+			if ( TestSym == 50 || TestSym == 1580 ) // '+' or '-'	column specifier is relative to last used value
+				v10 = ppcol_1 + v9;
+			
+			if ( v10 <= 0 || _co < v10 )	// range check
+				v10 = 1;					// reset to column #1
+				
+			if ( type != col_HEAD )
+				ppcol_1 = v10;				// update the static ppcol_1 value
+
+			xt->PCol = v10;
+		}
+		symbol = getsym();
+	}
+	else if ( syml == 1 )		// look for a single char screen loc specifier 
+	{							// Flags only valid for "head" and "text" specifiers
+
+		switch (sym[0])
+		{
+		case '^':				// left side of screen align
+			v10 = 1;			// column 1
+			break;
+		case 'c':				// centre of screen align
+			v10 = 0x1000u;		// other 2 are flag bits
+			break;
+		case '$':				// right side of screen align
+			v10 = 0x2000u;
+			break;
+		default:
+			v10 = 0;
+			break;
+		}
+		if ( v10 )
+		{
+			if ( type == col_ANSWER )
+				xt->ACol = v10;
+			else
+				xt->PCol = v10;
+			symbol = getsym();
+		}
+	}
+	else
+	{
+		loaderr(34, sym);			// "invalid column specification"
+		return 0;
+	}
+
+	// look for any attribute specifiers
+	if ( symbol == 180 )	// ','  comma, look for an attribute specifier
+    {
+		FindAttr = true;
+        symbol = getsym();
+	}
+    else
+		FindAttr = false;
+
+	v22 = 0;
+	if ( FindAttr || syml == 1 )	// comma is optional.
+    {
+		switch ( sym[0] )
+		{
+			case 'f':
+				v22 = 0x0001;
+				break;
+			case 's':
+				v22 = 0x0002;
+				break;
+			case 'u':
+				v22 = 0x0004;
+				break;
+			case 'b':
+				v22 = 0x0008;
+				break;
+			case 'B':
+				v22 = 0x0010;
+				break;
+			case 'r':
+				v22 = 0x0020;
+				break;
+			case 'n':
+			case 'x':
+				v22 = 0x003F;	// turn all flags on/off?
+				break;
+			default:
+				if ( FindAttr )				// If there was no comma, and no match on the single char token,
+				{							// then just ignore it. It may be a single char numeric digit
+					loaderr(36, sym);	// "invalid screen attribute"
+					return 0;
+				}
+				break;
+		}
+		if (v22)	// we had a match above, get next symbol
+			symbol = getsym();
+	}
+    if ( type == col_ANSWER )
+		xt->Attr = v22;
+	else
+		xt->ScrAttrib = v22;
+	return xt;
+}
+
+#endif
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d24 20
+a43 20
+    FLDdesc *fld;
+    ENTAB *v8;
+    short FieldNo; // ax@@3
+    short v3; // di@@8
+    short v4; // ax@@8
+    short v6; // di@@15
+    int TDno; // [sp+18h] [bp-40h]@@3
+	char FLDtype;
+    char nptr[45]; // [sp+1Fh] [bp-39h]@@3
+
+     if ( symbol == 930 )
+     {
+          if ( !xtab->VarExpNo )
+          {
+               loaderr(7, sym);
+               return 0;
+          }
+          FieldNo = gettf(xtab->VarExpNo, &TDno, &FLDtype);
+          //if ( FieldNo < 0 )
+          //     __assert_fail("fno >= 0", "getprmpt.c", 0x2Bu, "getprmpt");
+d46 31
+a76 31
+          if ( TDno )
+               fld = &ttab[TDno].TTfields[FieldNo];
+          else
+               fld = getvars(FieldNo);	// 
+
+          cdbcpystr(nptr, fld->FLDname, 0);
+          fixstr(nptr);
+          v3 = getenmem();
+          allenpt(v3, &v8);
+          v4 = putconst(nptr, 'C');
+          if ( v4 < 0 )
+          {
+               dallenpt(&v8);
+               return 0;
+          }
+          v8->RecNo	 = v4;
+          v8->TTno	 = 0;
+          v8->entype = 1;
+          dallenpt(&v8);
+          xtab->Prompt_exp = v3;
+          return xtab;
+     }
+     if ( symbol == 2220 )
+          fixstr(sym);
+     v6 = loadexp(0, 1);
+     if ( v6 )
+     {
+          xtab->Prompt_exp = v6;
+          return xtab;
+     }
+     return 0;
+d79 5
+a83 1
+XTAB *getrow(XTAB *xtab, int a2)
+d85 45
+a129 25
+     short v2; // di@@1
+     char v3; // zf@@5
+     short v4; // cx@@14
+     XTAB *v5; // edx@@14
+     short v6; // ax@@18
+     short v7; // cx@@20
+     short v8; // cx@@32
+     signed short v9; // dx@@35
+     short v10; // ax@@43
+     signed short v11; // ax@@51
+     signed short v12; // ax@@61
+
+     v2 = 0;
+     if ( symbol == 1800 )	// '='
+          goto LABEL_18;
+	if ( symbol <= 1800 )
+    {
+		if ( symbol != 930 )
+        {
+			if ( symbol > 930 )
+				v3 = symbol == 1580;	// '-'
+			else
+				v3 = symbol == 50;		// '+'
+LABEL_10:
+			if ( !v3 )
+d132 1
+a132 1
+		        return 0;
+d134 10
+a143 15
+LABEL_30:
+            if ( symbol != 2200 )
+            {
+				v2 = symbol;
+                symbol = getsym();
+                if ( symbol != 2200 )
+				{
+					loaderr(35, sym);	// "invalid row specification"
+			        return 0;
+				}
+			}
+               
+			v8 = strtol(sym, 0, 10);
+            if ( v8 < 0 )
+				v2 = 1580;	// '-'
+d145 11
+a155 6
+			if ( (unsigned int)(a2 - 1) > 1 )
+            {
+				if ( v2 == 50 || v2 == 1580 )	// if '-' or '+'
+					v8 += prow_0;
+				if ( v8 <= 0 || _li < v8 )		// range check on row value parsed
+					v12 = 1;
+d157 5
+a161 33
+					v12 = v8;
+				v8 = v12;
+                goto LABEL_64;
+			}
+            v9 = 0;
+            if ( v2 == 1840 )	// '<'	runtime relative to last address
+            {
+				v9 = 0x0400u;
+			}
+            else
+            {
+				if ( v2 != 1820 )	// '>' runtime relative to last address
+                {
+					if ( v2 != 50 && v2 != 1580 )
+						goto LABEL_48;
+					v10 = prow_0 + v8;
+LABEL_47:
+                    v8 = v10;
+LABEL_48:
+                    if ( !v9 )
+                    {
+						if ( v8 <= 0 || _li < v8 )
+							v11 = 1;
+						else
+							v11 = v8;
+						v8 = v11;
+					}
+                    
+					if ( a2 == 2 )
+						prow_0 = v8;
+LABEL_64:
+					if ( a2 == 1 )
+						xtab->ALine = v8;
+d163 2
+a164 4
+						xtab->PLine = v8;
+					symbol = getsym();
+					v5 = xtab;
+					return v5;
+d166 11
+a176 1
+                v9 = 0x200u;	// v2 = '>' (token 1820)
+d178 4
+a181 7
+            if ( v8 < 0 )
+            {
+				v3 = v9 == 0x400;
+                v9 = 0x200u;
+                if ( !v3 )
+					v9 = 0x400u;
+				v8 = -v8;
+d183 3
+a185 2
+            v10 = v9 | v8;	// these are bitmask flags
+            goto LABEL_47;
+d187 2
+a188 12
+LABEL_18:
+        v6 = prow_0 + 1;
+        if ( a2 == 1 )
+			v6 = prow_0;
+		v7 = v6;
+        if ( v6 <= 0 || _li < v6 )	// range check on row calculated
+			v7 = 1;
+		if ( a2 != 4 )
+			prow_0 = v7;
+          
+		if ( a2 == 1 )			// a2 ==1 to get Answer Row, 0 to get Prompt Row
+			xtab->ALine = v7;
+d190 3
+a192 4
+			xtab->PLine = v7;
+
+		if ( symbol != 930 )
+			symbol = getsym();
+d195 2
+a196 12
+    if ( symbol == 1840 )		// '<'	runtime relative to last address
+		goto LABEL_30;
+	if ( symbol <= 1840 )
+    {
+		v3 = symbol == 1820;	// '>' runtime relative to last address
+        goto LABEL_10;
+	}
+    if ( symbol == 2200 )
+		goto LABEL_30;
+    
+	if ( symbol != 2230 )
+    {
+d200 1
+a200 11
+    v4 = loadexp(0, 1);
+    v5 = 0;
+    if ( v4 )
+    {
+		if ( a2 == 1 )
+			xtab->ALine_exp = v4;
+		else
+			xtab->PLine_exp = v4;
+		v5 = xtab;
+	}
+    return v5;
+d205 5
+a209 5
+     short FieldNo; // eax@@9
+     FLDdesc *fld; // eax@@12
+     short v3; // cx@@20
+     int TDno; // [sp+14h] [bp-14h]@@9
+     char FLDtype; // [sp+1Bh] [bp-Dh]@@9
+d211 2
+a212 1
+	if ( symbol == 930 )
+a213 1
+LABEL_8:
+a215 1
+LABEL_22:
+d220 3
+a222 2
+        if ( FieldNo < 0 )
+			__assert_fail("fno >= 0", "getadwid.c", 0x28u, "getadwid");
+d238 1
+a238 10
+	if ( symbol <= 930 )
+    {
+		if ( symbol != 50 )		// '+'
+		{
+			loaderr(37, sym);	// "invalid field width"
+            return 0;
+		}
+		goto LABEL_8;
+	}
+    if ( symbol == 2200 )	// numeric literal follows
+d244 1
+a244 1
+    if ( symbol != 2230 )	// variable/field name follows
+d246 6
+a251 2
+		loaderr(37, sym);	// "invalid field width"
+        return 0;
+d253 4
+a256 7
+	v3 = loadexp(0, 1);
+    if ( v3 )
+    {
+		xtab->widthEXP = v3;
+        return xtab;
+	}
+    return 0;
+d258 6
+a263 1
+XTAB *getcol(XTAB *xt, int a2)
+d265 12
+a276 17
+     short TestSym; // di@@1
+     char v3; // zf@@9
+     short v4; // cx@@18
+     XTAB *v5; // edx@@18
+     signed short v6; // ax@@25
+     signed short v7; // cx@@27
+     signed short v8; // ax@@34
+     short v9; // ax@@44
+     short v10; // cx@@44
+     unsigned short v11; // dx@@47
+     short v12; // ax@@55
+     short v13; // ax@@63
+     short v14; // ax@@75
+     char v15; // zf@@81
+     signed int FindAttr; // edi@@92
+     signed int v21; // [sp+14h] [bp-14h]@@1
+     short v22; // [sp+18h] [bp-10h]@@1
+a277 2
+	v22 = 0;
+    v21 = 0;
+d280 1
+a280 1
+	if ( syml == 1 && symbol == 2230 && sym[0] == 'c' )
+d283 5
+a287 2
+	if ( symbol == 1800 )	// '=' 
+		goto LABEL_22;
+d289 17
+a305 3
+	if ( symbol <= 1800 )
+    {
+		if ( symbol != 930 )
+d307 2
+a308 2
+			if ( symbol > 930 )
+				v3 = symbol == 1580;        // "-"
+d310 8
+a317 25
+				v3 = symbol == 50;          // "+"
+LABEL_14:
+			if ( !v3 )
+            {
+LABEL_78:
+				if ( syml == 1 )
+                {
+					v10 = 1;
+                    if ( sym[0] != '^' )	// left side of screen align
+                    {
+						if ( sym[0] > '^' )
+                        {
+							v10 = 0x1000u;
+                            v15 = sym[0] == 'c';	// centre of screen align
+						}
+                        else
+                        {
+							v10 = 0x2000u;
+                            v15 = sym[0] == '$';	// right side of screen align
+						}
+                        if ( !v15 )
+							v10 = 0;
+					}
+                    if ( !v10 )
+						goto LABEL_91;
+d319 12
+a330 9
+					if ( a2 == 1 )
+						xt->ACol = v10;
+					else
+						xt->PCol = v10;
+					symbol = getsym();
+                    goto LABEL_91;
+				}
+                loaderr(34, sym);	// "invalid column specification"
+                return 0;
+d332 18
+a349 6
+LABEL_42:
+            if ( symbol != 2200 )
+            {
+				TestSym = symbol;
+                symbol = getsym();
+                if ( symbol != 2200 )
+d351 5
+a355 2
+					loaderr(34, sym);	// "invalid column specification"
+					return 0;
+d357 10
+a367 2
+			v9 = strtol(sym, 0, 10);
+            v10 = v9;
+d369 26
+a394 2
+			if ( v9 < 0 )
+				TestSym = 1580;             // "-"
+d396 19
+a414 37
+			if ( a2 != 1 )
+            {
+				if ( TestSym == 50 || TestSym == 1580 ) // '+' or '-'
+					v10 = ppcol_1 + v9;
+                    
+				if ( a2 == 4 )
+				{
+					if ( v10 <= 0 || _co < v10 )	// range check, but *don't* update stored value
+						v10 = 1;
+				}
+                else
+                {
+					if ( v10 <= 0 || _co < v10 )	// range check on computed column value
+						v14 = 1;	// reset to column #1
+					else
+						v14 = v10;
+					v10 = v14;
+                    ppcol_1 = v14;	// update the static ppcol_1 value
+				}
+                if ( a2 == 1 )	// should always be false.
+					xt->ACol = v10;
+				else
+					xt->PCol = v10;
+				symbol = getsym();
+                goto LABEL_91;
+            }
+
+			v11 = 0;
+               
+			if ( TestSym == 1840 )           // "<"
+            {
+				v11 = 0x2000u;
+			}
+            else if ( TestSym == 1820 )
+            {
+				v11 = 0x1000u;
+			}
+d416 1
+a416 70
+            {
+				if ( TestSym != 50 && TestSym != 1580 )	// '+' && '-'
+                {
+LABEL_60:
+					if ( !v11 )
+                    {
+						if ( v10 <= 0 || _co < v10 )
+							v13 = 1;
+						else
+							v13 = v10;
+                        picol_0 = v13;
+                        v10 = v13;
+					}
+                    if ( a2 == 1 )
+						xt->ACol = v10;
+					else
+						xt->PCol = v10;
+					symbol = getsym();
+                    goto LABEL_91;
+				}
+                v12 = picol_0 + v9;
+                v10 = v12;
+                goto LABEL_60;
+			}
+            if ( v9 < 0 )
+            {
+				v3 = v11 == 0x2000;
+                v11 = 0x1000u;
+                if ( !v3 )
+					v11 = 0x2000u;
+				v10 = -v9;
+			}
+            v12 = v11 | v10;
+            v10 = v12;
+            goto LABEL_60;
+		} // end if ( symbol != 930 )
+
+LABEL_22:
+        if ( a2 == 1 )
+		{
+               if ( picol_0 <= 0 || _co < picol_0 )
+                    v6 = 1;
+               else
+                    v6 = picol_0;
+               v7 = v6;
+               picol_0 = v6;
+        }
+        else
+        {
+               v7 = ppcol_1;
+               if ( a2 == 4 )
+               {
+                    if ( ppcol_1 <= 0 || _co < ppcol_1 )
+                         v7 = 1;
+               }
+               else
+               {
+                    if ( ppcol_1 <= 0 || _co < ppcol_1 )
+                         v8 = 1;
+                    else
+                         v8 = ppcol_1;
+                    v7 = v8;
+                    ppcol_1 = v8;
+               }
+        }
+        if ( a2 == 1 )
+			xt->ACol = v7;
+		else
+			xt->PCol = v7;
+		if ( symbol != 930 )
+d418 1
+a418 10
+		goto LABEL_91;
+	} // end if ( symbol <= 1800 )
+
+    if ( symbol == 1840 )                      // "<"
+		goto LABEL_42;
+   
+	if ( symbol <= 1840 )
+    {
+		v3 = symbol == 1820;                  // ">"
+        goto LABEL_14;
+d420 3
+a422 8
+    if ( symbol == 2200 )
+		goto LABEL_42;
+	
+	if ( symbol != 2230 )
+		goto LABEL_78;
+     
+	v4 = loadexp(0, 1);
+    if ( !v4 )
+d424 1
+d426 1
+a426 6
+	if ( a2 == 1 )
+		xt->ACol_exp = v4;
+	else
+		xt->PCol_exp = v4;
+
+LABEL_91:
+d429 1
+a429 1
+		FindAttr = 1;
+d433 1
+a433 1
+		FindAttr = 0;
+d435 1
+d438 34
+a471 37
+          switch ( sym[0] )
+          {
+               case 'f':
+                    v22 = 0x0001;
+                    goto LABEL_104;
+               case 's':
+                    v22 = 0x0002;
+                    goto LABEL_104;
+               case 'u':
+                    v22 = 0x0004;
+                    goto LABEL_104;
+               case 'b':
+                    v22 = 0x0008;
+                    goto LABEL_104;
+               case 'B':
+                    v22 = 0x0010;
+                    goto LABEL_104;
+               case 'r':
+                    v22 = 0x0020;
+                    goto LABEL_104;
+               case 'n':
+               case 'x':
+                    v22 = 0x003F;	// turn all flags on/off?
+LABEL_104:
+                    symbol = getsym();
+                    break;
+               default:
+                    v21 = 1;	// error
+                    if ( !FindAttr )	// If there was no comma, and no match on the single char token,
+                         v21 = 0;		// then just ignore it.
+                    break;
+          }
+          if ( v21 )
+          {
+               loaderr(36, sym);	// "invalid screen attribute"
+               return 0;
+          }
+d473 1
+a473 1
+    if ( a2 == 1 )
+@
+
+
+1.2
+log
+@prior to strtol change
+@
+text
+@d6 2
+d42 3
+a44 2
+          if ( FieldNo < 0 )
+               __assert_fail("fno >= 0", "getprmpt.c", 0x2Bu, "getprmpt");
+d122 1
+a122 1
+			v8 = __strtol_internal(sym, 0, 10, 0);
+d278 1
+a278 1
+		xtab->width = __strtol_internal(sym, 0, 10, 0);
+d379 1
+a379 1
+			v9 = __strtol_internal(sym, 0, 10, 0);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d58 1
+a58 1
+          v8->RecNo	= v4;
+d251 1
+a251 1
+			fld = &ttab[TDno].TTfields[FieldNo];
+d253 1
+a253 1
+			fld = getvars(FieldNo);
+d256 1
+a256 1
+			xtab->width = 0x400u;            // bit mask to signify special behaviour
+d531 1
+a531 1
+                    v22 = 0x01u;
+d534 1
+a534 1
+                    v22 = 0x02u;
+d537 1
+a537 1
+                    v22 = 0x04u;
+d540 1
+a540 1
+                    v22 = 0x08u;
+d543 1
+a543 1
+                    v22 = 0x10u;
+d546 1
+a546 1
+                    v22 = 0x20u;
+d550 1
+a550 1
+                    v22 = 0x3Fu;	// turn all flags on/off?
+@

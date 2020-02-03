@@ -11,10 +11,10 @@
 
 void gtd(ENTAB *entab, int *TTno)
 {
-    if ( !entab || entab->entype == 2 && entab->TTno & 0x0100 )	// reserved value
+    if ( !entab || entab->entype == 2 && entab->Enun.Enop.Enoper & 0x0100 )	// reserved value
         *TTno = 0;
     else if ( entab->entype == 1 )
-		*TTno = entab->TTno;
+		*TTno = entab->Enun.Enref.TTno;
 	else
 		*TTno = 0;
 }
@@ -67,7 +67,7 @@ void dhdtxt(XTAB *xtb, bool head, bool allow_glitch)
                 Column = 1;
             
 			MaxLen += 2 * GlitchChars;				// make room for glitch on/off chars
-            fillbuf(head_txt, MaxLen, ' ');			// ensure screen area for text field is clear before displaying
+            memset(head_txt, ' ', MaxLen);			// ensure screen area for text field is clear before displaying
             head_txt[MaxLen] = 0;
         }
 		// head true == head command, false == text
@@ -183,7 +183,7 @@ void _dscreen(BTAB *bt, short PT_Start, short PT_End, bool allowDelayForm)
                     if ( fld_nbrs == 2 && fnum_txt[0] )		// fld_nbrs == 2 means fnum set to "off"
                     {
 						Column += 3;
-                        zap(fnum_txt, 10u);
+						memset(fnum_txt, 0, 10);
 					}
 					//eprint("_dscreen - fnum_txt = %s, Prompt = %s\n",fnum_txt,Prompt);
                     if ( !DelayForm )

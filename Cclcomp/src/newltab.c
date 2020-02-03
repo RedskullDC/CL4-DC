@@ -17,7 +17,7 @@ int newltab()
 	else
 		v0 = 0;
 
-	ltab = (LTAB **)mrealloc(ltab, 4 * v0, 4 * no_ltabs + 8);
+	ltab = (LTAB **)mrealloc(ltab, sizeof(LTAB*) * v0, sizeof(LTAB*) * (no_ltabs + 2));
 	
 	if ( v0 )
 		lt = &ltab[v4];

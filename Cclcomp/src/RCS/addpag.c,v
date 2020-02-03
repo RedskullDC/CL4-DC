@@ -1,0 +1,67 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.09.19.05.56.22;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef ADDPAGE_C
+#define ADDPAGE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int addpage(NODE *Node, short N1_2idx, char *RecBuffer, int RecSize)
+{
+	int NumEntries; // edx@@1
+	NODE_1 *v5; // eax@@1
+	NODE_1 *v6; // ecx@@1
+	NODE_1 *v7; // esi@@1
+	NODE_2 *N2p; // edx@@1
+	int result; // eax@@3
+
+	//addpage() can either insert regular data or Page Index data.
+
+	//printf("addpage(NODE: x%08X,N1_2idx: %d,RecBuffer: x%08X, RecSize: %d)\n" ,Node,N1_2idx,RecBuffer,RecSize);
+
+	_chkitems(Node, 1);
+	NumEntries = Node->NumEntries;
+	v5 = Node->NODE1ptr;
+	v6 = &v5[NumEntries];
+	v7 = &v5[N1_2idx];
+	// make room at position N1_2idx
+	for ( N2p = &Node->NODE2ptr[NumEntries + 1]; v7 < v6; --N2p )
+	{
+		v6->Data	= v6[-1].Data;
+		v6->Size	= v6[-1].Size;
+		N2p->PageNo = N2p[-1].PageNo;
+		--v6;
+	}
+	v6->Data = RecBuffer;
+	v6->Size = RecSize;
+	N2p->PageNo = N2p[-1].PageNo;
+	result = RecSize + Node->field_16;
+	Node->DataEnd += result;
+	++Node->NumEntries;
+	return result;
+}
+
+#endif
+@

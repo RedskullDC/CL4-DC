@@ -1,0 +1,532 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2015.04.15.00.44.00;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.12.22.05.52.40;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.12.17.23.15.34;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef MATCH_C
+#define MATCH_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+// not public in libcl4 
+bool Star(char *s, char *p)
+{
+	while ( !wildmat(s, p) )
+	{
+		if ( *s )
+		{
+			++s;
+			if ( *s )
+				continue;
+		}
+		return false;
+	}	
+	return true;
+}
+
+// not public in libcl4 
+bool isregexp(char *v1)
+{
+	char v2;
+	while ( *v1 >= 0 )	// look for a char with high bit set
+	{
+		if ( !*v1++ )
+			return false;
+	}
+	v2 = *v1 & 0x7F;
+	return ( v2 == '?' || v2 == '[' || v2 == '*');
+}
+
+// not public in libcl4 
+int wildmat(char *s, char *p)
+{
+	signed int v4; // edx@@2
+	int v5; // ecx@@9
+	int v6; // eax@@12
+	int result; // eax@@17
+	char *v8; // esi@@18
+	int v9; // ecx@@26
+	int v10; // eax@@29
+	int v11; // eax@@33
+	int v12; // ecx@@37
+	int v13; // eax@@40
+	int v14; // eax@@45
+	int reverse; // [sp+14h] [bp-14h]@@21
+	int matched; // [sp+18h] [bp-10h]@@23
+	signed int v17;
+
+	printf("wildmat(%s,%s)",s,p);
+
+	if ( !*p )
+		return *s == 0;
+	
+	while ( 1 )
+	{
+		v4 = *p;
+		if ( v4 == -65 )
+		{
+			if ( !*s )
+				return 0;
+			goto LABEL_50;
+		}
+		if ( v4 > -65 )
+		{
+			if ( v4 == -37 )
+			{
+				/* [^....] means inverse character class. */
+				reverse = p[1] == '^';
+				if ( reverse )
+					p++;
+
+				v17 = 256;
+				matched = 0;
+				++p;
+				if ( !*p || *p == ']' )
+				{
+					result = 0;
+					if ( matched == reverse )
+						return 0;
+					goto LABEL_50;
+				}
+				while ( 2 )
+				{
+					if ( *p == '-' )
+					{
+						++p;
+						
+						v9 = *s;
+						if ( (*s - 65) <= 0x19u )
+							v9 += 32;
+
+						v10 = *p;
+						if ( (*p - 65) <= 0x19u )
+							v10 += 32;
+						
+						if ( v9 <= v10 )
+						{
+							v11 = (*s - 65) > 0x19u ? *s : *s + 32;
+							if ( v11 >= v17 )
+								matched = 1;
+						}
+					}
+					else
+					{
+						v12 = *s;
+						if ( (*s - 65) <= 0x19u )
+							v12 += 32;
+						
+						v13 = *p;
+						if ( (*p - 65) <= 0x19u )
+							v13 += 32;
+						
+						if ( v12 == v13 )
+							matched = 1;
+					}
+
+					v14 = *p;
+					if ( (*p - 65) <= 0x19u )
+						v14 += 32;
+
+					v17 = v14;
+					++p;
+					if ( !*p || *p == ']' )
+					{
+						if ( matched == reverse )
+							return result;
+						goto LABEL_50;
+					}
+					continue;
+				}
+			}
+			if ( v4 == 92 )	// '\\'
+				++p;
+			goto LABEL_9;	// fall into default routine
+		}
+		if ( v4 == -86 )	// '*'
+		{
+			v8 = (p + 1);
+			if ( *v8 )
+				result = Star(s, v8);
+			else
+				result = 1;
+			return result;
+		}
+
+LABEL_9:
+		v5 = *s;
+		if ( (*s - 65) <= 0x19u )
+			v5 += 32;
+		
+		v6 = *p;
+		if ( (*p - 65) <= 0x19u )
+			v6 += 32;
+
+		if ( v5 != v6 )
+			return 0;
+LABEL_50:
+		++s;
+		++p;
+		if ( !*p )
+			return *s == 0;
+	}
+}
+
+bool _match(char *src, EXPR *Expr, TDef *tdef)
+{
+	//bool v5; // edx@@3
+	size_t FieldLen; // edi@@11
+	int v8; // eax@@19
+	short v9; // ax@@25
+	bool IsReg; // [sp+2Ch] [bp-41Ch]@@9
+	char dest[1036];
+
+
+	if ( !Expr )	// No expression always matches?
+		return true;
+	
+	//printf("_match(src = x%08X, EXPR = x%08X, tdef = x%08X, Operator = x%02X, ExprType = x%04X)\n", src, Expr, tdef,Expr->Operator, Expr->Type);
+	
+	if ( Expr->Operator == 1 )      //  Expr was an "OR" type join
+	{
+		//printf("_match : Op == 1\n");
+		return ( _match(src, Expr->NextEXPR, tdef) | _match(src, Expr->PrevEXPR, tdef));		// recursive
+	}
+
+	if ( Expr->Operator == 2 )		// Expr is actually a "join". Operator == 2 means an "AND" join.
+	{
+		//printf("_match : Op == 2\n");
+		return ( _match(src, Expr->NextEXPR, tdef) & _match(src, Expr->PrevEXPR, tdef));		// recursive
+	}
+
+	// 4 Operators bits: 
+	// 0x08 == less than				'<'
+	// 0x10 == equal to					'='
+	// 0x20 == greater than				'>'
+
+	// Mixed bit tests:
+	
+	// 0x14 == equal to/wildcard test?  'like'  0x04 == regex/wildcard test?
+
+	// 0x18 == less than or equal		'<='
+	// 0x30 == greater than or equal	'>='
+	// 0x28 == not equal to				'<>'
+	
+	//                   GE LW  
+	//                   TQ TL
+	// operator bits : 0011 1100
+
+	if ( Expr->Operator & 0x38 )                // Leave operator bits remaining: 0011 1000
+	{											// This is a single expression.
+		IsReg = isregexp(&Expr->ExprData);		// Only meaningful is expression is a string
+		
+		while ( tdef->TDFentry )
+		{
+			FieldLen = tdef->TDFtype & tdf_STRING ? _fwidth(src, tdef->TDFsize, tdef->TDFtype) : tdef->TDFsize;
+			//printf("_match - tdef->TDFentry = x%04X, Expr->Type x%04X, Operator = x%02X\n",tdef->TDFentry,Expr->Type,(Expr->Operator &0x38));
+			if ( tdef->TDFentry == Expr->Type )
+			{
+				// we found a match on TDFentry and Expr-Type if we got here.
+				if ( tdef->TDFtype & tdf_STRING && IsReg )	// String type field
+				{
+					if ( tdef->TDFsize == FieldLen )
+					{
+						strncpy(dest, src, FieldLen);
+						dest[FieldLen] = 0;
+						v8 = wildmat(dest, &Expr->ExprData);
+					}
+					else
+						v8 = wildmat(src, &Expr->ExprData);
+
+					if ( v8 || Expr->Operator & 0x10 )	// wildmatch or equal to
+					{
+						//v5 = false;
+						//if ( v8 && Expr->Operator & 0x10 )
+						//	v5 = true;
+						//return v5;
+						return ( v8 && Expr->Operator & 0x10 );
+					}
+				}
+				else	// non-string type field, or not trying to match a regex
+				{
+					v9 = _cmpattrib(src, FieldLen, &Expr->ExprData, Expr->ExprSize, tdef->TDFtype);
+					//printf("_match - cmpattrib returned %d\n",v9); 
+					//v5 = false;
+					if ( (v9 || !(Expr->Operator & 0x10)) && (v9 >= 0 || !(Expr->Operator & 0x08)) && (v9 <= 0 || !(Expr->Operator & 0x20)) )
+						return false;
+						//return v5;
+				}
+				return true;
+			}
+			src += FieldLen;	// Keep moving through the buffer
+			tdef++;
+		}
+	}
+	return true;	// no operator bits present. Always match exit?
+}
+
+#endif
+
+
+
+@
+
+
+1.2
+log
+@initermediate version. Tidy up of wildmat()
+@
+text
+@d25 1
+a25 1
+bool isregexp(char *a1)
+d27 1
+a27 7
+	char *v1;
+	int v2;
+
+	v1 = a1;
+	if ( !*a1 )
+		return false;
+
+d30 2
+a31 3
+		++v1;
+		if ( !*v1 )
+		return false;
+a33 5
+	//if ( v2 == 63 || v2 == 91 || v2 == 42 )
+	//if ( v2 == '?' || v2 == '[' || v2 == '*')
+	//	return true;
+	//else
+	//	return false;
+d171 1
+a171 1
+int _match(char *src, EXPR *Expr, TDef *TDefPtr)
+d173 1
+a173 2
+	TDef *tdef; // esi@@1
+	int v5; // edx@@3
+a176 2
+	char *v11; // [sp+0h] [bp-448h]@@17
+	char *v12; // [sp+4h] [bp-444h]@@17
+a179 1
+	//printf("_match(src = x%08X, EXPR = x%08X, tdef = x%08X, Operator = x%02X, ExprType = x%04X)\n", src, Expr, TDefPtr,Expr->Operator, Expr->Type);
+d181 4
+a184 3
+	tdef = TDefPtr;
+	if ( !Expr )
+		return 1;
+d189 1
+a189 1
+		return ( _match(src, Expr->NextEXPR, TDefPtr) | _match(src, Expr->PrevEXPR, TDefPtr));
+d195 1
+a195 1
+		return ( _match(src, Expr->NextEXPR, TDefPtr) & _match(src, Expr->PrevEXPR, TDefPtr));
+d217 3
+a219 2
+		IsReg = isregexp(&Expr->ExprData);
+		while ( TDefPtr->TDFentry )
+d239 5
+a243 4
+						v5 = 0;
+						if ( v8 && Expr->Operator & 0x10 )
+							v5 = 1;
+						return v5;
+d246 1
+a246 1
+				else	// non-string type field
+d250 1
+a250 1
+					v5 = 0;
+d252 2
+a253 1
+						return v5;
+d255 1
+a255 1
+				return 1;
+d261 1
+a261 1
+	return 1;	// no match exit
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 1
+a9 1
+bool Star(char *a1, char *a2)
+d11 1
+a11 4
+	char *v2; // esi@@1
+
+	v2 = a1;
+	while ( !wildmat(v2, a2) )
+d13 1
+a13 1
+		if ( *v2 )
+d15 2
+a16 2
+			++v2;
+			if ( *v2 )
+d42 5
+a46 4
+	if ( v2 == '?' || v2 == '[' || v2 == '*')
+		return true;
+	else
+		return false;
+d50 1
+a50 1
+int wildmat(char *a1, char *a2)
+a51 2
+	char *v2; // edi@@1
+	char *v3; // esi@@1
+d59 1
+a59 1
+	signed int v11; // eax@@33
+d62 3
+a64 3
+	signed int v14; // eax@@45
+	short v15; // [sp+14h] [bp-14h]@@21
+	signed short v16; // [sp+18h] [bp-10h]@@23
+d67 4
+a70 5
+	printf("wildmat(%s,%s)",a1,a2);
+	v2 = a1;
+	v3 = a2;
+	if ( !*a2 )
+		return *v2 == 0;
+d74 1
+a74 1
+		v4 = *v3;
+d77 1
+a77 1
+			if ( !*v2 )
+d85 5
+a89 3
+				v15 = v3[1] == 94;
+				if ( v3[1] == 94 )
+					++v3;
+d91 3
+a93 3
+				v16 = 0;
+				++v3;
+				if ( !*v3 || *v3 == 93 )
+d96 2
+a97 2
+					if ( v16 == v15 )
+						return result;
+d102 1
+a102 1
+					if ( *v3 == 45 )
+d104 4
+a107 3
+						++v3;
+						v9 = *v2;
+						if ( (*v2 - 65) <= 0x19u )
+d109 5
+a113 4
+						if ( (*v3 - 65) > 0x19u )
+							v10 = *v3;
+						else
+							v10 = *v3 + 32;
+d116 1
+a116 1
+							v11 = (*v2 - 65) > 0x19u ? *v2 : *v2 + 32;
+d118 1
+a118 1
+								goto LABEL_43;
+d123 2
+a124 2
+						v12 = *v2;
+						if ( (*v2 - 65) <= 0x19u )
+d126 5
+a130 4
+						if ( (*v3 - 65) > 0x19u )
+							v13 = *v3;
+						else
+							v13 = *v3 + 32;
+d132 1
+a132 2
+LABEL_43:
+							v16 = 1;
+d134 5
+a138 4
+					if ( (*v3 - 65) > 0x19u )
+						v14 = *v3;
+					else
+						v14 = (*v3 + 32);
+d140 2
+a141 2
+					++v3;
+					if ( !*v3 || *v3 == 93 )
+d143 1
+a143 2
+						result = 0;
+						if ( v16 == v15 )
+d150 12
+a161 3
+			if ( v4 == 92 )
+				++v3;
+			goto LABEL_9;
+d163 1
+a163 2
+		if ( v4 == -86 )
+			break;
+d165 2
+a166 2
+		v5 = *v2;
+		if ( (*v2 - 65) <= 0x19u )
+d168 5
+a172 4
+		if ( (*v3 - 65) > 0x19u )
+			v6 = *v3;
+		else
+			v6 = *v3 + 32;
+d176 4
+a179 4
+		++v2;
+		++v3;
+		if ( !*v3 )
+			return *v2 == 0;
+a180 6
+	v8 = (v3 + 1);
+	if ( *v8 )
+		result = Star(v2, v8);
+	else
+		result = 1;
+	return result;
+@

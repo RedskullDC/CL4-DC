@@ -39,8 +39,8 @@ bool leopenlib(int *LineNo)
 							Varno = putconst(sym, 'C');
 							ENTright = getenmem();
 							allenpt(ENTright, &entb);		// enclose mods to entab structure in these lock methods
-							entb->TTno		= 0;			// normal variable
-							entb->RecNo		= Varno;		// libname var
+							entb->Enun.Enref.TTno		= 0;			// normal variable
+							entb->Enun.Enref.VarNum		= Varno;		// libname var
 							entb->entype	= 1;
 							dallenpt(&entb);
 							break;
@@ -54,8 +54,8 @@ bool leopenlib(int *LineNo)
 						// expression to point at both variables
 						ENTno = getenmem();
 						allenpt(ENTno, &entb);		// enclose mods to entab structure in these lock methods
-						entb->TTno		= 0;		// normal variable
-						entb->RecNo		= 0;		// 
+						entb->Enun.Enref.TTno		= 0;		// normal variable
+						entb->Enun.Enref.VarNum		= 0;		// 
 						entb->entype	= 0x20;		// function call array
 						entb->enleft	= ENTleft;	// 'handle' variable num from above
 						entb->enright	= ENTright;	// 'library' variable num from above, may be zero!

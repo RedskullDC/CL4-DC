@@ -13,6 +13,7 @@ openin dsk V1
 if not ERROR
 	read dsk HEXVAL
 	while not ERROR
+		pause HEXVAL
 		print chr(HEXVAL)
 		read dsk HEXVAL
 	wend

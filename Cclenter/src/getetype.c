@@ -28,9 +28,9 @@ char getetype(ENTAB *ent)	// get expression type
 			break;
 
 		case 0x02:
-			if ( ent->TTno & 0x0100)					// reserved char* value/function
+			if ( ent->Enun.Enop.Enoper & 0x0100)					// reserved char* value/function
 				return 'C';
-			switch (ent->TTno & 0xFC00)
+			switch (ent->Enun.Enop.Enoper & 0xFC00)
 			{
 				case 0x1C00:	//	ucase()
 				case 0x2000:	//	lcase()

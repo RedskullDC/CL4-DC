@@ -1,0 +1,58 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.09.07.13.55.35;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@inital checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef NEGATE_C
+#define NEGATE_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+void negate(char *a1, short TDFsize)
+{
+	unsigned char *i; // edx@@1
+	char v3; // ch@@4
+
+//printf("Negate\n");
+//	DumpBlock(a1,TDFsize);
+	for ( i = a1; i < &a1[TDFsize]; ++i )
+		*i = ~*i;
+//	DumpBlock(a1,TDFsize);
+	if ( a1 < i )
+	{
+		do
+		{
+			--i;
+			v3 = (unsigned short)((*i)++ + 1) >> 8;
+//			printf("Negate v3 = x%02X \n", v3);
+		}
+		while ( a1 < i && v3 & 1 );
+	}
+//	DumpBlock(a1,TDFsize);
+
+}
+
+#endif
+@

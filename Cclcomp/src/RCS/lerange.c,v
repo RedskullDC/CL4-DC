@@ -1,0 +1,819 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2020.01.29.13.06.38;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.02.02.04.39.03;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.06.17.12.05.47;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.59.03;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@prior to X64 compat
+@
+text
+@#ifndef LERANGE_C
+#define LERANGE_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int numrange(short ENTno, XTAB *xt)			// xt == accept field preceeding the range statement 
+{
+	ENTAB	*entb;
+	double	v12;
+	short	v4;
+	char	nptr[256];
+
+	entb = ENARR(ENTno);
+	nptr[0] = 0;
+	
+	//if ( symbol == 2210 || symbol == 2200 )		// 2210 = floating point, 2200 = integer
+	if ( symbol == 2210 || symbol == 2200 || symbol == 2220 )		// 2210 = floating point, 2200 = integer, 2220 = String
+	{
+		//eprint("numrange - symbol = %d, sym = %s,  xt->Flags = x%04X\n",symbol,sym, xt->Flags);
+		cdbcpystr(nptr, sym, 0);
+		if ( xt->Flags & xtb_DATE )		// Date field
+		{
+			if ( (double)clgetdate(nptr) < 0.0 )
+			{
+				loaderr(3, sym);		// "invalid date"
+				return 0;
+			}
+			entb->TTno = 0;
+			v4 = putconst(nptr, 'C');	// string type
+		}
+		else
+		{
+			if ( xt->Flags & xtb_TIME )	// Time field
+			{
+				v12 = gettime(nptr);
+				if ( v12 < 0.0 )
+				{
+					loaderr(25, sym);	// "invalid time"
+					return 0;
+				}
+				sprintf(nptr, "%f", v12);
+			}
+			// this catches all other numeric values
+			entb->TTno = 0;
+			v4 = putconst(nptr, '6');		// store numbers as 6 digit floats internally
+		}
+		if ( v4 >= 0 )
+		{
+			entb->RecNo = v4;
+			entb->entype = 1;
+			symbol = getsym();
+			return ENTno;
+		}
+		return 0;
+	}
+	if ( symbol == 2230 )		// Variable/Table Field
+	{
+		if ( gettfexp(ENTno))	// also advances to next symbol
+			return ENTno;
+		return 0;
+	}
+	loaderr(33, sym);			// unexpected symbol
+	return 0;
+}
+
+int lerange(short PTno)
+{
+	PTAB	*pt;
+	XTAB	*xt;
+	RATAB	*ratb;
+	ENTAB	*entb;
+	
+	short	v4;
+	short	ENTno;
+	short	RANGEno;
+	short	v10;
+	char	v21[256];
+	
+	pt = PTARR(getptabp(PTno - 1));				// We want to examine *previous* program instruction
+	xt = XTARR(pt->TABno);						// look at previous instruction
+
+	if ( pt->OpCode != 1 || xt->Flags & xtb_DISPLAY ) // OpCode 1 == accept field, Flags & 0x0004 == Display Only
+    {
+		loaderr(20, sym);				// "previous field not accept field"
+        return 0;
+    }
+    if ( xt->RangeID )					// this accept field already has a range specifier attached!!
+    {
+		loaderr(18, sym);				// "cannot join and range check"
+        return 0;
+    }
+    v4 = getramem();
+	ratb = RAARR(v4);					// range specifier array
+	
+	xt->RangeID = v4;
+    symbol = getsym();
+    if ( symbol == 930 )
+    {
+		loaderr(7, sym);				// "unexpected end of line"
+        return 0;
+    }
+
+    ENTno = getenmem();
+    if ( xt->Flags & xtb_CHAR )			// Accept field is a String type
+    {
+		allenpt(ENTno, &entb);
+        
+		if ( symbol == 910 )			// "negative"
+			ratb->RangeType = 2;
+		
+		else if ( symbol == 1140 )		// positive
+			ratb->RangeType = 1;			// POSITIVE
+
+		else if ( symbol == 840 )       // match		** undocumented **  perhaps unfinished?
+		{
+			ratb->RangeFrom = ENTno;	// 840 match
+			entb->TTno = 0x6C00u;
+			entb->entype = 2;
+			ratb->RangeType = 5;
+			cdbcpystr(v21, sym, 0);		// ** never used **
+			symbol = getsym();         
+			
+			if ( symbol != 730 || (entb->enleft = getparexp(0, 0), le_error) )		// 730 = "("
+			{
+				loaderr(26, sym);		// "expected a '(' or ')'"
+				dallenpt(&entb);
+				return 0;
+			}
+			if ( symbol != 1300 )       // 1300 = ")"
+			{
+				loaderr(26, sym);		// "expected a '(' or ')'"
+				dallenpt(&entb);
+				return 0;
+			}
+		}
+		else if ( symbol == 900 )		// name
+		{
+			xt->Flags |= xtb_NAME;		// 0x0080u;		// 900 name
+			ratb->RangeType = 6;
+		}
+        else if ( symbol == 2220 )		// string literal
+		{
+			entb->TTno = 0;
+			entb->RecNo = putconst(sym, 'C');
+			entb->entype = 1;
+			ratb->RangeFrom = ENTno;
+			ratb->RangeType = 4;		// range 'one,two,three'
+		}
+		else if ( symbol == 2230 )		// variable/field def
+		{
+			if ( !gettfexp(ENTno) )		// advances to the next symbol also
+			{
+				dallenpt(&entb);
+				return 0;
+			}
+			ratb->RangeFrom = ENTno;
+			ratb->RangeType = 4;			// range 'one,two,three'
+			goto LABEL_MSG;					// skip getting another symbol
+		}
+		else	// error
+		{
+			if ( symbol )
+				loaderr(33, sym);			// "unexpected symbol"
+			dallenpt(&entb);
+			return 0;
+		}
+
+        symbol = getsym();
+LABEL_MSG:
+        dallenpt(&entb);
+	}
+	else	// numeric values and date/time fields
+	{
+		if ( symbol == 1140 )                   // "positive"
+		{
+			ratb->RangeType = 1;
+			symbol = getsym();
+		}
+		else if ( symbol == 910 )				// negative
+		{
+			ratb->RangeType = 2;
+			symbol = getsym();
+		}
+		else
+		{
+			ratb->RangeType = 3;		// range FROM TO    eg: range 100 300 'must be between $1 and $2'
+			RANGEno = numrange(ENTno, xt);		// also advances to next symbol
+			if ( !RANGEno )
+				return 0;	// error
+			ratb->RangeFrom = RANGEno;			// from
+			if ( symbol == 930 )
+			{
+				loaderr(7, sym);                // "unexpected end of line"
+				return 0;
+			}
+			v10 = getenmem();
+			RANGEno = numrange(v10, xt);		// also advances to next symbol
+			if ( !RANGEno )
+				return 0;	// error
+			
+			ratb->RangeTo = RANGEno;			// TO 
+		}
+	}
+	// common exit code to find an optional custom error msg
+
+	if ( symbol == 2220 )			// string literal = optional custom error message
+	{
+		ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+		cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+		symbol = getsym();
+	}
+	if ( symbol == 930 )			// <CR>
+		return 1;					// exit_success
+	loaderr(33, sym);				// "unexpected symbol"
+	return 0;// error exit
+}
+
+#endif
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d7 1
+a7 1
+int numrange(short ENTno, XTAB *xt)	//**** requires plenty of testing ***
+d21 2
+a22 2
+		cdbcpystr(nptr, sym,0);
+		if ( xt->Flags & xtb_DATE )	// Date field
+d26 1
+a26 1
+				loaderr(3, sym);	// "invalid date"
+a56 43
+  
+	/*
+	if ( symbol == 2220 )					// String value
+	{
+		cdbcpystr(nptr, sym, 0);
+		if ( xt->Flags & 0x0002 )			// Date Field
+		{
+			if ( (double)clgetdate(nptr) < 0.0 )
+			{
+				loaderr(3, sym);			// "invalid date"
+				return 0;
+			}
+			entb->TTno = 0;
+			v4 = putconst(nptr, 'C');	// string type
+		}
+		else
+		{
+			if ( xt->Flags & 0x0800 )			// Time Field
+			{
+				v12 = gettime(nptr);
+				if ( v12 < 0.0 )
+				{
+					loaderr(25, sym);			// "invalid time"
+					return 0;
+				}
+				sprintf(nptr, "%f", v12);
+			}
+			// this catches all numeric values stored as strings
+			entb->TTno = 0;
+			v4 = putconst(nptr, '6');		// store numbers as 6 digit floats internally
+		}
+		// common code
+		v5 = 0;
+		if ( v4 >= 0 )
+		{
+			entb->RecNo = v4;
+			entb->entype = 1;
+			symbol = getsym();
+			v5 = ENTno;
+		}
+		return v5;
+	}
+	*/
+a58 1
+		//eprint("numrange - symbol = %d, sym = %s,  xt->Flags = x%04X\n",symbol,sym, xt->Flags);
+d69 10
+a78 4
+	PTAB *pt;
+	XTAB *xt;
+	RATAB *ratb;
+	ENTAB *entb;
+a79 6
+	short v4; // ax@@9
+	short ENTno; // si@@12
+	short RANGEno; // dx@@18
+	short v10; // ax@@21
+	char v21[256]; // [sp+20h] [bp-2018h]@@40
+
+d117 1
+a117 1
+			ratb->RangeFrom = ENTno;		// 840 match
+d124 1
+a124 1
+			if ( symbol != 730 || (entb->Dest = getparexp(0, 0), le_error) )		// 730 = "("
+d137 1
+a137 1
+		else if ( symbol == 900 )   // name
+d139 1
+a139 1
+			xt->Flags |= xtb_NAME;	// 0x0080u;		// 900 name
+d173 1
+a173 1
+	else	// numeric values
+a203 1
+
+a204 1
+	
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d7 1
+a7 1
+int numrange(unsigned short ENTno, XTAB *xt)	//**** requires plenty of testing ***
+d9 4
+a12 9
+	char *v3; // eax@@12
+	short v4; // cx@@25
+	int v5; // edx@@25
+	short v6; // ax@@27
+	ENTAB *entb; // [sp+1Ch] [bp-9Ch]@@1
+	double v12; // [sp+20h] [bp-98h]@@0
+	signed int v13; // [sp+2Ch] [bp-8Ch]@@1
+	char nptr[256]; // [sp+30h] [bp-88h]@@3
+	char FLDtype; // [sp+4h] [bp-B4h]@@17
+a13 1
+	v13 = 1;
+d17 2
+a18 1
+/*	switch (symbol)
+d20 3
+a22 12
+		case 2210:
+		
+			break;
+		default:
+			break;
+	
+	}
+*/
+	if ( symbol == 2210 || symbol == 2200 )
+	{
+		cdbcpystr(nptr, sym);
+		if ( xt->Flags & 0x0002 )
+d30 1
+a30 11
+			FLDtype = 'C';
+			v4 = putconst(nptr, FLDtype);
+			v5 = 0;
+			if ( v4 >= 0 )
+			{
+				entb->RecNo = v4;
+				entb->entype = 1;
+				symbol = getsym();
+				v5 = (unsigned short)ENTno;
+			}
+			return v5;
+d32 1
+a32 1
+		if ( xt->Flags & 0x0800 )
+d34 1
+a34 2
+			v12 = gettime(nptr);
+			if ( v12 < 0.0 )
+d36 7
+a42 2
+				loaderr(25, sym);	// "invalid time"
+				return 0;
+d44 3
+a47 10
+		else
+			v13 = 0;
+
+		if ( v13 )
+			sprintf(nptr, "%f", v12);
+		
+		entb->TTno = 0;
+		FLDtype = '6';	// store numbers as 6 digit floats internally
+		v4 = putconst(nptr, FLDtype);
+		v5 = 0;
+d53 1
+a53 1
+			v5 = (unsigned short)ENTno;
+d55 1
+a55 1
+		return v5;
+d58 2
+a59 1
+	if ( symbol == 2220 )
+d61 2
+a62 2
+		cdbcpystr(nptr, sym);
+		if ( xt->Flags & 2 )
+d70 1
+a70 11
+			FLDtype = 'C';
+			v4 = putconst(nptr, FLDtype);
+			v5 = 0;
+			if ( v4 >= 0 )
+			{
+				entb->RecNo = v4;
+				entb->entype = 1;
+				symbol = getsym();
+				v5 = (unsigned short)ENTno;
+			}
+			return v5;
+d72 1
+a72 1
+		if ( xt->Flags & 0x0800 )
+d74 1
+a74 2
+			v12 = gettime(nptr);
+			if ( v12 < 0.0 )
+d76 7
+a82 2
+				loaderr(25, sym);			// "invalid time"
+				return 0;
+d84 3
+d88 1
+a88 8
+		else
+			v13 = 0;
+
+		if ( v13 )
+			sprintf(nptr, "%f", v12);
+		entb->TTno = 0;
+		FLDtype = '6';	// store numbers as 6 digit floats internally
+		v4 = putconst(nptr, FLDtype);
+d95 1
+a95 1
+			v5 = (unsigned short)ENTno;
+d99 2
+a100 1
+	if ( symbol == 2230 )
+d102 4
+a105 5
+		v6 = gettfexp(ENTno);
+		v5 = 0;
+		if ( v6 )
+			v5 = (unsigned short)ENTno;
+		return v5;
+d113 10
+a122 12
+     PTAB *pt; // eax@@1
+     XTAB *xt; // edi@@2
+     RATAB *ratb; // [sp+18h] [bp-2020h]@@9
+     ENTAB *entb; // [sp+1Ch] [bp-201Ch]@@23
+     
+	 short v4; // ax@@9
+     short v5; // si@@12
+     short v8; // dx@@18
+     int v9; // ecx@@18
+     short v10; // ax@@21
+     short v11; // dx@@21
+     char v21[256]; // [sp+20h] [bp-2018h]@@40
+d127 1
+a127 1
+	if ( pt->OpCode != 1 || xt->Flags & 0x0004 ) // OpCode 1 == accept field, Flags&4 == Display Only?
+d132 1
+a132 1
+    if ( xt->RangeID )
+d147 3
+a149 2
+    v5 = getenmem();
+    if ( xt->Flags & 0x0001 )
+d151 1
+a151 1
+		allenpt(v5, &entb);
+d153 1
+a153 1
+		if ( symbol == 910 )                  // "negative"
+d155 5
+a159 1
+        else
+d161 18
+a178 49
+			if ( symbol > 910 )
+            {
+				if ( symbol == 2220 )
+                {
+					entb->TTno = 0;
+                    entb->RecNo = putconst(sym, 'C');
+                    entb->entype = 1;
+                    ratb->RangeFrom = v5;
+                    ratb->RangeType = 4;
+				}
+                else
+                {
+					if ( symbol > 2220 )
+                    {
+						if ( symbol != 2230 )
+						{
+							if ( symbol )
+								loaderr(33, sym);        // "unexpected symbol"
+							dallenpt(&entb);
+				            return 0;
+						}
+						if ( !gettfexp(v5) )
+                        {
+							dallenpt(&entb);
+							return 0;
+						}
+                        ratb->RangeFrom = v5;
+                        ratb->RangeType = 4;
+                        dallenpt(&entb);
+						if ( symbol == 2220 )
+						{
+							ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+							cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+							symbol = getsym();
+						}
+						if ( symbol == 930 )
+							return 1;
+						loaderr(33, sym);
+				        return 0;
+					}
+                    if ( symbol != 1140 )  // positive
+					{
+						if ( symbol )
+							loaderr(33, sym);        // "unexpected symbol"
+						dallenpt(&entb);
+			            return 0;
+					}
+                    ratb->RangeType = 1;
+				}
+d180 20
+a199 49
+            else
+            {
+				if ( symbol != 840 )        // match
+                {
+					if ( symbol != 900 )   // name
+                    {
+						if ( !symbol )
+						{
+							dallenpt(&entb);
+                            return 0;
+						}
+						loaderr(33, sym);        // "unexpected symbol"
+						dallenpt(&entb);
+			            return 0;
+					}
+                    xt->Flags |= 0x0080u; // 900 name
+                    ratb->RangeType = 6;
+					symbol = getsym();
+					dallenpt(&entb);
+					if ( symbol == 2220 )
+					{
+						ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+						cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+						symbol = getsym();
+					}
+					if ( symbol == 930 )
+						return 1;
+					loaderr(33, sym);
+					return 0;
+				}
+                ratb->RangeFrom = v5;	// 840 match
+                entb->TTno = 0x6C00u;
+                entb->entype = 2;
+                ratb->RangeType = 5;
+                cdbcpystr(v21, sym, 0);
+                symbol = getsym();         
+                
+				if ( symbol != 730 || (entb->Dest = getparexp(0, 0), le_error) )		// 730 = "("
+                {
+					loaderr(26, sym);		// "expected a '(' or ')'"
+					dallenpt(&entb);
+                    return 0;
+				}
+                if ( symbol != 1300 )       // 1300 = ")"
+                {
+					loaderr(26, sym);		// "expected a '(' or ')'"
+					dallenpt(&entb);
+                    return 0;
+				}
+d201 3
+d205 8
+d214 1
+a215 10
+        if ( symbol == 2220 )
+        {
+            ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+			cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+            symbol = getsym();
+		}
+        if ( symbol == 930 )
+			return 1;
+		loaderr(33, sym);
+        return 0;
+d217 8
+a224 38
+    if ( symbol == 1140 )                      // "positive"
+    {
+		ratb->RangeType = 1;
+        symbol = getsym();
+        if ( symbol == 2220 )
+        {
+            ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+			cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+            symbol = getsym();
+		}
+        if ( symbol == 930 )
+			return 1;
+		loaderr(33, sym);
+        return 0;
+	}
+    if ( symbol == 910 )                       // negative
+    {
+		ratb->RangeType = 2;
+        symbol = getsym();
+        if ( symbol == 2220 )
+        {
+            ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+			cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+            symbol = getsym();
+		}
+        if ( symbol == 930 )
+			return 1;
+		loaderr(33, sym);
+        return 0;
+	}
+	// what case is this ??
+    ratb->RangeType = 3;
+    v8 = numrange(v5, xt);
+    v9 = 0;
+    if ( v8 )
+    {
+		ratb->RangeFrom = v8;
+        if ( symbol == 930 )
+d226 2
+a227 2
+			loaderr(7, sym);                  // "unexpected end of line"
+			return 0;
+d229 11
+a239 11
+        v10 = getenmem();
+        v11 = numrange(v10, xt);
+        v9 = 0;
+        if ( v11 )
+        {
+			ratb->RangeTo = v11;
+	        if ( symbol == 2220 )
+	        {
+	            ratb->StringOffset = getstrmem(lenstr(sym) + 1);
+				cdbcpystr(STRARR(ratb->StringOffset), sym, 0);
+	            symbol = getsym();
+d241 6
+a246 4
+	        if ( symbol == 930 )
+				return 1;
+			loaderr(33, sym);
+	        return 0;
+d248 10
+d259 4
+a262 1
+    return v9;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 3
+d13 1
+a13 1
+	ENTAB *v11; // [sp+1Ch] [bp-9Ch]@@1
+d20 1
+a20 1
+	v11 = ENTno ? (ENTAB *)&enarr.TableAddr[12 * (ENTno - 1)] : 0;
+d43 1
+a43 1
+			v11->TTno = 0;
+d49 2
+a50 2
+				v11->RecNo = v4;
+				v11->entype = 1;
+d70 2
+a71 1
+		v11->TTno = 0;
+d77 2
+a78 2
+			v11->RecNo = v4;
+			v11->entype = 1;
+d95 1
+a95 1
+			v11->TTno = 0;
+d101 2
+a102 2
+				v11->RecNo = v4;
+				v11->entype = 1;
+d122 1
+a122 1
+		v11->TTno = 0;
+d128 2
+a129 2
+			v11->RecNo = v4;
+			v11->entype = 1;
+d151 4
+a154 1
+     short v4; // ax@@9
+a155 2
+     short v6; // ax@@14
+     short *v7; // edx@@14
+a159 4
+     int v12; // eax@@53
+     char *v13; // eax@@54
+     RATAB *ratb; // [sp+18h] [bp-2020h]@@9
+     ENTAB *entb; // [sp+1Ch] [bp-201Ch]@@23
+d163 1
+a163 1
+	xt = pt->TABno ? (XTAB *)&xtarr.TableAddr[52 * (pt->TABno - 1)] : 0;	// look at previous instruction
+d176 2
+a177 2
+	ratb = v4 ? (RATAB *)&raarr.TableAddr[12 * (unsigned short)v4 - 12] : 0;
+
+d225 2
+a226 4
+							v12 = lenstr(sym);
+							ratb->StringOffset = getstrmem(v12 + 1);
+							v13 = ratb->StringOffset ? &strarr.StringTable[ratb->StringOffset - 1] : 0;
+							cdbcpystr(v13, sym, 0);
+d265 2
+a266 4
+						v12 = lenstr(sym);
+						ratb->StringOffset = getstrmem(v12 + 1);
+						v13 = ratb->StringOffset ? &strarr.StringTable[ratb->StringOffset - 1] : 0;
+						cdbcpystr(v13, sym, 0);
+d299 2
+a300 5
+			v12 = lenstr(sym);
+            ratb->StringOffset = getstrmem(v12 + 1);
+
+			v13 = ratb->StringOffset ? &strarr.StringTable[ratb->StringOffset - 1] : 0;
+			cdbcpystr(v13, sym, 0);
+d311 1
+a311 3
+        v6 = getsym();
+        v7 = &symbol;
+        *v7 = v6;
+d314 2
+a315 5
+			v12 = lenstr(sym);
+            ratb->StringOffset = getstrmem(v12 + 1);
+
+			v13 = ratb->StringOffset ? &strarr.StringTable[ratb->StringOffset - 1] : 0;
+			cdbcpystr(v13, sym, 0);
+d326 1
+a326 3
+        v6 = getsym();
+        v7 = &symbol;
+        *v7 = v6;
+d329 2
+a330 5
+			v12 = lenstr(sym);
+            ratb->StringOffset = getstrmem(v12 + 1);
+
+			v13 = ratb->StringOffset ? &strarr.StringTable[ratb->StringOffset - 1] : 0;
+			cdbcpystr(v13, sym, 0);
+d358 2
+a359 4
+				v12 = lenstr(sym);
+	            ratb->StringOffset = getstrmem(v12 + 1);
+				v13 = ratb->StringOffset ? &strarr.StringTable[ratb->StringOffset - 1] : 0;
+				cdbcpystr(v13, sym, 0);
+@

@@ -55,7 +55,7 @@ void dispfld(XTAB *xtab, FLDdesc *fld, bool show, bool forceUpdate, bool allow_m
             Attr = 0x3Fu;				// turn all attributes off?
             if ( Column <= 0 )
                 Column = 1;
-            fillbuf(a3, MaxLen, ' ');	// fill with <SPC>
+            memset(a3, ' ', MaxLen);	// fill with <SPC>
             a3[MaxLen] = 0;
             MessageString = a3;
         }

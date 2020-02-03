@@ -1,0 +1,5075 @@
+head	1.14;
+access;
+symbols;
+locks
+	leslie:1.14; strict;
+comment	@ * @;
+
+
+1.14
+date	2018.10.30.02.57.31;	author leslie;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2016.07.21.06.46.32;	author leslie;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2016.07.05.01.50.01;	author leslie;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2016.03.31.02.55.06;	author leslie;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2015.11.06.03.59.45;	author leslie;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2014.12.10.10.25.29;	author leslie;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2014.12.10.04.51.59;	author leslie;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2014.11.27.23.25.26;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2014.11.27.04.17.57;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2014.11.26.10.54.09;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2014.11.25.07.49.45;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.11.25.05.16.05;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.24.03.42.32;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.13.22.15.39;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.14
+log
+@Work on simplifying case conversion routines
+@
+text
+@#ifndef CALCULATE_C
+#define CALCULATE_C
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include <math.h>		// for various math functions
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+double clatof(const char *nptr)
+{
+    double result;
+
+    result = strtod(nptr, 0);
+	return finite(result) ? result : 0.0 ;
+}
+
+void calculate(ENTAB *ent)
+{
+    FLDdesc *fld_src;
+	FLDdesc *fld_dest;
+	
+    char *v36;
+	char *v47;
+	
+    double v45;
+    
+	// range check vars
+	double	MaxVal;
+    double	MinVal;
+    double	TestVal;
+
+    unsigned short OpCode;
+    unsigned short OpCodeMap;
+   
+	int		FLDlen;
+    int		TTno;
+
+    short	v37;
+    short	fno;					// Table field number, or variable number
+    char	FLDtype;
+    char	DestType;
+    
+	char	a2[1008];
+    char	Src[1008];
+    char	result[1001];
+    
+	FLDdesc fld1;
+    FLDdesc fld2;
+																// true for xD800 - xF000 Math+assign operators (Updates TTptr area)
+	fno = (short)gettdfno(ENARR(ent->enleft), &TTno, &FLDtype,(unsigned short)(ent->TTno & 0xFC00) - 0xD401u <= 0x1BFF);
+
+	assert(ent->entype == 0x02);	// quick sanity checks
+	assert(fno >= 0);
+    
+	// Should only be possible when LVALUE and *ALL* RVALUE(S) are all integer types
+	//if (ent->TTno & 0x0200)
+	//	printf("calculate: Integer Calc flag detected\n");
+
+	fld_dest = &ttab[TTno].TTfields[fno];
+    fld_src = getftf(ENARR(ent->enright), 0, &fld1);
+
+    if ( fld_dest->FLDtype == 'C' )			// String destination routines
+    {
+		//printf("calculate : String Routine [dest = C]\n");
+        sv_wid = fld_dest->FLDlen;
+        zap(result, 1001u);
+        evalstr(ENARR(ent->enright), result);
+        
+		assert(fld_dest->FLDlen < sizeof(result));			// shouldn't be possible? clcomp won't allow strings > 1000 bytes in length
+
+		OpCode = ent->TTno & 0xFC00;
+		switch (OpCode)
+		{					// math+assignment operators
+		case f_ADDEQ:		//	+=
+		case f_SUBEQ:		//	-=
+		case f_MULEQ:		//	*=
+		case f_DIVEQ:		//	/=
+		case f_MODEQ:		//	%=
+		case f_POWEQ:		//	**=
+			cdbcpystr(a2, (char *)fld_dest->FLDdata, 0);	// We need the existing contents of the destination variable!
+			switch (OpCode)				// remapping math+assign to straight math operators
+			{
+			case f_ADDEQ:					// '+='  -> '+'
+				OpCodeMap = f_ADD;				// Addition
+				break;
+			case f_SUBEQ:					// '-=' -> '-'
+				OpCodeMap = f_SUB;				// Subtraction
+				break;
+			case f_MULEQ:					// '*=' -> '*'
+				OpCodeMap = f_MUL;				// Multiply
+				break;
+			case f_DIVEQ:					// '/=' -> '/'
+				OpCodeMap = f_DIV;				// Division
+				break;
+			case f_MODEQ:					// '%=' -> '%'
+				OpCodeMap = f_MOD;				// MOD Operator
+				break;
+			case f_POWEQ:					// '**=' -> '**'
+				OpCodeMap = f_POW;				// Exponent
+				break;
+			//default:							// unreachable due to switch block above
+			//	OpCodeMap = ent->TTno;			// default == don't remap opcode	*** should be unreachable ***
+			//	break;
+			}
+
+			if ( !stroper(OpCodeMap, Src, a2, result) )	// stroper(OpCode, Dest, Src1, Src2)
+				Src[0] = 0;
+
+			Src[fld_dest->FLDlen] = 0;								// Ensure destination buffer isn't overrun!
+
+			fld_dest = getftf(ENARR(ent->enleft), 0, &fld2);
+			cdbcpystr((char *)fld_dest->FLDdata, Src, 0);
+			break;
+
+		case f_ASSIGN:							// '=' simple Assignment
+			result[fld_dest->FLDlen] = 0;							// Ensure destination buffer isn't overrun!
+            fld_dest = getftf(ENARR(ent->enleft), 0, &fld2);
+			cdbcpystr((char *)fld_dest->FLDdata, result, 0);
+			break;
+
+		default :					// Invalid OpCode, Crash out!
+			//__assert_fail("0", "calculate.c", 113, "calculate");
+			assert(0);
+			break;
+        }
+
+		if ( !TTno && fno == v_TAB )			// TTno == 0 if this is a system variable
+        {
+            setcvar(v_TAB, (char *)fld_dest->FLDdata);  // "TAB"
+            TAB = *(char *)fld_dest->FLDdata;
+        }
+        if ( *(char *)fld_dest->FLDdata )		// Quick ZERO flag check
+            fld_dest->FLDstat &= ~fld_ZERO;		// 0xFFFBu;
+        else
+            fld_dest->FLDstat |= fld_ZERO;		// 0x0004u;
+
+    }
+	else	//fld_dest->FLDtype != 'C' Numeric calcs follow
+	{	
+		sv_wid = 99;
+
+		if ( ent->TTno & 0x0200 )				// Integer calc flag
+		    v45 = (double)evalint(ENARR(ent->enright));
+		else
+			v45 = clround(evalnum(ENARR(ent->enright), fld_dest->FLDtype), fld_dest->FLDtype);
+
+		fld_dest = getftf(ENARR(ent->enleft), 0, &fld2);	// get destination fld
+		DestType = fld_dest->FLDtype;
+
+		OpCode = ent->TTno & 0xFC00;
+		if ( OpCode )							// Can OpCode ever be ZERO?
+		{
+			switch (OpCode)
+			{
+			case f_ADDEQ:																// '+=' Addition
+				v45 = clround(*(double *)fld_dest->FLDdata + v45, DestType);
+				break;
+			case f_SUBEQ:																// '-=' Subtraction
+			    v45 = clround(*(double *)fld_dest->FLDdata - v45, DestType);
+				break;
+			case f_MULEQ:																// '*=' Multiply + assign
+				v45 = clround(v45 * *(double *)fld_dest->FLDdata, DestType);
+				break;
+			case f_DIVEQ:																// '/=' Division		(No check for /zero error?)
+				v45 = clround(*(double *)fld_dest->FLDdata / v45, DestType);	
+				break;
+			case f_MODEQ:																// '%=' (MOD) operator
+				v45 = clround(fmod(*(double *)fld_dest->FLDdata,v45), DestType);	
+				break;
+			case f_POWEQ:																// '**=' Exponent
+				v45 = clround(power(*(double *)fld_dest->FLDdata, v45), DestType);
+				break;
+			case f_ASSIGN:																// simple assignment?
+				//printf("calc - 0xA800 opcode encountered v45 = %G\n",v45);
+				//*(double *)fld_dest->FLDdata = v45;	//*********************************************
+				break;
+			default:	// Somehow we reached an invalid OpCode!!
+				//__assert_fail("0", "calculate.c", 176, "calculate");
+				assert(0);
+				break;
+			}
+			*(double *)fld_dest->FLDdata = v45;					// also handles the simple assignment case
+		}
+
+		if ( !TTno && fno == v_DATEFORM )    // "DATEFORM"
+		    _DF = (short)*(double *)fld_dest->FLDdata;
+    
+		if ( v45 == 0.0 )				// set quick ZERO flag
+		    fld_dest->FLDstat |= fld_ZERO;	// 0x0004u;
+		else
+			fld_dest->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+
+		// special check for Dest Vartype = D, and Src = INT array of size 10
+		if ( DestType == 'D' && fld_src && fld_src->FLDstat & fld_ARRAY && fld_src->FLDelemID == 10 && fld_src->FLDtype == 'N' )
+			arrdate(fld_dest, fld_src);
+	
+		// Calc finished, do range limit checks if applicable ...
+		if ( DestType == 'B' || DestType == 'I' || DestType == 'N' || DestType == 'L' )
+		{    
+			switch (DestType)
+			{
+			case 'B':
+				MaxVal = 127.0;
+				MinVal = -127.0;
+				break;
+			case 'I':
+				MaxVal = 32767.0;
+				MinVal = -32767.0;
+				break;
+			case 'L':
+				MaxVal = 1.0e14;
+				MinVal = -1.0e14;
+				break;
+			case 'N':
+				MaxVal = 2147483647.0;
+				MinVal = -2147483647.0;
+				break;
+			}
+			TestVal = *(double *)fld_dest->FLDdata;
+			if ( TestVal > MaxVal )
+				*(double *)fld_dest->FLDdata = MaxVal;
+			else if( TestVal < MinVal )
+				*(double *)fld_dest->FLDdata = MinVal;
+		}
+	}
+
+
+    if ( fld_dest->FLDstat & fld_ARRAY )	// fld_Array indicates no subcript (or [0]) specified. Copy value to *ALL* Array elements 
+    {
+		// special check for INT array size = 10, and vartype = D.
+        if ( fld_src && fld_src->FLDtype == 'D' && fld_dest->FLDelemID == 10 && fld_dest->FLDtype == 'N' ) 
+        {
+            datearr(fld_dest);	// convert double value into array hanging off fld_dest->FLDname
+        }
+        else
+        {
+            if ( fld_dest->FLDtype == 'C' )
+                FLDlen = (unsigned short)(fld_dest->FLDlen + 1);
+            else
+                FLDlen = sizeof(double);
+
+            v47 = fld_dest->FLDname;			// Array variables hang of FLDname. 
+            v36 = &v47[FLDlen];
+            v37 = fld_dest->FLDelemID - 1;		// Number of Array elements
+            if ( fld_dest->FLDelemID != 1 )
+            {
+                do
+                {
+                    cpybuf(v36, v47, FLDlen);	// copy value to all array elements!
+                    v36 += FLDlen;
+                    --v37;
+                }
+                while ( v37 );
+            }
+        }
+    }
+    else
+    {
+        if ( !TTno && fno == v_INTERRUPT )// "INTERRUPT"
+            cl_intr(0);
+    }
+    fld_dest->FLDstat |= 0x0018u;	// (fld_DATA_AVAIL|fld_SUBREC) ???   fld halds data, and value is *dirty* (may need flush to disk)??
+}
+
+double evalnum(ENTAB *entab, int VarType)
+{
+	FLDdesc	*fld;
+    unsigned short OpCode;
+	
+	double	val_right;
+	double	val_left;
+	
+	FLDdesc fld1;
+	FLDdesc fld2;
+	
+	char	nptr[8192];
+	char	buff[1024];
+	char	src[21];
+	char	FLDtype;
+
+    if ( !entab )
+	    return 0.0;
+
+	//printf("evalnum : entab->entype = %d, entab->TTno  = x%04X\n",entab->entype,(unsigned short)entab->TTno);
+	//if (entab->TTno & 0x0200)
+	//	printf("evalnum: Integer Calc flag detected\n");
+
+	if ( entab->entype == 0x02 )
+	{
+		if ( entab->TTno & 0x0200 )			// 0x0200 == Integer calc flag
+			return (double)evalint(entab);
+		
+		if ( entab->TTno & 0x0100 )			// 0x0100 == Reserved name flag
+			return (double)getnresv(entab->RecNo);
+
+		OpCode = entab->TTno & 0xFC00;		// 1111 11-- ---- ----
+
+		switch (OpCode)
+		{
+		case f_ARRSTART:					// '[' Array operation
+			goto LABEL_128;
+
+		case f_RANDOM:
+			return drand48();				// random()
+
+		case f_KEYREADY:
+			return (double)Tty_KeyIsReady();
+
+		case f_UCASE :						// ucase()			// all string operations?
+		case f_LCASE :						// lcase()
+		case f_GETARG:						// getarg()
+		case f_GETENV:						// getenv()
+		case f_SDEL  :						// sdel()
+		case f_SMULT :						// smult()
+		case f_SWORD :						// sword()
+		case f_GETXML:						// getxml()
+		case f_TRIM  :						// trim()
+		case f_GETCGI:						// getcgi()
+		case f_SUBSTR:						// substr()
+		case f_SREP  :						// srep()
+		case f_SCONV :						// sconv()
+		case f_SCAT  :						// scat()
+			evalstr(entab, buff);
+			
+			if ( VarType == 'D' )
+				return (double)clgetdate(buff);		// returns int
+			else if ( VarType == 'T' )
+				return gettime(buff);				// returns double anyway
+			else
+				return clatof(buff);				// try and interpret result as a number
+		}
+		
+		// Next batch of Opcodes only require Left parameter:
+		val_left  = evalnum(ENARR(entab->enleft), VarType);
+		//printf("evalnum : val_left = %G\n",val_left);
+		switch (OpCode)
+		{
+		case f_SQRT :
+			return val_left > 0.0 ? sqrt(val_left) : 0.0;
+		case f_LOG  :
+			return val_left > 0.0 ? log(val_left) : 0.0;
+		case f_SIN  :
+			return sin(val_left);
+		case f_COS  :
+			return cos(val_left);
+		case f_TAN  :
+			return tan(val_left);
+		case f_LOG10:
+			return val_left > 0.0 ? log10(val_left) : 0.0;
+		case f_ASIN :
+			return val_left <= 1.0 ? asin(val_left) : 0.0;
+		case f_ACOS :
+			return val_left <= 1.0 ? acos(val_left) : 0.0;
+		case f_ATAN :
+			return atan(val_left);
+		case f_DEGREES:									// degrees()
+			return (val_left > 0.0) ? (val_left * 180.0 / 3.141592653589793) : 0.0;
+		case f_RADIANS:									// radians()
+			return (val_left > 0.0) ? (val_left / 180.0 * 3.141592653589793) : 0.0;
+		case f_EXP  :									// exp() operator
+			return exp(val_left);
+		}
+		
+		// Remaining batch of Opcodes require Left *and* Right parameters. (Left evaluated above)
+		val_right = evalnum(ENARR(entab->enright), VarType);
+		//printf("evalnum : val_right = %G\n",val_right);
+		switch (OpCode)
+		{
+		case f_ADD  :									// + add operator
+			return val_left + val_right;
+		case f_SUB  :									// - subtract operator
+			return (entab->enright) ? val_left - val_right : -val_left;
+		case f_POW  :									// ** exponent operator
+			return power(val_left, val_right);
+		case f_MUL  :									// * multiply operator
+			return val_left * val_right;
+		case f_DIV  :									// "/" divide operator
+			return (val_right != 0.0) ? val_left / val_right : 0.0 ;	// avoid divide by zero error
+		case f_MOD  :									// % MOD operator
+			fld = getftf(ENARR(entab->enleft), 0, &fld2);
+			FLDtype = fld ? fld->FLDtype : 'N' ;			// default to Integer
+			if ( FLDtype == 'C' )
+			{
+				evalstr(entab, nptr);
+				return (VarType == 'D') ? (double)clgetdate(nptr): clatof(nptr);
+			}
+			else
+			{
+				val_left = clround(val_left, FLDtype);
+				fld = getftf(ENARR(entab->enright), 0, &fld1);
+
+				val_right = clround(val_right, fld ? fld->FLDtype : 'N');	// default to 'N' long integer
+				return (val_right != 0.0) ? fmod(val_left,val_right) : 0.0;
+			}
+		}
+	}
+
+LABEL_128:
+//printf("evalnum : Label128 default handler, type = %d\n", entab->entype);
+
+	fld = getftf(entab, 1, &fld2);
+	if ( fld )
+	{
+		if ( fld->FLDtype == 'C' )						// Src == String
+		{
+			if ( VarType == 'D' || VarType == 'T' )		// Dest == Date/Time. Try to interpret string accordingly
+			{
+				strncpy(src,(char *)fld->FLDdata, 20u);
+				src[20] = 0;
+				return (VarType == 'D') ? (double)clgetdate(src) : gettime(src);
+			}
+			else
+				return clatof((const char *)fld->FLDdata);	// try and interpret string as a number
+		}
+		else
+			return *(double *)fld->FLDdata;				// all others stored internally as double
+
+	}
+	return 0.0;
+}
+
+
+int evalint(ENTAB *entab)
+{
+    ENTAB	*ent1;
+	FLDdesc *fld;
+    unsigned short OpCode;
+
+    int		val_left;
+    int		val_right;
+    int		v9;
+	int		TTno;
+
+	FLDdesc fld_lit;	// used for temp storage of entab literals
+	
+	char	FLDtype;
+    char	a1[1008];
+    char	a2[1008];
+
+    if ( !entab )
+        return 0;
+
+	//if (entab->TTno & 0x0200)
+	//	printf("evalint: Integer Calc flag detected\n");
+
+    if ( entab->entype == 0x02 )			
+	{
+		if ( entab->TTno & 0x0100 )											// reserved value flag, try to interpret as numeric value
+			return getnresv(entab->RecNo);
+		else if ( entab->TTno & 0x0200 )									// Integer calc flag
+		{
+			val_left = (int)evalint(ENARR(entab->enleft));
+			val_right = (int)evalint(ENARR(entab->enright));
+		}
+		else
+		{
+			val_left = (int)evalnum(ENARR(entab->enleft),'N');
+			val_right = (int)evalnum(ENARR(entab->enright),'N');
+		}
+
+		OpCode = entab->TTno & 0xFC00;
+		switch (OpCode)
+		{
+		case f_ADD   :												// "+" operator. 
+			return val_left + val_right;	
+		case f_SUB   :												// "-" operator.
+			return val_left - val_right;
+		case f_POW   :												// "**" operator
+			return (int)power((double)val_left, (double)val_right);
+		case f_MUL   :												// "*" operator. 
+			return val_left * val_right;
+		case f_DIV   :												// "/" operator. Check divisor to avoid "divide by zero" error.
+			return val_right ? val_left / val_right : 0 ;
+		case f_MOD   :												// "%"  mod operator. Check divisor to avoid "divide by zero" error.
+			return val_right ? val_left % val_right : 0 ;
+		case f_MATCH :												// match()
+			evalstr(ENARR(entab->enleft), a2);
+			evalstr(ENARR(entab->enright), a1);
+			return smatch(a1, a2);
+		case f_RANDOM:												// random()		// not sure this is reachable as an integer RVALUE?
+			return lrand48();
+		case f_KEYREADY:											// keyready()
+			v9 = Tty_KeyIsReady();
+			return v9;
+		case f_NAME  :												// name()
+			a1[0] = 0;
+			return isfname(evalstr(ENARR(entab->enleft),a1)) == 0;
+
+		case f_ASC   :												// asc()
+			a1[0] = 0;
+			ent1 = ENARR(entab->enleft);	// drill down the left tree to the end
+			while (ent1 && ent1->enleft)
+				ent1 = ENARR(ent1->enleft);
+
+			getftf(ent1, 0, &fld_lit);	// looks pointless, but sets global dbl_0, dbl_1 variables ?
+			evalstr(ENARR(entab->enleft), a1);
+			v9 = (unsigned char)a1[0];
+			return v9;
+
+		case f_SLEN  :												// slen()
+			a1[0] = 0;
+			ent1 = ENARR(entab->enleft);	// drill down the left tree to the end
+			while (ent1 && ent1->enleft)
+				ent1 = ENARR(ent1->enleft);
+
+			fld = getftf(ent1, 0, &fld_lit);
+			if ( fld && fld->FLDtype == 'C' )
+				return lenstr(evalstr(ENARR(entab->enleft), a1));
+			return 0;
+			break;
+		
+		case f_ASIZE :												// asize()
+			//printf("evalint asize()\n");
+			ent1 = ENARR(entab->enleft);	// drill down the left tree to the end
+			while (ent1 && ent1->enleft)
+				ent1 = ENARR(ent1->enleft);
+
+			val_right = gettdfno(ent1, &TTno, &FLDtype, 0);
+			if ( TTno )									
+				return ttab[TTno].NumFields - val_right;			// This is a table. return Numfields - current field no
+			else		
+				return ttab->TTfields[val_right].FLDelemID;			// Normal variable. return number of elements
+		}
+	}
+	// printf("evalint 627 - entab->entype = %d\n",entab->entype);
+	// default numeric handler. Will catch anything not handled above
+
+	fld = getftf(entab, 1, &fld_lit);
+	if ( fld && fld->FLDtype != 'C' )
+		return (int)*(double *)fld->FLDdata;
+	else
+		return 0;
+}
+
+char *evalstr(ENTAB *entab, char *OutBuffer)
+{
+    ENTAB	*ent;
+	FLDdesc *fld;
+	char	*chr_ptr;
+	char	*v63;
+	char	*v65;
+	char	*CBuf1;
+	char	*CBuf2;
+    char	*StrRight = 0; 
+	char	*StrLeft = 0;
+	double	num;						// for OpCodes which require a numeric parameter
+    int		v60;
+	unsigned short OpCode;
+    short	v50;
+    bool	doDefault = false;
+    
+	FLDdesc fld_lit;					// used as temp storage for entab literals
+
+    char	dest[21];
+    char	FLDtype;
+
+    if ( !entab )
+        return OutBuffer;				// Don't alter buffer, just return to caller
+
+	if ( entab->entype != 0x02 )
+	{
+        if ( entab->entype == 0x10 )				// 3 char (or less) string stored directly in entab
+			cdbcpystr(OutBuffer, (char *)&entab->TTno, 0);	// Simple copy operation
+		else
+            doDefault = true;			// fall through to default operation
+	}
+    else if ( entab->TTno & 0x0100 )	// get a reserved variable. Takes no params 
+    {	// entab->entype == 2
+        cdbcpystr(OutBuffer, getresv(entab->RecNo), 0);
+    }
+	else
+	{
+		OpCode = entab->TTno & 0xFC00;
+		if ( OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
+		{
+			switch (OpCode)
+			{
+			case  f_SREP:		// srep("The string to look at", "string","new string") 
+				StrLeft = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrLeft);				// enleft = "The String to look at"        
+				ent = ENARR(entab->enright);
+				if ( ent->entype == 0x20 )							// function call type
+				{
+					CBuf1 = (char *)mmalloc(1001u);					// Old String to look for 
+					CBuf2 = (char *)mmalloc(1001u);					// String to replace it with
+					evalstr(ENARR(ent->enleft), CBuf1);				// *** recursion ***
+					evalstr(ENARR(ent->enright), CBuf2);			// *** recursion ***
+					repstr(OutBuffer, StrLeft, CBuf1, CBuf2);
+					free(CBuf1);
+					free(CBuf2);
+					free(StrLeft);
+					return OutBuffer;
+				}
+				__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",669,"evalstr");
+				break;
+			case f_SUBSTR:		// substr("The string", start, length)
+				StrLeft = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrLeft);				// enleft contains the "The String"
+				ent = ENARR(entab->enright);						// Params hang off enright
+				if ( ent->entype == 0x20 )
+				{
+					int StartPos	= evalint(ENARR(ent->enleft));
+					int Length		= evalint(ENARR(ent->enright));
+					substr(OutBuffer, StrLeft, StartPos, Length);
+					free(StrLeft);
+					return OutBuffer;
+				}
+				__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",638,"evalstr");
+				break;
+			case f_SCONV:														// sconv(url|soundex|tabsub, en|de|ign|unign|0|1-9, string3)
+				StrLeft = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrLeft);
+				ent = ENARR(entab->enright);
+				if ( ent->entype == 0x20 )		// function call expression. 
+				{
+					CBuf1 = (char *)mmalloc(1001u);
+					CBuf2 = (char *)mmalloc(1001u);
+					evalstr(ENARR(ent->enleft), CBuf1);
+					evalstr(ENARR(ent->enright), CBuf2);
+					cnvstr(OutBuffer, StrLeft, CBuf1, CBuf2);	// to do   sconv() function handler
+					//cdbcpystr(OutBuffer, "function not enabled", 0);
+					free(CBuf1);
+					free(CBuf2);
+					free(StrLeft);
+					return OutBuffer;
+				}
+				__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",651,"evalstr");
+				break;
+
+			case f_SCAT:		// scat("str",....) 
+				StrLeft = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrLeft);  // nice recursion
+				cdbcpystr(OutBuffer, StrLeft, 0);										// First param is in enleft
+				ent = ENARR(entab->enright);											// Remaining params are chained off enright
+				while ( ent->entype == 0x20 )											// function call type expression
+				{
+					evalstr(ENARR(ent->enleft), StrLeft);	// nice recursion here
+					concat(OutBuffer, StrLeft);
+					ent = ENARR(ent->enright);				// chain extends down enright
+				}
+				evalstr(ent, StrLeft);
+				concat(OutBuffer, StrLeft);
+				free(StrLeft);
+				return OutBuffer;
+				break;
+
+			default:
+				*OutBuffer = 0;
+				return OutBuffer;
+				break;
+			}
+		}
+
+		//set up StrRight, StrLeft for following routines
+		if ( entab->TTno & 0xFDFF ) // 1111-1101-1111-1111	// mask out integer calc flag 0x0200
+		{
+			if ( entab->enleft )
+			{
+				StrLeft = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrLeft);
+			}
+			if ( entab->enright )
+			{
+				StrRight = (char *)mmalloc(1001u);
+				if ( OpCode == 0x6000 || OpCode == 0x6400 || OpCode == 0x6800 )			// '*' , '/' , '%'
+					sprintf(StrRight, "%ld", evalint(ENARR(entab->enright)));
+				else
+					evalstr(ENARR(entab->enright), StrRight);
+			}
+		}
+
+		switch (OpCode)
+		{
+		case f_GETENV:											// getenv()
+			cdbcpystr(OutBuffer, getenv(StrLeft), 0);
+			break;
+
+		case f_ASC   :											// asc()			// **** CHECK THIS ****
+		case f_SLEN  :											// slen()
+			printf("evalstr asc/slen()\n");
+			sprintf(OutBuffer, "%ld", evalint(entab));
+			break;
+		
+		case f_TRIM  :											// trim()
+			cdbcpystr(OutBuffer, ftrim(StrLeft), 0);			// ftrim == force trim. Ignores TRIM variable setting
+			break;
+		
+		case f_MATCH :											// match()
+			sprintf(OutBuffer, "%ld", smatch(StrRight, StrLeft));
+			break;
+
+		case f_SETENV:											// setenv()
+			chr_ptr = mstrcpy(StrLeft, "=", StrRight, 0);
+			putenv(chr_ptr);
+			cdbcpystr(OutBuffer, chr_ptr, 0);
+			break;
+
+		case f_GETARG:											// getarg()
+			cdbcpystr(OutBuffer, (char *)getarg(StrLeft), 0);
+			break;
+
+		case f_CHR   :											// chr()
+			v50 = evalint(ENARR(entab->enleft));
+			if ( v50 >= 0x100 )
+				v50 &= 0xFF00;
+			if (!v50)
+			{
+				OutBuffer[0] = '\\';									// *** need to check ***
+				OutBuffer[1] = '0';
+				OutBuffer[2] = 0;
+			}
+			else
+			{
+				OutBuffer[0] = v50;									// *** need to check ***
+				OutBuffer[1] = 0;
+			}
+			break;
+
+		case f_DAY   :											// day()
+			fld = getftf(ENARR(entab->enleft), 1, &fld_lit);
+			num = 0.0;
+			if ( fld )
+			{
+				if ( fld->FLDtype == 'C' )
+				{
+					strncpy(dest, (const char *)fld->FLDdata, 20u);
+					dest[20] = 0;
+					num = (double)clgetdate(dest);
+				}
+				else
+					num = *(double *)fld->FLDdata;
+			}
+			if ( num <= 0.0 )
+				*OutBuffer = 0;		// invalid result, return blank string
+			else
+				cdbcpystr(OutBuffer, aday[(signed int)(double)num % 7], 0);
+			break;
+
+		case f_LCASE :											// lcase()
+			chr_ptr = StrLeft;
+			while ( *chr_ptr )
+			{
+				v60 = *chr_ptr;
+				if (isupper(v60))
+					*chr_ptr = tolower(v60);
+				chr_ptr++;
+			}
+			cdbcpystr(OutBuffer, StrLeft, 0);
+			break;
+
+		case f_UCASE:											// ucase()
+			chr_ptr = StrLeft;
+			while ( *chr_ptr )
+			{
+				v60 = *chr_ptr;
+				if (islower(v60))
+					*chr_ptr = toupper(v60);
+				chr_ptr++;
+			}
+			cdbcpystr(OutBuffer, StrLeft, 0);
+			break;
+
+		case f_GETCGI:											// getcgi()
+			chr_ptr = cgiGetValue(StrLeft, sv_wid);				// sv_wid is some nasty globalness. should be passed into function
+			trim(chr_ptr);
+			if ( chr_ptr )
+			{
+				if ( strlen(chr_ptr) > 1000 )
+				{
+					strncpy(OutBuffer, chr_ptr, 1000u);
+					OutBuffer[1000] = 0;
+				}
+				else
+					cdbcpystr(OutBuffer, chr_ptr, 0);
+			}
+			else
+				*OutBuffer = 0;
+			break;
+
+		case f_GETXML:											// getxml()		xmlGetValue
+			v65 = "not enabled";
+			//v65 = xmlGetValue(StrLeft, sv_wid);	// ** to do **
+			v63 = OutBuffer;
+			while ( v65 && *v65 && sv_wid-- )					// sv_wid is some nasty globalness. should be passed into function
+				*v63++ = *v65++;
+			*v63 = 0;
+			break;
+
+		case f_SFMT  :											// fmt()   *** real CL4 - doesn't handle numeric variables ***
+			*OutBuffer = 0; // default return blank string
+			fld = getftf(ENARR(entab->enleft), 1, &fld_lit);
+			if ( fld )
+			{
+				//print ("fmt(fld true, FLDtype = %c,  StrRight = %s,  StrLeft = %s)\n", fld->FLDtype,  StrRight,  StrLeft);
+				switch (fld->FLDtype)
+				{
+				case 'C':
+					nfmt(OutBuffer, StrRight, clatof(StrLeft));
+					break;
+				case 'D':
+					dfmt(OutBuffer, StrRight, (double)clgetdate(StrLeft));
+					break;
+				case 'N':															// *** non-standard extension ***
+					sprintf(OutBuffer, StrRight, (int)evalint(ENARR(entab->enleft)));		// allows fmt(intval, '%04X') to return HEX formatted value
+					printf("%s\n",OutBuffer);
+					break;
+				case 'T':
+					tfmt(OutBuffer, StrRight, (double)gettime(ftrim(StrLeft)));
+					break;
+				}
+			}
+			else
+			{
+				ent = ENARR(entab->enleft);						// drill down the left tree to the end
+				while (ent && ent->enleft)
+					ent = ENARR(ent->enleft);
+				fld = getftf(ent, 0, &fld_lit);
+
+				FLDtype = fld ? fld->FLDtype : '9' ;			// default to max decimal places
+				nfmt(OutBuffer, StrRight, clround(evalnum(ENARR(entab->enleft), FLDtype), FLDtype));
+			}
+			break;
+
+		default:																	// remaining OpCodes require a numeric parameter to work:
+			num = evalnum(ENARR(entab->enleft), 'F');
+			switch (OpCode)
+			{
+			case f_SQRT :															// sqrt()
+				sprintf(OutBuffer, "%.f",num > 0.0 ? sqrt(num) : 0.00 );
+				break;
+			case f_LOG  :															// log()
+				sprintf(OutBuffer, "%.f",num > 0.0 ? log(num) : 0.00 );
+				break;
+			case f_SIN  :															// sin()
+				sprintf(OutBuffer, "%.f", sin(num));
+				break;
+			case f_COS  :															// cos()
+				sprintf(OutBuffer, "%.f", cos(num));
+				break;
+			case f_TAN  :															// tan()
+				sprintf(OutBuffer, "%.f", tan(num));
+				break;
+			case f_LOG10:															// log10()
+				sprintf(OutBuffer, "%.f",num > 0.0 ? log10(num) : 0.00 );
+				break;
+			case f_ASIN :															// asin()
+				sprintf(OutBuffer, "%.f",num <= 1.0 ? (double)asin(num) : 0.0);
+				break;
+			case f_ACOS :															// acos()
+				sprintf(OutBuffer, "%.f",num <= 1.0 ? (double)acos(num) : 0.0);
+				break;
+			case f_ATAN :															// atan()
+				sprintf(OutBuffer, "%.f", (double)atan(num));
+				break;
+			case f_DEGREES:															// degrees()
+				sprintf(OutBuffer, "%.f", num > 0.0 ? (num * 180.0 / 3.141592653589793): 0.0 );
+				break;
+			case f_RADIANS:															// radians()
+				sprintf(OutBuffer, "%.f", num > 0.0 ? (num / 180.0 * 3.141592653589793): 0.0 );
+				break;
+			case f_EXP  :															// exp()
+				sprintf(OutBuffer, "%.f",exp(num));
+				break;
+			default:
+				doDefault = !stroper(entab->TTno, OutBuffer, StrLeft, StrRight);	// doDefault set true if stroper can't handle instruction
+				break;
+			}
+			break;
+		}
+	}
+
+    if ( doDefault )
+    {
+        fld = getftf(entab, true, &fld_lit);	// default handler. Just return the fld pointed to by the expression , update TT data if applicable
+        if ( fld )
+        {
+			switch (fld->FLDtype)
+			{
+			case 'C':
+                cdbcpystr(OutBuffer, (char *)fld->FLDdata, 0);
+				break;
+			case 'D':
+				makedate(OutBuffer, *(double *)fld->FLDdata);
+				break;
+			case 'T':
+				maketimehms(OutBuffer, *(double *)fld->FLDdata);
+				break;
+			case 'X':														// DC extension! 4 byte HEX value
+				sprintf(OutBuffer, "x%04X",(int)*(double *)fld->FLDdata);
+				break;
+			default:
+				sprintf(OutBuffer, "%.*f", typedp(fld->FLDtype),*(double *)fld->FLDdata);
+				break;
+			}
+        }
+        else
+            *OutBuffer = 0;	// default == blank string
+	}
+    if ( StrLeft )
+        free(StrLeft);
+    if ( StrRight )
+        free(StrRight);
+    return OutBuffer;
+}
+
+void substr(char *Dest, char *Buffer, int Start, int MaxLen)
+{
+    short BuffLen;
+	
+    if ( Start > 0 && MaxLen >= 0 )
+    {
+        BuffLen = lenstr(Buffer);
+        if ( MaxLen )
+        {
+            if ( Start <= BuffLen )
+            {
+                cpybuf(Dest, &Buffer[Start - 1], MaxLen);
+                Dest[MaxLen] = 0;
+            }
+        }
+        else
+            cdbcpystr(Dest, &Buffer[Start - 1], 0);
+    }
+    else
+        *Dest = 0;
+}
+
+void repstr(char *Dest, char *Src, const char *OldStr, const char *NewStr)
+{
+    char *v5;
+	char *v6;
+	char *v7;
+	unsigned int v4;
+	size_t OldLen;
+	
+	//printf("repstr(\"%s\",\"%s\",\"%s\")\n",Src,OldStr,NewStr);
+    v4 = strlen(OldStr) + 1;
+    OldLen = v4 - 1;
+    
+	if ( v4 == 1 )		// old string == <blank>. copy Src -> Dest
+    {
+        cdbcpystr(Dest, Src, 0);
+    }
+    else
+    {
+        v5 = Src;
+        v6 = Src;
+        while ((v7 = strchr(v5, *OldStr)))
+        {
+            if (!strncmp(v7, OldStr, OldLen))
+            {
+                *v7 = 0;
+                strcat(Dest, v6);
+                strcat(Dest, NewStr);
+                v6 = &v7[OldLen];
+                v7 = &v7[OldLen - 1];
+            }
+            v5 = v7 + 1;
+        }
+        strcat(Dest, v6);
+    }
+}
+
+void concat(char *Dest, char *Src)
+{
+    short	v2;
+    short	v3;
+    char	Temp[1024]; 
+    char	Save;
+
+    v2 = lenstr(Dest);
+    v3 = lenstr(Src);
+
+    if ( v3 + v2 > 1000 )	// max result length is 1000
+        v3 = (1000 - v2);
+    
+	Save	= Src[v3];		// preserve last char of source in case of buffer overrun. Normally ZERO
+	Src[v3] = 0;
+	cdbcpystr(Temp, Dest, Src, 0);
+	cdbcpystr(Dest, Temp, 0);
+	Src[v3] = Save;
+}
+
+bool stroper(unsigned short OpCode, char *Dest, char *Src1, char *Src2)
+{
+    //const char *v4;
+	char	*v6;
+	char	*i;
+	char	*v8;
+	char	*v12;
+	char	*curr_char;
+	
+    int		v10;
+	short	v13;
+	signed short word_num;
+	signed short curr_word;
+	short	MaxLen;
+	
+    //v4 = Src2;
+    OpCode &= 0xFC00;			// map out flag bits, leave only OpCode 
+	switch (OpCode)
+	{
+	case f_ADD  :				// string addition 
+        cdbcpystr(Dest, Src1, 0);
+        concat(Dest, Src2);		// Limits destination to 1000 chars
+        return true;
+		break;
+	
+	case f_DIV  :				// string Division
+		// Example:
+		// a = 'abcde' / 203	a equals 'bcd' (starting at pos 2 for 3 chars). The divisor is made up of a starting
+		//						position 0-99 followed by a number of characters to extract 00-99. The special case
+		//						of a starting position followed by 00 extracts to the end of the string
+
+		// a = 'abcde' / 200	a equals 'bcde' (starting at pos 2 to the end).
+		v13 = strtol(Src2, 0, 10);
+        if ( v13 > 99 )
+        {
+			//void substr(char *Dest, char *Buffer, int Start, int MaxLen)
+			substr( Dest, Src1, (v13 - (v13 % 100)) / 100, v13 % 100);
+        }
+		else
+	        cdbcpystr(Dest, Src1, 0);
+        return true;
+		break;
+	
+	case f_MUL  :				// string Multiply
+	case f_SMULT:				// SMULT()
+		v13		= strtol(Src2, 0, 10);								// no sanity check on mult value
+        v10		= lenstr(Src1);
+        MaxLen	= 0;
+		v13--;
+	    while ( v13 != -1 && MaxLen <= 1000 - v10 )
+        {
+			cdbcpystr(&Dest[MaxLen], Src1, 0);						// assume Dest is big enough to take 1000 chars
+            MaxLen += v10;
+		    v13--;
+        }
+        return true;			// always succeeds
+		break;
+
+	case f_SUB :				// string Subtraction
+	case f_SDEL:				// SDEL()
+        v12 = Src1;
+        MaxLen = lenstr(Src2);
+        while ( *v12 )
+        {
+			if ( *v12 == *Src2 && cmpbuf(v12, (char *)Src2, MaxLen) )
+				cdbcpystr(v12, &v12[MaxLen], 0);
+			else
+				++v12;
+        }
+        cdbcpystr(Dest, Src1, 0);
+        return true;
+		break;
+
+	case f_SKEY:				// SKEY
+		/*
+		skey(string1,string2)		string1 The string to match in string2
+									string2 The string to be evaluated
+
+		Character function, returning the characters following string1 in string2 up to the next current tab character. 
+		The	default tab character is a space.
+		Example:					tmp = 'The author=James and the title=Futures'
+									author = skey('author=',tmp)
+									The variable author contains 'James'.
+		*/
+
+		*Dest = 0;
+        MaxLen = lenstr(Src1);
+        while ( 1 )
+        {
+			v8 = strchr(Src2, *Src1);		// Look for first char of Src1 in Src2
+            if ( !v8 )					// not found 
+				return true;
+			if ( !strncmp(v8, Src1, MaxLen) )
+			{
+				v6 = &v8[MaxLen];
+                for ( i = v6; *i && *i != TAB; ++i )
+					;
+				*i = 0;
+		        cdbcpystr(Dest, v6, 0);
+	            return true;
+			}
+            Src2 = v8 + 1;
+		}
+		break;
+
+	case f_MOD  :					// string % MOD Operator
+	case f_SWORD:					// SWORD()
+		
+		// Example
+		// a = 'one more' % 2		a equals 'more' (the second word). Words are separated by the current tab character
+		// sword(string, num)		Character function, returns the num word of string. Words are separated by the current tab character.
+		//
+		//							set tab			#set tab to space
+		//							string = sword('a little book',2)
+		//							string contains 'little'
+
+		word_num = strtol(Src2, 0, 10);
+	    
+		curr_word = 1;
+	    curr_char = Src1;
+		while ( *curr_char && word_num > curr_word )
+		{
+			if (*curr_char++ == TAB)	// Hit a seperator character?
+			{
+				curr_word++;
+				if ( TAB == ' ' || TAB == '\t' )	// Multiple instances of <SPC> or <TAB> are only counted as *ONE*
+				{
+					while (*curr_char && *curr_char == TAB)		// continue to next non-seperator char or end of string, whichever comes first
+						curr_char++;
+				}
+			}
+		}
+		
+		while (*curr_char && *curr_char != TAB)		// found the word we want, copy to dest
+			*Dest++ = *curr_char++;
+		*Dest = 0;
+		return true;
+		break;
+	}
+	return false;	// indicate to caller that we didn't handle OpCode!
+}
+
+void datearr(FLDdesc *fld)
+{
+    double	*Array;
+    short	count;
+    int		Date_array[10];
+	
+    daysarr((signed int)*(double *)fld->FLDdata, Date_array);	// convert date val to Array 
+	
+	Array = (double *)fld->FLDname;								// Array variables hang off FLDname
+	for ( count = 0 ; count <= 9; count++ )
+        Array[count] = (double)Date_array[count];				// convert int values to double
+}
+
+void arrdate(FLDdesc *Dest_fld, FLDdesc *Src_fld)
+{
+    double	*Array;
+	double	DateVal;
+	short	count;
+	int		Date_array[10];
+	
+    Array = (double *)Src_fld->FLDname;							// Array variables hang off FLDname
+	for ( count = 0 ; count <= 9 ; count++ )
+        Date_array[count] = (int)Array[count];					// convert double values to int array
+    
+	DateVal = (double)arrdays(Date_array);						// convert array to single double value/
+    *(double *)Dest_fld->FLDdata = DateVal;						// day/month arithmetic may have occured!
+    
+	if ( DateVal == 0.0 )
+        Dest_fld->FLDstat |= fld_ZERO;	// 0x0004;				// Quick zero flag check
+    else
+        Dest_fld->FLDstat &= ~fld_ZERO; // 0xFFFB;
+    
+	for ( count = 0 ; count <= 9; count++ )						// copy array back to Src, as hour/day arithmetic may have occured!!
+        Array[count] = (double)Date_array[count];
+}
+
+#endif
+@
+
+
+1.13
+log
+@minor tidy
+@
+text
+@d78 6
+a83 6
+		case 0xD800:		//	+=
+		case 0xDC00:		//	-=
+		case 0xE000:		//	*=
+		case 0xE400:		//	/=
+		case 0xE800:		//	%=
+		case 0xEC00:		//	**=
+d87 2
+a88 2
+			case 0xD800:				// '+='  -> '+'
+				OpCodeMap = 0x5400u;			// Addition
+d90 2
+a91 2
+			case 0xDC00:				// '-=' -> '-'
+				OpCodeMap = 0x5800u;			// Subtraction
+d93 2
+a94 2
+			case 0xE000:				// '*=' -> '*'
+				OpCodeMap = 0x6000u;			// Multiply
+d96 2
+a97 2
+			case 0xE400:				// '/=' -> '/'
+				OpCodeMap = 0x6400u;			// Division
+d99 2
+a100 2
+			case 0xE800:				// '%=' -> '%'
+				OpCodeMap = 0x6800u;			// MOD Operator
+d102 2
+a103 5
+			case 0xEC00:				// '**=' -> '**'
+				OpCodeMap = 0x5C00u;			// Exponent
+				break;
+			default:	// unreachable due to switch block above?
+				OpCodeMap = ent->TTno;			// default == don't remap opcode	*** should be unreachable ***
+d105 3
+d119 1
+a119 1
+		case 0xA800:							// '=' simple Assignment
+d126 2
+a127 1
+			__assert_fail("0", "calculate.c", 113, "calculate");
+d131 1
+a131 1
+		if ( !TTno && fno == v_TAB )		// TTno == 0 if this is a system variable
+d136 2
+a137 2
+        if ( *(char *)fld_dest->FLDdata )	// Quick ZERO flag check
+            fld_dest->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+d139 1
+a139 1
+            fld_dest->FLDstat |= fld_ZERO;	// 0x0004u;
+d146 1
+a146 1
+		if ( ent->TTno & 0x0200 )	// Integer calc flag
+d155 1
+a155 1
+		if ( OpCode )						// Can OpCode ever be ZERO?
+d159 2
+a160 2
+			case 0xE000:																// '*=' Multiply + assign
+				v45 = clround(v45 * *(double *)fld_dest->FLDdata, DestType);
+d162 2
+a163 2
+			case 0xE800:																// '%=' (MOD) operator
+				v45 = clround(fmod(*(double *)fld_dest->FLDdata,v45), DestType);	
+d165 2
+a166 2
+			case 0xEC00:																// '**=' Exponent
+				v45 = clround(power(*(double *)fld_dest->FLDdata, v45), DestType);
+d168 1
+a168 1
+			case 0xE400:																// '/=' Division		(No check for /zero error?)
+d171 2
+a172 2
+			case 0xD800:																// '+=' Addition
+				v45 = clround(*(double *)fld_dest->FLDdata + v45, DestType);
+d174 2
+a175 2
+			case 0xDC00:																// '-=' Subtraction
+			    v45 = clround(*(double *)fld_dest->FLDdata - v45, DestType);
+d177 1
+a177 1
+			case 0xA800:																// simple assignment?
+d182 2
+a183 1
+				__assert_fail("0", "calculate.c", 176, "calculate");
+a184 1
+
+d271 1
+a271 4
+    FLDdesc		*v12;
+	FLDdesc		*v16;
+	FLDdesc		*fld;
+	
+a272 2
+    short	v4;
+	char	FLDtype;
+d276 4
+d281 3
+a283 5
+	
+	FLDdesc s; // [sp+2030h] [bp-448h]@@32
+    FLDdesc v31; // [sp+2050h] [bp-428h]@@120	//** doesn't look right **
+    FLDdesc fld2; // [sp+2420h] [bp-58h]@@128
+    char src[21]; // [sp+2440h] [bp-38h]@@132
+d304 1
+a304 1
+		case 0xAC00:						// '[' Array operation
+d307 4
+a310 1
+		case 0xBC00:
+d313 15
+a327 18
+		case 0xB800:
+			return drand48();				// random()
+
+		case 0x1C00:						// ucase()			// all string operations?
+		case 0x2000:						// lcase()
+		case 0x2C00:						// getarg()
+		case 0x4000:						// getenv()
+		case 0x7400:						// sdel()
+		case 0x7800:						// smult()
+		case 0x7C00:						// sword()
+		case 0x8C00:						// getxml()
+		case 0x9C00:						// trim()
+		case 0xA000:						// getcgi()
+		case 0xCC00:						// substr()
+		case 0xD000:						// srep()
+		case 0xD400:						// sconv()
+		case 0xF400:						// scat()
+			evalstr(entab, (char *)&s);
+d330 1
+a330 1
+				return (double)clgetdate((const char *)&s);		// returns int
+d332 1
+a332 1
+				return gettime((const char *)&s);				// returns double anyway
+d334 2
+a335 1
+				return clatof((const char *)&s);				// try and interpret result as a number
+a336 2
+		}
+
+a339 1
+
+d342 1
+a342 1
+		case 0x0800:
+d344 1
+a344 2
+
+		case 0x0C00:
+d346 1
+a346 2
+		
+		case 0x1000:
+d348 1
+a348 2
+		
+		case 0x1400:
+d350 1
+a350 2
+		
+		case 0x1800:
+d352 1
+a352 2
+		
+		case 0x4400:
+d354 1
+a354 2
+		
+		case 0x4800:
+d356 1
+a356 2
+		
+		case 0x4C00:
+d358 1
+a358 2
+		
+		case 0x5000:
+d360 1
+a360 2
+
+		case 0x9000:									// degrees()
+d362 1
+a362 2
+		
+		case 0x9400:									// radians()
+d364 1
+a364 2
+
+		case 0x9800:									// exp() operator
+a370 1
+
+d373 1
+a373 1
+		case 0x5400 :									// + add operator
+d375 1
+a375 2
+		
+		case 0x5800:									// - subtract operator
+d377 1
+a377 2
+		
+		case 0x5C00 :									// ** exponent operator
+d379 1
+a379 2
+		
+		case 0x6000 :									// * multiply operator
+d381 1
+a381 2
+		
+		case 0x6400:									// "/" divide operator
+d383 3
+a385 5
+
+		case 0x6800:									// % MOD operator
+			v12 = getftf(ENARR(entab->enleft), 0, &s);
+			FLDtype = v12 ? v12->FLDtype : 'N' ;			// default to Integer
+
+d394 1
+a394 1
+				v16 = getftf(ENARR(entab->enright), 0, &v31);
+d396 1
+a396 1
+				val_right = clround(val_right, v16 ? v16->FLDtype : 'N');	// default to 'N' long integer
+a397 1
+
+a398 1
+			break;
+d468 1
+a468 1
+		case 0x5400:					// "+" operator. 
+d470 1
+a470 2
+
+		case 0x5800:					// "-" operator.
+d472 1
+a472 2
+
+		case 0x5C00:					// "**" operator
+d474 1
+a474 2
+
+		case 0x6000:					// "*" operator. 
+d476 1
+a476 2
+
+		case 0x6400:					// "/" operator. Check divisor to avoid "divide by zero" error.
+d478 1
+a478 2
+
+		case 0x6800:					// "%"  mod operator. Check divisor to avoid "divide by zero" error.
+d480 1
+a480 2
+
+		case 0x6C00:					// match()
+d484 1
+a484 2
+
+		case 0xB800:					// random()		// not sure this is reachable as an integer RVALUE?
+d486 1
+a486 2
+
+		case 0xBC00:					// keyready()
+d489 1
+a489 2
+
+		case 0xA400:					// name()
+d493 1
+a493 2
+		case 0x3400:					// asc()
+			//printf("evalint asc()\n");
+a494 1
+
+d504 1
+a504 2
+		case 0x2400:					// slen()
+			//printf("evalint slen()\n");
+a505 1
+			
+d516 1
+a516 1
+		case 0x3000:											// asize()
+d524 1
+a524 1
+				return ttab[TTno].NumFields - val_right;		// This is a table. return Numfields - current field no
+d526 1
+a526 2
+				return ttab->TTfields[val_right].FLDelemID;		// Normal variable. return number of elements
+
+d541 2
+a542 5
+    ENTAB *ent;
+	
+	FLDdesc *v42;
+	FLDdesc *v40;
+	
+a545 1
+	
+a547 1
+	
+d550 1
+a550 3
+    
+	double	num;					// for OpCodes which require a numeric parameter
+
+d554 1
+a554 2
+	
+    bool doDefault = false;
+d556 1
+a556 1
+	FLDdesc fld_lit;	// used as temp storage for entab literals
+d562 1
+a562 1
+        return OutBuffer;	// Don't alter buffer, just return to caller
+d569 1
+a569 1
+            doDefault = true;	// fall through to default operation
+d571 1
+a571 1
+    else if ( entab->TTno & 0x0100 )		// get a reserved variable. Takes no params 
+d582 1
+a582 1
+			case  0xD000:		// srep("The string to look at", "string","new string") 
+d584 1
+a584 1
+				evalstr(ENARR(entab->enleft), StrLeft);			// enleft = "The String to look at"        
+d586 1
+a586 1
+				if ( ent->entype == 0x20 )														// function call type
+d588 4
+a591 4
+					CBuf1 = (char *)mmalloc(1001u); // Old String to look for 
+					CBuf2 = (char *)mmalloc(1001u); // String to replace it with
+					evalstr(ENARR(ent->enleft), CBuf1);	// *** recursion ***
+					evalstr(ENARR(ent->enright), CBuf2);		// *** recursion ***
+d600 1
+a600 1
+			case 0xCC00:		// substr("The string", start, length)
+d602 1
+a602 1
+				evalstr(ENARR(entab->enleft), StrLeft);			// enleft contains the "The String"
+d614 1
+a614 1
+			case 0xD400:														// sconv(url|soundex|tabsub, en|de|ign|unign|0|1-9, string3)
+d634 1
+a634 1
+			case 0xF400:		// scat("str",....) 
+d638 1
+a638 1
+				ent = ENARR(entab->enright);
+d643 1
+a643 1
+					ent = ENARR(ent->enright);
+d678 1
+a678 1
+		case 0x4000:						// getenv()
+d682 2
+a683 2
+		case 0x3400:						// asc()			// **** CHECK THIS ****
+		case 0x2400:						// slen()
+d688 1
+a688 1
+		case 0x9C00:						// trim()
+d692 1
+a692 1
+		case 0x6C00:						// match()
+d696 1
+a696 1
+		case 0x8000:						// setenv()
+d702 1
+a702 1
+		case 0x2C00:						// getarg()
+d706 1
+a706 1
+		case 0x3800:						// chr()
+d710 11
+a720 2
+			*OutBuffer = v50;				// *** need to check ***
+			OutBuffer[1] = 0;
+d723 2
+a724 2
+		case 0x2800:						// day()
+			v40 = getftf(ENARR(entab->enleft), 1, &fld_lit);
+d726 1
+a726 1
+			if ( v40 )
+d728 1
+a728 1
+				if ( v40->FLDtype == 'C' )
+d730 1
+a730 1
+					strncpy(dest, (const char *)v40->FLDdata, 20u);
+d735 1
+a735 1
+					num = *(double *)v40->FLDdata;
+d743 1
+a743 1
+		case 0x2000:						// lcase()
+d755 1
+a755 1
+		case 0x1C00:						// ucase()
+d767 2
+a768 2
+		case 0xA000:						// getcgi()
+			chr_ptr = cgiGetValue(StrLeft, sv_wid);			// sv_wid is some nasty globalness. should be passed into function
+d784 1
+a784 1
+		case 0x8C00:						// getxml()		xmlGetValue
+d788 1
+a788 1
+			while ( v65 && *v65 && sv_wid-- )			// sv_wid is some nasty globalness. should be passed into function
+d793 1
+a793 1
+		case 0x8800:						// fmt()   *** real CL4 - doesn't handle numeric variables ***
+d795 2
+a796 2
+			v40 = getftf(ENARR(entab->enleft), 1, &fld_lit);
+			if ( v40 )
+d798 2
+a799 2
+				//print ("fmt(v40 true, FLDtype = %c,  StrRight = %s,  StrLeft = %s)\n", v40->FLDtype,  StrRight,  StrLeft);
+				switch (v40->FLDtype)
+d818 1
+a818 1
+				ent = ENARR(entab->enleft);		// drill down the left tree to the end
+d821 1
+d823 1
+a823 3
+				v42 = getftf(ent, 0, &fld_lit);
+
+				FLDtype = v42 ? v42->FLDtype : '9' ;	// default to max decimal places
+d828 1
+a828 1
+		default:										// remaining OpCodes require a numeric parameter to work:
+d832 1
+a832 1
+			case 0x0800:
+d835 1
+a835 2
+
+			case 0x0C00:
+d838 1
+a838 2
+
+			case 0x1000:
+d841 1
+a841 2
+			
+			case 0x1400:
+d844 1
+a844 2
+
+			case 0x1800:
+d847 1
+a847 2
+
+			case 0x4400:
+d850 1
+a850 2
+			
+			case 0x4800:
+d853 1
+a853 2
+
+			case 0x4C00:
+d856 1
+a856 2
+
+			case 0x5000:
+d859 1
+a859 2
+
+			case 0x9000:							// degrees()
+d862 1
+a862 2
+
+			case 0x9400:							// radians()
+d865 1
+a865 2
+
+			case 0x9800:							// exp()
+a867 1
+
+d878 2
+a879 2
+        v40 = getftf(entab, true, &fld_lit);	// default handler. Just return the fld pointed to by the expression , update TT data if applicable
+        if ( v40 )
+d881 1
+a881 1
+			switch (v40->FLDtype)
+d884 1
+a884 1
+                cdbcpystr(OutBuffer, (char *)v40->FLDdata, 0);
+d887 1
+a887 1
+				makedate(OutBuffer, *(double *)v40->FLDdata);
+d890 4
+a893 1
+				maketimehms(OutBuffer, *(double *)v40->FLDdata);
+d896 1
+a896 1
+				sprintf(OutBuffer, "%.*f", typedp(v40->FLDtype),*(double *)v40->FLDdata);
+d990 1
+a990 1
+    const char *v4;
+d1003 1
+a1003 1
+    v4 = Src2;
+d1007 1
+a1007 1
+	case 0x5400 :				// string addition 
+d1013 1
+a1013 1
+	case 0x6400:				// string Division
+d1031 3
+a1033 3
+	case 0x6000:				// string Multiply
+	case 0x7800:				// SMULT()
+		v13		= strtol(Src2, 0, 10);
+d1046 2
+a1047 2
+	case 0x5800:				// string Subtraction
+	case 0x7400:				// SDEL()
+d1061 1
+a1061 1
+	case 0x8400:				// SKEY
+d1077 1
+a1077 1
+			v8 = strchr(v4, *Src1);		// Look for first char of Src1 in Src2
+d1089 1
+a1089 1
+            v4 = v8 + 1;
+d1093 2
+a1094 2
+	case 0x6800:					// string % MOD Operator
+	case 0x7C00:					// SWORD()
+d1136 1
+a1136 1
+    daysarr((signed int)*(double *)fld->FLDdata, Date_array);
+d1138 1
+a1138 2
+	Array = (double *)fld->FLDname;         // Array variables hang off FLDname
+
+d1140 1
+a1140 4
+        Array[count] = (double)Date_array[count];
+
+	//for ( count = 0 ; count <= 9; count++ )
+	//	printf("datearr: Array[%d] = %G\n", count, Array[count]);
+d1150 1
+a1150 2
+    Array = (double *)Src_fld->FLDname;         // Array variables hang off FLDname
+
+d1152 1
+a1152 1
+        Date_array[count] = (int)Array[count];
+d1154 2
+a1155 2
+	DateVal = (double)arrdays(Date_array);
+    *(double *)Dest_fld->FLDdata = DateVal;
+d1162 1
+a1162 1
+	for ( count = 0 ; count <= 9; count++ )			// copy array back to Src, as hour/day arithmetic may have occured!!
+a1163 4
+	
+	//for ( count = 0 ; count <= 9; count++ )
+	//	printf("datearr: Array[%d] = %G\n", count, Array[count]);
+
+@
+
+
+1.12
+log
+@tidy-up
+@
+text
+@d32 3
+a34 3
+	double MaxVal;
+    double MinVal;
+    double TestVal;
+d39 2
+a40 2
+	int FLDlen;
+    int TTno;
+d42 4
+a45 6
+    short v37;
+    short fno;					// Table field number, or variable number
+    short v54;
+    short v55;
+    char FLDtype;
+    char DestType;
+d47 3
+a49 3
+	char a2[1008];
+    char Src[1008];
+    char result[1001];
+d53 1
+a53 1
+																										// true for xD800 - xF000 Math+assign operators (Updates TTptr area)
+d245 1
+a245 1
+            v47 = fld_dest->FLDname;		// Array variables hang of FLDname. 
+d247 1
+a247 1
+            v37 = fld_dest->FLDelemID - 1; // Number of Array elements
+d270 3
+a272 3
+    FLDdesc *v12;
+	FLDdesc *v16;
+	FLDdesc *fld;
+d275 6
+a280 2
+    short v4;
+	char FLDtype;
+a281 4
+	double val_right; // [sp+10h] [bp-2468h]@@45
+    double val_left; // [sp+18h] [bp-2460h]@@42
+    char nptr[8192]; // [sp+30h] [bp-2448h]@@110
+    
+d453 1
+a453 1
+    ENTAB *ent1;
+d457 4
+a460 4
+    int val_left;
+    int val_right;
+    int v9;
+	int TTno;
+d464 3
+a466 3
+	char FLDtype;
+    char a1[1008];
+    char a2[1008];
+d476 1
+a476 1
+		if ( entab->TTno & 0x0100 )
+d478 1
+a478 2
+		
+		if ( entab->TTno & 0x0200 )	// Integer calc flag
+d553 1
+a553 1
+		case 0x3000:					// asize()
+a580 1
+    FLDdesc *v40;
+d582 1
+a582 2
+	FLDdesc *v54;
+	FLDdesc *v67;
+a585 1
+	char	*v64;
+d591 2
+a592 2
+    char	*StrArg1 = 0; 
+	char	*StrArg2 = 0;
+d594 1
+a594 2
+	double	v55;
+	double	v86;
+a598 1
+	short	v66;
+d629 2
+a630 2
+				StrArg2 = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrArg2);			// enleft = "The String to look at"        
+d638 1
+a638 1
+					repstr(OutBuffer, StrArg2, CBuf1, CBuf2);
+d641 1
+a641 1
+					free(StrArg2);
+d647 2
+a648 2
+				StrArg2 = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrArg2);			// enleft contains the "The String"
+d654 2
+a655 2
+					substr(OutBuffer, StrArg2, StartPos, Length);
+					free(StrArg2);
+d661 2
+a662 2
+				StrArg2 = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrArg2);
+d670 1
+a670 1
+					cnvstr(OutBuffer, StrArg2, CBuf1, CBuf2);	// to do   sconv() function handler
+d674 1
+a674 1
+					free(StrArg2);
+d681 3
+a683 3
+				StrArg2 = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrArg2);  // nice recursion
+				cdbcpystr(OutBuffer, StrArg2, 0);										// First param is in enleft
+d687 2
+a688 2
+					evalstr(ENARR(ent->enleft), StrArg2);	// nice recursion here
+					concat(OutBuffer, StrArg2);
+d691 3
+a693 3
+				evalstr(ent, StrArg2);
+				concat(OutBuffer, StrArg2);
+				free(StrArg2);
+d704 1
+a704 1
+		//set up StrArg1, StrArg2 for following routines
+d709 2
+a710 2
+				StrArg2 = (char *)mmalloc(1001u);
+				evalstr(ENARR(entab->enleft), StrArg2);
+d714 1
+a714 1
+				StrArg1 = (char *)mmalloc(1001u);
+d716 1
+a716 1
+					sprintf(StrArg1, "%ld", evalint(ENARR(entab->enright)));
+d718 1
+a718 1
+					evalstr(ENARR(entab->enright), StrArg1);
+d725 1
+a725 1
+			cdbcpystr(OutBuffer, getenv(StrArg2), 0);
+d735 1
+a735 1
+			cdbcpystr(OutBuffer, ftrim(StrArg2), 0);			// ftrim == force trim. Ignores TRIM variable setting
+d739 1
+a739 1
+			sprintf(OutBuffer, "%ld", smatch(StrArg1, StrArg2));
+d743 1
+a743 1
+			chr_ptr = mstrcpy(StrArg2, "=", StrArg1, 0);
+d749 1
+a749 1
+			cdbcpystr(OutBuffer, (char *)getarg(StrArg2), 0);
+d761 3
+a763 3
+			v54 = getftf(ENARR(entab->enleft), 1, &fld_lit);
+			v55 = 0.0;
+			if ( v54 )
+d765 1
+a765 1
+				if ( v54->FLDtype == 'C' )
+d767 1
+a767 1
+					strncpy(dest, (const char *)v54->FLDdata, 20u);
+d769 1
+a769 1
+					v55 = (double)clgetdate(dest);
+d772 1
+a772 1
+					v55 = *(double *)v54->FLDdata;
+d774 1
+a774 1
+			if ( v55 <= 0.0 )
+d777 1
+a777 1
+				cdbcpystr(OutBuffer, aday[(signed int)(double)v55 % 7], 0);
+d781 1
+a781 1
+			chr_ptr = StrArg2;
+d789 1
+a789 1
+			cdbcpystr(OutBuffer, StrArg2, 0);
+d793 1
+a793 1
+			chr_ptr = StrArg2;
+d801 1
+a801 1
+			cdbcpystr(OutBuffer, StrArg2, 0);
+d804 2
+a805 3
+		case 0xA000:						// cgiGetValue
+			chr_ptr = "not enabled";
+			//chr_ptr = (char *)cgiGetValue(StrArg2, sv_wid);  ** to do **
+d821 3
+a823 4
+		case 0x8C00:						// xmlGetValue
+			v64 = "not enabled";
+			//v64 = xmlGetValue(StrArg2, sv_wid);	// ** to do **
+			v65 = v64;
+d825 2
+a826 10
+			if ( v65 && *v64 && sv_wid )
+			{
+				do
+				{
+					*v63++ = *v65;
+					v66 = sv_wid-- - 1;
+					++v65;
+				}
+				while ( v65 && *v65 && v66 );
+			}
+d835 1
+a835 1
+				//print ("fmt(v40 true, FLDtype = %c,  StrArg1 = %s,  StrArg2 = %s)\n", v40->FLDtype,  StrArg1,  StrArg2);
+d839 1
+a839 1
+					nfmt(OutBuffer, StrArg1, clatof(StrArg2));
+d842 1
+a842 1
+					dfmt(OutBuffer, StrArg1, (double)clgetdate(StrArg2));
+d845 1
+a845 1
+					sprintf(OutBuffer, StrArg1, (int)evalint(ENARR(entab->enleft)));		// allows fmt(intval, '%04X') to return HEX formatted value
+d849 1
+a849 1
+					tfmt(OutBuffer, StrArg1, (double)gettime(ftrim(StrArg2)));
+d862 1
+a862 1
+				nfmt(OutBuffer, StrArg1, clround(evalnum(ENARR(entab->enleft), FLDtype), FLDtype));
+d866 2
+a867 3
+		default:	
+			// remaining OpCodes require a numeric parameter to work:
+			v86 = evalnum(ENARR(entab->enleft), 'F');
+d871 1
+a871 1
+				sprintf(OutBuffer, "%.f",v86 > 0.0 ? sqrt(v86) : 0.00 );
+d875 1
+a875 1
+				sprintf(OutBuffer, "%.f",v86 > 0.0 ? log(v86) : 0.00 );
+d879 1
+a879 1
+				sprintf(OutBuffer, "%.f", sin(v86));
+d883 1
+a883 1
+				sprintf(OutBuffer, "%.f", cos(v86));
+d887 1
+a887 1
+				sprintf(OutBuffer, "%.f", tan(v86));
+d891 1
+a891 1
+				sprintf(OutBuffer, "%.f",v86 > 0.0 ? log10(v86) : 0.00 );
+d895 1
+a895 1
+				sprintf(OutBuffer, "%.f",v86 <= 1.0 ? (double)asin(v86) : 0.0);
+d899 1
+a899 1
+				sprintf(OutBuffer, "%.f",v86 <= 1.0 ? (double)acos(v86) : 0.0);
+d903 1
+a903 1
+				sprintf(OutBuffer, "%.f", (double)atan(v86));
+d907 1
+a907 1
+				sprintf(OutBuffer, "%.f", v86 > 0.0 ? (v86 * 180.0 / 3.141592653589793): 0.0 );
+d911 1
+a911 1
+				sprintf(OutBuffer, "%.f", v86 > 0.0 ? (v86 / 180.0 * 3.141592653589793): 0.0 );
+d915 1
+a915 1
+				sprintf(OutBuffer, "%.f",exp(v86));
+d919 1
+a919 1
+				doDefault = !stroper(entab->TTno, OutBuffer, StrArg2, StrArg1);	// doDefault set true if stroper can't handle instruction
+d928 2
+a929 2
+        v67 = getftf(entab, true, &fld_lit);	// default handler. Just return the fld pointed to by the expression , update TT data if applicable
+        if ( v67 )
+d931 1
+a931 1
+			switch (v67->FLDtype)
+d934 1
+a934 1
+                cdbcpystr(OutBuffer, (char *)v67->FLDdata, 0);
+d937 1
+a937 1
+				makedate(OutBuffer, *(double *)v67->FLDdata);
+d940 1
+a940 1
+				maketimehms(OutBuffer, *(double *)v67->FLDdata);
+d943 1
+a943 1
+				sprintf(OutBuffer, "%.*f", typedp(v67->FLDtype),*(double *)v67->FLDdata);
+d950 4
+a953 4
+    if ( StrArg2 )
+        free(StrArg2);
+    if ( StrArg1 )
+        free(StrArg1);
+@
+
+
+1.11
+log
+@intermediate
+@
+text
+@d267 1
+a267 1
+    fld_dest->FLDstat |= 0x0018u;	// (fld_DATA_AVAIL|fld_SUBREC) ???
+d464 1
+a464 3
+	FLDdesc fld3; // [sp+50h] [bp-838h]@@60
+    FLDdesc v33; // [sp+460h] [bp-428h]@@100
+    FLDdesc fldd;
+d537 1
+a537 1
+			getftf(ent1, 0, &fldd);	// looks pointless, but sets global dbl_0, dbl_1 variables ?
+d550 1
+a550 1
+			fld = getftf(ent1, 0, &fld3);
+d570 1
+a570 1
+	//printf("evalint 627 - entab->entype = %d\n",entab->entype);
+d573 1
+a573 1
+	fld = getftf(entab, 1, &v33);
+d610 2
+a611 3
+	FLDdesc v94;
+    FLDdesc v95;
+    FLDdesc v96;
+d678 2
+a679 2
+					//cnvstr(OutBuffer, StrArg2, CBuf1, CBuf2);	// to do   sconv() function handler
+					cdbcpystr(OutBuffer, "function not enabled", 0);
+d769 1
+a769 1
+			v54 = getftf(ENARR(entab->enleft), 1, &v94);
+d848 1
+a848 1
+		case 0x8800:						// sfmt()
+d850 1
+a850 1
+			v40 = getftf(ENARR(entab->enleft), 1, &v95);
+d853 4
+a856 1
+				if ( v40->FLDtype == 'C' )
+d858 2
+a859 1
+				else if ( v40->FLDtype == 'D' )
+d861 6
+a866 1
+				else if ( v40->FLDtype == 'T' )
+d868 2
+d877 1
+a877 1
+				v42 = getftf(ent, 0, &v94);
+d947 1
+a947 1
+        v67 = getftf(entab, 1, &v96);	// default handler. Just return the fld pointed to by the expression 
+d1006 1
+a1006 2
+	printf("repstr(\"%s\",\"%s\",\"%s\")\n",Src,OldStr,NewStr);
+
+d1018 1
+a1018 1
+        while ( 1 )
+d1020 1
+a1020 4
+            v7 = strchr(v5, *OldStr);
+            if ( !v7 )
+                break;
+            if ( !strncmp(v7, OldStr, OldLen) )
+@
+
+
+1.10
+log
+@intermediate
+@
+text
+@d23 6
+a28 6
+    FLDdesc *fld_src; // [sp+28h] [bp-C50h]@@11
+    FLDdesc *fld_dest; // [sp+2Ch] [bp-C4Ch]@@8
+
+    char *v36; // esi@@145
+    char *v47; // [sp+24h] [bp-C54h]@@145
+
+d254 1
+a254 1
+                    cpybuf(v36, v47, FLDlen);
+d276 4
+a279 6
+    //double v5; // fst7@@31
+    unsigned short OpCode; // eax@@48
+    char v3; // zf@@10
+    short v4; // eax@@30
+    char v14; // al@@115
+    
+d381 1
+a381 1
+		case 0x9800 :									// exp() operator
+d408 1
+a408 1
+			v14 = v12 ? v12->FLDtype : 'N' ;			// default to Integer
+d410 1
+a410 1
+			if ( v14 == 'C' )
+d417 1
+a417 1
+				val_left = clround(val_left, v14);
+a583 1
+    ENTAB *v41; // edx@@198
+d585 16
+a600 16
+
+    FLDdesc *v40; // eax@@196
+    FLDdesc *v42; // eax@@203
+    FLDdesc *v54; // eax@@230
+    FLDdesc *v67; // eax@@277
+    char *chr_ptr; // esi@@240
+    char *v63; // edx@@256
+    char *v64; // eax@@260
+    char *v65; // esi@@260
+    short v66; // ax@@263
+
+	char *CBuf1; // [sp+3Ch] [bp-BCh]@@74
+    char *CBuf2; // esi@@74
+
+    char *StrArg1 = 0; 
+	char *StrArg2 = 0;
+d602 2
+a603 8
+	double v38; // fst7@@171
+    double v55; // fst7@@231
+    double v86;
+
+    int v60; // edi@@242
+    int v62; // edi@@249
+    unsigned short OpCode;
+    short v50; // eax@@219
+d605 5
+d615 2
+a616 2
+    char dest[21];
+    char FLDtype;
+a626 1
+        goto LABEL_276;
+d628 2
+a629 4
+
+	// entab->entype == 2
+    if ( entab->TTno & 0x0100 )		// get a reserved variable. Takes no params 
+    {
+a630 1
+        goto LABEL_276;
+d663 2
+a664 2
+					int StartPos = evalint(ENARR(ent->enleft));
+					int Length = evalint(ENARR(ent->enright));
+d739 1
+a739 1
+		case 0x3400:						// asc()	// **** CHECK THIS ****
+d746 1
+a746 1
+			cdbcpystr(OutBuffer, ftrim(StrArg2), 0);		// frtim == force trim. Ignores TRIM variable setting
+d767 1
+a767 1
+			*OutBuffer = v50;		// *** need to check ***
+d795 3
+a797 3
+				v62 = *chr_ptr;
+				if (isupper(v62))
+					*chr_ptr = tolower(v62);
+d865 3
+a867 3
+				v41 = ENARR(entab->enleft);		// drill down the left tree to the end
+				while (v41 && v41->enleft)
+					v41 = ENARR(v41->enleft);
+d869 1
+a869 1
+				v42 = getftf(v41, 0, &v94);
+d906 1
+a906 1
+				sprintf(OutBuffer, "%.f",v86 <= 1.0 ?(double)asin(v86) : 0.0);
+d910 1
+a910 1
+				sprintf(OutBuffer, "%.f",v86 <= 1.0 ?(double)acos(v86) : 0.0);
+a936 2
+LABEL_276:
+
+a959 1
+
+d970 2
+a971 2
+    short BuffLen; // eax@@4
+
+d990 1
+a990 1
+void repstr(char *Dest, char *Src, const char *s2, const char *a4)
+d992 7
+a998 5
+    char *v5; // esi@@2
+    char *v6; // edi@@2
+    char *v7; // esi@@4
+    unsigned int v4; // kr04_4@@1
+    size_t n; // [sp+18h] [bp-10h]@@1
+d1000 2
+a1001 2
+    v4 = strlen(s2) + 1;
+    n = v4 - 1;
+d1003 1
+a1003 1
+	if ( v4 == 1 )
+d1013 1
+a1013 1
+            v7 = strchr(v5, *s2);
+d1016 1
+a1016 1
+            if ( !strncmp(v7, s2, n) )
+d1020 3
+a1022 3
+                strcat(Dest, a4);
+                v6 = &v7[n];
+                v7 = &v7[n - 1];
+d1030 1
+a1030 1
+void concat(char *Src, char *a2)
+d1032 9
+a1040 8
+    short v2;
+    short v3;
+    char SaveLast;
+    char Dest[1024]; 
+
+    v2 = lenstr(Src);
+    v3 = lenstr(a2);
+    if ( v3 + v2 > 1000 )	// max copy length is 1000
+d1043 5
+a1047 5
+	SaveLast = a2[v3];	
+	a2[v3] = 0;
+	cdbcpystr(Dest, Src, a2, 0);
+	cdbcpystr(Src, Dest, 0);
+	a2[v3] = SaveLast;
+d1052 13
+a1064 14
+    const char *v4; // edi@@1
+    char *v6; // edi@@20
+    char *i; // esi@@20
+    char *v8; // edi@@26
+    char *v12; // esi@@33
+    char *curr_char; // esi@@45
+    
+    int v10; // edi@@28
+    short v11; // si@@28
+    short v13; // ax@@40
+    signed short word_num; // ax@@45
+    signed short curr_word; // cx@@45
+    short MaxLen; // [sp+24h] [bp-14h]@@18
+
+d1095 5
+a1099 5
+		v13 = strtol(Src2, 0, 10);
+        v10 = lenstr(Src1);
+        MaxLen = 0;
+        v11 = v13 - 1;
+	    while ( v11 != -1 && MaxLen <= 1000 - v10 )
+d1101 3
+a1103 3
+			cdbcpystr(&Dest[MaxLen], Src1, 0);
+            MaxLen = v10 + MaxLen;
+		    --v11;
+d1105 1
+a1105 1
+        return true;
+d1194 4
+a1197 4
+    short count;
+    double *Array;
+    int Date_array[10]; // [sp+20h] [bp-38h]@@1
+
+d1211 5
+a1215 5
+    short count; // edx@@1
+    double *Array; // ecx@@1
+    double DateVal; // fst7@@3
+    int Date_array[10]; // [sp+20h] [bp-48h]@@2
+
+@
+
+
+1.9
+log
+@fixed few stroper() routines
+@
+text
+@d160 1
+a160 1
+			case 0xE000:									// '*=' Multiply + assign
+d163 2
+a164 14
+			case 0xE800:									// MOD operator
+				/*if ( v45 == 0.0 )
+				    v22 = v45;
+				else
+				{
+				    v22 = *(double *)fld_dest->FLDdata / v45;	
+				    v54 = v55 & 0xF3FF | 0x400;
+				    //_FST6 = v25;
+				    //__asm { frndint }
+				    //*(double *)((char *)&a3 + 1) = _FST6;
+				    //v20 = (v25 - (double)_FST6) * v45;
+					v22 = 0.0;								//**** to FIX ***
+				}*/
+				v45 = clround(0.0, DestType);
+d166 1
+a166 1
+			case 0xEC00:									// '**=' Exponent
+d169 1
+a169 1
+			case 0xE400:									// '/=' Division		(No check for /zero error?)
+d172 1
+a172 1
+			case 0xD800:									// '+=' Addition
+d175 1
+a175 1
+			case 0xDC00:									// '-=' Subtraction
+d178 1
+a178 1
+			case 0xA800:									// simple assignment?
+d272 4
+a275 4
+    FLDdesc *v12; // eax@@108
+    FLDdesc *v16; // eax@@120
+    FLDdesc *fld; // eax@@128
+    
+a593 9
+
+    unsigned short OpCode;
+
+    double v38; // fst7@@171
+    short v50; // eax@@219
+    double v55; // fst7@@231
+    double v86;
+    int v60; // edi@@242
+    int v62; // edi@@249
+d604 9
+a1002 1
+    unsigned int v4; // kr04_4@@1
+d1006 1
+d1065 2
+a1066 1
+    short v9; // si@@28
+a1071 4
+    char *curr_char; // esi@@45
+    //char *j; // edi@@58
+    char *v20; // [sp+0h] [bp-38h]@@39
+    char *v21; // [sp+4h] [bp-34h]@@24
+d1080 1
+a1080 1
+        concat(Dest, Src2);
+a1090 2
+
+
+a1093 1
+			//printf("stroper div . v13 = %d, start = %d, chars = %d, \n",v13, (v13 - (v13 % 100)) / 100, v13 % 100);
+a1095 1
+			//substr( Dest, Src1, (signed short)((v13 - (signed short)(v13 - 100 * (((signed int)((unsigned long long)(1374389535LL * v13) >> 32) >> 5) - ((unsigned long long)v13 >> 32)))) / 100), (signed short)(v13 - 100 * (((signed int)((unsigned long long)(1374389535LL * v13) >> 32) >> 5) - ((unsigned long long)v13 >> 32))));
+d1104 1
+a1104 1
+		v9 = strtol(Src2, 0, 10);
+d1107 1
+a1107 1
+        v11 = v9 - 1;
+@
+
+
+1.8
+log
+@further improvements to stroper. fixed string division function
+@
+text
+@d15 1
+a15 1
+    double result; // st7@@4
+d32 3
+a34 3
+	double MaxVal; // fst7@@116
+    double MinVal; // fst6@@124
+    double TestVal; // fst6@@125
+d1081 4
+a1084 4
+    signed short v14; // ax@@45
+    signed short v15; // cx@@45
+    char *v16; // esi@@45
+    char *j; // edi@@58
+d1152 11
+d1167 2
+a1168 2
+			v8 = strchr(v4, *Src1);
+            if ( !v8 )
+d1190 1
+a1190 1
+		//							set tab	#set tab to space
+d1194 5
+a1198 22
+		v14 = strtol(Src2, 0, 10);
+	    v15 = 1;
+	    v16 = Src1;
+	    if ( !*Src1 || v14 <= 1 )
+	        goto LABEL_58;
+
+	    while ( *v16 != TAB )
+	    {
+	        ++v16;
+LABEL_56:
+		    if ( !*v16 || v15 >= v14 )
+		        goto LABEL_58;
+		}
+		++v15;
+		++v16;
+		if ( TAB != ' ' && TAB != '\t' )
+		    goto LABEL_56;
+		if ( !*v16 )
+		    goto LABEL_58;
+		if ( *v16 != TAB )
+		    goto LABEL_56;
+		while ( 1 )
+d1200 9
+a1208 5
+		    ++v16;
+	        if ( !*v16 )
+	            break;
+	        if ( *v16 != TAB )
+	            goto LABEL_56;
+d1210 4
+a1213 7
+
+LABEL_58:
+		for ( j = Dest; *v16 && *v16 != TAB; ++j )
+		{
+		    *j = *v16++;
+		}
+		*j = 0;
+@
+
+
+1.7
+log
+@removed almost all references to TableAddr
+@
+text
+@d212 1
+a212 1
+		   arrdate(fld_dest, fld_src);
+d306 1
+a306 1
+//printf("evalnum : entab->entype = %d, entab->TTno  = x%04X\n",entab->entype,(unsigned short)entab->TTno);
+d356 1
+a356 3
+	// Remaining batch of Opcodes require Left/Right parameters:
+	// potential for very deep recursion here!!
+
+d358 1
+a358 1
+		val_right = evalnum(ENARR(entab->enright), VarType);
+d364 1
+a364 1
+		
+d388 10
+d399 6
+a419 9
+		case 0x9000:									// degrees()
+			return (val_left > 0.0) ? (val_left * 180.0 / 3.141592653589793) : 0.0;
+		
+		case 0x9400:									// radians()
+			return (val_left > 0.0) ? (val_left / 180.0 * 3.141592653589793) : 0.0;
+
+		case 0x9800 :									// exp() operator
+			return exp(val_left);
+		
+d448 1
+a448 4
+		if ( fld->FLDtype == 'C' )
+			return clatof((const char *)fld->FLDdata);
+
+		else if ( VarType == 'D' || VarType == 'T' )
+d450 8
+a457 3
+			strncpy(src,(char *)fld->FLDdata, 20u);
+			src[20] = 0;
+			return (VarType == 'D') ? (double)clgetdate(src) : gettime(src);
+d460 2
+a461 1
+			return *(double *)fld->FLDdata;			// all others stored internally as double
+d469 8
+a476 8
+    ENTAB *ent1; // eax@@5
+	FLDdesc *fld; // eax@@60
+    int OpCode; // eax@@21
+
+    int val_left; // edi@@7
+    int val_right; // ecx@@10
+    int v9; // eax@@20
+	int TTno; // [sp+28h] [bp-860h]@@82
+d546 1
+d548 6
+a553 9
+			ent1 = ENARR(entab->enleft);
+			
+			for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+			{
+				if ( !ent1->enleft )
+					break;
+			}
+			getftf(ent1, 0, &fldd);	// looks pointless, but sets global dbl_0, dbl_1 variables
+			
+d559 1
+a559 1
+			printf("evalint slen()\n");
+d561 1
+a561 7
+
+			//ent1 = ENARR(entab->enleft);
+			//for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+			//{
+			//	if ( !ent1->enleft )	// reached the end of the linked list
+			//		break;
+			//}
+d573 2
+a574 10
+			printf("evalint asize()\n");
+			//ent1 = ENARR(entab->enleft);
+		
+			//for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+			//{
+			//	if ( !ent1->enleft )
+			//		break;
+			//}
+
+			ent1 = ENARR(entab->enleft);
+a578 1
+			
+d587 1
+a588 1
+	// default numeric handler. Will catch anything not handled above
+d605 1
+d607 1
+a607 2
+    int OpCode; // edx@@3
+    char *chr_ptr; // esi@@240
+a622 1
+    bool doDefault = false;
+d625 2
+d761 1
+d885 4
+a888 6
+				v41 = ENARR(entab->enleft);
+				for ( ; v41; v41 = &enarr.TableAddr[v41->enleft - 1] )
+				{
+					if ( !v41->enleft )
+						break;
+				}
+d890 1
+d1100 8
+d1111 4
+a1114 3
+			substr( Dest, Src1, (signed short)((v13 - (signed short)(v13 - 100
+                     * (((signed int)((unsigned long long)(1374389535LL * v13) >> 32) >> 5) - ((unsigned long long)v13 >> 32)))) / 100),
+                   (signed short)(v13 - 100 * (((signed int)((unsigned long long)(1374389535LL * v13) >> 32) >> 5) - ((unsigned long long)v13 >> 32))));
+d1174 8
+@
+
+
+1.6
+log
+@almost complete now
+@
+text
+@d56 2
+a57 2
+    fno = (short)gettdfno(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0 , &TTno, &FLDtype,(unsigned short)(ent->TTno & 0xFC00) - 0xD401u <= 0x1BFF);
+    
+d66 1
+a66 1
+    fld_src = getftf(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, 0, &fld1);
+d73 1
+a73 1
+        evalstr(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, result);
+d117 1
+a117 1
+			fld_dest = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);
+d123 1
+a123 1
+            fld_dest = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);
+d148 1
+a148 1
+		    v45 = (double)evalint(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0);
+d150 1
+a150 1
+			v45 = clround(evalnum(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, fld_dest->FLDtype), fld_dest->FLDtype);
+d152 1
+a152 1
+		fld_dest = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);	// get destination fld
+d310 7
+a316 2
+	if ( entab->entype != 2 )
+        goto LABEL_128;
+d318 1
+a318 5
+	if ( entab->TTno & 0x0200 )			// 0x0200 == Integer calc flag
+        return (double)evalint(entab);
+	
+	if ( entab->TTno & 0x0100 )			// 0x0100 == Reserved name flag
+        return (double)getnresv(entab->RecNo);
+d320 4
+a323 1
+    OpCode = entab->TTno & 0xFC00;		// 1111 11-- ---- ----
+d325 2
+a326 4
+	switch (OpCode)
+	{
+	case 0xAC00:						// '[' Array operation
+        goto LABEL_128;
+d328 2
+a329 2
+	case 0xBC00:
+        return (double)Tty_KeyIsReady();
+d331 24
+a354 2
+	case 0xB800:
+		return drand48();				// random()
+d356 2
+a357 24
+	case 0x1C00:						// all string operations?
+	case 0x2000:
+	case 0x2C00:
+	case 0x4000:
+	case 0x7400:
+	case 0x7800:
+	case 0x7C00:
+	case 0x8C00:
+	case 0x9C00:
+	case 0xA000:
+	case 0xCC00:
+ 	case 0xD000:
+	case 0xD400:
+	case 0xF400:
+		evalstr(entab, (char *)&s);
+        
+		if ( VarType == 'D' )
+            return (double)clgetdate((const char *)&s);		// returns int
+        else if ( VarType == 'T' )
+            return gettime((const char *)&s);				// returns double anyway
+		else
+			return clatof((const char *)&s);				// try and interpret result as a number
+	
+	}
+d359 2
+a360 2
+// Remaining batch of Opcodes require Left/Right parameters:
+// potential for very deep recursion here!!
+d362 43
+a404 2
+	val_left = evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, VarType);
+	val_right = evalnum(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, VarType);
+d406 5
+a410 43
+	switch (OpCode)
+	{
+	case 0x0800:
+		return val_left > 0.0 ? sqrt(val_left) : 0.0;
+	
+	case 0x0C00:
+		return val_left > 0.0 ? log(val_left) : 0.0;
+	
+	case 0x1000:
+		return sin(val_left);
+	
+	case 0x1400:
+	    return cos(val_left);
+	
+	case 0x1800:
+		return tan(val_left);
+	
+	case 0x4400:
+		return val_left > 0.0 ? log10(val_left) : 0.0;
+	
+	case 0x4800:
+		return val_left <= 1.0 ? asin(val_left) : 0.0;
+	
+	case 0x4C00:
+		return val_left <= 1.0 ? acos(val_left) : 0.0;
+	
+	case 0x5000:
+        return atan(val_left);
+	
+	case 0x5400 :									// + add operator
+		return val_left + val_right;
+	
+	case 0x5800:									// - subtract operator
+		return (entab->enright) ? val_left - val_right : -val_left;
+	
+	case 0x5C00 :									// ** exponent operator
+		return power(val_left, val_right);
+	
+	case 0x6000 :									// * multiply operator
+        return val_left * val_right;
+	
+	case 0x6400:									// "/" divide operator
+		return ( val_right != 0.0 ) ? val_left / val_right : 0.0 ;	// avoid divide by zero error
+d412 6
+a417 5
+	case 0x9000:									// degrees()
+		return (val_left > 0.0) ? (val_left * 180.0 / 3.141592653589793) : 0.0;
+	
+	case 0x9400:									// radians()
+		return (val_left > 0.0) ? (val_left / 180.0 * 3.141592653589793) : 0.0;
+d419 9
+a427 6
+	case 0x9800 :									// exp() operator
+	    return exp(val_left);
+	
+	case 0x6800:									// % MOD operator
+		v12 = getftf(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 0, &s);
+		v14 = v12 ? v12->FLDtype : 'N' ;			// default to Integer
+d429 2
+a430 19
+		if ( v14 == 'C' )
+		{
+		    evalstr(entab, nptr);
+		    //if ( VarType == 'D' )
+		    //    v5 = (double)clgetdate(nptr);
+		    //else
+		    //    v5 = clatof(nptr);
+			return (VarType == 'D') ? (double)clgetdate(nptr): clatof(nptr);
+		}
+		else
+		{
+			val_left = clround(val_left, v14);
+			v16 = getftf(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, 0, &v31);
+
+			val_right = clround(val_right, v16 ? v16->FLDtype : 'N');	// default to 'N' long integer
+
+			//if ( v5 != 0.0 )
+			//	v5 = fmod(val_left,v5);
+			return (val_right != 0.0) ? fmod(val_left,val_right) : 0.0;
+d432 2
+d435 1
+a435 2
+		//return v5;
+		break;
+a436 1
+	default :
+d438 1
+a438 1
+//printf("evalnum : Label128 default handler\n");
+d440 5
+a444 5
+        fld = getftf(entab, 1, &fld2);
+        if ( fld )
+        {
+            if ( fld->FLDtype == 'C' )
+				return clatof((const char *)fld->FLDdata);
+d446 8
+a453 10
+			else if ( VarType == 'D' || VarType == 'T' )
+            {
+                strncpy(src,(char *)fld->FLDdata, 20u);
+                src[20] = 0;
+				return (VarType == 'D') ? (double)clgetdate(src) : gettime(src);
+            }
+			else
+                return *(double *)fld->FLDdata;			// all others stored internally as double
+        }
+        return 0.0;
+d455 1
+d491 2
+a492 2
+			val_left = (int)evalint(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0);
+			val_right = (int)evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0);
+d496 2
+a497 2
+			val_left = (int)evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0,'N');
+			val_right = (int)evalnum(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0,'N');
+d522 2
+a523 2
+			evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0 , a2);
+			evalstr(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0 , a1);
+d527 1
+a527 3
+			printf("in random()\n");
+			v9 = lrand48();
+			return v9;
+d535 1
+a535 1
+			return isfname(evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0,a1)) == 0;
+d539 1
+a539 1
+			ent1 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+d548 1
+a548 1
+			evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, a1);
+d553 1
+d556 10
+a565 6
+			ent1 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+			for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+			{
+				if ( !ent1->enleft )	// reached the end of the linked list
+					break;
+			}
+d567 3
+a569 3
+			if ( !fld || fld->FLDtype != 'C' )
+				return 0;
+			return lenstr(evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, a1));
+d573 2
+a574 1
+			ent1 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+d576 10
+a585 5
+			for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+			{
+				if ( !ent1->enleft )
+					break;
+			}
+d669 2
+a670 2
+				evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);			// enleft = "The String to look at"        
+				ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;
+d675 2
+a676 2
+					evalstr(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, CBuf1);	// *** recursion ***
+					evalstr(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, CBuf2);		// *** recursion ***
+d687 2
+a688 2
+				evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);			// enleft contains the "The String"
+				ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;						// Params hang off enright
+d691 2
+a692 2
+					int StartPos = evalint(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0);
+					int Length = evalint(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0);
+d701 2
+a702 3
+				evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);
+
+				ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;
+d707 2
+a708 2
+					evalstr(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, CBuf1);
+					evalstr(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, CBuf2);
+d721 1
+a721 1
+				evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);  // nice recursion
+d723 1
+a723 1
+				ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;
+d726 1
+a726 1
+					evalstr(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, StrArg2);	// nice recursion here
+d728 1
+a728 1
+					ent = ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0;
+d749 1
+a749 1
+				evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);
+d755 1
+a755 1
+					sprintf(StrArg1, "%ld", evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0));
+d757 1
+a757 1
+					evalstr(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, StrArg1);
+d791 1
+a791 1
+			v50 = evalint(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0);
+d799 1
+a799 1
+			v54 = getftf(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 1, &v94);
+d880 1
+a880 1
+			v40 = getftf(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 1, &v95);
+d892 1
+a892 1
+				v41 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+d900 1
+a900 1
+				nfmt(OutBuffer, StrArg1, clround(evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, FLDtype), FLDtype));
+d906 1
+a906 1
+			v86 = evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 'F');
+@
+
+
+1.5
+log
+@fair amount of tidying up
+@
+text
+@d36 4
+a39 3
+    int OpCode;
+    int v30;
+    int MaxLen;
+a43 1
+    unsigned short OpCodeMap;
+d47 1
+d61 4
+a67 1
+//----------------------------
+d117 1
+a117 1
+			fld_dest = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);  // fld2 is on the stack. problem for ent->entype == 4, 8 , 16 ??!!
+d153 1
+d161 1
+a161 1
+				v45 = clround(v45 * *(double *)fld_dest->FLDdata, fld_dest->FLDtype);
+d176 1
+a176 1
+				v45 = clround(0.0, fld_dest->FLDtype);
+d179 1
+a179 1
+				v45 = clround(power(*(double *)fld_dest->FLDdata, v45), fld_dest->FLDtype);
+d182 1
+a182 1
+				v45 = clround(*(double *)fld_dest->FLDdata / v45, fld_dest->FLDtype);	
+d185 1
+a185 1
+				v45 = clround(*(double *)fld_dest->FLDdata + v45, fld_dest->FLDtype);
+d188 1
+a188 1
+			    v45 = clround(*(double *)fld_dest->FLDdata - v45, fld_dest->FLDtype);
+d191 1
+a191 1
+				//printf("calc - 0xA800 opcode encountered \n");
+d211 1
+a211 1
+		if ( fld_src && fld_dest->FLDtype == 'D' && fld_src->FLDstat & fld_ARRAY && fld_src->FLDelemID == 10 && fld_src->FLDtype == 'N' )
+d214 2
+a215 2
+		v30 = fld_dest->FLDtype;			// Calc finished, do range limit checks if applicable ...
+		if ( v30 == 'B' || v30 == 'I' || v30 == 'N' || v30 == 'L' )
+d217 1
+a217 1
+			switch (v30)
+d248 1
+a248 1
+        if ( fld_src && fld_dest->FLDelemID == 10 && fld_dest->FLDtype == 'N' && fld_src->FLDtype == 'D' ) 
+d255 1
+a255 1
+                MaxLen = (unsigned short)(fld_dest->FLDlen + 1);
+d257 1
+a257 1
+                MaxLen = sizeof(double);
+d260 1
+a260 1
+            v36 = &v47[MaxLen];
+d266 2
+a267 2
+                    cpybuf(v36, v47, MaxLen);
+                    v36 += MaxLen;
+d288 2
+a289 3
+    double v5; // fst7@@31
+    double v13; // fst7@@111
+    int OpCode; // eax@@48
+a292 2
+    char v17; // dl@@120
+    double v19; // ST1C_8@@123
+a294 1
+    double v26; // [sp+10h] [bp-2468h]@@122
+a295 1
+    double v28; // [sp+18h] [bp-2460h]@@117
+d306 3
+a308 1
+//printf("evalnum : entab->entype = %d, entab->TTno  = x%04X\n",entab->entype,entab->TTno);
+a312 2
+// *** Order here is incorrect ? ***
+
+a319 1
+//printf("evalnum 110: OpCode  = x%04X\n",OpCode);
+d325 1
+d328 1
+a395 5
+        //if ( entab->enright )
+		//	v5 = val_left - val_right;
+		//else
+		//	v5 = -val_left;
+		//return v5;
+d405 1
+a405 5
+        //if ( val_right != 0.0 )	
+		//	return val_left / val_right;
+		//else
+		//	return 0.0;
+		return ( val_right == 0.0 ) ? 0.0 : val_left / val_right ;	// avoid divide by zero error
+a407 4
+        //v5 = 0.0;
+        //if ( val_left > 0.0 )
+        //    v5 = val_left * 180.0 / 3.141592653589793;
+		//return v5;
+a410 4
+		//v5 = 0.0;
+        //if ( val_left > 0.0 )
+		//	v5 = val_left / 180.0 * 3.141592653589793;
+		//return v5;
+a416 1
+		printf("evalnum 471 \n");
+d423 5
+a427 4
+		    if ( VarType == 'D' )
+		        v5 = (double)clgetdate(nptr);
+		    else
+		        v5 = clatof(nptr);
+d431 1
+a431 1
+			v28 = clround(val_left, v14);
+a432 9
+			//v17 = 'N';              // default to 'N' long integer
+			//if ( v16 )
+			//    v17 = v16->FLDtype;
+			v17 = v16 ? v16->FLDtype : 'N' ;
+			v5 = clround(val_right, v17);
+			v26 = v5;
+			if ( v5 != 0.0 )
+			{
+				printf("evalnum 252: MOD OpCode  = x%04X\n",OpCode);
+d434 6
+a439 7
+				// *** TO DO ***
+				// _FST7 = clround(v28 / v26, '9');	// looks like MOD operator?
+				// v19 = _FST7;
+				// __asm { frndint }
+				// v5 = (v19 - (double)_FST7) * v26;
+				//
+			}
+d441 1
+a441 1
+		return v5;
+d452 3
+a454 4
+			{
+				v5 = clatof((const char *)fld->FLDdata);
+			}
+            else if ( VarType == 'D' || VarType == 'T' )
+d458 1
+a458 4
+                if ( VarType == 'D' )
+		            v5 = (double)clgetdate(src);	// returns int
+				else
+					v5 = gettime(src);	// returns double value anyway
+d460 2
+a461 4
+			else // all others stored internally as double
+                return *(double *)fld->FLDdata;
+
+			return v5;
+d490 3
+d498 1
+a498 1
+		if ( entab->entype == 0x02 && entab->TTno & 0x0200 )
+d512 2
+a513 2
+		case 0x5400:
+			return val_left + val_right;				// "+" operator. 
+d535 2
+a536 1
+		case 0xB800:					// random()
+d764 1
+a764 1
+		case 0x4000:					// getenv()
+d768 2
+a769 2
+		case 0x3400:					// asc()	// **** CHECK THIS ****
+		case 0x2400:					// slen()
+d773 1
+a773 1
+		case 0x9C00:					// trim()
+d777 1
+a777 1
+		case 0x6C00:					// match()
+d781 1
+a781 1
+		case 0x8000:					// setenv()
+d787 1
+a787 1
+		case 0x2C00:					// getarg()
+d791 1
+a791 1
+		case 0x3800:					// chr()
+d799 1
+a799 1
+		case 0x2800:					// day()
+d819 1
+a819 1
+		case 0x2000:					// lcase()
+d831 1
+a831 1
+		case 0x1C00:					// ucase()
+d843 1
+a843 1
+		case 0xA000:					// cgiGetValue
+d861 1
+a861 1
+		case 0x8C00:							// xmlGetValue
+a934 4
+				//if ( v86 <= 1.0 )
+				//	sprintf(OutBuffer, "%.f", (double)asin(v86));
+				//else
+				//    sprintf(OutBuffer, "%.f",0.0);
+a938 4
+				//if ( v86 <= 1.0 )
+				//	sprintf(OutBuffer, "%.f", (double)acos(v86));
+				//else
+				//    sprintf(OutBuffer, "%.f",0.0);
+a946 4
+				//v38 = 0.0;
+				//if ( v86 > 0.0 )
+				//	v38 = v86 * 180.0 / 3.141592653589793;
+				//sprintf(OutBuffer, "%.f",v38);
+a950 4
+				//v38 = 0.0;
+				//if ( v86 > 0.0 )
+				//    v38 = v86 / 180.0 * 3.141592653589793;
+				//sprintf(OutBuffer, "%.f",v38);
+a990 1
+//printf("EvalString doing doDefault, OutBuffer = %s\n",OutBuffer);
+d992 1
+a992 1
+    }
+d1071 6
+a1076 5
+    SaveLast = a2[v3];	
+    a2[v3] = 0;
+    cdbcpystr(Dest, Src, a2, 0);
+    cdbcpystr(Src, Dest, 0);
+    a2[v3] = SaveLast;
+d1085 1
+a1088 1
+    char *v12; // esi@@33
+a1093 1
+    char v18; // al@@60
+a1095 1
+    //int v22; // [sp+8h] [bp-30h]@@24
+d1208 1
+a1208 2
+		    v18 = *v16++;
+		    *j = v18;
+a1214 1
+//---------------
+@
+
+
+1.4
+log
+@fixed asserts, general tidy-up
+@
+text
+@a25 2
+    FLDdesc *a1a; // [sp+2Ch] [bp-C4Ch]@@44
+    
+a29 2
+    //double v17;
+    double v22;
+d36 4
+a39 4
+    int OpCode; // eax@@17
+    int v30; // eax@@116
+    int MaxLen; // [sp+30h] [bp-C48h]@@143
+    int TTno; // [sp+38h] [bp-C40h]@@4
+d71 1
+a71 1
+		assert(fld_dest->FLDlen < sizeof(result));			// shouldn't be possible. clcomp won't allow strings > 1000 bytes in length
+d113 2
+a114 2
+			a1a = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);  // fld2 is on the stack. problem for ent->entype == 4, 8 , 16 ??!!
+			cdbcpystr((char *)a1a->FLDdata, Src, 0);
+d119 2
+a120 2
+            a1a = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);
+			cdbcpystr((char *)a1a->FLDdata, result, 0);
+d130 2
+a131 2
+            setcvar(v_TAB, (char *)a1a->FLDdata);  // "TAB"
+            TAB = *(char *)a1a->FLDdata;
+d133 2
+a134 2
+        if ( *(char *)a1a->FLDdata )	// Quick ZERO flag check
+            a1a->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+d136 1
+a136 1
+            a1a->FLDstat |= fld_ZERO;	// 0x0004u;
+d139 1
+a139 1
+	else	//fld_dest->FLDtype != 'C'
+a140 2
+		// Numeric calcs follow
+		//printf("calculate : Numeric Routine [dest = %C], ent->TTno = x%04X\n",fld_dest->FLDtype, ent->TTno);
+d142 1
+a143 1
+		{
+a144 1
+		}
+a145 3
+		{
+			//v17 = evalnum(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, fld_dest->FLDtype);
+			//v45 = clround(v17, fld_dest->FLDtype);
+a146 1
+		}
+d148 1
+a148 1
+		a1a = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);	// get destination fld
+d151 1
+a151 1
+		if ( OpCode )
+d156 1
+a156 1
+				v45 = clround(v45 * *(double *)a1a->FLDdata, a1a->FLDtype);
+d159 1
+a159 1
+				if ( v45 == 0.0 )
+d163 1
+a163 1
+				    v22 = *(double *)a1a->FLDdata / v45;	
+d170 11
+a180 2
+				}
+				v45 = clround(v22, a1a->FLDtype);
+d182 2
+a183 15
+			case 0xEC00:
+				v22 = power(*(double *)a1a->FLDdata, v45);	// '**=' Exponent
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xE400:
+				v22 = *(double *)a1a->FLDdata / v45;		// '/=' Division		(No check for /zero error?)
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xD800:
+			    v22 = *(double *)a1a->FLDdata + v45;		// '+=' Addition
+				v45 = clround(v22, a1a->FLDtype);
+				break;
+			case 0xDC00:
+			    v22 = *(double *)a1a->FLDdata - v45;		// '-=' Subtraction
+			    v45 = clround(v22, a1a->FLDtype);
+d187 1
+a187 1
+				//*(double *)a1a->FLDdata = v45;	//*********************************************
+d194 1
+a194 1
+			*(double *)a1a->FLDdata = v45;					// also handles the simple assignment case
+d198 1
+a198 1
+		    _DF = (short)*(double *)a1a->FLDdata;
+d201 1
+a201 1
+		    a1a->FLDstat |= fld_ZERO;	// 0x0004u;
+d203 1
+a203 1
+			a1a->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+d206 2
+a207 6
+
+		if ( fld_src && a1a->FLDtype == 'D' && fld_src->FLDstat & fld_ARRAY && fld_src->FLDelemID == 10 && fld_src->FLDtype == 'N' )
+		   arrdate(a1a, fld_src);
+	}
+
+// Calc finished, do range limit checks if applicable ...
+d209 27
+a235 22
+	v30 = a1a->FLDtype;
+    if ( v30 == 'B' || v30 == 'I' || v30 == 'N' || v30 == 'L' )
+	{    
+//printf("calculate : range check routines : FLDtype = %C\n",v30);
+		switch (v30)
+		{
+		case 'I':
+		    MaxVal = 32767.0;
+		    MinVal = -32767.0;
+			break;
+		case 'B':
+		    MaxVal = 127.0;
+		    MinVal = -127.0;
+		    break;
+		case 'L':
+		    MaxVal = 1.0e14;
+		    MinVal = -1.0e14;
+		    break;
+		case 'N':
+		    MaxVal = 2147483647.0;
+		    MinVal = -2147483647.0;
+			break;
+a236 6
+		TestVal = *(double *)a1a->FLDdata;
+//printf("calculate : TestVal = %G, MinVal = %G, MaxVal = %G\n",TestVal,MinVal,MaxVal);
+		if ( TestVal > MaxVal )
+			*(double *)a1a->FLDdata = MaxVal;
+		else if( TestVal < MinVal )
+			*(double *)a1a->FLDdata = MinVal;
+d239 2
+a240 2
+//--------------------
+    if ( a1a->FLDstat & fld_ARRAY )	// Array variable types
+d242 2
+a243 1
+        if ( fld_src && a1a->FLDelemID == 10 && a1a->FLDtype == 'N' && fld_src->FLDtype == 'D' ) // special check for INT array size = 10, and vartypes D
+d245 1
+a245 1
+            datearr(a1a);	// convert double value into array hanging off -> FLDname
+d249 2
+a250 2
+            if ( a1a->FLDtype == 'C' )
+                MaxLen = (unsigned short)(a1a->FLDlen + 1);
+d252 1
+a252 1
+                MaxLen = sizeof(double);	//8;
+d254 1
+a254 1
+            v47 = a1a->FLDname;		// Array variables hang of FLDname. 
+d256 2
+a257 2
+            v37 = a1a->FLDelemID - 1;
+            if ( a1a->FLDelemID != 1 )
+d274 1
+a274 1
+    a1a->FLDstat |= 0x0018u;	// (fld_DATA_AVAIL|fld_SUBREC) ???
+d292 1
+a292 1
+	double v25; // [sp+10h] [bp-2468h]@@45
+d294 1
+a294 1
+    double v27; // [sp+18h] [bp-2460h]@@42
+d305 1
+a344 2
+//printf("evalnum : 0x7400\n");
+
+d346 3
+a348 2
+        if ( VarType == 'D' )
+            v5 = (double)clgetdate((const char *)&s);	// returns int
+d350 1
+a350 1
+            v5 = gettime((const char *)&s);	// returns double anyway
+d352 2
+a353 2
+			v5 = clatof((const char *)&s);
+        return v5;
+d356 1
+a356 1
+// Remaining batch of Opcodes require Src/Dest parameters:
+d359 3
+a361 5
+	v27 = evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, VarType);
+//printf("evalnum : v27 = %G, VarType = %C\n",v27,VarType);
+	v25 = evalnum(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, VarType);
+//printf("evalnum : v25 = %G, VarType = %C\n",v25,VarType);
+//printf("evalnum : OpCode = x%04X\n",OpCode);     
+d364 6
+a369 4
+	case 0x800:
+		return v27 > 0.0 ? sqrt(v27) : 0.0;
+	case 0xC00:
+		return v27 > 0.0 ? log(v27) : 0.0;
+d371 2
+a372 1
+		return sin(v27);
+d374 2
+a375 1
+	    return cos(v27);
+d377 2
+a378 1
+		return tan(v27);
+d380 2
+a381 1
+		return v27 > 0.0 ? log10(v27) : 0.0;
+d383 2
+a384 1
+		return v27 <= 1.0 ? asin(v27) : 0.0;
+d386 2
+a387 1
+		return v27 <= 1.0 ? acos(v27) : 0.0;
+d389 2
+a390 1
+        return atan(v27);
+d392 2
+a393 2
+		v5 = v27 + v25;
+		return v5;
+d395 7
+a401 5
+        if ( entab->enright )
+			v5 = v27 - v25;
+		else
+			v5 = -v27;
+		return v5;
+d403 2
+a404 1
+		return power(v27, v25);
+d406 2
+a407 2
+        v5 = v27 * v25;
+		return v5;
+d409 6
+a414 5
+        if ( v25 != 0.0 )	// avoid divide by zero error
+			v5 = v27 / v25;
+		else
+			v5 = 0.0;
+        return v5;
+d416 6
+a421 4
+        v5 = 0.0;
+        if ( v27 > 0.0 )
+            v5 = v27 * 180.0 / 3.141592653589793;
+		return v5;
+d423 6
+a428 4
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = v27 / 180.0 * 3.141592653589793;
+		return v5;
+d430 2
+a431 1
+	    return exp(v27);
+a443 1
+		    return v5;
+d447 1
+a447 1
+			v28 = clround(v27, v14);
+d453 1
+a453 1
+			v5 = clround(v25, v17);
+a465 1
+			return v5;
+d467 1
+d477 1
+a477 1
+            if ( fld->FLDtype != 'C' )
+d479 1
+a479 2
+				//printf("evalnum : Label128 (!C) returning %G\n",*(double *)fld->FLDdata);
+                return *(double *)fld->FLDdata;
+d481 1
+a481 2
+
+            if ( VarType == 'D' || VarType == 'T' )
+a484 1
+				//printf("evalnum : Label128 src = %s\n",src);
+d490 2
+a491 4
+			else // fld->FLDtype == 'C'
+				v5 = clatof((const char *)fld->FLDdata);
+			//printf("evalnum : Label128 returning %G\n",v5);
+			//DumpBlock((char *)fld->FLDdata, 8);
+d493 1
+a493 1
+		    return v5;
+d506 2
+a507 2
+    int v3; // edi@@7
+    int v6; // ecx@@10
+a520 10
+    if ( entab->entype == 2 && entab->TTno & 0x0200 )
+    {
+        v3 = (int)evalint(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0);
+        v6 = (int)evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0);
+    }
+    else
+    {
+        v3 = (int)evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0,'N');
+        v6 = (int)evalnum(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0,'N');
+    }
+d522 1
+a522 2
+//---------------------------
+    if ( entab->entype != 2 )
+d524 25
+a548 21
+		fld = getftf(entab, 1, &v33);
+        if ( fld && fld->FLDtype != 'C' )
+        {
+            //v26 = *(double *)fld->FLDdata;
+            //return (int)v26;
+			return (int)*(double *)fld->FLDdata;
+        }
+        return 0;
+	}
+	if ( entab->TTno & 0x0100 )
+    {
+        //v9 = getnresv(entab->RecNo);
+        //return v9;
+		return getnresv(entab->RecNo);
+    }
+//-------------------------------
+	OpCode = entab->TTno & 0xFC00;
+	switch (OpCode)
+	{
+	case 0x5400:
+		return v3 + v6;				// "+" operator. 
+d550 40
+a589 2
+	case 0x5800:					// "-" operator.
+		return v3 - v6;
+d591 2
+a592 45
+	case 0x5C00:					// "**" operator
+		//v26 = power((double)v3, (double)v6);
+        //return (signed int)v26;
+		return (int)power((double)v3, (double)v6);
+
+	case 0x6000:					// "*" operator. 
+		return v3 * v6;
+
+	case 0x6400:					// "/" operator. Check divisor to avoid "divide by zero" error.
+		return v6 ? v3 / v6 : 0 ;
+
+	case 0x6800:					// "%"  mod operator. Check divisor to avoid "divide by zero" error.
+		return v6 ? v3 % v6 : 0 ;
+
+	case 0x6C00:					// match()
+        evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0 , a2);
+        evalstr(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0 , a1);
+		return smatch(a1, a2);
+
+	case 0xB800:					// random()
+		v9 = lrand48();
+		return v9;
+
+	case 0xBC00:					// keyready()
+		v9 = Tty_KeyIsReady();
+		return v9;
+
+	case 0xA400:					// name()
+		a1[0] = 0;
+		return isfname(evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0,a1)) == 0;
+
+	case 0x3400:					// asc()
+        a1[0] = 0;
+		ent1 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+        
+		for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+        {
+            if ( !ent1->enleft )
+                break;
+        }
+        getftf(ent1, 0, &fldd);	// looks pointless, but sets global dbl_0, dbl_1 variables
+        
+		evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, a1);
+        v9 = (unsigned char)a1[0];
+		return v9;
+d594 26
+a619 2
+	case 0x2400:					// slen()
+        a1[0] = 0;
+a620 19
+		ent1 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+		for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+        {
+            if ( !ent1->enleft )	// reached the end of the linked list
+                break;
+        }
+        fld = getftf(ent1, 0, &fld3);
+        if ( !fld || fld->FLDtype != 'C' )
+            return 0;
+		return lenstr(evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, a1));
+		break;
+	
+	case 0x3000:					// asize()
+		ent1 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+	
+		for ( ; ent1; ent1 = &enarr.TableAddr[ent1->enleft - 1] )
+        {
+			if ( !ent1->enleft )
+				break;
+a621 16
+        v6 = gettdfno(ent1, &TTno, &FLDtype, 0);
+        
+		if ( TTno )									
+			return ttab[TTno].NumFields - v6;		// This is a table. return Numfields - current field no
+		else		
+			return ttab->TTfields[v6].FLDelemID;	// Normal variable. return number of elements
+
+	default:
+        fld = getftf(entab, 1, &v33);
+        if ( fld && fld->FLDtype != 'C' )
+        {
+            //v26 = *(double *)fld->FLDdata;
+            //return (int)v26;
+			return (int)*(double *)fld->FLDdata;
+        }
+        return 0;
+d623 8
+d649 1
+d660 3
+a662 6
+    char FLDtype; // [sp+3Bh] [bp-BDh]@@203
+    signed short v85; // [sp+44h] [bp-B4h]@@1
+    double v86; // [sp+48h] [bp-B0h]@@150
+
+    char *StrArg1; // [sp+50h] [bp-A8h]@@1
+	char *StrArg2; // [sp+54h] [bp-A4h]@@1
+d664 5
+a668 9
+	FLDdesc v94; // [sp+60h] [bp-98h]@@203
+    FLDdesc v95; // [sp+80h] [bp-78h]@@196
+    FLDdesc v96; // [sp+A0h] [bp-58h]@@277
+    char dest[21]; // [sp+C0h] [bp-38h]@@233
+
+
+    StrArg2 = 0;
+    StrArg1 = 0;
+    v85 = 0;
+d673 1
+a673 3
+//printf("EvalString called : entab->entype = %d\n",entab->entype);
+
+	if ( entab->entype != 2 )
+d678 1
+a678 1
+            v85 = 1;	// fall through to default operation
+d682 1
+a682 86
+// entab->entype == 2
+
+    OpCode = entab->TTno & 0xFC00;
+//printf("EvalString - entab->entype == %d, OpCode = x%04X \n",entab->entype,OpCode);
+    if ( OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
+    {
+		switch (OpCode)
+		{
+		case  0xD000:		// srep("The string to look at", "string","new string") 
+			printf("EvalString - srep\n");
+            StrArg2 = (char *)mmalloc(1001u);
+            evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);			// enleft = "The String to look at"        
+			ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;
+            if ( ent->entype == 0x20 )														// function call type
+            {
+                CBuf1 = (char *)mmalloc(1001u); // Old String to look for 
+                CBuf2 = (char *)mmalloc(1001u); // String to replace it with
+                evalstr(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, CBuf1);	// *** recursion ***
+                evalstr(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, CBuf2);		// *** recursion ***
+                repstr(OutBuffer, StrArg2, CBuf1, CBuf2);
+                free(CBuf1);
+                free(CBuf2);
+                free(StrArg2);
+                return OutBuffer;
+            }
+			__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",669,"evalstr");
+			break;
+		case 0xCC00:		// substr("The string", start, length)
+			StrArg2 = (char *)mmalloc(1001u);
+			evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);			// enleft contains the "The String"
+			ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;						// Params hang off enright
+			if ( ent->entype == 0x20 )
+			{
+				int StartPos = evalint(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0);
+				int Length = evalint(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0);
+				substr(OutBuffer, StrArg2, StartPos, Length);
+				free(StrArg2);
+	            return OutBuffer;
+			}
+			__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",638,"evalstr");
+			break;
+		case 0xD400:														// sconv(url|soundex|tabsub, en|de|ign|unign|0|1-9, string3)
+            StrArg2 = (char *)mmalloc(1001u);
+            evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);
+
+            ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;
+            if ( ent->entype == 0x20 )		// function call expression. 
+            {
+                CBuf1 = (char *)mmalloc(1001u);
+                CBuf2 = (char *)mmalloc(1001u);
+                evalstr(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, CBuf1);
+                evalstr(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, CBuf2);
+                //cnvstr(OutBuffer, StrArg2, CBuf1, CBuf2);	// to do   sconv() function handler
+				cdbcpystr(OutBuffer, "function not enabled", 0);
+                free(CBuf1);
+                free(CBuf2);
+                free(StrArg2);
+                return OutBuffer;
+            }
+			__assert_fail("((((ce->enright) == 0 ? ((void *)0) : &enarr[0].enodes[((ce->enright)-1)]))->entype == 0x20)","calculate.c",651,"evalstr");
+			break;
+
+		case 0xF400:		// scat("str",....) 
+			StrArg2 = (char *)mmalloc(1001u);
+			evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);  // nice recursion
+			cdbcpystr(OutBuffer, StrArg2, 0);										// First param is in enleft
+			ent = entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0;
+			while ( ent->entype == 0x20 )											// function call type expression
+			{
+		        evalstr(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, StrArg2);	// nice recursion here
+		        concat(OutBuffer, StrArg2);
+		        ent = ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0;
+			}
+			evalstr(ent, StrArg2);
+			concat(OutBuffer, StrArg2);
+			free(StrArg2);
+			return OutBuffer;
+			break;
+
+		default:
+			*OutBuffer = 0;
+			return OutBuffer;
+			break;
+		}
+    }
+
+d688 1
+a688 24
+
+//=============================================
+
+	//set up StrArg1, StrArg2 for following routines
+
+    if ( entab->TTno & 0xFDFF ) // 1111-1101-1111-1111	// mask out integer calc flag 0x0200
+    {
+        if ( entab->enleft )
+        {
+            StrArg2 = (char *)mmalloc(1001u);
+            evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, StrArg2);
+		}
+        if ( entab->enright )
+        {
+            StrArg1 = (char *)mmalloc(1001u);
+            if ( OpCode == 0x6000 || OpCode == 0x6400 || OpCode == 0x6800 )			// '*' , '/' , '%'
+                sprintf(StrArg1, "%ld", evalint(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0));
+            else
+                evalstr(entab->enright ? &enarr.TableAddr[entab->enright - 1] : 0, StrArg1);
+        }
+    }
+//printf("EvalString - 1722 - OpCode = x%04X , StrArg1 = %s, StrArg2 = %s\n", OpCode, StrArg1, StrArg2);
+
+	switch (OpCode)
+d690 2
+a691 58
+	case 0x4000:					// getenv()
+        cdbcpystr(OutBuffer, getenv(StrArg2), 0);
+		break;
+
+	case 0x3400:					// asc()	// **** CHECK THIS ****
+	case 0x2400:					// slen()
+        sprintf(OutBuffer, "%ld", evalint(entab));
+		break;
+	
+	case 0x9C00:					// trim()
+	    cdbcpystr(OutBuffer, ftrim(StrArg2), 0);
+		break;
+	
+	case 0x6C00:					// match()
+	    sprintf(OutBuffer, "%ld", smatch(StrArg1, StrArg2));
+		break;
+
+	case 0x8000:					// setenv()
+		chr_ptr = mstrcpy(StrArg2, "=", StrArg1, 0);
+		putenv(chr_ptr);
+		cdbcpystr(OutBuffer, chr_ptr, 0);
+		break;
+
+	case 0x2C00:					// getarg()
+		cdbcpystr(OutBuffer, (char *)getarg(StrArg2), 0);
+		break;
+
+	case 0x3800:					// chr()
+		v50 = evalint(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0);
+		if ( v50 >= 0x100 )
+		    v50 &= 0xFF00;
+		*OutBuffer = v50;		// *** need to check ***
+		OutBuffer[1] = 0;
+		break;
+
+	case 0x2800:					// day()
+        v54 = getftf(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 1, &v94);
+        v55 = 0.0;
+        if ( v54 )
+        {
+            if ( v54->FLDtype == 'C' )
+            {
+                strncpy(dest, (const char *)v54->FLDdata, 20u);
+                dest[20] = 0;
+                v55 = (double)clgetdate(dest);
+            }
+            else
+                v55 = *(double *)v54->FLDdata;
+        }
+        if ( v55 <= 0.0 )
+            *OutBuffer = 0;		// invalid result, return blank string
+		else
+			cdbcpystr(OutBuffer, aday[(signed int)(double)v55 % 7], 0);
+		break;
+
+	case 0x2000:					// lcase()
+		chr_ptr = StrArg2;
+		while ( *chr_ptr )
+d693 37
+a729 7
+			v62 = *chr_ptr;
+		    if (isupper(v62))
+				*chr_ptr = tolower(v62);
+			++chr_ptr;
+		}
+		cdbcpystr(OutBuffer, StrArg2, 0);
+		break;
+d731 16
+a746 11
+	case 0x1C00:					// ucase()
+        chr_ptr = StrArg2;
+        while ( *chr_ptr )
+        {
+			v60 = *chr_ptr;
+            if (islower(v60))
+				*chr_ptr = toupper(v60);
+			++chr_ptr;
+        }
+        cdbcpystr(OutBuffer, StrArg2, 0);
+		break;
+d748 16
+a763 17
+	case 0xA000:					// cgiGetValue
+		chr_ptr = "not enabled";
+        //chr_ptr = (char *)cgiGetValue(StrArg2, sv_wid);  ** to do **
+        trim(chr_ptr);
+        if ( chr_ptr )
+        {
+			if ( strlen(chr_ptr) > 1000 )
+            {
+				strncpy(OutBuffer, chr_ptr, 1000u);
+                OutBuffer[1000] = 0;
+			}
+			else
+				cdbcpystr(OutBuffer, chr_ptr, 0);
+		}
+		else
+			*OutBuffer = 0;
+		break;
+d765 4
+a768 12
+	case 0x8C00:							// xmlGetValue
+		v64 = "not enabled";
+        //v64 = xmlGetValue(StrArg2, sv_wid);	// ** to do **
+        v65 = v64;
+        v63 = OutBuffer;
+        if ( v65 && *v64 && sv_wid )
+        {
+			do
+            {
+				*v63++ = *v65;
+                v66 = sv_wid-- - 1;
+                ++v65;
+a769 1
+            while ( v65 && *v65 && v66 );
+a770 2
+	    *v63 = 0;
+		break;
+d772 2
+a773 4
+	case 0x8800:						// sfmt()
+        *OutBuffer = 0; // default return blank string
+        v40 = getftf(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 1, &v95);
+        if ( v40 )
+d775 6
+a780 11
+            if ( v40->FLDtype == 'C' )
+				nfmt(OutBuffer, StrArg1, clatof(StrArg2));
+			else if ( v40->FLDtype == 'D' )
+				dfmt(OutBuffer, StrArg1, (double)clgetdate(StrArg2));
+			else if ( v40->FLDtype == 'T' )
+				tfmt(OutBuffer, StrArg1, (double)gettime(ftrim(StrArg2)));
+        }
+        else
+		{
+            v41 = entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0;
+            for ( ; v41; v41 = &enarr.TableAddr[v41->enleft - 1] )
+d782 7
+a788 14
+				if ( !v41->enleft )
+					break;
+            }
+            v42 = getftf(v41, 0, &v94);
+			FLDtype = v42 ? v42->FLDtype : '9' ;	// default to max decimal places
+			nfmt(OutBuffer, StrArg1, clround(evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, FLDtype), FLDtype));
+        }
+		break;
+
+	default:	
+		// remaining OpCodes require a parameter to work:
+		v86 = evalnum(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, 'F');
+
+//printf("EvalString 1042 - OpCode = x%04X , v86 = %G\n", OpCode, v86);
+d792 2
+a793 2
+		case 0x0800:
+            sprintf(OutBuffer, "%.f",v86 > 0.0 ? sqrt(v86) : 0.00 );
+d796 3
+a798 2
+		case 0x0C00:
+            sprintf(OutBuffer, "%.f",v86 > 0.0 ? log(v86) : 0.00 );
+d800 3
+a802 3
+
+		case 0x1000:
+            sprintf(OutBuffer, "%.f", sin(v86));
+d805 8
+a812 2
+		case 0x1400:
+            sprintf(OutBuffer, "%.f", cos(v86));
+d815 2
+a816 2
+		case 0x1800:
+            sprintf(OutBuffer, "%.f", tan(v86));
+d819 6
+a824 2
+		case 0x4400:
+            sprintf(OutBuffer, "%.f",v86 > 0.0 ? log10(v86) : 0.00 );
+d826 17
+a842 4
+		
+		case 0x4800:
+            if ( v86 <= 1.0 )
+				sprintf(OutBuffer, "%.f", (double)asin(v86));
+d844 1
+a844 1
+                sprintf(OutBuffer, "%.f",0.0);
+d847 10
+a856 5
+		case 0x4C00:
+            if ( v86 <= 1.0 )
+				sprintf(OutBuffer, "%.f", (double)acos(v86));
+			else
+                sprintf(OutBuffer, "%.f",0.0);
+d859 10
+a868 2
+		case 0x5000:
+			sprintf(OutBuffer, "%.f", (double)atan(v86));
+d871 16
+a886 5
+		case 0x9000:							// degrees()
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = v86 * 180.0 / 3.141592653589793;
+            sprintf(OutBuffer, "%.f",v38);
+d889 16
+a904 5
+		case 0x9400:							// radians()
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+	            v38 = v86 / 180.0 * 3.141592653589793;
+            sprintf(OutBuffer, "%.f",v38);
+d907 24
+a930 2
+		case 0x9800:							// exp()
+            sprintf(OutBuffer, "%.f",exp(v86));
+d933 73
+a1005 3
+		default:
+			v85 = !stroper(entab->TTno, OutBuffer, StrArg2, StrArg1);
+//printf("Fell through to default, v85 = %d\n", v85);
+a1007 1
+		break;
+a1009 3
+// default handler:
+
+//============================================
+a1010 1
+//printf("EvalStr LABEL276 v85 = %d\n",v85);
+d1012 1
+a1012 1
+    if ( v85 )
+d1014 1
+a1014 1
+        v67 = getftf(entab, 1, &v96);
+d1035 1
+a1035 1
+//printf("EvalString doing v85 default, OutBuffer = %s\n",OutBuffer);
+@
+
+
+1.3
+log
+@intermediate. prior to asserts being fixed
+@
+text
+@d32 1
+a32 1
+    double v17;
+d45 6
+a50 6
+    short v37; // di@@145
+    short DestFieldNo; // [sp+20h] [bp-C58h]@@4
+    unsigned short OpCodeMap; // dx@@29
+    short v54; // [sp+4Ch] [bp-C2Ch]@@92
+    short v55; // [sp+4Eh] [bp-C2Ah]@@92
+    char FLDtype; // [sp+3Fh] [bp-C39h]@@4
+d52 3
+a54 3
+	char a2[1008]; // [sp+50h] [bp-C28h]@@29
+    char Src[1008]; // [sp+440h] [bp-838h]@@39
+    char s[1032];
+d59 4
+a62 6
+    DestFieldNo = (short)gettdfno(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0 , &TTno, &FLDtype,(unsigned short)(ent->TTno & 0xFC00) - 0xD401u <= 0x1BFF);
+    if ( ent->entype != 2 )
+		__assert_fail("((ce)->entype == 0x2)", "calculate.c", 69, "calculate");
+
+	if ( DestFieldNo < 0 )
+    	__assert_fail("fno >= 0", "calculate.c", 70, "calculate");
+d64 1
+a64 1
+	fld_dest = &ttab[TTno].TTfields[DestFieldNo];
+d72 2
+a73 2
+        zap(s, 1001u);
+        evalstr(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, s);
+d75 1
+a75 2
+		if ( fld_dest->FLDlen > 1000u )
+			__assert_fail("f->fwid < sizeof(result)", "calculate.c", 81, "calculate");
+d79 1
+a79 1
+		{					// math+assignment operators - fall through to next block
+d86 33
+d120 3
+a122 2
+		case 0xA800:		// '=' simple Assignment 
+			s[fld_dest->FLDlen] = 0;							// Ensure destination buffer isn't overrun!
+d124 1
+a124 12
+			cdbcpystr((char *)a1a->FLDdata, s, 0);
+			
+			if ( !TTno && DestFieldNo == v_TAB )	// "TAB"
+			{
+				setcvar(v_TAB, (char *)a1a->FLDdata);  
+				TAB = *(char *)a1a->FLDdata;
+			}
+			if ( *(char *)a1a->FLDdata )
+			    a1a->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
+			else
+			    a1a->FLDstat |= fld_ZERO;	// 0x0004u;
+			goto LABEL_112;
+d126 1
+d132 1
+a132 37
+		cdbcpystr(a2, (char *)fld_dest->FLDdata, 0);
+		//printf("calculate : a2 = %s\n", a2);
+
+		switch (OpCode)				// remapping math+assign to straight math operators
+		{
+		case 0xD800:				// '+='  -> '+'
+            OpCodeMap = 0x5400u;			// Addition
+			break;
+		case 0xDC00:				// '-=' -> '-'
+			OpCodeMap = 0x5800u;			// Subtraction
+			break;
+		case 0xE000:				// '*=' -> '*'
+			OpCodeMap = 0x6000u;			// Multiply
+			break;
+		case 0xE400:				// '/=' -> '/'
+			OpCodeMap = 0x6400u;			// Division
+			break;
+		case 0xE800:				// '%=' -> '%'
+			OpCodeMap = 0x6800u;			// MOD Operator
+			break;
+		case 0xEC00:				// '**=' -> '**'
+			OpCodeMap = 0x5C00u;			// Exponent
+			break;
+		default:	// unreachable due to switch block above?
+			OpCodeMap = ent->TTno;			// default == don't remap opcode	*** should be unreachable ***
+			break;
+		}
+
+        if ( !stroper(OpCodeMap, Src, a2, s) )	// stroper(OpCode, Dest, Src1, Src2)
+            Src[0] = 0;
+
+		Src[fld_dest->FLDlen] = 0;
+
+        a1a = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);  // fld2 is on the stack. problem for ent->entype == 4, 8 , 16 ??!!
+        cdbcpystr((char *)a1a->FLDdata, Src, 0);
+        
+		if ( !TTno && DestFieldNo == v_TAB )		// TTno == 0 if this is a system variable
+d141 1
+d154 3
+a156 2
+			v17 = evalnum(ent->enright ? &enarr.TableAddr[ent->enright - 1] : 0, fld_dest->FLDtype);
+			v45 = clround(v17, fld_dest->FLDtype);
+d159 1
+a159 1
+		a1a = getftf(ent->enleft ? &enarr.TableAddr[ent->enleft - 1] : 0, 0, &fld2);
+a166 2
+			    //v22 = v45 * *(double *)a1a->FLDdata;		
+				//v45 = clround(v22, a1a->FLDtype);
+a182 1
+				*(double *)a1a->FLDdata = v45;
+d209 1
+a209 1
+			*(double *)a1a->FLDdata = v45;					// handles the simple assignment case
+d212 1
+a212 1
+		if ( !TTno && DestFieldNo == v_DATEFORM )    // "DATEFORM"
+a225 2
+LABEL_112:
+
+d290 1
+a290 1
+        if ( !TTno && DestFieldNo == v_INTERRUPT )// "INTERRUPT"
+a397 5
+		//if ( v27 <= 1.0 )
+		//	v5 = asin(v27);
+		//else
+		//	v5 = 0.0;
+		//return v5;
+a399 5
+		//if ( v27 <= 1.0 )
+		//	v5 = acos(v27);
+		//else
+		//	v5 = 0.0;
+        //return v5;
+a517 2
+    //char *v16; // eax@@65
+    //char *v23; // eax@@88
+a585 2
+        //v9 = smatch(a1, a2);
+        //return v9;
+a597 3
+        //v23 = evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0,a1);
+        //v9 = isfname(v23) == 0;
+		//return v9;
+a626 3
+        //v16 = evalstr(entab->enleft ? &enarr.TableAddr[entab->enleft - 1] : 0, a1);
+        //v9 = lenstr(v16);
+        //return v9;
+d1028 1
+a1028 1
+		case 0x9400:							// radians()	// one of these routines is wrong!
+a1035 2
+			//v38 = exp(v86);
+            //sprintf(OutBuffer, "%.f",v38);
+d1118 2
+a1119 1
+    if ( v4 == 1 )
+d1164 1
+a1164 1
+int stroper(unsigned short OpCode, char *Dest, char *Src1, char *Src2)
+d1192 1
+a1192 1
+        return 1;
+d1194 1
+d1205 1
+a1205 1
+        return 1;
+d1220 1
+a1220 1
+        return 1;
+d1235 1
+a1235 1
+        return 1;
+d1245 1
+a1245 1
+				return 1;
+d1253 1
+a1253 1
+	            return 1;
+d1299 1
+a1299 1
+		return 1;
+d1302 1
+a1302 1
+	return 0;	// indicate to caller that we didn't handle OpCode!
+@
+
+
+1.2
+log
+@prior to asserts being fixed
+@
+text
+@d5 1
+a17 4
+	//printf("clatof : nptr = %s, result = %G\n",nptr, result);     
+    //if ( !finite(result) )
+    //    result = 0.0;
+    //return result;
+d59 1
+a59 1
+    DestFieldNo = (short)gettdfno(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0 , &TTno, &FLDtype,(unsigned short)(ent->TTno & 0xFC00) - 0xD401u <= 0x1BFF);
+d67 1
+a67 1
+    fld_src = getftf(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, 0, &fld1);
+d75 1
+a75 1
+        evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, s);
+d92 1
+a92 1
+            a1a = getftf(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, 0, &fld2);
+d144 1
+a144 1
+        a1a = getftf(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, 0, &fld2);  // fld2 is on the stack. problem for ent->entype == 4, 8 , 16 ??!!
+d164 1
+a164 1
+		    v45 = (double)evalint(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0);
+d168 1
+a168 1
+			v17 = evalnum(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, fld_dest->FLDtype);
+d172 1
+a172 1
+		a1a = getftf(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, 0, &fld2);
+d396 1
+a396 1
+	v27 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, VarType);
+d398 1
+a398 1
+	v25 = evalnum(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, VarType);
+d435 1
+a435 1
+        if ( entab->Src )
+d465 1
+a465 1
+		v12 = getftf(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 0, &s);
+d480 1
+a480 1
+			v16 = getftf(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, 0, &v31);
+d562 2
+a563 2
+        v3 = (int)evalint(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0);
+        v6 = (int)evalint(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0);
+d567 2
+a568 2
+        v3 = (int)evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0,'N');
+        v6 = (int)evalnum(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0,'N');
+d614 2
+a615 2
+        evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0 , a2);
+        evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0 , a1);
+d630 1
+a630 1
+        //v23 = evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0,a1);
+d633 1
+a633 1
+		return isfname(evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0,a1)) == 0;
+d637 1
+a637 1
+		ent1 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+d639 1
+a639 1
+		for ( ; ent1; ent1 = &enarr.TableAddr[ent1->Dest - 1] )
+d641 1
+a641 1
+            if ( !ent1->Dest )
+d646 1
+a646 1
+		evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a1);
+d653 2
+a654 2
+		ent1 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+		for ( ; ent1; ent1 = &enarr.TableAddr[ent1->Dest - 1] )
+d656 1
+a656 1
+            if ( !ent1->Dest )	// reached the end of the linked list
+d662 1
+a662 1
+        //v16 = evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a1);
+d665 1
+a665 1
+		return lenstr(evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a1));
+d669 1
+a669 1
+		ent1 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+d671 1
+a671 1
+		for ( ; ent1; ent1 = &enarr.TableAddr[ent1->Dest - 1] )
+d673 1
+a673 1
+			if ( !ent1->Dest )
+d763 2
+a764 2
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, StrArg2);			// Dest = "The String to look at"        
+			ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+d769 2
+a770 2
+                evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, CBuf1);	// *** recursion ***
+                evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, CBuf2);		// *** recursion ***
+d781 2
+a782 2
+			evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, StrArg2);			// Dest contains the "The String"
+			ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;						// Params hang off Src
+d785 2
+a786 2
+				int StartPos = evalint(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0);
+				int Length = evalint(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0);
+d795 1
+a795 1
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, StrArg2);
+d797 1
+a797 1
+            ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+d802 2
+a803 2
+                evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, CBuf1);
+                evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, CBuf2);
+d816 3
+a818 3
+			evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, StrArg2);  // nice recursion
+			cdbcpystr(OutBuffer, StrArg2, 0);										// First param is in Dest
+			ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+d821 1
+a821 1
+		        evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, StrArg2);	// nice recursion here
+d823 1
+a823 1
+		        ent = ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0;
+d850 1
+a850 1
+        if ( entab->Dest )
+d853 1
+a853 1
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, StrArg2);
+d855 1
+a855 1
+        if ( entab->Src )
+d859 1
+a859 1
+                sprintf(StrArg1, "%ld", evalint(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0));
+d861 1
+a861 1
+                evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, StrArg1);
+d896 1
+a896 1
+		v50 = evalint(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0);
+d904 1
+a904 1
+        v54 = getftf(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 1, &v94);
+d918 3
+a920 5
+        {
+            *OutBuffer = 0;
+            goto LABEL_276;
+        }
+        cdbcpystr(OutBuffer, aday[(signed int)(double)v55 % 7], 0);
+d985 1
+a985 1
+        v40 = getftf(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 1, &v95);
+d997 2
+a998 2
+            v41 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+            for ( ; v41; v41 = &enarr.TableAddr[v41->Dest - 1] )
+d1000 1
+a1000 1
+				if ( !v41->Dest )
+a1003 3
+            //FLDtype = '9';					
+			//if ( v42 )
+			//	FLDtype = v42->FLDtype;
+d1005 1
+a1005 3
+            //v44 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, FLDtype);
+			//nfmt(s, StrArg1, clround(v44, FLDtype));
+			nfmt(OutBuffer, StrArg1, clround(evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, FLDtype), FLDtype));
+d1011 1
+a1011 1
+		v86 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, 'F');
+a1017 4
+			//v38 = 0.0;
+            //if ( v86 > 0.0 )
+			//	v38 = sqrt(v86);
+            //sprintf(s, "%.f",v38);
+a1021 4
+            //v38 = 0.0;
+            //if ( v86 > 0.0 )
+			//	v38 = log(v86);
+            //sprintf(s, "%.f",v38);
+a1025 2
+			//v38 = sin(v86);
+			//sprintf(s, "%.f", v38);
+a1029 2
+			//v38 = cos(v86);
+			//sprintf(s, "%.f", v38);
+a1033 2
+			//v38 = tan(v86);
+			//sprintf(s, "%.f", v38);
+a1037 4
+            //v38 = 0.0;
+            //if ( v86 > 0.0 )
+			//	v38 = log10(v86);
+			//sprintf(s, "%.f", v38);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d18 4
+a21 3
+    if ( !finite(result) )
+        result = 0.0;
+    return result;
+d54 2
+a55 1
+    char a2[1008]; // [sp+50h] [bp-C28h]@@29
+d163 1
+a163 1
+		//printf("calculate : Numeric Routine [dest = %C]\n",fld_dest->FLDtype);
+d182 4
+a185 3
+			case 0xE000:
+			    v22 = v45 * *(double *)a1a->FLDdata;		// Multiply
+				v45 = clround(v22, a1a->FLDtype);
+d204 1
+a204 1
+				v22 = power(*(double *)a1a->FLDdata, v45);	// Exponent
+d208 1
+a208 1
+				v22 = *(double *)a1a->FLDdata / v45;		// Division
+d212 1
+a212 1
+			    v22 = *(double *)a1a->FLDdata + v45;		// Addition
+d216 1
+a216 1
+			    v22 = *(double *)a1a->FLDdata - v45;		// Subtraction
+a318 1
+    FLDdesc *v7;  // eax@@36
+d331 2
+a332 4
+    double _FST7; // fst7@@134
+    double _FST6; // fst6@@137
+    double result; // st7@@142
+    double v25; // [sp+10h] [bp-2468h]@@45
+d337 2
+a338 1
+    FLDdesc s; // [sp+2030h] [bp-448h]@@32
+d349 3
+a351 1
+// *** Order here is incorrect ***
+d363 1
+a363 1
+	case 0xAC00:
+d406 6
+a411 2
+	case 0x5000:
+        return atan(v27);
+d414 2
+d417 1
+a417 4
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = log10(v27);
+		return v5;
+d419 6
+a424 5
+		if ( v27 <= 1.0 )
+			v5 = asin(v27);
+		else
+			v5 = 0.0;
+		return v5;
+d426 10
+a435 11
+		if ( v27 <= 1.0 )
+			v5 = acos(v27);
+		else
+			v5 = 0.0;
+        return v5;
+	case 0x1800:
+		return tan(v27);
+	case 0xC00:
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = log(v27);
+a436 13
+	case 0x800:
+		v5 = 0.0;
+        if ( v27 > 0.0 )
+			v5 = sqrt(v27);
+		return v5;
+	case 0x1000:
+		return sin(v27);
+	case 0x6400:									// "/" divide operator
+        if ( v25 != 0.0 )	// avoid divide by zero error
+			v5 = v27 / v25;
+		else
+			v5 = 0.0;
+        return v5;
+d448 6
+a453 3
+	case 0x5400 :									// + add operator
+		v5 = v27 + v25;
+		return v5;
+d469 1
+a469 5
+		//if ( v12 )
+		//    v14 = v12->FLDtype;
+		//else
+		//	v14 = 'N';	// default to Integer
+		v14 = v12 ? v12->FLDtype : 'N' ;
+d538 2
+d549 2
+a550 5
+    char *v16; // eax@@65
+    short v20; // ax@@82
+    short v21; // ax@@84
+    char *v23; // eax@@88
+    double v26; // fst7@@96
+d580 3
+a582 2
+            v26 = *(double *)fld->FLDdata;
+            return (int)v26;
+d588 3
+a590 2
+        v9 = getnresv(entab->RecNo);
+        return v9;
+d596 16
+a611 15
+	case 0x6000:
+        v9 = v6 * v3;
+        return v9;
+
+	case 0x6C00:
+        evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0,a2);
+        evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0,a1);
+        v9 = smatch(a1, a2);
+        return v9;
+
+	case 0x6400:
+        v9 = 0;
+		if ( v6 )
+			v9 = v3 / v6;
+		return v9;
+d613 1
+a613 3
+	case 0x6800:					// %  mod operator
+		//v9 = v6 ? v3 % v6 : 0 ;
+		//return v9;
+d616 7
+d627 1
+a627 1
+	case 0xBC00:
+d631 1
+a631 1
+	case 0xA400:
+d633 4
+a636 3
+        v23 = evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0,a1);
+        v9 = isfname(v23) == 0;
+        return v9;
+d638 1
+a638 1
+	case 0x3400:
+d653 2
+a654 3
+	case 0x5C00:
+		v26 = power((double)v3, (double)v6);
+        return (signed int)v26;
+d656 1
+a656 8
+	case 0x5400:
+		v9 = v6 + v3;
+        return v9;
+
+	case 0x2400:
+        a1[0] = 0;
+        ent1 = entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0;
+        
+d665 4
+a668 3
+        v16 = evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a1);
+        v9 = lenstr(v16);
+        return v9;
+d671 1
+a671 1
+	case 0x3000:
+d679 6
+a684 15
+        v20 = gettdfno(ent1, &TTno, &FLDtype, 0);
+        v6 = v20;
+        if ( !TTno )
+        {
+			v9 = ttab->TTfields[(signed short)v9].FLDelemID;
+            return v9;
+		}
+        v21 = ttab[TTno].NumFields;	// looks wrong
+        v9 = v9 - v6;
+        return v9;
+
+	case 0x5800:
+		v21 = v3;
+        v9 = v9 - v6;	// looks wrong v21 never accessed
+        return v9;
+d690 3
+a692 2
+            v26 = *(double *)fld->FLDdata;
+            return (int)v26;
+d698 1
+a698 1
+char *evalstr(ENTAB *entab, char *s)
+a699 7
+    ENTAB *v5; // esi@@15
+    ENTAB *v7; // eax@@22
+    ENTAB *v11; // eax@@35
+    ENTAB *v16; // eax@@45
+    ENTAB *v17; // eax@@48
+    ENTAB *v23; // eax@@66
+    ENTAB *v32; // eax@@98
+d701 2
+a710 4
+    char *v19; // esi@@55
+    char *v25; // esi@@74
+    short v31; // eax@@96
+    char v35; // zf@@111
+a711 1
+    double v44; // fst7@@208
+d720 4
+a723 6
+    char *v72; // [sp+0h] [bp-F8h]@@224
+    char *v73; // [sp+0h] [bp-F8h]@@246
+    const char *v74; // [sp+4h] [bp-F4h]@@224
+    char *v75; // [sp+4h] [bp-F4h]@@246
+    int v77; // [sp+8h] [bp-F0h]@@103
+    int v78; // [sp+8h] [bp-F0h]@@224
+a724 2
+    char *s2; // [sp+3Ch] [bp-BCh]@@74
+    char *nptr; // [sp+40h] [bp-B8h]@@55
+d727 3
+a729 3
+    char *a1; // [sp+50h] [bp-A8h]@@1
+	char *a2; // [sp+54h] [bp-A4h]@@1
+    ENTAB *ent; // [sp+100h] [bp+8h]@@37
+d737 2
+a738 2
+    a2 = 0;
+    a1 = 0;
+d742 1
+a742 1
+        return s;	// Don't alter buffer, just return to caller
+d748 2
+a749 2
+        if ( entab->entype == 0x10 )
+			cdbcpystr(s, (char *)&entab->TTno, 0);	// Simple copy operation
+d764 5
+a768 5
+            a2 = (char *)mmalloc(1001u);
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+			// Dest = "The String to look at"        
+			v23 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+            if ( v23->entype == 0x20 )
+d770 9
+a778 10
+                ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+                s2 = (char *)mmalloc(1001u); // Old String to look for 
+                v25 = (char *)mmalloc(1001u); // String to replace it with
+                evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, s2);	// *** recursion ***
+                evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, v25);	// *** recursion ***
+                repstr(s, a2, s2, v25);
+                free(s2);
+                free(v25);
+                free(a2);
+                return s;
+d783 4
+a786 6
+			a2 = (char *)mmalloc(1001u);
+			// Dest contains the "The String"
+			evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+			v11 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+			// Params hang off Src
+			if ( v11->entype == 0x20 )
+d788 5
+a792 5
+				int StartPos = evalint(v11->Dest ? &enarr.TableAddr[v11->Dest - 1] : 0);
+				int Length = evalint(v11->Src ? &enarr.TableAddr[v11->Src - 1] : 0);
+				substr(s, a2, StartPos, Length);
+				free(a2);
+	            return s;
+d796 3
+a798 3
+		case 0xD400:	// sconv()
+            a2 = (char *)mmalloc(1001u);
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+d800 2
+a801 2
+            v17 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+            if ( v17->entype == 0x20 )		// function call expression. 
+d803 10
+a812 11
+                ent = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+                nptr = (char *)mmalloc(1001u);
+                v19 = (char *)mmalloc(1001u);
+                evalstr(ent->Dest ? &enarr.TableAddr[ent->Dest - 1] : 0, nptr);
+                evalstr(ent->Src ? &enarr.TableAddr[ent->Src - 1] : 0, v19);
+                //cnvstr(s, a2, nptr, v19);	// to do   sconv() function handler
+				s = "function not enabled";
+                free(nptr);
+                free(v19);
+                free(a2);
+                return s;
+d818 5
+a822 6
+			a2 = (char *)mmalloc(1001u);
+			evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);  // nice recursion
+			cdbcpystr(s, a2, 0);	// First param is in Dest
+
+			v5 = entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0;
+			while ( v5->entype == 0x20 )	// function call type expression
+d824 3
+a826 3
+		        evalstr(v5->Dest ? &enarr.TableAddr[v5->Dest - 1] : 0, a2);  // nice recursion here
+		        concat(s, a2);
+		        v5 = v5->Src ? &enarr.TableAddr[v5->Src - 1] : 0;
+d828 4
+a831 4
+			evalstr(v5, a2);
+			concat(s, a2);
+			free(a2);
+			return s;
+d835 2
+a836 2
+			*s = 0;
+			return s;
+d843 1
+a843 1
+        cdbcpystr(s, getresv(entab->RecNo), 0);
+d849 1
+a849 1
+	//set up a1, a2 for following routines
+d851 1
+a851 1
+    if ( entab->TTno & 0xFDFF ) // 1111-1101-1111-1111	// clear integer calc flag 0x0200
+d855 2
+a856 2
+            a2 = (char *)mmalloc(1001u);
+            evalstr(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, a2);
+d860 3
+a862 3
+            a1 = (char *)mmalloc(1001u);
+            if ( OpCode == 0x6800 || OpCode == 0x6400 || OpCode == 0x6000 )
+                sprintf(a1, "%ld", evalint(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0));
+d864 1
+a864 1
+                evalstr(entab->Src ? &enarr.TableAddr[entab->Src - 1] : 0, a1);
+d867 1
+a867 1
+//printf("EvalString - 1722 - OpCode = x%04X , a1 = %s, a2 = %s\n", OpCode, a1, a2);
+d872 1
+a872 1
+        cdbcpystr(s, getenv(a2), 0);
+d877 1
+a877 1
+        sprintf(s, "%ld", evalint(entab));
+d881 1
+a881 1
+	    cdbcpystr(s, ftrim(a2), 0);
+d885 1
+a885 1
+	    sprintf(s, "%ld", smatch(a1, a2));
+d889 1
+a889 1
+		chr_ptr = mstrcpy(a2, "=", a1, 0);
+d891 1
+a891 1
+		cdbcpystr(s, chr_ptr, 0);
+d895 1
+a895 1
+		cdbcpystr(s, (char *)getarg(a2), 0);
+d902 2
+a903 2
+		*s = v50;		// *** need to check ***
+		s[1] = 0;
+d922 1
+a922 1
+            *s = 0;
+d925 1
+a925 1
+        cdbcpystr(s, aday[(signed int)(double)v55 % 7], 0);
+d929 1
+a929 1
+		chr_ptr = a2;
+d937 1
+a937 1
+		cdbcpystr(s, a2, 0);
+d941 1
+a941 1
+        chr_ptr = a2;
+d949 1
+a949 1
+        cdbcpystr(s, a2, 0);
+d954 1
+a954 1
+        //chr_ptr = (char *)cgiGetValue(a2, sv_wid);  ** to do **
+d960 2
+a961 2
+				strncpy(s, chr_ptr, 1000u);
+                s[1000] = 0;
+d964 1
+a964 1
+				cdbcpystr(s, chr_ptr, 0);
+d967 1
+a967 1
+			*s = 0;
+d972 1
+a972 1
+        //v64 = xmlGetValue(a2, sv_wid);	// ** to do **
+d974 1
+a974 1
+        v63 = s;
+d989 1
+a989 1
+        *s = 0; // default return blank string
+d994 1
+a994 1
+				nfmt(s, a1, clatof(a2));
+d996 1
+a996 1
+				dfmt(s, a1, (double)clgetdate(a2));
+d998 1
+a998 1
+				tfmt(s, a1, (double)gettime(ftrim(a2)));
+d1009 7
+a1015 5
+            FLDtype = '9';					// default to max decimal places
+			if ( v42 )
+				FLDtype = v42->FLDtype;
+            v44 = evalnum(entab->Dest ? &enarr.TableAddr[entab->Dest - 1] : 0, FLDtype);
+			nfmt(s, a1, clround(v44, FLDtype));
+d1023 1
+a1023 1
+//printf("EvalString 1873 - OpCode = x%04X , v86 = %G\n", OpCode, v86);
+d1027 14
+a1040 5
+		case 0x4400:
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = log10(v86);
+			sprintf(s, "%.f", v38);
+d1043 4
+a1046 3
+		case 0x1800:
+			v38 = tan(v86);
+			sprintf(s, "%.f", v38);
+d1050 9
+a1058 2
+			v38 = cos(v86);
+			sprintf(s, "%.f", v38);
+d1061 6
+a1066 3
+		case 0x1000:
+			v38 = sin(v86);
+			sprintf(s, "%.f", v38);
+d1069 5
+a1073 5
+		case 0x0C00:
+            v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = log(v86);
+            sprintf(s, "%.f",v38);
+d1076 5
+a1080 5
+		case 0x0800:
+			v38 = 0.0;
+            if ( v86 > 0.0 )
+				v38 = sqrt(v86);
+            sprintf(s, "%.f",v38);
+d1084 1
+a1084 6
+			sprintf(s, "%.f", (double)atan(v86));
+			break;
+
+		case 0x9800:							// exp()
+			v38 = exp(v86);
+            sprintf(s, "%.f",v38);
+d1091 1
+a1091 1
+            sprintf(s, "%.f",v38);
+d1098 1
+a1098 1
+            sprintf(s, "%.f",v38);
+d1101 4
+a1104 12
+		case 0x4800:
+            if ( v86 <= 1.0 )
+				sprintf(s, "%.f", (double)asin(v86));
+			else
+                sprintf(s, "%.f",0.0);
+			break;
+
+		case 0x4C00:
+            if ( v86 <= 1.0 )
+				sprintf(s, "%.f", (double)acos(v86));
+			else
+                sprintf(s, "%.f",0.0);
+d1108 1
+a1108 1
+			v85 = !stroper(entab->TTno, s, a2, a1);
+d1119 2
+d1126 15
+a1140 8
+            if ( v67->FLDtype == 'C' )
+                cdbcpystr(s, (char *)v67->FLDdata, 0);
+            else if ( v67->FLDtype == 'D' )
+				makedate(s, *(double *)v67->FLDdata);
+            else if ( v67->FLDtype == 'T' )
+				maketimehms(s, *(double *)v67->FLDdata);
+            else
+				sprintf(s, "%.*f", typedp(v67->FLDtype),*(double *)v67->FLDdata);
+d1143 2
+a1144 2
+            *s = 0;	// default == blank string
+//printf("EvalString doing v85 default, s = %s\n",s);
+d1147 5
+a1151 5
+    if ( a2 )
+        free(a2);
+    if ( a1 )
+        free(a1);
+    return s;
+d1249 1
+a1249 1
+    int v22; // [sp+8h] [bp-30h]@@24
+d1327 2
+a1328 2
+	    //v14 = __strtol_internal(Src2, 0, 10, 0);
+	    v14 = strtol(Src2, 0, 10);
+d1333 1
+d1356 2
+a1357 1
+		}	
+@

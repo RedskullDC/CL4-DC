@@ -469,7 +469,7 @@ char *Blowfish_StrEncrypt(char *raw_block, int bfk)
 
 	xl = 0;
 	xr = 0;
-	zap(results, 1001u);
+	memset(results, 0, 1001u);
 	if ( raw_block && *raw_block )
 	{
 		Blowfish_Init(bfk);

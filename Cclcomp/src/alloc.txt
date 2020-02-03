@@ -1,0 +1,5 @@
+
+legetf.c:			TTptr->TDworkarea1	= (char *)mmalloc(129u);
+
+prdebug.c:    BTCOUNT = (int*) alloca(4 * no_btabs);
+

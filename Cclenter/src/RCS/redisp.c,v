@@ -1,0 +1,171 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2020.01.27.14.13.48;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.08.30.07.23.41;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.27.05.47.05;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@prior to X64 conversion
+@
+text
+@#ifndef REDISPLAY_C
+#define REDISPLAY_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+void redisp(RDTAB *rdtab, short Start, short End)
+{
+    ENTAB	*entb;
+	PTAB	*ptabStart;
+	PTAB	*ptabEnd;
+	XTAB	*xtb;
+	ENTAB	*v9;
+	BTAB	*btb;
+	RDTAB	*rdtb;
+	
+    int		OpCode;
+	int		v14;
+	short	RecNo;
+	
+    if ( rdtab )
+    {
+        do
+        {
+            v14 = rdtab->TTno;		// if > 0, redisplay all visible fields of this table
+            if ( v14 <= 0 )
+            {
+                entb = ENARR(rdtab->field_2);	// Only re-displaying a single field/variable
+                v14 = entb->TTno;
+            }
+            ptabStart	= PTARR(getptabp(Start));			// Look for redisplay records between program Start and End instructions
+			ptabEnd		= PTARR(getptabp(End));
+
+            for ( ; ptabStart != ptabEnd; ptabStart++ )
+            {
+                OpCode = ptabStart->OpCode;
+                if ( OpCode == 1 )              // accept field
+                {
+                    xtb = XTARR(ptabStart->TABno);
+                    if ( *(int *)&xtb->C_X )	// check for C_X and C_Y together. Means field has been shown on screen already
+                    {
+                        v9 = ENARR(xtb->VarExpNo);
+                        if ( v9->TTno == v14 )
+                        {
+							RecNo = v9->RecNo;
+                            //if ( rdtab->TTno > 0 || (v11 = ENARR(rdtab->field_2), v11->RecNo == RecNo) )
+                            if ( rdtab->TTno > 0 || ( ENARR(rdtab->field_2)->RecNo == RecNo) )
+                                dispfld(xtb, &ttab[v14].TTfields[RecNo], 1, 0, 1, 1);		// Last 1 means use C_X, C_Y values
+                        }
+                    }
+                }
+                else if ( OpCode == 720 )										// do {blockname}
+                {
+					btb = &btab[ptabStart->Operand];
+                    redisp(rdtab, btb->Screens->PT_start, btb->Screens->PT_end);	// nice recursion possible here
+                }
+            }
+            rdtb = RDARR(rdtab->NextRD);
+            rdtab = rdtb;
+        }
+        while ( rdtb );
+    }
+}
+
+
+#endif
+
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d12 12
+a23 13
+    ENTAB *entb; // eax@@4
+    PTAB *ptabStart; // esi@@7
+    PTAB *ptabEnd; // [sp+38h] [bp-10h]@@7
+    XTAB *xtb; // edi@@12
+    ENTAB *v9; // eax@@16
+    ENTAB *v11; // eax@@24
+    BTAB *btb; // eax@@28
+    RDTAB *rdtb; // eax@@31
+
+    int OpCode; // eax@@8
+    int v14; // [sp+30h] [bp-18h]@@2
+    short RecNo; // [sp+34h] [bp-14h]@@22
+
+d28 1
+a28 1
+            v14 = rdtab->TTno;		// 
+d31 1
+a31 1
+                entb = ENARR(rdtab->field_2);
+a47 2
+                            //v10 = (ENTAB *)(xtb->VarExpNo ? &enarr.TableAddr[12 * (xtb->VarExpNo - 1)] : 0);
+                            //RecNo = v10->RecNo;
+d49 2
+a50 2
+                            //if ( rdtab->TTno > 0 || (!rdtab->field_2 ? (v11 = 0) : (v11 = &enarr.TableAddr[rdtab->field_2 - 1]), v11->RecNo == RecNo) )
+                            if ( rdtab->TTno > 0 || (v11 = ENARR(rdtab->field_2), v11->RecNo == RecNo) )
+d58 1
+a58 1
+                    redisp(rdtab, btb->TYPE24->PT_start, btb->TYPE24->PT_end);	// nice recursion possible here
+a60 1
+            //rdtb = rdtab->NextRD ? &rdarr.TableAddr[rdtab->NextRD - 1] : 0;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d29 1
+a29 1
+            v14 = rdtab->TTno;
+a31 1
+                //entb = rdtab->field_2 ? &enarr.TableAddr[rdtab->field_2 - 1]:0;
+d43 1
+a43 1
+                    xtb = ptabStart->TABno ? &xtarr.TableAddr[ptabStart->TABno - 1] : 0;
+d46 1
+a46 1
+                        v9 = xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0;
+d52 2
+a53 1
+                            if ( rdtab->TTno > 0 || (!rdtab->field_2 ? (v11 = 0) : (v11 = &enarr.TableAddr[rdtab->field_2 - 1]), v11->RecNo == RecNo) )
+d64 2
+a65 1
+            rdtb = rdtab->NextRD ? &rdarr.TableAddr[rdtab->NextRD - 1] : 0;
+@

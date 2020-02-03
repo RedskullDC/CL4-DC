@@ -23,7 +23,7 @@ unsigned int findprev(TDinfo *TDptr)
 		PagePtr = _indexpg(TDptr, PageNo);
 		_scanpg((PAGE *)PagePtr, TDptr, &N1_2idx, TDptr->field_42 | 8);	// scanpg updates N1_2idx directly. |8 means PAGE* passed
 		
-		PageNo = mstol((int *)&PagePtr->DataStart[4 * N1_2idx--]);
+		PageNo = mstol((int *)&PagePtr->header.DataStart[4 * N1_2idx--]);
 		if ( N1_2idx >= 0 )
 		{
 			v2 = _itosz(PagePtr, N1_2idx);

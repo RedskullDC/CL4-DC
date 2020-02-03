@@ -1,0 +1,253 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.07.20.02.07.41;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.24.00.34.06;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@minor clean up
+@
+text
+@#ifndef CONVERT_STRING_C
+#define CONVERT_STRING_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <ctype.h>		// tolower() etc.
+#include <stdlib.h>		// strtod() etc.
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+
+char *convstr(char *a1, int Encode)
+{
+    char *Dest; // edi@@2
+    char *Src; // esi@@40
+    
+	signed int v4; // eax@@3
+    signed int v10; // edx@@53
+    int		v9; // ecx@@53
+    int		v12; // [sp+8h] [bp-20h]@@35
+    int		v13; // [sp+18h] [bp-10h]@@2
+    char	v5; // al@@26
+
+//printf("convstr(x%08X, %d) called\n",a1,Encode);
+//DumpBlock(a1,strlen(a1));
+    if ( !Encode )
+    {
+		// Encode == 0, decodes "printf" sequences to actual control chars
+
+        Dest = buf_0_0;
+        Src = a1;
+        while ( *Src )	
+        {
+            if ( *Src == '\\' && Src[1] )	// filter control chars
+            {
+                ++Src;	// bump Src past the slash character
+                switch ( *Src )
+                {
+                    case 'e':
+                        *Dest = 27;			// <ESC>
+                        goto LABEL_70;
+                    case 't':
+                        *Dest = '\t';
+                        goto LABEL_70;
+                    case 'f':
+                        *Dest = '\f';
+                        goto LABEL_70;
+                    case 'r':
+                        *Dest = '\r';
+                        goto LABEL_70;
+                    case 'n':
+                        *Dest = '\n';
+                        goto LABEL_70;
+                    case 'b':
+                        *Dest = ' ';
+                        goto LABEL_70;
+                    case '\\':
+                        *Dest = '\\';
+                        goto LABEL_70;
+                    case '*':
+                    case '?':
+                    case '[':
+                        *Dest = *Src | 0x80;
+                        goto LABEL_70;
+                    default:
+                        if ( (unsigned char)(*Src - 48) > 7u )
+                        {
+                            *Dest++ = '\\';
+                            --Src;
+                        }
+                        else
+                        {
+                            v9 = 0;
+                            v10 = 0;	// 3digit number
+                            do
+                            {
+                                v9 = *Src + 8 * v9 - 48;
+                                ++v10;
+                                ++Src;
+                            }
+                            while ( (unsigned char)(*Src - 48) <= 7u && v10 <= 2 );
+                            if ( v10 )
+                                --Src;
+                            if ( v9 )
+                            {
+                                *Dest = v9;
+                                goto LABEL_70;
+                            }
+                        }
+                        break;
+                }
+                goto LABEL_71;
+            }
+//---------------------------------------
+            if ( *Src == '^' && Src[1] )
+            {
+                ++Src;
+                if ( (unsigned char)(*Src - 97) <= 0x19u )	// control character
+                    *Src -= 32;
+                if ( (unsigned char)(*Src - 65) <= 0x19u )
+                {
+                    *Dest = *Src - 64;
+                    goto LABEL_70;
+                }
+                *Dest++ = '^';
+            }
+//---------------------------------
+            *Dest = *Src;	// normal character, just copy
+LABEL_70:
+            Dest++;
+LABEL_71:
+            Src++;
+        }	// end while (*Src)
+    }
+	else
+	{		// Encode == 1, encodes control chars to their "printf" equivalents:
+		v13 = 0;
+		Dest = buf_0_0;
+		for ( Src = a1; *Src; ++Src )
+		{
+			v4 = (unsigned char)*Src;
+			switch (v4)
+			{
+			case 27:			// <ESC>
+			    *Dest++ = '\\';
+			    *Dest = 'e';
+				break;
+			case '\n':
+			    *Dest++ = '\\';
+			    *Dest = 'n';
+				break;
+			case '\f':
+			    *Dest++ = '\\';
+			    *Dest = 'f';
+				break;
+			case '\r':
+			    *Dest++ = '\\';
+			    *Dest = 'r';
+				break;
+			case '\t':
+			    *Dest++ = '\\';
+			    *Dest = 't';
+				break;
+			case '\\':
+			    *Dest++ = '\\';
+			    *Dest = '\\';
+				break;
+			case 191:	// '+'
+			case 219:	// '|'
+			case 170:	// '¬'
+				if ( v13 )
+					*Dest = *Src;
+				else
+				{
+					*Dest++ = '\\';
+					*Dest = *Src & 0x7F;
+				}
+				break;
+			default:
+				if ( *Src < 0 )
+					++v13;
+				if ( *Src <= 31 )	// control character
+				{
+					Dest += sprintf(Dest, "^%c", (unsigned char)*Src + 64);
+					continue;
+				}
+			    if ( *Src == 0x7f )	// logic seems crazy
+			    {
+					if ( *Src > 31 )	// always true
+						Dest += sprintf(Dest, "\\%3o", (unsigned char)*Src);
+					else
+						Dest += sprintf(Dest, "^%c", (unsigned char)*Src + 64);	// unreachable
+			        continue;
+				}
+				*Dest = *Src;	// normal character, just copy over
+				break;
+			}
+			++Dest;
+		}
+	}
+	*Dest = 0;
+	//DumpBlock(buf_0_0,strlen(buf_0_0));
+	//printf("convstr- returning buf_0_0 = %s\n",buf_0_0); 
+	return buf_0_0;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 2
+a18 3
+    signed int v4; // eax@@3
+    char v5; // al@@26
+    int v9; // ecx@@53
+d20 4
+a23 2
+    int v12; // [sp+8h] [bp-20h]@@35
+    int v13; // [sp+18h] [bp-10h]@@2
+d25 1
+a25 1
+printf("convstr(x%08X, %d) called\n",a1,Encode);
+d41 1
+a41 1
+                        *Dest = 27;
+d99 1
+a99 1
+                if ( (unsigned char)(*Src - 97) <= 0x19u )
+d125 1
+a125 1
+			case 27:
+d163 1
+a163 1
+				if ( *Src <= 31 )
+d184 1
+a184 1
+	printf("convstr- returning buf_0_0 = %s\n",buf_0_0); 
+@

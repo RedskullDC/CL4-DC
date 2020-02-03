@@ -1,0 +1,118 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2016.03.10.04.42.13;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef ALLOC_C
+#define ALLOC_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <string.h>		// for void *memset(void *s, int c, size_t n);
+#include "DBdefs.h"
+#include "cl4.h"
+
+void* alloc(unsigned int BytesRequired,void* a2)
+{
+	char *v3; // edi@@6
+	char *v4; // edi@@9
+	char *v6; // [sp+1Ch] [bp-5Ch]@@3
+	unsigned int v2; // esi@@1
+	char s[80]; // [sp+20h] [bp-58h]@@4
+
+	v2 = BytesRequired;
+	if ( BytesRequired <= 4 )
+		v2 = 4;
+	v6 = malloc(v2);
+	if ( !v6 )
+	{
+		sprintf(s, "out of heap (wanted %u bytes)", v2);
+		errexit(s, 0);
+	}
+	//DumpBlock(v6,BytesRequired);
+	// ensure the memory block returned is alway long-word aligned. -> 0x...8 or 0x...0
+	// Linux malloc() normally does that anyway?
+	v3 = v6;
+	if ( v2 > 7 && (int)v6 & 4 )
+	{
+		*(int*)v6 = 0;
+		v3 = v6 + 4;
+		v2 -= 4;
+	}
+	memset(v3, 0, 4 * (v2 >> 2));
+	v4 = &v3[4 * (v2 >> 2)];
+	if ( v2 & 2 )
+	{
+		*(short*)v4 = 0;
+		v4 += 2;
+	}
+	if ( v2 & 1 )
+		*v4 = 0;
+	*(int*)v6 = (int)a2;	// init value
+	return v6;
+}
+
+void* nalloc(unsigned int BytesRequired,void* Init)
+{
+  unsigned int v2; // esi@@1
+  char *result; // eax@@3
+  char *v4; // edi@@4
+  char *v5; // edi@@7
+  unsigned int v6; // [sp+8h] [bp-10h]@@4
+
+  v2 = BytesRequired;
+  if ( BytesRequired <= 4 )
+    v2 = 4;
+  result = malloc(v2);
+  if ( result )
+  {
+    v4 = result;
+    v6 = v2;
+    if ( v2 > 7 && (int)result & 4 )
+    {
+      *(int*)result = 0;
+      v4 = result + 4;
+      v6 = v2 - 4;
+    }
+    memset(v4, 0, 4 * (v6 >> 2));		// clears the allocated memory area to ZERO
+    v5 = &v4[4 * (v6 >> 2)];
+    if ( v6 & 2 )
+    {
+      *(short*)v5 = 0;
+      v5 += 2;
+    }
+    if ( v6 & 1 )
+      *v5 = 0;
+    *(int*)result = (int)Init;
+  }
+  return result;
+}
+
+void* nfree(void *ptr, void *a2)
+{
+  if ( ptr )
+    free(ptr);
+  return a2;
+}
+
+#endif
+@

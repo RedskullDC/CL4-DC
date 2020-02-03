@@ -13,12 +13,14 @@ void cdbfreepg(void)
 	}
 }
 
-char* _getpg(DBinfo *DBptr)
+PAGE* _getpg(DBinfo *DBptr)
 {
 	int RequiredPageSize;
 
-	RequiredPageSize = DBptr->DBpgsize + 16;	// Database pagesize in bytes
-	if ( psize < RequiredPageSize )
+	//RequiredPageSize = DBptr->DBpgsize + 16;	// Database pagesize in bytes
+	RequiredPageSize = DBptr->DBpgsize + sizeof(PAGEHDR);	// Database pagesize in bytes
+
+		if ( psize < RequiredPageSize )
 	{
 		if ( pbuf )
 			nfree(pbuf, 0);

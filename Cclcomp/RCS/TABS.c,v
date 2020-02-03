@@ -1,0 +1,1239 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.05.27.01.42.11;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.08.30.12.09.17;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.21.26;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef TABLES_C
+#define TABLES_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+
+void allptpt(unsigned short PTno, PTAB **a2)
+{
+     signed int v2; // eax@@1
+     PTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( ptptrs[v2] )
+     {
+         --v2;
+         if ( v2 < 0 )
+         {
+               fwrite("allptpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+         }
+    }
+	ptptrs[v2] = a2;
+	v3 = PTno ? &ptarr.TableAddr[PTno - 1] : 0;
+	*a2 = v3;
+
+}
+
+void dallptpt(PTAB **ptab)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( ptptrs[v1] != ptab )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     ptptrs[v1] = 0;
+}
+
+void allxtpt(short a1, XTAB **xtp)
+{
+    signed int v2; // edx@@1
+    XTAB *xt; // eax@@3
+
+    v2 = 29;
+    while ( xtptrs[v2] )
+    {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allxtpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+    }
+    xtptrs[v2] = xtp;
+    xt = a1 ? &xtarr.TableAddr[a1 - 1] : 0;
+    *xtp = xt;
+}
+
+void dallxtpt(XTAB **xtp)
+{
+     int v1; // eax@@1
+
+     v1 = 29;
+     while ( xtptrs[v1] != xtp )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     xtptrs[v1] = 0;
+}
+
+void movextptrs(XTAB *old, XTAB *New)
+{
+     signed int v2; // ecx@@1
+     XTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( xtptrs[v2] )
+          {
+               v3 = xtptrs[v2];
+               *v3 = (XTAB *)((char *)New + (((char *)*v3 - (char *)old)));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+short getxtmem(void)
+{
+     XTAB_ArrPtr *v0; // edi@@1
+     XTAB *v4; // esi@@4
+     XTAB *v5; // eax@@4
+     int v2; // ecx@@4
+     short v1; // ax@@3
+     short v3; // ax@@4
+
+     v0 = &xtarr + (unsigned short)curxtarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (XTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 50;
+          v0->MaxAvail = v3;
+          v4 = v0->TableAddr;
+          v5 = (XTAB*)mrealloc(v0->TableAddr, sizeof(XTAB) * v2, sizeof(XTAB) * (unsigned short)v3);	// 52
+          v0->TableAddr = v5;
+          movextptrs(v4, v5);
+     }
+     v0->NextElement++;
+     return v0->NextElement;
+}
+
+short getptmem()
+{
+	PTAB_ArrPtr *v0;
+	PTAB		*v4;
+	PTAB		*v5;
+	short		v1;
+	short		v2;
+	short		v3;
+	
+	v0 = &ptarr + curptarr;
+	if ( !v0->MaxAvail )
+		v0->TableAddr = (PTAB*)mmalloc(0);
+
+	v1 = v0->NextElement;
+	if ( v1 == v0->MaxAvail )
+	{
+		v2 = v0->MaxAvail;
+		v3 = v1 + 1500;                             // alloc in blocks of 1500
+		v0->MaxAvail = v3;
+		v4 = v0->TableAddr;
+		v5 = (PTAB*)mrealloc(v0->TableAddr, sizeof(PTAB) * v2, sizeof(PTAB) * (unsigned short)v3);	// 8 = sizeof(PTAB)
+		v0->TableAddr = v5;
+		moveptptrs(v4, v5);
+	}
+	v0->NextElement++;
+	return v0->NextElement;
+}
+
+void moveptptrs(PTAB *a1, PTAB *a2)
+{
+     signed int v2; // ecx@@1
+     PTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( ptptrs[v2] )
+          {
+               v3 = ptptrs[v2];
+               *v3 = (PTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+short getxfmem()
+{
+     XFTAB_ArrPtr	*v0;
+	 XFTAB			*xft_old;
+	 XFTAB			*xft_new;
+	 int			v2;
+	 short			v1;
+	 short			v3;
+	 short			result;
+	 
+     v0 = &xfarr + (unsigned short)curxfarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (XFTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 10;
+          v0->MaxAvail = v3;
+          xft_old = v0->TableAddr;
+          xft_new = (XFTAB *)mrealloc(v0->TableAddr, sizeof(XFTAB) * v2, sizeof(XFTAB) * (unsigned short)v3);	// sizeof(XFTAB) = 8
+          v0->TableAddr = xft_new;
+          movexfptrs(xft_old, xft_new);
+     }
+     result = v0->NextElement + 1;
+     v0->NextElement = result;
+     return result;
+}
+
+void allxfpt(unsigned short XFno, XFTAB **a2)
+{
+     signed int v2; // eax@@1
+     XFTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( xfptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allxfpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     xfptrs[v2] = a2;
+     v3 = XFno ? &xfarr.TableAddr[XFno - 1] : 0;
+     *a2 = v3;
+}
+void dallxfpt(XFTAB **xftab)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( xfptrs[v1] != xftab )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     xfptrs[v1] = 0;
+}
+
+void movexfptrs(XFTAB *xft_from, XFTAB *xft_to)
+{
+     signed int v2; // ecx@@1
+     XFTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( xfptrs[v2] )
+          {
+               v3 = xfptrs[v2];
+               *v3 = (XFTAB *)((char *)xft_to + ((char *)*v3 - (char *)xft_from));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+short getenmem()
+{
+     ENTAB_ArrPtr *v0; // edi@@1
+     ENTAB *v4; // esi@@4
+     ENTAB *v5; // eax@@4
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+
+     v0 = &enarr + (unsigned short)curenarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (ENTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 200;
+          v0->MaxAvail = v3;
+          v4 = v0->TableAddr;
+          v5 = (ENTAB *)mrealloc(v0->TableAddr, sizeof(ENTAB) * v2, sizeof(ENTAB) * (unsigned short)v3);	// sizeof(ENTAB) = 12
+          v0->TableAddr = v5;
+          moveenptrs(v4, v5);
+     }
+     v0->NextElement++;
+     return v0->NextElement;
+}
+
+void allenpt(short a1, ENTAB **a2)
+{
+     signed int v2; // edx@@1
+     ENTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( enptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allenpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     enptrs[v2] = a2;
+     v3 = a1 ? &enarr.TableAddr[a1 - 1] : 0;
+     *a2 = v3;
+}
+void dallenpt(ENTAB **a1)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( enptrs[v1] != a1 )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     enptrs[v1] = 0;
+}
+void moveenptrs(ENTAB *a1, ENTAB *a2)
+{
+     signed int v2; // ecx@@1
+     ENTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( enptrs[v2] )
+          {
+               v3 = enptrs[v2];
+               *v3 = (ENTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+
+void allrdpt(unsigned short RDno, RDTAB **a2)
+{
+     signed int v2; // edx@@1
+     RDTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( rdptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allrdpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     rdptrs[v2] = a2;
+     v3 = RDno ? &rdarr.TableAddr[RDno - 1] : 0;
+     *a2 = v3;
+}
+
+void dallrdpt(RDTAB **rdtb)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( rdptrs[v1] != rdtb )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     rdptrs[v1] = 0;
+}
+
+void moverdptrs(RDTAB *a1, RDTAB *a2)
+{
+     signed int v2; // ecx@@1
+     RDTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( rdptrs[v2] )
+          {
+               v3 = rdptrs[v2];
+               *v3 = (RDTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+short getrtmem(void)
+{
+     RTAB_ArrPtr	*v0; // edi@@1
+     RTAB			*v4; // esi@@4
+     RTAB			*v5; // eax@@4
+     int			v2; // edx@@4
+     short			v1; // ax@@3
+     short			v3; // ax@@4
+     short			result; // ax@@5
+
+     v0 = &rtarr + (unsigned short)currtarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (RTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 50;                         // alloc in blocks of 50
+          v0->MaxAvail = v3;
+          v4 = v0->TableAddr;
+          v5 = (RTAB *)mrealloc(v0->TableAddr, sizeof(RTAB) * v2, sizeof(RTAB) * (unsigned short)v3);	// sizeof(RTAB) = 20
+          v0->TableAddr = v5;
+          movertptrs(v4, v5);
+     }
+     result = v0->NextElement + 1;
+     v0->NextElement = result;
+     return result;
+}
+
+void dallrtpt(RTAB **a1)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( rtptrs[v1] != a1 )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     rtptrs[v1] = 0;
+}
+
+void allrtpt(unsigned short a1, RTAB **a2)
+{
+     signed int v2; // edx@@1
+     RTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( rtptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allrtpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     rtptrs[v2] = a2;
+     v3 = a1 ? &rtarr.TableAddr[a1 - 1] : 0;
+     *a2 = v3;
+}
+
+void movertptrs(RTAB *Old, RTAB *New)
+{
+     signed int v2; // ecx@@1
+     RTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( rtptrs[v2] )
+          {
+               v3 = rtptrs[v2];
+               *v3 = (RTAB *)((char *)New + ((char *)*v3 - (char *)Old));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+
+void moveprptrs(PRTAB *a1, PRTAB *a2)
+{
+     signed int v2; // ecx@@1
+     PRTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( prptrs[v2] )
+          {
+               v3 = prptrs[v2];
+               *v3 = (PRTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+
+short getprmem()
+{
+     PRTAB_ArrPtr *v0; // edi@@1
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+     PRTAB *v4; // esi@@4
+     PRTAB *v5; // eax@@4
+     short result; // ax@@5
+
+    v0 = &prarr + (unsigned short)curprarr;
+	//eprint("getprmem() - v0->MaxAvail = %d , v0->NextElement = %d\n",v0->MaxAvail,v0->NextElement);
+
+    if ( !v0->MaxAvail )
+		v0->TableAddr = (PRTAB*)mmalloc(0);
+    v1 = v0->NextElement;
+    if ( v1 == v0->MaxAvail )
+    {
+		v2 = v0->MaxAvail;
+        v3 = v1 + 50;
+        v0->MaxAvail = v3;
+		//eprint("getprmem(realloc) - v0->MaxAvail = %d \n",v0->MaxAvail);
+        v4 = v0->TableAddr;
+        v5 = (PRTAB *)mrealloc(v0->TableAddr, sizeof(PRTAB) * v2, sizeof(PRTAB) * (unsigned short)v3);	// sizeof(PRTAB) = 10
+		//eprint("getprmem(realloc) - v5 = x%08X\n",v5);
+        v0->TableAddr = v5;
+        moveprptrs(v4, v5);
+	}
+    result = v0->NextElement + 1;
+    v0->NextElement = result;
+	//eprint("getprmem - result = %d \n",result);
+    return result;
+}
+
+void allprpt(unsigned short a1, PRTAB **a2)
+{
+     signed int v2; // edx@@1
+     PRTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( prptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allprpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     prptrs[v2] = a2;
+     v3 = a1 ? &prarr.TableAddr[a1 - 1] : 0;
+     *a2 = v3;
+}
+
+void dallprpt(PRTAB **a1)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( prptrs[v1] != a1 )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     prptrs[v1] = 0;
+}
+
+short getsfmem()
+{
+     SFTAB_ArrPtr *v0; // edi@@1
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+     SFTAB *v4; // esi@@4
+     SFTAB *v5; // eax@@4
+     short result; // ax@@5
+
+     v0 = &sfarr + cursfarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (SFTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 10;
+          v0->MaxAvail = v3;
+          v4 = v0->TableAddr;
+          v5 = (SFTAB *)mrealloc(v0->TableAddr, sizeof(SFTAB) * v2, sizeof(SFTAB) * (unsigned short)v3);	// sizeof(SFTAB) = 8
+          v0->TableAddr = v5;
+          movesfptrs(v4, v5);
+     }
+     result = v0->NextElement + 1;
+     v0->NextElement = result;
+     return result;
+}
+void allsfpt(unsigned short a1, SFTAB **a2)
+{
+     signed int v2; // eax@@1
+     SFTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( sfptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allsfpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     sfptrs[v2] = a2;
+     v3 = a1 ? &sfarr.TableAddr[a1 - 1] : 0;
+     *a2 = v3;
+}
+
+void dallsfpt(SFTAB **a1)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( sfptrs[v1] != a1 )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     sfptrs[v1] = 0;
+}
+
+void movesfptrs(SFTAB *a1, SFTAB *a2)
+{
+     signed int v2; // ecx@@1
+     SFTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( sfptrs[v2] )
+          {
+               v3 = sfptrs[v2];
+               *v3 = (SFTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+short getramem(void)
+{
+     RATAB_ArrPtr *v0; // esi@@1
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+     short result; // ax@@5
+
+     v0 = &raarr + curraarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (RATAB *)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 10;
+          v0->MaxAvail = v3;
+          v0->TableAddr = (RATAB *)mrealloc(v0->TableAddr, sizeof(RATAB) * v2, sizeof(RATAB) * (unsigned short)v3);	// sizeof(RATAB) = 12
+     }
+     result = v0->NextElement + 1;
+     v0->NextElement = result;
+     return result;
+}
+
+short getkxmem(void)
+{
+     KXTAB_ArrPtr *v0; // edi@@1
+     KXTAB *v4; // esi@@4
+     KXTAB *v5; // eax@@4
+     int v2; // edx@@4
+     short v1; // ax@@3
+     short v3; // ax@@4
+     short result; // ax@@5
+
+     v0 = &kxarr + curkxarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (KXTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 10;
+          v0->MaxAvail = v3;
+          v4 = v0->TableAddr;
+          v5 = (KXTAB *)mrealloc(v0->TableAddr, sizeof(KXTAB) * v2, sizeof(KXTAB) * (unsigned short)v3); //sizeof(KXTAB) = 64
+          v0->TableAddr = v5;
+          movekxptrs(v4, v5);
+     }
+     result = v0->NextElement + 1;
+     v0->NextElement = result;
+     return result;
+}
+
+void dallkxpt(KXTAB **kxtab)
+{
+     signed int v1; // eax@@1
+
+     v1 = 29;
+     while ( kxptrs[v1] != kxtab )
+     {
+          --v1;
+          if ( v1 < 0 )
+               return;
+     }
+     kxptrs[v1] = 0;
+}
+void allkxpt(unsigned short a1, KXTAB **a2)
+{
+     signed int v2; // eax@@1
+     KXTAB *v3; // eax@@3
+
+     v2 = 29;
+     while ( kxptrs[v2] )
+     {
+          --v2;
+          if ( v2 < 0 )
+          {
+               fwrite("allkxpt: no pointer space available\n", 1u, 0x24u, stderr);
+               exit(1);
+          }
+     }
+     kxptrs[v2] = a2;
+     v3 = a1 ? &kxarr.TableAddr[a1 - 1] : 0;
+     *a2 = v3;
+}
+
+void movekxptrs(KXTAB *a1, KXTAB *a2)
+{
+     signed int v2; // ecx@@1
+     KXTAB **v3; // edx@@3
+
+     v2 = 29;
+     do
+     {
+          if ( kxptrs[v2] )
+          {
+               v3 = kxptrs[v2];
+               *v3 = (KXTAB *)((char *)a2 + ((char *)*v3 - (char *)a1));
+          }
+          --v2;
+     }
+     while ( v2 >= 0 );
+}
+
+short getptabp(short a1)
+{
+	PTAB_ArrPtr *PTarr; // edx@@1
+	unsigned short v3; // edx@@4
+
+	PTarr = &ptarr + (unsigned short)curptarr;
+	
+	if ( a1 > PTarr->NextElement )
+		__assert_fail("seq <= pt->nextel", "getpt.c", 35, "getptabp");
+
+	if ( a1 == PTarr->NextElement )
+	{
+		v3 = getptmem();
+
+		if ( a1 + 1 != v3 )
+			__assert_fail("seq+1 == ptidx", "getpt.c", 45, "getptabp");
+	}
+	else
+	{
+		v3 = a1 + 1;
+	}
+	//printf("getptabp(%d) returned %d\n",a1, v3);
+	return v3;
+}
+
+//  Now a MACRO. see DBdefs.h
+inline PTAB* PTARR(unsigned short PTABno)
+{
+	//printf("PTARR(%d) \n", PTABno);
+	//if ( PTABno )
+	//	return &ptarr.TableAddr[PTABno - 1];
+	//return 0;
+	return PTABno ? &ptarr.TableAddr[PTABno - 1] : 0;
+}
+
+
+int newltab()
+{
+	LTAB **v1; // eax@@4
+	LTAB **v2; // edx@@5
+	int v0; // edi@@2
+	unsigned int v4; // [sp+18h] [bp-10h]@@0
+
+	if ( no_ltabs )
+	{
+		v0 = no_ltabs + 1;
+		v4 = lt - ltab;
+	}
+	else
+	{
+		v0 = 0;
+	}
+	v1 = (LTAB **)mrealloc(ltab, 4 * v0, 4 * no_ltabs + 8);
+	ltab = v1;
+	if ( v0 )
+		v2 = &v1[v4];
+	else
+		v2 = ltab;
+	lt = v2;
+	return no_ltabs++ + 1;
+}
+
+int newbtab()
+{
+     int v0; // edx@@2
+
+     if ( no_btabs )
+          v0 = no_btabs + 1;
+     else
+          v0 = 0;
+     btab = (BTAB *)mrealloc(btab, sizeof(BTAB) * v0, sizeof(BTAB) * (no_btabs + 2));	// sizeof(BTAB) = 72
+     return no_btabs++ + 1;
+}
+
+short getrdmem()
+{
+     RDTAB_ArrPtr *v0; // edi@@1
+     RDTAB *v4; // esi@@4
+     RDTAB *v5; // eax@@4
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+     short result; // ax@@5
+
+     v0 = &rdarr + currdarr;
+     if ( !v0->MaxAvail )
+          v0->TableAddr = (RDTAB*)mmalloc(0);
+     v1 = v0->NextElement;
+     if ( v1 == v0->MaxAvail )
+     {
+          v2 = v0->MaxAvail;
+          v3 = v1 + 50;
+          v0->MaxAvail = v3;
+          v4 = v0->TableAddr;
+          v5 = (RDTAB *)mrealloc(v0->TableAddr, sizeof(RDTAB) * v2, sizeof(RDTAB) * (unsigned short)v3);	// 12 = sizeof(RDTAB)
+          v0->TableAddr = v5;
+          moverdptrs(v4, v5);
+     }
+     result = v0->NextElement + 1;
+     v0->NextElement = result;
+     return result;
+}
+
+short getstrmem(int a1)
+{
+     CLStrArray *v1; // esi@@3
+     int v2; // edx@@6
+     size_t v3; // eax@@6
+     short v4; // ax@@7
+
+     if ( a1 > 199 )
+          __assert_fail("amt < 200", "getmem.c", 0x203u, "getstrmem");
+     v1 = &strarr + curstrarr;
+     if ( !v1->StrMaxSize )
+          v1->StringTable = (char *)mmalloc(0);
+     if ( v1->StrTableSize + a1 >= v1->StrMaxSize )
+     {
+          v2 = v1->StrMaxSize;
+          v3 = v1->StrMaxSize + 200;            // blocks of 200bytes at a time
+          v1->StrMaxSize = v3;
+          v1->StringTable = (char *)mrealloc(v1->StringTable, v2, v3);
+     }
+     v4 = v1->StrTableSize;
+     v1->StrTableSize += a1;
+     return v4 + 1;
+}
+
+void newitab(void)
+{
+     ITAB *v1; // eax@@4
+     int v0; // edi@@2
+     unsigned int v2; // [sp+18h] [bp-10h]@@0
+
+     if ( no_itabs )
+     {
+          v0 = no_itabs + 1;
+          v2 = it - itab;
+     }
+     else
+     {
+          v0 = 0;
+     }
+     v1 = (ITAB *)mrealloc(itab, sizeof(ITAB) * v0, sizeof(ITAB) * (no_itabs + 2));	// sizeof(ITAB) = 16
+     itab = v1;
+     if ( v0 )
+          it = &v1[v2];
+     else
+          it = itab;
+     ++no_itabs;
+}
+
+#endif
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d28 1
+d99 3
+a102 1
+     int v2; // ecx@@4
+a103 2
+     XTAB *v4; // esi@@4
+     XTAB *v5; // eax@@4
+d115 1
+a115 1
+          v5 = (XTAB*)mrealloc(v0->TableAddr, 52 * v2, 52 * (unsigned short)v3);
+d125 7
+a131 7
+	PTAB_ArrPtr *v0; // edi@@1
+	short v1; // ax@@3
+	short v2; // edx@@4
+	short v3; // ax@@4
+	PTAB	*v4; // esi@@4
+	PTAB	*v5; // eax@@4
+
+d135 1
+a136 1
+//printf("getptmem 139 v1 = %d, MaxAvail = %d\n",v1, v0->MaxAvail);
+a138 1
+		//printf("getptmem 144 v1(%d) == MaxAvail(%d)\n",v1, v0->MaxAvail);
+d143 1
+a143 1
+		v5 = (PTAB*)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);	// 8 = sizeof(PTAB)
+a147 1
+//printf("getptmem 154 MaxAvail = %d, NextElement = %d\n", v0->MaxAvail,v0->NextElement);
+d170 8
+a177 8
+     XFTAB_ArrPtr *v0; // edi@@1
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+     XFTAB *xft_old; // esi@@4
+     XFTAB *xft_new; // eax@@4
+     short result; // ax@@5
+
+d188 1
+a188 1
+          xft_new = (XFTAB *)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);
+d250 2
+a254 2
+     ENTAB *v4; // esi@@4
+     ENTAB *v5; // eax@@4
+d266 1
+a266 1
+          v5 = (ENTAB *)mrealloc(v0->TableAddr, 12 * v2, 12 * (unsigned short)v3);
+d377 7
+a383 7
+     RTAB_ArrPtr *v0; // edi@@1
+     short v1; // ax@@3
+     int v2; // edx@@4
+     short v3; // ax@@4
+     RTAB *v4; // esi@@4
+     RTAB *v5; // eax@@4
+     short result; // ax@@5
+d395 1
+a395 1
+          v5 = (RTAB *)mrealloc(v0->TableAddr, 20 * v2, 20 * (unsigned short)v3);
+d497 1
+a497 1
+        v5 = (PRTAB *)mrealloc(v0->TableAddr, 10 * v2, 10 * (unsigned short)v3);
+d562 1
+a562 1
+          v5 = (SFTAB *)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);
+d638 1
+a638 1
+          v0->TableAddr = (RATAB *)mrealloc(v0->TableAddr, 12 * v2, 12 * (unsigned short)v3);
+d648 3
+a651 1
+     int v2; // edx@@4
+a652 2
+     KXTAB *v4; // esi@@4
+     KXTAB *v5; // eax@@4
+d665 1
+a665 1
+          v5 = (KXTAB *)mrealloc(v0->TableAddr, v2 << 6, (unsigned short)v3 << 6);
+d763 22
+a784 22
+  int v0; // edi@@2
+  LTAB **v1; // eax@@4
+  LTAB **v2; // edx@@5
+  unsigned int v4; // [sp+18h] [bp-10h]@@0
+
+  if ( no_ltabs )
+  {
+    v0 = no_ltabs + 1;
+    v4 = lt - ltab;
+  }
+  else
+  {
+    v0 = 0;
+  }
+  v1 = (LTAB **)mrealloc(ltab, 4 * v0, 4 * no_ltabs + 8);
+  ltab = v1;
+  if ( v0 )
+    v2 = &v1[v4];
+  else
+    v2 = ltab;
+  lt = v2;
+  return no_ltabs++ + 1;
+d795 1
+a795 1
+     btab = (BTAB *)mrealloc(btab, 72 * v0, 72 * no_btabs + 144);
+d802 2
+a806 2
+     RDTAB *v4; // esi@@4
+     RDTAB *v5; // eax@@4
+d819 1
+a819 1
+          v5 = (RDTAB *)mrealloc(v0->TableAddr, 12 * v2, 12 * (unsigned short)v3);	// 12 = sizeof(RDTAB)
+d854 1
+a855 1
+     ITAB *v1; // eax@@4
+d867 1
+a867 1
+     v1 = (ITAB *)mrealloc(itab, 16 * v0, 16 * no_itabs + 32);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d18 3
+a20 3
+          --v2;
+          if ( v2 < 0 )
+          {
+d23 5
+a27 7
+          }
+     }
+     ptptrs[v2] = a2;
+     v3 = 0;
+     if ( PTno )
+          v3 = (PTAB *)&ptarr.TableAddr[8 * (PTno - 1)];
+     *a2 = v3;
+d46 2
+a47 2
+     signed int v2; // edx@@1
+     XTAB *xt; // eax@@3
+d49 3
+a51 3
+     v2 = 29;
+     while ( xtptrs[v2] )
+     {
+d58 4
+a61 6
+     }
+     xtptrs[v2] = xtp;
+     xt = 0;
+     if ( a1 )
+          xt = (XTAB *)&xtarr.TableAddr[52 * (a1 - 1)];
+     *xtp = xt;
+d97 1
+a97 1
+     CLArrayPtr *v0; // edi@@1
+d106 1
+a106 1
+          v0->TableAddr = (char *)mmalloc(0);
+d113 1
+a113 1
+          v4 = (XTAB*)v0->TableAddr;
+d115 1
+a115 1
+          v0->TableAddr = (char *)v5;
+d124 1
+a124 1
+	CLArrayPtr *v0; // edi@@1
+d133 1
+a133 1
+		v0->TableAddr = (char *)mmalloc(0);
+d142 3
+a144 3
+		v4 = (PTAB*)v0->TableAddr;
+		v5 = (PTAB*)mrealloc(v0->TableAddr, 8 * v2, 8 * (unsigned short)v3);
+		v0->TableAddr = (char*)v5;
+d171 1
+a171 1
+     CLArrayPtr *v0; // edi@@1
+d181 1
+a181 1
+          v0->TableAddr = (char *)mmalloc(0);
+d188 1
+a188 1
+          xft_old = (XFTAB *)v0->TableAddr;
+d190 1
+a190 1
+          v0->TableAddr = (char *)xft_new;
+d214 1
+a214 3
+     v3 = 0;
+     if ( XFno )
+          v3 = (XFTAB *)&xfarr.TableAddr[8 * (XFno - 1)];
+d250 1
+a250 1
+     CLArrayPtr *v0; // edi@@1
+d259 1
+a259 1
+          v0->TableAddr = (char *)mmalloc(0);
+d266 1
+a266 1
+          v4 = (ENTAB *)v0->TableAddr;
+d268 1
+a268 1
+          v0->TableAddr = (char *)v5;
+d291 1
+a291 3
+     v3 = 0;
+     if ( a1 )
+          v3 = (ENTAB *)&enarr.TableAddr[12 * (a1 - 1)];
+d341 1
+a341 3
+     v3 = 0;
+     if ( RDno )
+          v3 = (RDTAB *)&rdarr.TableAddr[12 * (RDno - 1)];
+d378 1
+a378 1
+     CLArrayPtr *v0; // edi@@1
+d388 1
+a388 1
+          v0->TableAddr = (char *)mmalloc(0);
+d395 1
+a395 1
+          v4 = (RTAB *)v0->TableAddr;
+d397 1
+a397 1
+          v0->TableAddr = (char *)v5;
+d435 1
+a435 3
+     v3 = 0;
+     if ( a1 )
+          v3 = (RTAB *)&rtarr.TableAddr[20 * a1 - 20];
+d477 1
+a477 1
+     CLArrayPtr *v0; // edi@@1
+d489 1
+a489 1
+		v0->TableAddr = (char *)mmalloc(0);
+d497 1
+a497 1
+        v4 = (PRTAB *)v0->TableAddr;
+d500 1
+a500 1
+        v0->TableAddr = (char *)v5;
+d525 1
+a525 3
+     v3 = 0;
+     if ( a1 )
+          v3 = (PRTAB *)&prarr.TableAddr[10 * a1 - 10];
+d545 1
+a545 1
+     CLArrayPtr *v0; // edi@@1
+d555 1
+a555 1
+          v0->TableAddr = (char *)mmalloc(0);
+d562 1
+a562 1
+          v4 = (SFTAB *)v0->TableAddr;
+d564 1
+a564 1
+          v0->TableAddr = (char *)v5;
+d587 1
+a587 3
+     v3 = 0;
+     if ( a1 )
+          v3 = (SFTAB *)&sfarr.TableAddr[8 * (a1 - 1)];
+d624 1
+a624 1
+     CLArrayPtr *v0; // esi@@1
+d632 1
+a632 1
+          v0->TableAddr = (char *)mmalloc(0);
+d639 1
+a639 1
+          v0->TableAddr = (char *)mrealloc(v0->TableAddr, 12 * v2, 12 * (unsigned short)v3);
+d648 1
+a648 1
+     CLArrayPtr *v0; // edi@@1
+d658 1
+a658 1
+          v0->TableAddr = (char *)mmalloc(0);
+d665 1
+a665 1
+          v4 = (KXTAB *)v0->TableAddr;
+d667 1
+a667 1
+          v0->TableAddr = (char *)v5;
+d704 1
+a704 3
+     v3 = 0;
+     if ( a1 )
+          v3 = (KXTAB *)&kxarr.TableAddr[64 * a1 - 64];
+d728 1
+a728 1
+	CLArrayPtr *PTarr; // edx@@1
+d751 2
+a752 1
+PTAB* PTARR(unsigned short PTABno)
+d755 4
+a758 3
+	if ( PTABno )
+		return (PTAB *)&ptarr.TableAddr[8 * (PTABno - 1)];
+	return 0;
+d761 1
+d802 1
+a802 1
+     CLArrayPtr *v0; // edi@@1
+d812 1
+a812 1
+          v0->TableAddr = (char *)mmalloc(0);
+d819 3
+a821 3
+          v4 = (RDTAB *)v0->TableAddr;
+          v5 = (RDTAB *)mrealloc(v0->TableAddr, 12 * v2, 12 * (unsigned short)v3);
+          v0->TableAddr = (char *)v5;
+@

@@ -5,8 +5,8 @@
 #include "cl4.h"
 #include "lvarnames.h"			// for bit field values
 
-void DumpBlock(char* Buffer, int NumBytes);
-void DumpTDptr(TDinfo* TD,bool ShowTDef);
+//void DumpBlock(char* Buffer, int NumBytes);
+//void DumpTDptr(TDinfo* TD,bool ShowTDef);
 
 /* contains rfree(), rkfree(), rdfree(), ravail(), tfree()*/
 
@@ -47,7 +47,7 @@ void rfree(int TDno, int FieldNo)
 			switch (fld->FLDtype)
 			{
 				case 'C':
-					zap(fld->FLDdata,(fld->FLDlen + 1));	// string
+					memset(fld->FLDdata, 0, fld->FLDlen + 1);		// string
 					break;
 				// *** LIBCL4 functionality below ***
 				//case 'D':
@@ -56,7 +56,7 @@ void rfree(int TDno, int FieldNo)
 				//	break;
 				default:
 					if ( fld->FLDlen )
-						zap(fld->FLDdata,sizeof(double));	// everything else stored internally as a double
+						memset(fld->FLDdata, 0, sizeof(double));		// everything else stored internally as a double
 					break;
 			}
 		}
@@ -79,9 +79,9 @@ void rkfree(int TDno)
 		fld->FLDstat = (fld->FLDstat | fld_ZERO) & ~(fld_DATA_AVAIL|fld_SUBREC|fld_REC_LOADED);
 
 		if ( fld->FLDtype == 'C' )
-			zap(fld->FLDdata, (fld->FLDlen + 1));	// string variable
+			memset(fld->FLDdata, 0, fld->FLDlen + 1);
 		else if ( fld->FLDlen )
-			zap(fld->FLDdata,sizeof(double));		// everything else stored internally as a double
+			memset(fld->FLDdata, 0, sizeof(double));		// everything else stored internally as a double
 
 		// *****   doesn't zap Date/Time fields when in Key? (80 bytes)??
 		fld++;
@@ -106,7 +106,7 @@ void rdfree(int TDno)
 			switch (fld->FLDtype)
 			{
 				case 'C':
-					zap(fld->FLDdata,(fld->FLDlen + 1));		// string
+					memset(fld->FLDdata, 0, fld->FLDlen + 1);	// string
 					break;
 				// **** LIBCL4 different ***
 				//case 'D':
@@ -115,7 +115,7 @@ void rdfree(int TDno)
 				//	break;
 				default:
 					if( fld->FLDlen )
-						zap(fld->FLDdata, sizeof(double));		// everything else stored as double
+						memset(fld->FLDdata, 0, sizeof(double));		// everything else stored internally as a double
 					break;
 			}
 		}
@@ -136,7 +136,7 @@ void tfree(int TDno)
 	fld		= TTptr->TTfields;
 	for ( buffptr = TTptr->TDworkarea1; fld->FLDelemID; ++fld )
 	{
-		zap(buffptr, fld->FLDlen);
+		memset(buffptr, 0, fld->FLDlen);
 		fld->FLDstat &= ~fld_REC_LOADED;            // clear fld_REC_LOADED flag
 		buffptr += fld->FLDlen;
 	}

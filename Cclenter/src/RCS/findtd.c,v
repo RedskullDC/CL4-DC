@@ -1,0 +1,149 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.01.13.23.29.56;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.10.29.05.37.48;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef FINDTD_C
+#define FINDTD_C
+
+#include <stdio.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+// Different functionality to libcl4.  No Context involved, since our TD list is private.
+
+
+int findtd(char *TableName, int DBno)
+{
+    TDesc *TTptr;
+	
+    int TDno;
+	int MaxLen;
+	
+	//printf("findtd(%s,%d)\n",TableName,DBno );
+    if ( TableName )
+    {
+        MaxLen = strlen(TableName) + 1;
+        if ( DBno >= 0 )	// Set DBno to -1 to look for TableName in all open DB's
+        {
+            /*TTptr = ttab;
+            TDno = 0;
+            if ( no_ttabs > TDno )
+            {
+                while ( TTptr->DBnumber != DBno || !cmpbuf(TableName, TTptr->TableAlias, MaxLen) && compare(TableName, TTptr->TableName) )
+                {
+                    TDno++;
+                    TTptr++;
+                    if ( TDno >= no_ttabs )
+                        goto LABEL_8;
+                }
+                return TDno;
+            }*/
+			for (TTptr = ttab, TDno = 0 ; no_ttabs > TDno ; TDno++, TTptr++)
+			{
+				if ( TTptr->DBnumber == DBno && cmpbuf(TableName, TTptr->TableAlias, MaxLen) || !compare(TableName, TTptr->TableName) )
+					return TDno;
+			}
+        }
+
+		// look for TableName in all open DB's, but only check NON-SYSTEM TD's!  (ignore 0,1,2)
+
+        /*TTptr = ttab + 3;
+        TDno = 3;
+        if ( no_ttabs > TDno )
+        {
+            while ( !TTptr->TableName[0] || !cmpbuf(TableName, TTptr->TableAlias, MaxLen) && compare(TableName, TTptr->TableName) )
+            {
+                TDno++;
+                TTptr++;
+                if ( TDno >= no_ttabs )
+                    return -1;
+            }
+            return TDno;
+        }*/
+		for (TTptr = ttab + 3, TDno = 3 ; no_ttabs > TDno ; TDno++, TTptr++)
+		{
+			if ( TTptr->TableName[0] && cmpbuf(TableName, TTptr->TableAlias, MaxLen) || !compare(TableName, TTptr->TableName) )
+				return TDno;
+		}
+    }
+    return -1 ;	// error_exit : not found!
+}
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a13 1
+	TDesc *TTptr2;
+d15 4
+a18 6
+    int TDno; // edi@@3
+    int result; // eax@@1
+    int MaxLen; // [sp+18h] [bp-10h]@@2
+
+//printf("findtd(%s,%d)\n",TableName,DBno );
+    result = -1;
+d24 1
+a24 1
+            TTptr = ttab;
+d26 1
+a26 1
+            if ( no_ttabs > 0 )
+d30 2
+a31 2
+                    ++TDno;
+                    ++TTptr;
+d36 6
+a41 1
+            }
+d43 4
+a46 2
+LABEL_8:
+        TTptr2 = ttab + 3;
+d48 1
+a48 1
+        if ( no_ttabs > 3 )
+d50 1
+a50 1
+            while ( !TTptr2->TableName[0] || !cmpbuf(TableName, TTptr2->TableAlias, MaxLen) && compare(TableName, TTptr2->TableName) )
+d52 2
+a53 2
+                ++TDno;
+                ++TTptr2;
+d58 6
+a63 2
+        }
+        result = -1;
+d65 1
+a65 1
+    return result;
+@

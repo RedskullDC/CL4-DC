@@ -21,7 +21,7 @@ short gettf(short ENTno, int *TDno, char *FLDtype)
 	*TDno	= 0;
     FieldNo = -1;
 	
-	if ( !entab || (entab->entype == 2 && entab->TTno & 0x0100))	// 0x0100 == Reserved Name flag
+	if ( !entab || (entab->entype == 2 && entab->Enun.Enop.Enoper & 0x0100))	// 0x0100 == Reserved Name flag
 	{
         *FLDtype	= 0;
         // return		FieldNo;	// -1
@@ -40,8 +40,8 @@ short gettf(short ENTno, int *TDno, char *FLDtype)
 			*FLDtype = 'C';
 			break;
 		case 1:
-			TTno	= entab->TTno;
-			FieldNo = entab->RecNo;
+			TTno	= entab->Enun.Enref.TTno;
+			FieldNo = entab->Enun.Enref.VarNum;
 			*TDno	= TTno;
 			if ( TTno )
 				fld = &ttab[TTno].TTfields[FieldNo];
@@ -84,7 +84,7 @@ int gettfs(unsigned short ENTABno, int *TTno, char *FLDtype, short *FLDstat)
     if ( !entb )				// should be unreachable
 		goto LABEL_23;
 	
-	if ( entb->entype == 2 && entb->TTno & 0x0100 )
+	if ( entb->entype == 2 && entb->Enun.Enop.Enoper & 0x0100 )
     {
 LABEL_23:
         *FLDtype	= 0;
@@ -103,9 +103,9 @@ LABEL_23:
 		*FLDtype = 'C';			// embedded String
         break;
 	case 0x0001:
-		v6		= entb->TTno;
+		v6		= entb->Enun.Enref.TTno;
         *TTno	= v6;								// Update caller memory directly
-        FieldNo = entb->RecNo;
+        FieldNo = entb->Enun.Enref.VarNum;
         if ( v6 )
 			fld = &ttab[*TTno].TTfields[FieldNo];	// Table Field
 		else

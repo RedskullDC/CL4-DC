@@ -1,0 +1,1011 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.02.09.01.59.02;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.05.11.23.13;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef FUNCDEFS_H
+#define FUNCDEFS_H
+
+#include <stdio.h>
+#include <stdarg.h>			// for var args stuff
+#include <sys/utsname.h>	// for getnodename()
+#include "DBdefs.h"
+#include "cl4.h"
+
+
+// cmd line switches
+int		lddeb;
+char	*incl_dir;
+char	*dbrename;
+int		check;
+int		Key_Debug;
+int		tpenc;
+int		cl_tx;
+int		pr_scr;
+int		npr_scr;
+int		noLog;
+int		noWarnings;
+short	TimeOut;
+char	TAB;
+char	FillChar;
+
+//------------
+
+
+
+FILE	*op;
+FILE	*fp;		// used in loadenc
+char**	dbarray;	// used in loadenc for DB rename
+FCB		*_files;
+ONESC*	oelist;
+char	**argvect;
+char	**envvect;
+char	*fullpname;
+STAB**	stab;
+
+#define ptrarrsize 30
+
+//XTAB	**xtptrs[ptrarrsize];
+PTAB	**ptptrs[ptrarrsize];		// only array used in clenter, rest are only used in clcomp
+//ENTAB	**enptrs[ptrarrsize];
+//RDTAB	**rdptrs[ptrarrsize];
+//XFTAB	**xfptrs[ptrarrsize];
+//RTAB	**rtptrs[ptrarrsize];
+//PRTAB	**prptrs[ptrarrsize];
+//SFTAB	**sfptrs[ptrarrsize];
+//KXTAB	**kxptrs[ptrarrsize];
+
+
+PTAB_ArrPtr	 ptarr;					// PTAB*
+RDTAB_ArrPtr rdarr;					// RDTAB
+RATAB_ArrPtr raarr;					// RATAB	Range records
+PRTAB_ArrPtr prarr;					// PRTAB	Print statements
+XFTAB_ArrPtr xfarr;					// XFTAB	Copy tables/fields function
+SFTAB_ArrPtr sfarr;					// SFTAB
+RTAB_ArrPtr	 rtarr;					// RTAB		Record refs
+XTAB_ArrPtr	 xtarr;					// XTAB*	Accept fields 
+KXTAB_ArrPtr kxarr;					// KXTAB	Create Temp table records
+ENTAB_ArrPtr enarr;					// ENTAB	Expressions
+
+
+CLStrArray	strarr;
+unsigned short	curptarr  = 0;
+unsigned short	curxtarr  = 0;
+unsigned short	currtarr  = 0;
+unsigned short	curenarr  = 0;
+unsigned short	curstrarr = 0;
+unsigned short	currdarr  = 0;
+unsigned short	curxfarr  = 0;
+unsigned short	curprarr  = 0;
+unsigned short	cursfarr  = 0;
+unsigned short	curraarr  = 0;
+unsigned short	curkxarr  = 0;
+
+int		prev_tx;
+
+//------------
+
+// these are all control chars:
+//short	Yarr[] = { 1,2,3,4,5,6,8,9,12,16,18,20,21,22,23,24,26};	// short def gives you a char followed by \0
+char	_tty_bc;
+
+// default control character mappings, can be changed by entries in CLINFO file.
+char	*_ya = "\x01";
+char	*_yb = "\x02";
+char	*_yc = "\x03";
+char	*_yd = "\x04";
+char	*_ye = "\x05";
+char	*_yf = "\x06";
+char	*_yh = "\x08";
+char	*_yi = "\x09";
+char	*_yl = "\x0C";
+char	*_yp = "\x10";
+char	*_yr = "\x12";
+char	*_yt = "\x14";
+char	*_yu = "\x15";
+char	*_yv = "\x16";
+char	*_yw = "\x17";
+char	*_yx = "\x18";
+char	*_yz = "\x1A";
+
+//char	*_ya = (char*)&Yarr[0];
+//char	*_yb = (char*)&Yarr[1];
+//char	*_yc = (char*)&Yarr[2];
+//char	*_yd = (char*)&Yarr[3];
+//char	*_ye = (char*)&Yarr[4];
+//char	*_yf = (char*)&Yarr[5];
+//char	*_yh = (char*)&Yarr[6];
+//char	*_yi = (char*)&Yarr[7];
+//char	*_yl = (char*)&Yarr[8];
+//char	*_yp = (char*)&Yarr[9];
+//char	*_yr = (char*)&Yarr[10];
+//char	*_yt = (char*)&Yarr[11];
+//char	*_yu = (char*)&Yarr[12];
+//char	*_yv = (char*)&Yarr[13];
+//char	*_yw = (char*)&Yarr[14];
+//char	*_yx = (char*)&Yarr[15];
+//char	*_yz = (char*)&Yarr[16];
+
+char	my_null[] = "\0";	// Set following pointers to this blank char array
+							// Avoid any uninitialised pointer seg violations.
+
+char	*_vs = my_null;
+char	*_vi = my_null;
+char	*_ve = my_null;
+short	_YT;
+
+char	*_cm = my_null;		// move command
+char	*_cd = my_null;
+char	*_ce = my_null;
+char	*_fs = my_null;
+char	*_fe = my_null;
+char	*_re = my_null;
+char	*_rs = my_null;
+char	*_se = my_null;
+char	*_so = my_null;
+char	*_us = my_null;
+char	*_ue = my_null;
+char	*_Bs = my_null;
+char	*_Be = my_null;
+char	*_bo = my_null;
+char	*_be = my_null;
+char	*__nd;
+char	*_te = my_null;
+char	*_ti = my_null;
+
+char	*ccbuf;
+char	*abuf;
+short	cldepth;
+short	_co = 80;		// lines/columns of terminal
+short	_li = 24;		// default = 80x24
+short	_cx;			// current horizontal cursor position
+short	_cy;			// current vertical cursor position
+short	_sg;
+short	_rg;
+short	_ug;
+short	ox_0;
+short	oy_1;
+short	align;
+short	bypass;
+
+short	_Yd;
+short	_DF;
+short	_Y3;
+short	_YR;
+short	_fg;
+short	_Bg;
+short	_bg;
+short	_Ya = 0x3f;
+short	_Ye = 0x3f;
+short	_Yh = 0x3f;
+short	_Ym = 0x3f;
+short	_Yn = 0x3f;
+short	_Yo = 0x3f;
+short	_Yp = 0x3f;
+short	_Yt = 0x3f;
+short	rawdisplay;
+short	timing;
+short	nflds;
+short	back_to;
+short	lback_to;
+short	key_i;
+short	go_back;
+short	no_fields;
+short	sv_wid;
+short	exit_type;
+short	csv;
+short	dos;
+short	skipping;
+short	convert;
+short	justify;
+short	xml;
+short	_YA;
+short	hangup = 1;
+
+short	recur_0;
+short	depth;
+short	last_fld;
+
+int		key_found;
+int		skip;
+int		skip_gb;
+int		in_do;
+bool	first_fld;
+bool	var_cr;			// clgetyx set to true if a Col/Line specifier is an expression
+bool	recalt;			// abcd and modfld use this to indicate a recard has been changed
+int		_YF;
+int		found_0;
+int		isJapan;
+int		bp_flag;
+
+int		found_name;		// eafr()
+short	pt_occ;			//eafr()
+short	fnum;			//eafr()
+
+short	save_sf;
+short	no_btabs;
+short	no_stabs;
+short	srclineno;
+short	rawprint = 1;
+short	repeat = 1;
+short	clabort = 1;
+short	bige = 1;
+short	debug = 2;
+short	fld_nbrs = 1;
+short	goback = 1;
+short	null_exit = 1;
+short	pr_out = 2;
+short	no_files = -1;	// 0xFFFF
+short	_no_bc = 8;
+short	bc = 8;			// backspace char
+char	*_bc = (char*)&bc;
+
+//short	_nspare = 20;
+//short	_psize = 4096;
+//int		_fsize = 500000;
+int		_ldsize = 32768;
+
+int		isclcomp = 1;
+int		first_2 = 1;
+int		ndelay_3 = 2048;
+int		blockf_0;
+int		nonblockf_1;
+int		_mreply;
+int		debuglogging = 1;
+bool	lkf_found;
+bool	fdf_found;
+int		__cflg;
+int		inhere_10;
+//int		ospeed;
+
+char	*__braslist[10];
+char	*__braelist[10];
+int		__bravar[10];
+
+int		*__lptr_;
+int		*__eptr_;
+int		__st[51];	//__lptr_ and __eptr_ point to this array
+char	*__loc1;
+
+char	TAB = ' ';
+char	lreply_gb[] = "\0";
+char	currency_symbol = '$';
+char	clErrorFilename[] = "clerror";
+//char	_YP[] = "<CR> to continue";
+char	*_YP = "<CR> to continue";
+char	_tc[] = "\0";	
+char	*_Yf = _tc;			// fill char
+//char	*_YL =	"\0";
+char	*prompt_0;
+double	dbl_0;
+double	dbl_1;
+
+char	lpath[100];
+char	uname_0[80];
+char	errorbuf_0[40];
+char	dstr[20];
+char	tstr[20];
+char	tty[20];
+char	login[12];
+char	uid[6];
+char	pid[6];
+char	bncbuf_0[4];
+char	buf_0_0[1024];
+KEYPTR	AStack[50];
+int		AStackPointer;
+int		GlobalReturnValue = -1;
+int		PushBackChar;
+int		CharRegister;
+// Lex variables
+int		Lex_KeyType;
+int		LineNumber;
+int		Lex_CommRStart;
+int		Lex_CommREnd;
+int		Lex_CommDigit;
+char	Lex_CommString[80];
+char	Lex_CommFunctionName[80];
+
+char	*aday[] = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
+char	*_pname;
+char	*__loc1;
+
+char	*sighup_0	= "hangup";
+char	*sigquit_1	= "program aborted";
+char	*sigfpe_2	= "floating point exception";
+char	*sigabrt_3	= "abort";
+char	*sigbus_4	= "bus error";
+char	*sigsegv_5	= "segment violation";
+char	*sigt_o_6	= "timeout exceeded";
+char	*sigeof_7	= "unexpected end of input";
+char	*sigterm_8	= "program terminated";
+char	*sigukn_9	= "unknown signal";
+char	_ebuf[8192];
+char	_obuf[8192];
+int		first_time = 1;
+int		_started;
+int		_issetbuf;
+int		_isterm;
+int		_started;
+int		bp_flag;
+int		sigSeen_0;
+int		term_saved = 0;	// Tty_Construct()
+
+struct termio	TTY;
+struct termio	TTY_sv;
+struct termio	new_term;	// used by Tty_Construct() Key Debug
+struct termio	save_term;
+
+
+KEY_Elist	*kt_macros;		///*** WRONG *** ???
+KEY_Elist	*kt_keys;		///*** WRONG *** ???
+
+char	pname[129];				// lame!! easy confusion of varnames here!!!!
+
+struct utsname	*name;			// for getnodename()
+jmp_buf	sjbuf;
+
+//-------------------------
+
+char	*_gettext(int arg);
+size_t	getbuf(char *ptr, size_t arg);
+short	getcount(void);
+unsigned short getucount();
+ONESC	*loadoe(void);
+ONESC	*getonesc(void);
+short	getbits();
+short	getstrmem(int a1);
+int		gettable();
+int		getlong();
+short	*getarrcount(unsigned int a1);
+double	*getdouble(short Encoding);
+void	getstrarr(CLStrArray *clst);
+int		*getarrtds(unsigned int count);
+short	getptabp(short a1);
+short	getptmem();
+float	getfloat(short count);
+bool	getbool();
+
+FLDdesc *getftabs(int NumVariables);
+PTAB	*getptabs(unsigned int NumPtabs);
+XTAB	*getxtabs(int count);
+RTAB	*getrtabs(int a1);
+RATAB	*getratabs(int count);
+XFTAB	*getxftabs(int a1);
+SFTAB	*getsftabs(int a1);
+PRTAB	*getprtabs(int count);
+RDTAB	*getrdtabs(int count);
+KXTAB	*getkxtabs(int a1);
+BTAB	*getbtabs(unsigned int NumBtabs);
+ENTAB	*gettabs(unsigned int NumEnTabs);
+SCR		*loadscr(void);
+SCR		*getscr(void);
+
+bool	cmpbuf(char *a1, char *a2, int a3);
+int		pblock(BTAB *bt, ENTAB *entab);
+void	_dscreen(BTAB *bt, short PT_Start, short PT_End, bool allowDelayForm);
+short	dscreen(BTAB *btptr, int a2, int a3);
+//PTAB	*PTARR(unsigned short PTABno);		// changed to a macro. see DBdefs.h
+void	setcvar(int VarNum, char *Src);
+void	setvar(int VarNo, int Value);
+int		incvar(int VarNum, int a2);
+int		getvar(int VarNum);					// DC version only!!!
+void	setavar(int VarNum, char *Src, int SubScript);
+void	gtd(ENTAB *entab, int *a2);
+char	isfname(char *a1);
+short	smatch(char *a1, char *a2);
+char	*maketime(char *s, double a2);
+bool	stroper(unsigned short OpCode, char *Dest, char *Src1, char *Src2);
+void	pcreate(KXTAB *kxtab);
+char	gettype(unsigned short TDFtype, short TDFsize);
+char	*fillbuf(char *Buff,size_t NumBytes, char value);
+clock_t sutimes(char *Str, int StartStop);
+void	clh_intr(int a1);
+char	*maketimehms(char *s, double a2);
+void	endtran(void);
+void	newstab(void);
+void	newdtab(void);
+void	newttab(void);
+int		_locktbl(DBinfo *DBptr, short IndexOff, int Lock);
+bool	testr(int TDno, char *Src, POS *pos, EXPR *expr);
+int		samekey(int TDno, char *a2, int TDno2, char *a4);
+void	fldxfer(int TDno, char *a2, int TDno2, char *Src);
+RLARR	*_rlist(RLIST *rlist, short a2, int RecSize);
+void	_merge(RLIST *rlst, short a2, REFR *refr, TDinfo *TDptr);
+void	_ipos(DPOS *dpos, int PageNo, short Depth, TDinfo *TDptr);
+void	_pflush(NODE **NodeArray, REFR *refr, RLIST *rlst, TDinfo *TDptr);
+short	_mvheap(REFR *refr, short a2, short a3);
+void	_mvref(REFR *a1, REFR *a2);
+void	swapref(REFR *refr, short Left, short Right);
+void	_siftup(REFR *a1, short a2, TDef *tdef);
+void	_siftdown(REFR *a1, short a2, short a3, TDef *tdef);
+short	_msqueeze(REFR **a1, REFR **a2, REFR *a3, REFR *a4);
+void	_append(REFR *a1, NODE **NodeArray, REFR *a3, TDinfo *TDptr);
+SALLOCBUF *_salloc(SALLOCBUF *SAp, int LDsize, int avgRecSize);
+
+void	pfork(PTAB *ptab);
+bool	cllock(int PID);
+void	erase_page(int a1);
+void	erase_line(void);
+void	at(void);
+int		outc(int c);
+void	clgetyx(XTAB *xt, int *Column, int *Line, int ArgType);
+char	*exptobuf(char *s, ENTAB *entab, unsigned int a3);
+char	getetype(ENTAB *ent);
+int		getnresv(int a1);
+char	*sysdate(char*);
+char	*systime(char*);
+char	*getnodename(void);
+void	whereat(int Column, int Line, bool allow_mask, int align_chars);
+char	*evalstr(ENTAB *entab, char *s);
+double	evalnum(ENTAB *entab, int VarType);
+int		evalint(ENTAB *entab);
+char	*ftrim(char *a1);
+double	clround(double a1, char FLDtype);
+char	*xmlGetValue(char *s2, short a2);
+void	concat(char *Src, char *a2);
+void	substr(char *Dest, char *Buffer, int Start, int MaxLen);
+
+int		toscreen(int Column, int Line, bool allow_mask, int MaxLen, char *MessageString, int a2, int AttrNum, int a8);
+void	scat(int a1, int a2, int AttrNum, int a4, int a5);
+bool	chg_attr(char *a1, int a2, int AttrNum);
+void	closefp(void);
+bool	isalist(char *a1);
+char	**camake(char *a1, char a2);
+int		cafree(char **ptr);
+char	*extstr(char *src, int a2, char **a3);
+void	coord(void);
+void	dprint(const char *format, ...);
+
+unsigned short clgetmode(char *path);	// used by termcap to determine what CLINFO points at
+void	termcap();
+short	gettcent(char *a1);
+void	gettccl(char **a2);
+void	getclatt(char *AttrName, char **a2);
+void	tcerror(char *format, char *a2);
+
+char	*getarg(char *a1);
+char	*dosrch(char *a1, char **a2);
+void	repstr(char *Dest, char *Src, const char *s2, const char *a4);
+void	_check_YD();
+void	loadMonthArrays(bool SetAvars);
+void	unloadMonthArrays(void);
+char	*sysdate(char *s);
+char	*gmtdate(char *s);
+int		clgetdate(const char *src);
+void	convdate(double a1, int *Day, int *Month, int *Year);
+char	*makedate(char *s, double DaysSinceZero);
+void	daysarr(signed int a1, int *Date_array);
+int		arrdays(int *Date_array);
+char	*dfmt(char *s, char *format, double DaysSinceZero);
+bool	Tty_KeyIsReady(void);
+void	setblock(int fd, int a2);
+double	power(double a1, double a2);
+char	reply(char *a2, char *arg4);
+short	getosbuf();
+void	coord(void);
+short	getattr(short a1, int AttrNum);
+int		abcd(BTAB *btb, short arg4);
+void	dhdtxt(XTAB *xtb, int a2, int a3);
+void	disprec(BTAB *btab, int TDno, int a3, bool show, int PT_st);
+void	_disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, bool show);
+short	getnats(short Attr, int AttrNum);
+void	pset(PTAB *ptab);
+short	ploop(BTAB *btab, int a2, short StartLine, short EndLine, short a5, short a6, int a7);
+short	_ploop(BTAB *bt, int a2, short PT_Start2, short PT_End2, short PT_Start, short PT_End, bool noScreenOut, bool inDoBlock);
+short	sploop(BTAB *bt, int a2, short StartLine, short EndLine, int a5, int a6);
+void	dispfld(XTAB *xtab, FLDdesc *fld, bool show, int a4, bool allow_mask, bool use_curr_xy);
+int		getwid(XTAB *xt);
+void	psleep(ENTAB *entab);
+void	psrand(ENTAB *entab);
+void	_ugetfnum(int TDno, short PTABno, short PTABno2);
+void	_getfnum(char *a1, int TDno, short arg8, short a4);
+void	pscreen(char *ScreenName);
+void	pfresh(char *ScreenName);
+void	clrefresh(void);
+void	qosat(int a1);
+void	qatt(char a1, int a2);
+void	qat(int X, int Y);
+void	cleanup(int val);
+void	Tty_Destruct(void);
+void	Tty_Construct();
+TDinfo	*_rmtd(int TDno);
+bool	_chkname(DBinfo *DBptr,TD0REC *Workarea);
+short	nr2td(TDinfo *TDptr);
+
+short	_build(char *Buffer, int LDsize, short rtd, int *TTnos, short NUMTTs, EXPR *expr, bool Unique);
+short	compose(char *Buffer, int LDsize, short rtd, int *TTnos, short NumTTs, EXPR *expr);
+short	reorder(char *Buffer, int LDsize, short rtd, int *TTnos, short NumTTs, EXPR *expr);
+short	_sflush(RLIST *rlst_dest, short MaxDepth, SALLOCBUF *SAp, TDinfo *TDptr);
+void	_hflush(SALLOCBUF *SAp, RLIST *rlst, TDinfo *TDptr);
+short	join(unsigned int TDno, int *TTnos, short NumTTs, EXPR *Select);
+
+
+FLDdesc *getftf(ENTAB *ent, bool UpdateTT, FLDdesc *fld);
+int		gettdfno(ENTAB *entab, int *TTno, char *FLDtype, int UpdateTT);
+
+int		linput(char *Buffer, int MaxLen, ONESC *a2);
+int		Key_GetChar(void);
+int		keys_lgetchar(void);
+int		keys_getchar(void);
+char	*Key_GetEscMacroName(short a1);
+Elist*	KeyF_ReadFile(Elist *KeyElist, char *FileName, KEYFUNC *a3);
+void	Key_Construct(void);
+void	mexit(int ErrorCode);
+
+int		chkesc(ONESC *onesc, int a2, char *a3);
+int		_chkesc(ONESC *onesc, short KeyNumber);
+char	*KeyToName(short a1);
+int		KeyToNumber(char *KeyName);
+void	Key_Print(int a1, int a2);
+char	*getresv(int VarNum);
+int		getnresv(int a1);
+char	*gelogin();
+void	glogin(char *Buffer);
+void	guname(char *Dest);
+
+int		jcheck(PTAB *ptb, FLDdesc *fld, int a3, int a4);
+void	dispjoin(PTAB *pt, FLDdesc *fld, int TDno, bool show);
+EXPR	*getexpr(ENTAB *entab, int TDno);
+void	pexcept(BTAB *bt);
+void	mreply(char *a1, char *a2);
+char	*fldtobuf(char *s, FLDdesc *fld, unsigned int MaxLen);
+void	prdebass(int LineNo, ENTAB *entab, signed int arg8);
+void	prdebcon(int LineNo, int Condition, int a3);
+void	datearr(FLDdesc *fld);
+void	arrdate(FLDdesc *Dest_fld, FLDdesc *Src_fld);
+int		pedit(XTAB *xtab, PTAB *ptab, FLDdesc *fld, BTAB *btab, int *skipPtr, bool inDoBlock, int a7, bool noScreenOut);
+void	ppause(ENTAB *entab);
+void	redisp(RDTAB *rdtab, short Start, short End);
+char	*tfmt(char *s,char *format, double a3);
+short	getr(int TDno, char *WorkArea, POS *Pos);
+short	lgetr(int TDNo, char *WorkArea1, POS *Pos);
+int		rdrec(int TDno, int Lock);
+void	tdclose(int TTno);
+void	rectott(int TTno, int FieldNo);
+void	tttorec(int TTno, char *WorkArea, int KeysOnly);
+bool	tdtotd(int TDdest, int TDsrc, char KeyOnly, int CopyMode);
+void	flagcdb(int a1, int a2);
+
+char	*convstr(char *a1, int a2);
+bool	evaliex(ENTAB *entab, int Skip);
+void	calculate(ENTAB *ent);
+short	reffile(RTAB *rtab);
+bool	rcheck(XTAB *xtab, FLDdesc *fld, int a5);
+int		getfile(char *DBname, char *TableName);
+int		_tdopen(int DBno, TDesc *TTptr);
+int		tdopen(int DBno, TDesc *TTptr, int Lock);
+int		delset(int TDno, int DBno, char *TableName, int Key);
+int		modfld(BTAB *btb, PTAB *ptab, FLDdesc *fld, int argC, char **a5, int a2);
+bool	fcheck(char *a1, XTAB *arg4, int a3);
+void	dstrip(char *a1);
+bool	echknum(const char *nptr, char VarType);
+void	dispatt(unsigned short a1);
+char	clisnumber(char *a1);
+int		egetkey(BTAB *bt, PTAB *ptb, XTAB *xtb, FLDdesc *fld, int TDno, int RecNo, int a5);
+int		eaddkey(BTAB *bt, PTAB *pt, FLDdesc *fld, int TDno);
+void	setclvars(int ErrVal, int LockedVal);
+char	*getkerr(char *Src, BTAB *btb, FLDdesc *fld2);
+void	cl_intr(int a1);
+void	putmesg(char *Dest, unsigned int MaxLen, char *a4, char *a5, char *a6);
+void	setmatch(char *MatchChars, short MaxLen, int MatchCount);
+int		getdlen(char *a1, int a2, unsigned short a3);
+unsigned short	issign(char *a1);
+int		getdp(char *a1, unsigned short a2);
+char	*nfmt(char *a1, const char *format, double a3);
+char	*form(char *a1, char *a2, char *a3, unsigned short mask_flg, bool Negative);
+char	*reexec(char *a1, char *a2, char **a3);
+int		__xpush(int a1, int a2);
+int		__xpop(int a1);
+char	*__execute(char *a1, char *a2);
+int		__cclass(char *a1, char a2, int a3);
+char	*__advance(char *a1, char *a2);
+int		__getrnge(int *a1, int *a2, char *a3);
+short	prfield(PRTAB *prtab);
+void	chkeop(void);
+int		strOffPaperLen(char *a1, int a2);
+int		strOnPaperLen(char *a1);
+int		_write(FCB *fcb, PRTAB *prtb);
+void	pfile(SFTAB *sftab);
+int		_fclose(FCB *fcb);
+int		getresf(char *FileName);
+void	newfile(void);
+FCB		*getfp(short ENTno);
+char	*buftott(char *Dest, FLDdesc *fld);
+bool	tojoin(BTAB *btb, XTAB *xtb);
+int		isDoubleWidth(unsigned char a1);
+void	Key_Print(int DispChar, int NumTabs);
+int		Lex(_IO_FILE *stream);
+int		Lex_GetSChar(_IO_FILE *fp, int *Rstart, int *Rend);
+int		Lex_GetChar(_IO_FILE *stream);
+KEY_Elist *KeyF_Construct(char *FileName, int (*ReadFunction)(void), KEYFUNC *KeyFns);		// *************************
+Elist	*ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncArr);
+void	Key_Destruct(void);
+int		Key_Lookup(int a1);
+int		KeyF_GetChar(KEY_Elist *KeyEL);
+int		linputChinese(char *Buffer, int MaxLen, ONESC *onesc);
+int		isChinese(char *a1, char *a2);
+int		curChineseChar(char *a1, char *a2);
+int		linpesc(int KeyNumber, ONESC *a2);
+int		isesc(ONESC *a1, int KeyNumber);
+bool	prscreen(void);
+void	tbline(FILE *stream);
+char	*clbasename(char*);
+void	openscr();
+void	closescr();
+void	errexit(char *a1, int a2);
+void	setNoLogging();
+int		closedb(int DBno);
+void	*frelst(void *ptr, void *a2);
+void	negate(unsigned char *a1, short TDFsize);
+void	ravail(int TDno);
+void	rfree(int TDno, int FieldNo);
+void	tfree(int TDno);
+void	ulockall(void);
+void	_ulock(DBinfo *DBptr, int PID);
+TDef	*_chkindex(short TableIdx, DBinfo *DBptr);
+int		cpytuc(char *Dest, char *Src, int MaxLen);
+int		check_bup_sem(DBinfo *DBptr);
+void	rkfree(int TDno);
+void	rdfree(int TDno);
+short	scnbuf(char *a1, short TDfsize, char Value);
+int		_lockmap(DBinfo *DBptr, short LockMode);
+int		_beyond(EXPR *SelectExpr, short Operator, char *a3,TDef *TDefptr);
+int		cdbfclear(char *Buff, short TDFsize, short TDFtype);
+void	_imerge(RLARR *RAl, TDinfo *TDptr);
+void	_dmerge(RLARR *RAl, TDinfo *TDptr);
+void	_addtuple(char *Buffer, char *a2,TDef *TDefPtr);
+NODE*	freshnode(TDinfo *TDptr, short NodeType);
+int		emark(DBinfo *DBptr, short IndexOff);
+int		ewake(DBinfo *DBptr, short IndexOff);
+void	ewait(DBinfo *DBptr, short IndexOff);
+void	modpage(NODE *Node, short N1_2idx, char *RecBuffer, short NewRecSize);
+void	_chkitems(NODE *NodeP, short NumEntries);
+int		_capture(DBinfo *DBptr);
+bool	_balance(TDinfo *TDptr, NODE *Node, int *PageList, short Depth);
+void	_rmlock(DBinfo *DBptr, int *PageList);
+bool	putnode(TDinfo *TDptr, NODE *Node);
+int		_split(TDinfo *TDptr, NODE *Node, NODE *Node2, short N1_2idx2, char **a5);
+bool	_spread(TDinfo *TDptr, NODE *a2, NODE *a3,short N1_2idx, char **a5);
+int		_redistrib(NODE *a1, NODE *a2, short PageSize);
+short	_oshare(char *a1,char *a2);
+int		delset(int TDno, int DBno, char *TableName, int Key);
+int		delhier(int TTno, int a2);
+int		cldbopen(char *DBname, ...);
+int		cldbopenv(char **DBnamelist);
+int		fdf2db(DBinfo *DBptr);
+int		rdbget(int DBno);
+int		compare(char *a1,char *a2);
+int		_uptuple(char *Dest, char *Buffer, char *a3, POS *Pos, TDef *TDefPtr, short *a6);
+int		_shuttd(DBinfo *DBptr);
+int		clcdb(int (*a1)(int, char *, POS *), int TDno, char *WorkArea1, POS *pos, TDesc *TTptr, char *WorkArea);
+int		cldbclose(int DBno);
+int		clputr(int TTno, char *WorkArea, POS *Pos, TDesc *TTptr, char *a6);
+int		cldelr(int TTno, char *WorkArea1, POS* Pos, TDesc *TTptr);
+int		reprec(int TDno, int InvLock);
+int		findtd(char *TableName, int DBno);
+int		length(int *PageList);
+int		_nxttd(TDinfo *TDptr);
+int		wildmat(char *a1, char *a2);
+int		nxtr(int TDNo, char *WorkArea, POS *Pos, EXPR *Expr);
+int		getprev(int TDno, char *WorkArea, EXPR *Expr);
+int		getnxt(int TDno, char *WorkArea, EXPR *Expression);
+bool	_match(char *src, EXPR *Expr, TDef *TDefPtr);
+int		_diffkey(char *a1, char *a2, TDef *TdefP);
+int		ulckrec(int TTno);
+int		ulockr(int TDno, char *Workarea, POS *Pos);
+int		KeyF_Ready(KEY_Elist *a1);
+int		Key_Ready(void);
+int		lenstr(char *a1);
+int		identify(int DBno, char *TableName);
+//int		cpybuf(char *DEST, char *SOURCE, int Size);
+int		cpybuf(void *DEST, void *SOURCE, int Size);
+int		release(int TDno);
+int		process(KEY_Elist *KeyEL, Elist *a2);
+
+
+Elist	*elist_Create(void);
+int		elist_Next(Elist *head);
+void	elist_Destruct(Elist *head, int (*a2)(void *));
+int		elist_Traverse(Elist *head, int (*applyfunc)(void *));
+
+// DBASE defs follow
+short	rdnxt(int TDno, EXPR *expr, int Lock, int a4);
+short	rdprev(int TDno, EXPR *expr, int Lock, int a4);
+
+int		rtdget(TDesc *TTptr);
+int		closedb(int a1);
+
+typedef int(*intfnptr)(KEY_Elist*);
+intfnptr Function_Bind(const char *s1, KEYFUNC *Kfunc);
+
+
+Elist_Elem	*Arg_Trav;
+Elist_Elem	*Arg_End;
+void	Arg_Action(KEYPTR *a1);
+int		Arg_Digit(void);
+char	*Arg_String(void);
+Elist	*Arg_List(void);
+int		GetStackDigit(void);
+//char	*GetStackString(void);
+
+//void	prmsg(char *format, ...);
+void	prmsg(char *format, char *a2, char *a3);
+//void	prerr(const char *format, int a2, int Bell);
+void	prerr(const char *format, void* a2, int Bell);
+
+int		DoPushKeyName();
+int		DoSetRetVal();
+int		DoStoN();
+int		DoSUngetkey();
+int		DoFPstack();
+int		DoSDisplayf();
+int		DoFClear();
+int		DoFDup();
+int		DoFExch();
+int		DoFPush();
+int		DoFPop();
+int		DoFAdd();
+int		DoFMul();
+int		DoFSub();
+int		DoFDiv();
+int		DoFPushK();
+int		DisplayMe();
+int		Exit();	// doesn't really exit
+int		Display();
+int		DoMacro();		// These should take a KEY_Elist*
+int		DoMacroAdd();	//
+int		DoMacroStr();	//
+
+KEYFUNC	FTable[] = 
+{	"PushKeyName"	, DoPushKeyName,	"Push the symbolic value of the argument",
+	"SetRetVal"		, DoSetRetVal,		"set the return value from the stack",
+	"StoN"			, DoStoN,			"convert the numbers on the stack to a digit",
+	"SUngetkey"		, DoSUngetkey,		"put the stack top into the keyboard Q",
+	"Pstack"		, DoFPstack,		"Non destructive stack display",
+	"SDisplayf"		, DoSDisplayf,		"Display the top stack element",
+	"Clear"			, DoFClear,			"Clear the stack",
+	"Dup"			, DoFDup,			"Duplicate the stack top",
+	"Exch"			, DoFExch,			"Exchange the two top values",
+	"Push"			, DoFPush,			"Push a value on the stack",
+	"Pop"			, DoFPop,			"Pop a value off the stack",
+	"Add"			, DoFAdd,			"Add the stack top",
+	"Div"			, DoFDiv,			"Divide the stack top",
+	"Mul"			, DoFMul,			"Multiply the stack top",
+	"Sub"			, DoFSub,			"Subract the stack top",
+	"PushK"			, DoFPushK,			"Push the current key onto the stack",
+	"DisplayMe"		, DisplayMe,		"Display the key hit",
+	"Exit"			, Exit,				"Exit to the operating system",
+	"Display"		, Display,			"Display the next argument",
+	"Macro"			, DoMacro,			"Execute a macro",
+	"MacroAdd"		, DoMacroAdd,		"Add the top stack element to the macro",
+	"MacroStr"		, DoMacroStr,		"Add the string to the macro",
+	0,0,"",
+// not sure that previous entry is correct.
+ 0,0,0
+};
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d33 1
+d41 1
+a41 22
+XTAB	**xtptrs[30];
+PTAB	**ptptrs[30];
+ENTAB	**enptrs[30];
+RDTAB	**rdptrs[30];
+XFTAB	**xfptrs[30];
+RTAB	**rtptrs[30];
+PRTAB	**prptrs[30];
+SFTAB	**sfptrs[30];
+KXTAB	**kxptrs[30];
+
+/*
+CLArrayPtr	ptarr;					// PTAB*
+CLArrayPtr	xtarr;					// XTAB*	xfer 
+CLArrayPtr	enarr;					// ENTAB
+CLArrayPtr	rtarr;					// RTAB
+CLArrayPtr	rdarr;					// RDTAB
+CLArrayPtr	prarr;					// PRTAB	Print statements
+CLArrayPtr	xfarr;					// XFTAB	Copy tables/fields function
+CLArrayPtr	sfarr;					// SFTAB
+CLArrayPtr	raarr;					// RATAB	Range records
+CLArrayPtr	kxarr;					// KXTAB	Create Temp table records
+*/
+d43 12
+a54 1
+PTAB_ArrPtr	ptarr;					// PTAB*
+d60 2
+a61 2
+RTAB_ArrPtr	rtarr;					// RTAB		Record refs
+XTAB_ArrPtr	xtarr;					// XTAB*	Accept fields 
+d67 4
+a70 4
+unsigned short	curptarr = 0;
+unsigned short	curxtarr = 0;
+unsigned short	currtarr = 0;
+unsigned short	curenarr = 0;
+d72 6
+a77 6
+unsigned short	currdarr = 0;
+unsigned short	curxfarr = 0;
+unsigned short	curprarr = 0;
+unsigned short	cursfarr = 0;
+unsigned short	curraarr = 0;
+unsigned short	curkxarr = 0;
+d83 2
+a84 1
+short	Yarr[] = { 1,2,3,4,5,6,8,9,12,16,18,20,21,22,23,24,26};
+d86 37
+a122 17
+short	*_ya = &Yarr[0];
+short	*_yb = &Yarr[1];
+short	*_yc = &Yarr[2];
+short	*_yd = &Yarr[3];
+short	*_ye = &Yarr[4];
+short	*_yf = &Yarr[5];
+short	*_yh = &Yarr[6];
+short	*_yi = &Yarr[7];
+short	*_yl = &Yarr[8];
+short	*_yp = &Yarr[9];
+short	*_yr = &Yarr[10];
+short	*_yt = &Yarr[11];
+short	*_yu = &Yarr[12];
+short	*_yv = &Yarr[13];
+short	*_yw = &Yarr[14];
+short	*_yx = &Yarr[15];
+short	*_yz = &Yarr[16];
+d156 2
+a157 2
+short	_cx;
+short	_cy;
+d208 3
+a210 3
+int		first_fld;
+int		var_cr;
+int		recalt;
+d235 1
+a235 1
+short	bc = 8;	// bell character?
+d250 2
+a251 2
+int		lkf_found;
+int		fdf_found;
+d289 1
+a289 1
+STACKENT	AStack[50];
+d326 2
+d330 3
+d378 1
+d380 1
+a380 1
+void	_dscreen(BTAB *bt, short arg4, short arg8, int a4);
+d382 1
+a382 1
+PTAB	*PTARR(unsigned short PTABno);
+d386 2
+d391 31
+d433 1
+a433 1
+void	whereat(int Column, int Line, int a3, int a4);
+d443 18
+d465 1
+a465 1
+void	loadMonthArrays(int SetAvars);
+d472 1
+a472 1
+int		daysarr(signed int a1, int *Date_array);
+a481 1
+bool	chg_attr(char *a1, int a2, int AttrNum);
+d484 2
+a485 2
+void	disprec(BTAB *btab, int TDno, int a3, int a4, int PT_st);
+void	_disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, int arg8a);
+d489 1
+a489 1
+short	_ploop(BTAB *bt, int a2, short StartLine, short EndLine, short a5, short arg14, int a8, int a6);
+d491 1
+a491 1
+void	dispfld(XTAB *xtab, FLDdesc *fld, int arg8, int a4, int a5, int a6);
+a494 1
+void	prdebcon(int LineNo, int Condition, int a3);
+d503 14
+d518 2
+a519 1
+FLDdesc *getftf(ENTAB *ent, int arg4, FLDdesc *fld);
+d525 4
+d535 5
+d542 1
+a542 1
+void	dispjoin(PTAB *pt, FLDdesc *fld, int TDno, int a4);
+d551 1
+a551 1
+int		pedit(XTAB *xtab, PTAB *ptab, FLDdesc *fld, BTAB *btab, int *a5, int a6, int a7, int a8);
+d553 11
+a563 1
+void	redisp(RDTAB *rdtab, short a2, short a3);
+d565 1
+a565 1
+int		evaliex(ENTAB *entab, int a2);
+d568 1
+a568 1
+int		rcheck(XTAB *xtab, FLDdesc *fld, int a5);
+d571 1
+d574 1
+a574 1
+int		fcheck(char *a1, XTAB *arg4, int a3);
+d576 1
+a576 1
+int		echknum(const char *nptr, char VarType);
+d584 1
+a584 1
+void	putmesg(char *a2, unsigned int a3, char *a4, char *a5, char *a6);
+d586 3
+a588 3
+int		getdlen(char *a1, int a2, int a3);
+int		issign(char *a1);
+int		getdp(char *a1, int a2);
+d590 1
+a590 1
+char	*form(char *a1, char *a2, char *a3, unsigned int a4, bool Negative);
+d615 1
+a615 1
+KEY_Elist *KeyF_Construct(char *FileName, int (*ReadFunction)(void), KEYFUNC *KeyFns);
+d617 1
+a626 3
+short	gettcent(char *a1);
+void	gettccl(char **a2);
+void	getclatt(char *AttrName, char **a2);
+d634 1
+a634 1
+void	negate(char *a1, short TDFsize);
+d649 2
+a650 2
+void	_imerge(SALLOCBUF *SAp, TDinfo *TDptr);
+void	_dmerge(SALLOCBUF *a1, TDinfo *TDptr);
+d670 30
+d702 3
+d713 1
+a713 1
+typedef int(*intfnptr)(void);
+d717 3
+a719 3
+STACKENT	**Arg_Trav;
+STACKENT	**Arg_End;
+void	Arg_Action(STACKENT *a1);
+d722 3
+d750 3
+a752 3
+int		DoMacro();
+int		DoMacroAdd();
+int		DoMacroStr();
+@

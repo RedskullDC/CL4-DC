@@ -143,7 +143,7 @@ ReservedWord	reswords[] = {
 "lockr",	790,
 "log",		1910,
 "log10",	1920,
-"login",	1340,
+"login",	1340,	// 1340 indicates a reserved string 
 "lt",		1840,
 "maintain",	830,
 "match",	840,
@@ -170,8 +170,8 @@ ReservedWord	reswords[] = {
 "or",		1040,
 "output",	1050,
 "pause",	1060,
-"pid",		1340,
-"pname",	1340,
+"pid",		1340,	// 1340 indicates a reserved string 
+"pname",	1340,	// 1340 indicates a reserved string 
 "popenin",	1110,
 "popenio",	1120,
 "popenout",	1150,
@@ -215,13 +215,13 @@ ReservedWord	reswords[] = {
 "tab",		1600,
 "tan",		1980,
 "text",		1610,
-"time",		1340,
+"time",		1340,	// 1340 indicates a reserved string 
 "timing",	1625,
 "trim",		1630,
-"tty",		1340,
+"tty",		1340,	// 1340 indicates a reserved string 
 "ucase",	2020,
-"uid",		1340,
-"uname",	1340,
+"uid",		1340,	// 1340 indicates a reserved string 
+"uname",	1340,	// 1340 indicates a reserved string 
 "unique",	1670,
 "unlock",	1680,
 "void",		4020,	// DC extension. used in libcall for void params

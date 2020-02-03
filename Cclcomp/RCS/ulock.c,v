@@ -1,0 +1,101 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2015.07.02.04.39.06;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.20.05.53.18;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef ULOCK_C
+#define ULOCK_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+//#define _LARGEFILE64_SOURCE
+
+void _ulock(DBinfo *DBptr, int PID)
+{
+	char *v2; // eax@@2
+	EXPR *Expr; // esi@@2
+	TD2REC KeyDefs; // [sp+20h] [bp-A8h]@@2
+
+	if ( DBptr->DBvflag > 3 )						// Only a "locks" table on V4 DBases!
+	{
+		_chktd(2)->TDDBinfo = DBptr;
+		v2 = (char*)ltoms((int*)&KeyDefs, PID);
+		Expr = newexpr(115, 0x10u, v2, 4);			// Look for matches with our PID
+		cdbrestrict(2, Expr);
+		while ( 1 )
+		{
+			if ( nxtr(2, (char*)&KeyDefs, 0, Expr) <= 0 )
+				break;
+			_lockr(DBptr, KeyDefs.TableIndex, KeyDefs.KeyBuff, 128, 0);
+		}
+		fretre(Expr, 0);
+	}
+}
+
+//  Locks Table
+//  No. Type  Description
+// [ 1]  *B   106			Table Index
+// [ 2]  *C   116 [128]
+// [ 3]   N   115			PID
+
+void ulockall(void)
+{
+	int DBno; // edi@@1
+	DBinfo *DBptr; // esi@@2
+
+	for (DBno = 0 ; DBno < 255 ; DBno++)
+	{
+		DBptr = _chkdb(DBno);
+		if ( DBptr )
+			_ulock(DBptr, getpid());
+	}
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d22 1
+a22 1
+			if ( nxtr(2, &KeyDefs, 0, Expr) <= 0 )
+d41 1
+a41 2
+	DBno = 0;
+	do
+a44 1
+		{
+a45 2
+		}
+		++DBno;
+a46 1
+	while ( DBno <= 254 );
+@

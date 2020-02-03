@@ -1,0 +1,3445 @@
+head	1.10;
+access;
+symbols;
+locks
+	leslie:1.10; strict;
+comment	@ * @;
+
+
+1.10
+date	2020.01.29.12.27.28;	author leslie;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2017.02.06.12.40.01;	author leslie;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2016.06.23.05.27.49;	author leslie;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2016.03.10.23.05.04;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2016.01.19.04.46.18;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2015.06.21.13.06.43;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.01.09.02.26.35;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2014.12.30.03.33.13;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.09.18.12.47.36;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.09.02.36.06;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.10
+log
+@prior to X64 conversion
+@
+text
+@#ifndef PRDEBUG_C
+#define PRDEBUG_C
+
+#include <ctype.h>	// for isctrl() etc.
+#include "lvarnames.h"		// for flag bits
+
+// print function ID
+void prtfid(unsigned short ENTABno)
+{
+    FLDdesc *fld;
+    TDesc	*TTptr;
+	char	*v5;
+    char	*Table;
+    ENTAB	*entab;
+
+    int OpCode;
+    unsigned int v9;
+    int TTno;
+	
+	entab = ENARR(ENTABno);
+	if ( !entab )
+		return;
+	//DumpBlock(entab, sizeof(ENTAB));
+	OpCode = entab->TTno & 0xFC00u;
+
+	fflush(stdout);
+    if ( entab->entype == 2 )                  // Expression Type
+	{
+		//                    x0000 - x5000      ||      x8C00 - xA000
+		if ((unsigned int)(OpCode - 1) <= 0x4FFF || OpCode - 0x8C00u <= 0x1400 )
+		{
+			printf("[%d]", ENTABno);
+			switch (OpCode)
+			{
+				case 0x0400:
+					printf(" NOT ");
+					break;
+				case 0x0800:
+					printf(" SQRT ");
+					break;
+				case 0x0C00:
+					printf(" LOG ");
+					break;
+				case 0x1000:
+					printf(" SIN ");
+					break;
+				case 0x1400:
+					printf(" COS ");
+					break;
+				case 0x1800:
+					printf(" TAN ");
+					break;
+				case 0x1C00:
+					printf(" UCASE ");
+					break;
+				case 0x2000:
+					printf(" LCASE ");
+					break;
+				case 0x2400:
+					printf(" SLEN ");
+					break;
+				case 0x2800:
+					printf(" DAY ");
+					break;
+				case 0x2C00:
+					printf(" GETARG ");
+					break;
+				case 0x3000:
+					printf(" ASIZE ");
+					break;
+				case 0x3400:
+					printf(" ASC ");
+					break;
+				case 0x3800:
+					printf(" CHR ");
+					break;
+				case 0x3C00:
+					printf(" SRAND ");
+					break;
+				case 0x4000:
+					printf(" GETENV ");
+					break;
+				case 0x4400:
+					printf(" LOG10 ");
+					break;
+				case 0x4800:
+					printf(" ASIN ");
+					break;
+				case 0x4C00:
+					printf(" ACOS ");
+					break;
+				case 0x5000:
+					printf(" ATAN ");
+					break;
+				case 0x5800:						// unreachable (also error in real CL4)
+					printf("(-)");
+					break;
+				//case 0x8000:						// unreachable (also error in real CL4)
+				//	printf(" SETENV ");
+				//	break;
+				case 0x8C00:
+					printf(" GETXML ");
+					break;
+				case 0x9000:
+					printf(" DEGREES ");
+					break;
+				case 0x9400:
+					printf(" RADIANS ");
+					break;
+				case 0x9800:
+					printf(" EXP ");
+					break;
+				case 0x9C00:
+					printf(" TRIM ");
+					break;
+				case 0xA000:
+					printf(" GETCGI ");
+					break;
+				default:
+					printf(" unop: ?%o? ", entab->TTno);
+					break;
+			}
+		}
+        // All string functions follow
+		//                  x5400 - x8800    ||           xCC00 - xD400   ||           xF400 - xF800
+		else if ( OpCode - 0x5001u <= 0x3BFE || OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
+        {
+			v5 = 0;	// default to print nothing
+			switch (OpCode)
+			{
+				case 0x6C00:
+					v5 = "MATCH";
+					break;
+				case 0x7400:
+					v5 = "SDEL";
+					break;
+				case 0x7800:
+					v5 = "SMULT";
+					break;
+				case 0x7C00:
+					v5 = "SWORD";
+					break;
+				case 0x8000:						// *fix* Is in the above case in *real* clcomp
+					v5 = "SETENV";
+					break;
+				case 0x8400:
+					v5 = "SKEY";
+					break;
+				case 0x8800:
+					v5 = "SFMT";
+					break;
+				case 0xCC00:
+					v5 = "SUBSTR";
+					break;
+				case 0xD000:
+					v5 = "SREP";
+					break;
+				case 0xD400:
+					v5 = "SCONV";
+					break;
+				case 0xF400:
+					v5 = "SCAT";
+					break;
+			}
+			if ( v5 )
+			{
+                printf(" %s(", v5);
+                prtfid(entab->enleft);	// *** recursion here ***
+                putchar(',');
+                prtfid(entab->enright);		// *** recursion here ***
+                putchar(')');
+				return;
+			}
+		}
+		else if ( OpCode == 0xB800 )
+			printf(" random() ");
+        else if (OpCode == 0xBC00)
+			printf(" keyready() ");
+	}
+//-----------------------
+
+	prtfid(entab->enleft);							// *** recursion here ***
+
+	switch (entab->entype)
+	{
+	case 0x02:										// Expression
+		v9 = ((unsigned int)entab->TTno >> 9) & 1;		// 0x200 integer calc flag
+		if ( v9 & 1 )
+			printf(" (");
+		else
+			putchar(' ');
+
+		if ( entab->TTno & 0x3F )					// mask all but relational operator bits
+		{
+			printf("[%d]", ENTABno);
+		    switch ( entab->TTno & 0x1FF )
+		    {
+			case 0x01:
+				printf("OR");
+				break;
+			case 0x02:
+				printf("AND");
+				break;
+			case 0x08:
+				putchar('<');
+				break;
+			case 0x10:
+				putchar('=');
+				break;
+			case 0x14:
+				printf("like");
+				break;
+			case 0x18:
+				printf("<=");
+				break;
+			case 0x20:
+				putchar('>');
+				break;
+			case 0x28:
+				printf("<>");
+				break;
+			case 0x30:
+				printf(">=");
+				break;
+			default:
+				printf(" relop: ?%o?", entab->TTno);
+				break;
+			}
+		}
+		else
+		{
+			printf("[%d]", ENTABno);
+			switch (OpCode)
+			{
+			case 0x5400:
+				putchar('+');
+				break;
+			case 0x5800:
+				if ( entab->enright )
+					putchar('-');
+				else
+					printf("(-)");
+				break;
+			case 0x5C00:
+				printf("**");
+				break;
+			case 0x6000:
+		   		putchar('*');
+				break;
+			case 0x6400:
+				putchar('/');
+				break;
+			case 0x6800:
+		        printf("%%");
+				break;
+			case 0xAC00:									// Array subscript operator
+				putchar('[');
+				break;
+			default:										// Reserved string names
+				if ( entab->TTno & 0x0100 )
+					prresv(entab->RecNo);					// in this case, RecNo is a bitmask
+		
+				else if ( entab->enright )
+					printf(" op: ?%o?", entab->TTno);
+				break;
+			}
+		}
+		if ( v9 )
+			printf(") ");
+		else
+			putchar(' ');
+		break;
+	case 0x04:
+		printf("~%f~", *(float *)&entab->TTno);		// Embedded Float Literal ** not created by real clcomp **
+		break;
+	case 0x08:
+		printf("~%ld~", *(long *)&entab->TTno);		// Embedded Integer Literal
+		break;
+	case 0x10:
+		printf("~%s~", (char *)&entab->TTno);		// Embedded String Literal ( <= 3 chars)
+		break;
+	case 0x20:
+		putchar(',');								// Function Type. Multiple values follow
+		break;
+	case 0x01:										// Variable/ Table field
+		TTno = entab->TTno;
+        if ( TTno )
+			fld = &ttab[TTno].TTfields[entab->RecNo];
+		else
+			fld = getvars(entab->RecNo);
+
+		if (fld->FLDstat & fld_ADDROF)				// DC extension '&' = *ADDRESS OF*
+			putc('&', stdout);
+
+		if ( TTno )									// This is a field in a table record
+        {
+			TTptr = &ttab[TTno];
+            if ( TTptr->TableAlias[0] )
+				Table = TTptr->TableAlias;
+			else
+				Table = TTptr->TableName;
+			printf("%s.%s", Table, fld->FLDname);
+		}
+        else if ( fld->FLDstat & fld_ZERO )			// If variable is uninitialised, print var name
+        {
+			prstr(fld->FLDname);
+			if ( *fld->FLDname == '\'' )
+				putc('\'', stdout);
+		}
+        else if ( fld->FLDtype == 'C' )				// else print variable contents if a string
+        {
+			putc('\'', stdout);
+			prstr((char *)fld->FLDdata);
+			putc('\'', stdout);
+		}
+		else
+			prstr(fld->FLDname);					// varname for all other types
+
+		printf("[%c] ", fld->FLDtype);
+		break;
+
+	default:	// Error, Illegal expression type!
+		__assert_fail("((tf)->entype == 0x1)", "prdebug.c", 0xAEu, "prtfid");
+		break;
+	}
+
+    prtfid(entab->enright);	// *** Many levels of recursion possible!! ***
+
+	if ( entab->entype == 2 && OpCode == 0xAC00 )	// Array subscript operator
+	{
+        putchar(']');
+		return;
+	}
+}
+
+void prstr(char *a1)
+{
+    int v3;
+	
+	while ((v3 = *a1++))
+	{
+		if (iscntrl(v3))
+			printf("^%c", v3 + 0x40);
+		else
+			putc(v3, stdout);
+	}
+}
+
+void prresv(int ReservedMask)
+{
+    const char *v1;
+	
+	switch (ReservedMask)
+	{
+		case 0x0001:
+			v1 = "'path'";
+			break;
+		case 0x0002:
+			v1 = "'version'";
+			break;
+		//case 0x0004:			// 0x0004 free?
+		case 0x0008:
+			v1 = "'date'";
+			break;
+		case 0x0010:
+			v1 = "'time'";
+			break;
+		case 0x0020:
+			v1 =  "'pname'";
+			break;
+		case 0x0040:
+			v1 = "'uname'";
+			break;
+		case 0x0080:
+			v1 = "'pid'";
+			break;
+		case 0x0100:
+			v1 = "'uid'";
+			break;
+		case 0x0200:
+			v1 = "'login'";
+			break;
+		case 0x0400:
+			v1 = "'tty'";
+			break;
+		case 0x0800:
+			v1 = "'nname'";
+			break;				
+		//case 0x1000:			// 0x1000 free??
+		case 0x2000:
+			v1 = "'pwd'";
+			break;
+		case 0x4000:			// unreachable from clcomp generated code
+			v1 = "'licensee'";
+			break;
+		//case 0x8000:			// 0x8000 free??
+		default:	
+			printf("'-%o-'", ReservedMask);			// unknown, just print mask value
+			return;
+			break;
+	}
+	printf(v1);
+    return;
+}
+
+// Print a screen accept definition
+void prxt(XTAB *xtab, bool isHDTXT)
+{
+	FLDdesc	*fld;
+	RTAB	*rtab;
+	RATAB	*ratab;
+
+	short	fno;
+	int		TTno;
+	char	FLDtype;
+
+    if ( !xtab )
+		return;
+
+    prtfid(xtab->VarExpNo);
+    putchar(' ');
+    
+	if ( xtab->widthEXP )
+		prtfid(xtab->widthEXP);
+    else
+		printf("%d", xtab->width);
+    
+	if ( xtab->Flags & xtb_DISPLAY )		// 0x0004u	// this is a DISPLAY ONLY field
+		printf(",d");
+	else if ( xtab->Flags & xtb_REQUIRED)   // 0x0400u	// value is required for this field
+		printf(",r");
+	
+	printf(" at ");
+    
+	if ( xtab->PCol_exp )					// expression trumps fixed number
+		prtfid(xtab->PCol_exp);
+	else
+		prcolrow(xtab->PCol);
+    
+	if ( xtab->ScrAttrib )
+    {
+		switch ( xtab->ScrAttrib )
+		{
+        case 0x01:
+			printf(",f");
+            break;
+		case 0x02:
+			printf(",s");
+            break;
+		case 0x04:
+			printf(",u");
+            break;
+		case 0x08:
+			printf(",b");
+            break;
+		case 0x10:
+			printf(",B");
+            break;
+		case 0x20:
+			printf(",r");
+            break;
+		case 0x3F:
+            printf(",n");
+			break;
+		default:
+			printf(",%o", xtab->ScrAttrib);
+            break;
+        }
+	}
+    putchar(' ');
+    if ( xtab->PLine_exp )					// expression trumps fixed number
+		prtfid(xtab->PLine_exp);
+	else
+		prcolrow(xtab->PLine);
+	putchar(' ');
+    
+	if ( !isHDTXT )						// true if this is an accept field. Show the Answer Col/Line values
+	{
+		if ( xtab->ACol_exp )				// expression trumps fixed number
+			prtfid(xtab->ACol_exp);
+		else
+			prcolrow(xtab->ACol);
+		if ( xtab->Attr )
+        {
+			switch ( xtab->Attr )
+            {
+            case 0x01:
+				printf(",f");
+                break;
+			case 0x02:
+				printf(",s");
+                break;
+			case 0x04:
+				printf(",u");
+                break;
+			case 0x08:
+				printf(",b");
+                break;
+			case 0x10:
+				printf(",B");
+                break;
+			case 0x20:
+				printf(",r");
+                break;
+			case 0x3F:
+				printf(",n");
+                break;
+			default:
+				printf(",%o", xtab->ScrAttrib);
+                break;
+			}
+		}
+        putchar(' ');
+        if ( xtab->ALine_exp )
+			prtfid(xtab->ALine_exp);
+		else
+			prcolrow(xtab->ALine);
+		putchar(' ');
+	}
+    prtfid(xtab->Prompt_exp);
+    
+	if ( !isHDTXT )
+    {
+		fno = gettf(xtab->VarExpNo, &TTno, &FLDtype);
+		assert(fno >= 0);
+		
+		if ( TTno )
+			fld = &ttab[TTno].TTfields[fno];
+		else
+			fld = getvars(fno);
+		
+		if ( xtab->Flags & xtb_FDF )		// 0x0008u FDF First Display Field for a block
+			printf(" FDF");
+		
+		if ( xtab->Flags >= 0 )
+        {
+			if ( fld->FLDstat < 0 )
+				printf(" key");
+		}
+		else
+        {
+			printf(" tkey");
+            if ( xtab->Flags & xtb_LKF )	// 0x0040u		// LKF Last Key Field
+				printf(" LKF");
+		}
+
+//--------- indicate variable type expected ---------
+
+		if ( fld->FLDstat & 0x0008 )		// ???			// Field is assigned a value in the code also
+			printf(" result");
+		if ( xtab->Flags & xtb_NUMERIC )	// 0x0200u		// expect NUMERIC value
+			printf(" num");
+		if ( xtab->Flags & xtb_CHAR )		// 0x0001u		// expect string value
+			printf(" char");
+		if ( xtab->Flags & xtb_DATE )		// 0x0002u		// expect DATE value
+			printf(" date");
+		if ( xtab->Flags & xtb_TIME )		// 0x0800u		// expect TIME value
+			printf(" time");
+		
+		if ( xtab->Flags & 0x0110 )			// join or no_join flags
+        {
+			rtab = RTARR(xtab->RangeID);
+			printf( xtab->Flags & 0x0010 ? "\n\t\tjoin " : "\n\t\tno_join ");
+            if ( xtab->Flags & xtb_LOCK )
+				printf("lock ");
+
+			prtfid(rtab->enleft);
+            printf(" = ");
+            prtfid(rtab->enright);
+            if ( rtab->WhereEXP )
+            {
+				printf(" where ");
+                prtfid(rtab->WhereEXP);
+			}
+			if ( xtab->Width )
+				printf(" vw=%d", xtab->Width);// visible width?
+			return;
+		}
+        if ( !xtab->RangeID )
+        {
+			if ( xtab->Width )
+				printf(" vw=%d", xtab->Width);// visible width?
+			return;
+		}
+        printf("\n\t\trange ");
+		
+		ratab = RAARR(xtab->RangeID);
+		switch (ratab->RangeType)
+		{
+		case 0x01:
+			printf(" POSITIVE ");
+			break;
+		case 0x02:
+			printf(" NEGATIVE ");
+			break;
+		case 0x06:
+            printf(" NAME ");
+			break;
+		default:
+			prtfid(ratab->RangeFrom);
+            if ( !(xtab->Flags & 0x01) )
+            {
+				printf(" to ");
+                prtfid(ratab->RangeTo);
+			}
+			break;
+		}
+        if ( ratab->StringOffset )
+			printf(" '%s'", &strarr.StringTable[ratab->StringOffset - 1]);
+		if ( xtab->Width )
+			printf(" vw=%d", xtab->Width);// visible width?
+		return;
+	}
+}
+
+void prcolrow(unsigned short a1)
+{
+//printf("prcolrow(x%04X)\n",a1);	
+	switch (a1)			// a1 = bitmask
+	{
+	case 0x1000:
+		putchar('c');
+		break;
+
+	case 0x2000:
+		putchar('r');
+		break;
+
+	default:
+		switch (a1 & 0x7E00)				// 0111 1110 0000 0000
+		{
+		case 0x0200:
+		case 0x1000:
+			printf(">%d",(a1 & 0x1FF));		// range = 0 to 511   - Max 512 screen width
+			break;
+
+		case 0x0400:
+		case 0x2000:
+			printf("<%d", (a1 & 0x1FF));
+			break;
+
+		case 0x0800:
+		case 0x4000:
+			printf("=%d", (a1 & 0x1FF));
+			break;
+
+		default:
+			printf("%d", (a1 & 0x1FF));		// default case, only reachable if multiple bits set
+			break;
+		}
+		break;
+	}
+}
+
+// Show an assignment expression
+void prcalc(ENTAB *ent)
+{
+    char *v2;
+	
+	if ( ent )
+    {
+		prtfid(ent->enleft);				// Destination 	
+        if ( ent->entype != 2 )				// 2 = calculation assignment. Other is string assighnment?
+        {
+			printf(" = ");
+            prtfid(ent->enright);
+            return;
+		}
+		// OpCode = ent->TTno & 0xFC00;
+		// switch (OpCode)
+		switch (ent->TTno & 0xFC00)			// OpCode
+		{
+		case 0xA800:
+			v2 = "=";
+			break;
+		case 0xD800:
+			v2 = "+=";
+			break;
+		case 0xDC00:
+			v2 = "-=";
+			break;
+		case 0xE000:
+			v2 = "*=";
+			break;
+		case 0xE400:
+			v2 = "/=";
+			break;
+		case 0xE800:
+			v2 = "%=";
+			break;
+		case 0xEC00:
+			v2 = "**=";
+			break;
+		default:
+			v2 = "<UNKNOWN>";
+			break;
+		}
+
+		if ( ent->TTno & 0x0200 )			// Integer result
+			printf(" (%s) ", v2);
+        else if ( ent->TTno & 0x0040 )		// *LIKE* wildcard flag - indicate possible loss of precision in result
+			printf(" %s RND ", v2);			
+        else
+			printf(" %s ", v2);
+
+		prtfid(ent->enright);
+        return;
+	}
+}
+
+void prrt(unsigned short RTno)
+{
+    RTAB *rtb; // esi@@1
+
+	rtb = RTARR(RTno);
+	if ( rtb )
+    {
+		putchar(' ');
+        prtfid(rtb->enright);
+        prrt(rtb->NextRT);    // some lovely recursion
+	}
+}
+
+void prpf(unsigned short PRno)		// print flags
+{
+    PRTAB	*prtab;
+	const char *v5;
+	int		v4;
+	int		v6;
+	
+	prtab = PRARR(PRno);
+	if ( prtab )
+    {
+		if ( prtab->ReservedFlags )
+        {
+			switch (prtab->ReservedFlags)
+			{
+			case 0x0001:
+				printf("cl");
+				break;
+			case 0x0002:
+				printf("ff");
+				break;
+			case 0x0004:
+				printf("nl");
+				break;
+			case 0x1000:
+				printf("cr");
+				break;
+			default:
+				prresv(prtab->ReservedFlags);			// reserved string name
+				break;
+			}
+		}
+		else
+		{
+			prtfid(prtab->VAR_ENTno);
+		}
+//--------------------------------------
+		if ( prtab->WIDTH_FLAGS )
+        {
+			v4 = prtab->WIDTH_FLAGS & 0x7C00;			//	0111 1100 0000 0000
+			v6 = prtab->WIDTH_FLAGS & 0xFFFF83FF;		//	1000 0011 1111 1111
+			switch (v4)
+			{
+			case 0x0800:
+			    v5 = ",%dx ";
+				break;
+			case 0x1000:
+			    v5 = ",%dc ";
+				break;
+			case 0x2000:
+			    v5 = ",%dr ";
+				break;
+			case 0x4000:
+			    v5 = ",%dl ";
+				break;
+			default:	// case 0x0400
+				v6 = prtab->WIDTH_FLAGS;
+			    v5 = ",%d ";
+				break;
+			}
+			printf(v5, v6);
+		}
+		else
+		{
+			if ( prtab->WIDTH_ENTno )
+            {
+				putchar(',');
+                prtfid(prtab->WIDTH_ENTno);
+			}
+            else
+            {
+				putchar(' ');
+			}
+		}
+		prpf(prtab->NextPR);	// ** Many levels of recursion possible **
+	    return;
+	}
+}
+
+// Show Redisplay Info
+void prrd(unsigned short RDno)
+{
+     RDTAB *rdtab; // esi@@1
+
+     rdtab = RDARR(RDno);
+	 if ( rdtab )
+     {
+          if ( rdtab->TTno <= 0 )
+               prtfid(rdtab->ENTno);						// single field re-display
+          else
+               printf("%s", ttab[rdtab->TTno].TableName);	// redisplay all members of a record
+          putchar(' ');
+          prrd(rdtab->NextRD);								// ** Many levels of recursion possible **
+     }
+}
+
+void prvars(bool ShowTree)
+{
+	FLDdesc *fld;
+	short VarNum;
+	char VarName[32];
+	 
+	if ( ShowTree )
+    {
+		prtree(troot, 0);
+	}
+	else
+	{
+		VarNum = 0;
+		printf("Var VariableName         Typ Length\n");
+		//      No. of variables = 253
+		//        0 NULL                 [C] 20
+		//        1 ERROR                [I] 2
+
+		while ( (fld = getvars(VarNum)) )
+		{
+			if ( fld->FLDelemID )				// ElemID used as Array Size
+				sprintf(VarName, "%s[%d]", fld->FLDname, fld->FLDelemID);
+			else
+				sprintf(VarName, "%s", fld->FLDname);
+			
+			printf("%3d %-20s [%c] %d", VarNum, VarName, fld->FLDtype, fld->FLDlen);
+			fflush(stdout);
+			
+			if ( !(fld->FLDstat & fld_ZERO) )	// variable assigned a value at compile time, show it
+			{
+				switch (fld->FLDtype)
+				{
+				case 'C':
+					printf("\t('%s')", (char*)fld->FLDdata);
+					break;
+		
+				case 'I':
+				case 'N':
+				case 'B':
+					printf("\t(%ld)", (long int)*(double *)fld->FLDdata);
+					break;
+		
+				default:
+					printf("\t(%f)", *(double *)fld->FLDdata);
+					break;
+				}
+			}
+			putchar('\n');
+			VarNum++;
+		}
+	}
+	return;
+}
+
+void prtree(VARTREE *a1, int Depth)
+{
+     if ( a1 )
+     {
+          prtree(a1->VarPrev, Depth + 1);
+          printf("%3d %s\n", Depth, a1->VarName);
+          prtree(a1->VarNext, Depth + 1);       // Recursion here
+     }
+}
+
+void prset(PTAB *ptb)
+{
+     int OpCode;
+	 short Operand;
+	 
+    OpCode	= ptb->OpCode;
+    Operand = ptb->Operand;
+    printf("set ");
+	switch ( OpCode )
+    {
+		case 673:
+            printf("dateform,[%d]",Operand);
+			break;
+		case 652:
+            printf("tab,[%c]", Operand);
+			break;
+		case 654:
+            printf("fill,[%c]", Operand);
+			break;
+		case 650:
+        case 656:
+        case 658:
+        case 660:
+        case 662:
+        case 664:
+        case 668:
+			switch ( OpCode )
+            {
+				case 650:
+					printf("message,");
+                    break;
+				case 656:
+					printf("accept,");
+                    break;
+				case 658:
+					printf("prompt,");
+                    break;
+				case 660:
+					printf("error,");
+                    break;
+				case 662:
+					printf("head,");
+                    break;
+				case 664:
+					printf("text,");
+                    break;
+				case 668:
+					printf("print,");
+                    break;
+				//default:				// should be unreachable
+				//	break;
+			}
+            switch ( Operand )
+            {
+				case 0x01u:
+					putchar('f');		// feint (half-intensity)
+                    break;
+				case 0x02u:
+					putchar('s');		// standout
+                    break;
+				case 0x04u:
+					putchar('u');		// underline
+                    break;
+				case 0x08u:
+					putchar('b');		// bold
+                    break;
+				case 0x10u:
+					putchar('B');		// ???
+                    break;
+				case 0x20u:
+					putchar('r');		// reverse?
+                    break;
+				case 0x3Fu:
+					putchar('n');		// normal
+                    break;
+				default:
+					printf("(%d)", Operand);
+					break;
+			}
+            return;
+		case 670:
+            printf("abort,%s", Operand == 1 ? "on": "off");
+			break;
+		case 684:
+			printf("align,%d", Operand);
+			break;
+		case 665:
+			printf("E,%s", Operand == 1 ? "on": "off");
+			break;
+        case 630:
+            printf("csv,%s", Operand == 1 ? "on": "off");
+			break;
+        case 640:
+           printf("dos,%s", Operand == 1 ? "on": "off");
+			break;
+        case 682:
+            printf("goback,%s", Operand == 1 ? "on": "off");
+			break;
+        case 680:
+            printf("trim,%s", Operand == 1 ? "on": "off");
+			break;
+        case 676:
+            printf("aauto,%s", Operand == 1 ? "on": "off");
+			break;
+        case 678:
+           printf("rauto,%s", Operand == 1 ? "on": "off");
+			break;
+        case 679:
+            printf("repeat,%s", Operand == 1 ? "on": "off");
+			break;
+        case 666:
+            printf("justify,%s", Operand == 1 ? "on": "off");
+			break;
+        case 681:
+            printf("hangup,%s", Operand == 1 ? "on": "off");
+			break;
+        case 686:
+            printf("convert,%s", Operand == 1 ? "on": "off");
+			break;
+        case 687:
+            printf("rawdisplay,%s", Operand == 1 ? "on": "off");
+			break;
+        case 688:
+            printf("rawprint,%s", Operand == 1 ? "on": "off");
+			break;
+        case 659:
+            printf("null_exit,%s", Operand == 1 ? "on": "off");
+			break;
+        case 672:														// debug
+            printf("debug,%s", Operand == 1 ? "on": "off");
+			break;
+        case 674:														// fnum		*** not defined in real clcomp ***
+            printf("fnum,%s", Operand == 1 ? "on": "off");
+			break;
+        case 651:
+            printf("xml,%s", Operand == 1 ? "on": "off");
+			break;
+        case 669:
+			if ( Operand )
+				printf("skip,%s", Operand == 1 ? "on": "off");
+            else
+				printf("skip");
+            break;
+		case 667:
+            printf("output,%s", Operand == 1 ? "console": "stdout");	//printf("print,%s", v25);	*** wrong in real clcomp ***
+			break;
+		default:
+			printf("unknown,[%c]", Operand);
+			break;
+	}
+}
+
+void prtds()
+{
+    TDesc	*TTptr;
+    PTAB	*pt;
+    SCR		*scr;
+    int		*BTCOUNT;
+    BTAB	*bt;
+
+	short	count;
+    short	scrn_no;
+
+    BTCOUNT = (int*) alloca(4 * no_btabs);
+
+    count = 0;					// pointless really, alloca clears memory
+    while ( no_btabs > count )
+		BTCOUNT[count++] = 0;
+
+	count = 0;
+    while((pt = PTARR(getptabp(count)), pt->OpCode))
+    {
+		if ( pt->OpCode == 720 || pt->OpCode == 600 )	// look for 'do' or 'format' OpCodes
+			++BTCOUNT[pt->Operand];
+		count++;
+	}
+    
+	puts("\n<-- block name -->   <mode>  <td> <start>  <end> <calls>");
+    count = 0;
+    bt = btab;
+	while ( bt->BlockName[0])
+    {
+		if ( bt->On_delete )			// If block is referred to by on_condition instructions, bump access count.
+			++BTCOUNT[count];             
+		if ( bt->On_exit )
+			++BTCOUNT[count];
+		if ( bt->On_excep )
+			++BTCOUNT[count];
+		if ( bt->On_entry )
+			++BTCOUNT[count];
+        
+        printf("%-20.20s  %-5.5s  %3d   %5d  %5d   calls=%5d",bt->BlockName, bt->Maintain,bt->TTno,bt->StartLine, bt->EndLine, BTCOUNT[count]);
+        if ( count && !BTCOUNT[count] )
+			print(" block not called");
+
+		if ( bt->On_delete )
+            printf("  on_delete %s (%d) ", bt->On_delete->BlockName, bt->On_delete->BlockNo);
+        if ( bt->On_exit )
+            printf("  on_exit %s (%d) ", bt->On_exit->BlockName, bt->On_exit->BlockNo);
+        if ( bt->On_excep )
+            printf("  on_exception %s (%d) ", bt->On_excep->BlockName, bt->On_excep->BlockNo);
+        if ( bt->On_entry )
+            printf("  on_entry %s (%d) ", bt->On_entry->BlockName, bt->On_entry->BlockNo);
+        putchar('\n');
+//---------------------------          
+		scr = bt->Screens;				// Screen defs
+        scrn_no = 0;
+        while ( scr )
+		{
+            printf("scr%d(%d-%d) ", scrn_no, scr->PT_start,scr->PT_end);
+            scrn_no++;
+			scr = scr->NextSCR;
+        }
+        printf("scrs(%d), fmts(%d)\n", bt->Scrs,bt->fmts);
+		bt++;
+		count++;
+	}
+//==============================
+	puts("\ntd <- database -> <- table name -> < alias >  <status>");
+    TTptr = ttab;
+	count = 0;
+    while ( no_ttabs > count )
+    {
+		if ( TTptr->TableName[0] )
+        {
+            printf("%2d %-14.14s %-14.14s   %-10.10s ", count, dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+            if ( TTptr->TDlocked & ttl_LOCK)	// 0x0001
+				printf("lock ");
+			if ( TTptr->TDlocked & ttl_PUT )	// 0x0002
+				printf("put ");
+			if ( TTptr->TDlocked & ttl_GET )	// 0x0004
+				printf("get ");
+			if ( TTptr->TDlocked & ttl_GETK)	// 0x0008
+				printf("getk ");
+			if ( TTptr->TDlocked & ttl_HASK)	// 0x0010
+				printf("hask ");
+			if ( TTptr->TDlocked & ttl_AVAIL)	// 0x0020
+				printf("avail ");
+			if ( TTptr->TDlocked & ttl_FLOCK)	// 0x0040
+				printf("flock ");
+			if ( TTptr->TDlocked & ttl_LOCKR)	// 0x0080
+				printf("lockr ");
+			if ( TTptr->TDlocked & ttl_GETNP)	// 0x0100
+				printf("getn/p ");
+			if ( TTptr->TDlocked & ttl_CREATE)	// 0x0200
+				printf("create ");
+			if ( TTptr->TDlocked & ttl_UNIQUE)	// 0x0400
+				printf("unique ");
+			// 0x1000? 
+			// 0x2000?
+			if ( TTptr->TDlocked & ttl_HASSUB)	// 0x4000  has sub-records
+				printf("hass ");
+			if ( TTptr->TDlocked & ttl_DEL)		// 0x8000 delete is called on this TT
+				printf("del ");
+			if (!(TTptr->TDlocked & 0x0800))
+				printf("not_open ");
+			putchar('\n');
+		}
+        count++;
+        TTptr++;
+	}
+}
+
+void prkx(KXTAB *kxtab)
+{
+	int *TTcount;
+	short *ptr;
+
+	printf("[%s] tds: ", kxtab->TableName);
+	for ( TTcount = kxtab->TTlist; *TTcount; ++TTcount )
+		printf("%d ", *TTcount);
+	
+	printf("\n\t\tkey doms: ");
+	for ( ptr = kxtab->KeyElemIDs; *ptr; ++ptr )
+		printf("%d ", *ptr);
+	
+	printf("\n\t\tkey ty: ");
+	for ( ptr = kxtab->TkeyTy; *ptr; ++ptr )
+		printf("%#o ", *ptr);
+	
+	printf("\n\t\tdata doms: ");
+	for ( ptr = kxtab->DataElemIDs; *ptr; ++ptr )
+		printf("%d ", *ptr);
+	
+	printf("\n\t\tntds=%d, nkeys=%d, ndata=%d, ks=%d, rs=%d\n", kxtab->NumTTs, kxtab->NumKeyFields, kxtab->NumDataFields, kxtab->KeySize, kxtab->RecSize);
+
+	printf("\t\twhere ");
+	prtfid(kxtab->WhereEXP);
+}
+
+void prdatefield(unsigned short ENTno, unsigned short XTno, PRTAB *pr)
+{
+    ENTAB	*ent;
+    ENTAB	*v4;
+    ENTAB	*v12;
+	XTAB	*xtb;
+    FLDdesc *fld;
+
+    TDesc	*TTptr;
+	
+	char	*v10;
+	char	*v20;
+	
+    int		TTno;
+    bool	isExpr;
+
+	//	ent = ENARR(ENTno);
+	//	while (ent && ent->enleft)
+	//		ent = ENARR(ent->enleft);
+
+	ent = ENARR(ENTno);
+	 
+	if ( ent->enleft )
+    {
+		if ( !ent->enleft )	// Should be unreachable due to test above
+        {
+			v4 = 0;			// Should cause a CRASH!
+            goto LABEL_7;
+		}
+        do
+        {
+			v4 = &enarr.TableAddr[ent->enleft - 1];
+LABEL_7:
+            ent = v4;
+		}
+        while ( v4->enleft );
+	}
+    
+	assert(ent->entype == 0x01);
+
+	xtb = XTARR(XTno);
+	
+	TTno = ent->TTno;
+    if ( TTno )
+		fld = &ttab[TTno].TTfields[ent->RecNo];		// Field in a Table
+	else
+		fld = getvars(ent->RecNo);					// Normal variable
+
+	if ( fld->FLDtype == 'D' )
+    {
+		++count_0;
+        if ( count_0 == 1 )		// only show datefield check message once if applicable
+            print("cl (%s) checking %s.ent for date fields\n", getclver(), clbasename(ename)); // version, EntFilename
+
+		print("%s %s: ln %d: ", FileTree->FileName, xtb? "Input" : "Output", (unsigned short)ll);
+
+        if ( TTno )				// field in table
+        {
+			TTptr = &ttab[TTno];
+			print("%s.%s ", TTptr->TableAlias[0] ? TTptr->TableAlias : TTptr->TableName, fld->FLDname);
+		}
+        else					// normal variable
+			print("%s ", fld->FLDname);
+
+		if ( xtb )
+        {
+			if ( xtb->widthEXP )
+				prtfid(xtb->widthEXP);
+			else
+				print("%d.", xtb->width);
+            print("\n");
+            return;
+		}
+        if ( !pr )
+		{
+            print("\n");
+			return;
+		}
+		if ( !pr->WIDTH_ENTno )
+        {
+			print("fw=%d\n", pr->WIDTH_FLAGS & 0x83FFu);		// 1000 0011 1111 1111
+			return;
+		}
+        v12 = &enarr.TableAddr[pr->WIDTH_ENTno - 1];			// must be true after block above
+        isExpr = false;
+        while ( v12->enleft )
+        {
+			isExpr = true;
+			v12 = ENARR(v12->enleft);		// drill down
+		}
+		assert(v12->entype == 0x01);		// check expression type == 1
+
+		TTno = v12->TTno;
+          
+		if ( TTno )
+			fld = &ttab[TTno].TTfields[v12->RecNo];		// field in table
+		else
+			fld = getvars(v12->RecNo);					// normal variable
+          
+		if ( fld->FLDtype == 'C' )
+        {
+			if ( TTno )
+            {
+				TTptr = &ttab[TTno];
+				print("%s.%s ", TTptr->TableAlias[0] ? TTptr->TableAlias : TTptr->TableName, fld->FLDname);
+			}
+            else
+            {
+				if ( *fld->FLDname == '\'' )		// ??? mask literals ???
+					print("mask=literal val=[%s] ", fld->FLDdata);
+				else
+					print("mask=[%s] val=[%s] ", fld->FLDname, (char *)fld->FLDdata);
+			}
+		}
+        else
+        {
+			if ( TTno )
+            {
+				TTptr = &ttab[TTno];
+				print("%s.%s [%c] ", TTptr->TableAlias[0] ? TTptr->TableAlias : TTptr->TableName, fld->FLDname, fld->FLDtype);
+			}
+			else
+				print("var=[%s[%c]] ", fld->FLDname, fld->FLDtype);
+		}
+        if ( isExpr )
+			print("expr ");
+		print("\n");
+        return;
+	}
+}
+
+#endif
+@
+
+
+1.9
+log
+@clean-up, add DC extensions
+@
+text
+@d277 1
+a277 1
+		printf("~%ld~", *(int *)&entab->TTno);		// Embedded Integer Literal
+d293 1
+a293 1
+			_IO_putc('&', stdout);
+d308 1
+a308 1
+				_IO_putc('\'', stdout);
+d312 1
+a312 1
+			_IO_putc('\'', stdout);
+d314 1
+a314 1
+			_IO_putc('\'', stdout);
+d345 1
+a345 1
+			_IO_putc(v3, stdout);
+d858 1
+a858 1
+					printf("\t(%ld)", (signed int)*(double *)fld->FLDdata);
+@
+
+
+1.8
+log
+@minor tidyup
+@
+text
+@a7 74
+
+void prstr(char *a1)
+{
+    int v3;
+	
+	while ( *a1 )
+	{
+		v3 = *a1++;
+		//if ( (*v2)[v3] & 2 )			// iscntrl() == 0x0002
+		if (iscntrl(v3))
+			printf("^%c", v3 + 0x40);
+		else
+			_IO_putc(v3, stdout);
+		//a1++;
+	}
+}
+
+void prresv(int ReservedMask)
+{
+    const char *v1; // eax@@25
+
+	switch (ReservedMask)
+	{
+		case 0x0001:
+			v1 = "'path'";
+			break;
+		case 0x0002:
+			v1 = "'version'";
+			break;
+		//case 0x0004:			// 0x0004 free?
+		case 0x0008:
+			v1 = "'date'";
+			break;
+		case 0x0010:
+			v1 = "'time'";
+			break;
+		case 0x0020:
+			v1 =  "'pname'";
+			break;
+		case 0x0040:
+			v1 = "'uname'";
+			break;
+		case 0x0080:
+			v1 = "'pid'";
+			break;
+		case 0x0100:
+			v1 = "'uid'";
+			break;
+		case 0x0200:
+			v1 = "'login'";
+			break;
+		case 0x0400:
+			v1 = "'tty'";
+			break;
+		case 0x0800:
+			v1 = "'nname'";
+			break;				
+		//case 0x1000:			// 0x1000 free??
+		case 0x2000:
+			v1 = "'pwd'";
+			break;
+		case 0x4000:
+			v1 = "'licensee'";
+			break;
+		//case 0x8000:			// 0x8000 free??
+		default:	
+			printf("'-%o-'", ReservedMask);			// unknown, just print mask value
+			return;
+			break;
+	}
+	printf(v1);
+    return;
+}
+
+d182 1
+a182 1
+	prtfid(entab->enleft);				// *** recursion here ***
+d193 1
+a193 1
+		if ( entab->TTno & 0x3F )
+d274 1
+a274 1
+		printf("~%f~", *(float *)&entab->TTno);		// Embedded Float	** not created by real clcomp **
+d277 1
+a277 1
+		printf("~%ld~", *(int *)&entab->TTno);		// Embedded Integer
+d280 1
+a280 1
+		printf("~%s~", (char *)&entab->TTno);		// Embedded String
+d292 3
+d336 1
+a336 1
+void prtree(VARTREE *a1, int Depth)
+d338 9
+a346 6
+     if ( a1 )
+     {
+          prtree(a1->VarPrev, Depth + 1);
+          printf("%3d %s\n", Depth, a1->VarName);
+          prtree(a1->VarNext, Depth + 1);       // Recursion here
+     }
+d349 1
+a349 1
+void prvars(bool ShowTree)
+d351 3
+a353 9
+	FLDdesc *fld;
+	short VarNum;
+	char VarName[32];
+	 
+	if ( ShowTree )
+    {
+		prtree(troot, 0);
+	}
+	else
+d355 46
+a400 38
+		VarNum = 0;
+		printf("Var VariableName         Typ Length\n");
+		//      No. of variables = 253
+		//        0 NULL                 [C] 20
+		//        1 ERROR                [I] 2
+
+		while ( (fld = getvars(VarNum)) )
+		{
+			if ( fld->FLDelemID )
+				sprintf(VarName, "%s[%d]", fld->FLDname, fld->FLDelemID);// ElemID used as Array Size
+			else
+				sprintf(VarName, "%s", fld->FLDname);
+			
+			printf("%3d %-20s [%c] %d", VarNum, VarName, fld->FLDtype, fld->FLDlen);
+			fflush(stdout);
+			
+			if ( !(fld->FLDstat & fld_ZERO) ) // variable assigned a value at compile time, show it
+			{
+				switch (fld->FLDtype)
+				{
+				case 'C':
+					printf("\t('%s')", (char*)fld->FLDdata);
+					break;
+		
+				case 'I':
+				case 'N':
+				case 'B':
+					printf("\t(%ld)", (signed int)*(double *)fld->FLDdata);
+					break;
+		
+				default:
+					printf("\t(%f)", *(double *)fld->FLDdata);
+					break;
+				}
+			}
+			putchar('\n');
+			VarNum++;
+		}
+d402 2
+a403 1
+	return;
+d406 2
+a407 1
+void prtds()
+d409 3
+a411 5
+    TDesc	*TTptr;
+    PTAB	*pt;
+    SCR		*scr;
+    int		*BTCOUNT;
+    BTAB	*bt;
+d413 3
+a415 2
+	short	count;
+    short	scrn_no;
+d417 2
+a418 1
+    BTCOUNT = (int*) alloca(4 * no_btabs);
+d420 19
+a438 11
+    count = 0;					// pointless really, alloca clears memory
+    while ( no_btabs > count )
+		BTCOUNT[count++] = 0;
+
+	count = 0;
+    while((pt = PTARR(getptabp(count)), pt->OpCode))
+    {
+		if ( pt->OpCode == 720 || pt->OpCode == 600 )	// look for 'do' or 'format' OpCodes
+			++BTCOUNT[pt->Operand];
+		count++;
+	}
+d440 1
+a440 4
+	puts("\n<-- block name -->   <mode>  <td> <start>  <end> <calls>");
+    count = 0;
+    bt = btab;
+	while ( bt->BlockName[0])
+d442 21
+a462 296
+		if ( bt->On_delete )
+			++BTCOUNT[count];             // multiple use of some variables. Names partially meaningless.
+		if ( bt->On_exit )
+			++BTCOUNT[count];
+		if ( bt->On_excep )
+			++BTCOUNT[count];
+		if ( bt->On_entry )
+			++BTCOUNT[count];
+        
+        printf("%-20.20s  %-5.5s  %3d   %5d  %5d   calls=%5d",bt->BlockName, bt->Maintain,bt->TTno,bt->StartLine, bt->EndLine, BTCOUNT[count]);
+        if ( count && !BTCOUNT[count] )
+			print(" block not called");
+
+		if ( bt->On_delete )
+            printf("  on_delete %s (%d) ", bt->On_delete->BlockName, bt->On_delete->BlockNo);
+        if ( bt->On_exit )
+            printf("  on_exit %s (%d) ", bt->On_exit->BlockName, bt->On_exit->BlockNo);
+        if ( bt->On_excep )
+            printf("  on_exception %s (%d) ", bt->On_excep->BlockName, bt->On_excep->BlockNo);
+        if ( bt->On_entry )
+            printf("  on_entry %s (%d) ", bt->On_entry->BlockName, bt->On_entry->BlockNo);
+        putchar('\n');
+//---------------------------          
+		scr = bt->TYPE24;				// Screen defs
+        scrn_no = 0;
+        while ( scr )
+		{
+            printf("scr%d(%d-%d) ", scrn_no, scr->PT_start,scr->PT_end);
+            scrn_no++;
+			scr = scr->NextSCR;
+        }
+        printf("scrs(%d), fmts(%d)\n", bt->Scrs,bt->fmts);
+		bt++;
+		count++;
+	}
+//==============================
+	puts("\ntd <- database -> <- table name -> < alias >  <status>");
+    TTptr = ttab;
+    
+	count = 0;
+    while ( no_ttabs > count )
+    {
+		if ( TTptr->TableName[0] )
+        {
+            printf("%2d %-14.14s %-14.14s   %-10.10s ", count, dtab[TTptr->DBnumber].FullDBname, TTptr->TableName, TTptr->TableAlias);
+            if ( TTptr->TDlocked & ttl_LOCK)	// 0x0001
+				printf("lock ");
+			if ( TTptr->TDlocked & ttl_PUT )	// 0x0002
+				printf("put ");
+			if ( TTptr->TDlocked & ttl_GET )	// 0x0004
+				printf("get ");
+			if ( TTptr->TDlocked & ttl_GETK)	// 0x0008
+				printf("getk ");
+			if ( TTptr->TDlocked & ttl_HASK)	// 0x0010
+				printf("hask ");
+			if ( TTptr->TDlocked & ttl_AVAIL)	// 0x0020
+				printf("avail ");
+			if ( TTptr->TDlocked & ttl_FLOCK)	// 0x0040
+				printf("flock ");
+			if ( TTptr->TDlocked & ttl_LOCKR)	// 0x0080
+				printf("lockr ");
+			if ( TTptr->TDlocked & ttl_GETNP)	// 0x0100
+				printf("getn/p ");
+			if ( TTptr->TDlocked & ttl_CREATE)	// 0x0200
+				printf("create ");
+			if ( TTptr->TDlocked & ttl_UNIQUE)	// 0x0400
+				printf("unique ");
+			// 0x1000? 
+			// 0x2000?
+			if ( TTptr->TDlocked & ttl_HASSUB)	// 0x4000  has sub-records
+				printf("hass ");
+			if ( TTptr->TDlocked & ttl_DEL)		// 0x8000 delete is called on this TT
+				printf("del ");
+			if (!(TTptr->TDlocked & 0x0800))
+				printf("not_open ");
+			putchar('\n');
+		}
+        count++;
+        TTptr++;
+	}
+}
+
+void prrt(unsigned short RTno)
+{
+    RTAB *rtb; // esi@@1
+
+	rtb = RTARR(RTno);
+	if ( rtb )
+    {
+		putchar(' ');
+        prtfid(rtb->field_E);
+        prrt(rtb->NextRT);    // some lovely recursion
+	}
+}
+
+void prpf(unsigned short PRno)
+{
+    PRTAB	*prtab;
+	const char *v5;
+	int		v4;
+	int		v6;
+	
+	prtab = PRARR(PRno);
+	if ( prtab )
+    {
+		if ( prtab->ReservedFlags )
+        {
+			switch (prtab->ReservedFlags)
+			{
+			case 0x0001:
+				printf("cl");
+				break;
+			case 0x0002:
+				printf("ff");
+				break;
+			case 0x0004:
+				printf("nl");
+				break;
+			case 0x1000:
+				printf("cr");
+				break;
+			default:
+				prresv(prtab->ReservedFlags);
+				break;
+			}
+		}
+		else
+		{
+			prtfid(prtab->VAR_ENTno);
+		}
+//--------------------------------------
+		if ( prtab->WIDTH_FLAGS )
+        {
+			v4 = prtab->WIDTH_FLAGS & 0x7C00;			//	0111 1100 0000 0000
+			v6 = prtab->WIDTH_FLAGS & 0xFFFF83FF;		//	1000 0011 1111 1111
+			switch (v4)
+			{
+			case 0x0800:
+			    v5 = ",%dx ";
+				break;
+			case 0x1000:
+			    v5 = ",%dc ";
+				break;
+			case 0x2000:
+			    v5 = ",%dr ";
+				break;
+			case 0x4000:
+			    v5 = ",%dl ";
+				break;
+			default:	// case 0x0400
+				v6 = prtab->WIDTH_FLAGS;
+			    v5 = ",%d ";
+				break;
+			}
+			printf(v5, v6);
+		}
+		else
+		{
+			if ( prtab->WIDTH_ENTno )
+            {
+				putchar(',');
+                prtfid(prtab->WIDTH_ENTno);
+			}
+            else
+            {
+				putchar(' ');
+			}
+		}
+		prpf(prtab->NextPR);	// ** Many levels of recursion possible **
+	    return;
+	}
+}
+
+// Show Redisplay Info
+void prrd(unsigned short RDno)
+{
+     RDTAB *rdtab; // esi@@1
+
+     rdtab = RDARR(RDno);
+	 if ( rdtab )
+     {
+          if ( rdtab->TTno <= 0 )
+               prtfid(rdtab->ENTno);						// single field re-display
+          else
+               printf("%s", ttab[rdtab->TTno].TableName);	// redisplay all members of a record
+          putchar(' ');
+          prrd(rdtab->NextRD);								// ** Many levels of recursion possible **
+     }
+}
+
+void prcolrow(unsigned short a1)
+{
+	//char	*v1;
+	//char	*v4;
+	//const char *v2;
+	//int		v3;
+	
+//printf("prcolrow(x%04X)\n",a1);	
+	switch (a1)			// a1 = bitmask
+	{
+	case 0x1000:
+		putchar('c');
+		//printf("%s", "c");
+		break;
+
+	case 0x2000:
+		putchar('r');
+	    //printf("%s", "r");
+		break;
+
+	default:
+		//v3 = a1 & 0x7E00;	// 0111 1110 0000 0000
+		//switch (v3)
+		switch (a1 & 0x7E00)
+		{
+		case 0x0200:
+		case 0x1000:
+			printf(">%d",(a1 & 0x1FF));	// range = 0 to 511   - Max 512 screen width
+			break;
+
+		case 0x0400:
+		case 0x2000:
+			printf("<%d", (a1 & 0x1FF));
+			break;
+
+		case 0x0800:
+		case 0x4000:
+			printf("=%d", (a1 & 0x1FF));
+			break;
+
+		default:
+			printf("%d", (a1 & 0x1FF));	// default case, only reachable if multiple bits set
+			break;
+		}
+		break;
+	}
+}
+
+
+// Print a screen accept definition
+void prxt(XTAB *xtab, bool isHDTXT)
+{
+	FLDdesc	*fld;
+	RTAB	*rtab;
+	RATAB	*ratab;
+
+	short	fno;
+	int		TTno;
+	char	FLDtype;
+
+    if ( !xtab )
+		return;
+
+    prtfid(xtab->VarExpNo);
+    putchar(' ');
+    
+	if ( xtab->widthEXP )
+		prtfid(xtab->widthEXP);
+    else
+		printf("%d", xtab->width);
+    
+	if ( xtab->Flags & xtb_DISPLAY )		// 0x0004u	// this is a DISPLAY ONLY field
+		printf(",d");
+	else if ( xtab->Flags & xtb_REQUIRED)   // 0x0400u	// value is required for this field
+		printf(",r");
+	
+	printf(" at ");
+    
+	if ( xtab->PCol_exp )				// expression trumps fixed number
+		prtfid(xtab->PCol_exp);
+	else
+		prcolrow(xtab->PCol);
+    
+	if ( xtab->ScrAttrib )
+    {
+		switch ( xtab->ScrAttrib )
+		{
+        case 0x01:
+			printf(",f");
+            break;
+		case 0x02:
+			printf(",s");
+            break;
+		case 0x04:
+			printf(",u");
+            break;
+		case 0x08:
+			printf(",b");
+            break;
+		case 0x10:
+			printf(",B");
+            break;
+		case 0x20:
+			printf(",r");
+            break;
+		case 0x3F:
+d567 1
+a567 1
+			prtfid(rtab->field_C);
+d569 1
+a569 1
+            prtfid(rtab->field_E);
+d616 1
+a616 1
+void prkx(KXTAB *kxtab)
+d618 23
+a640 2
+	int *TTcount;
+	short *ptr;
+d642 4
+a645 17
+	printf("[%s] tds: ", kxtab->TableName);
+	for ( TTcount = kxtab->TTlist; *TTcount; ++TTcount )
+		printf("%d ", *TTcount);
+	
+	printf("\n\t\tkey doms: ");
+	for ( ptr = kxtab->KeyElemIDs; *ptr; ++ptr )
+		printf("%d ", *ptr);
+	
+	printf("\n\t\tkey ty: ");
+	for ( ptr = kxtab->TkeyTy; *ptr; ++ptr )
+		printf("%#o ", *ptr);
+	
+	printf("\n\t\tdata doms: ");
+	for ( ptr = kxtab->DataElemIDs; *ptr; ++ptr )
+		printf("%d ", *ptr);
+	
+	printf("\n\t\tntds=%d, nkeys=%d, ndata=%d, ks=%d, rs=%d\n", kxtab->NumTTs, kxtab->NumKeyFields, kxtab->NumDataFields, kxtab->KeySize, kxtab->RecSize);
+d647 6
+a652 2
+	printf("\t\twhere ");
+	prtfid(kxtab->WhereEXP);
+d658 2
+a659 3
+	//int OpCode; // eax@@3
+    char *v2; // edx@@3
+
+d699 4
+a702 4
+		if ( ent->TTno & 0x0200 )
+			printf(" (%s) ", v2);			// Integer result
+        else if ( ent->TTno & 0x0040 )
+			printf(" %s RND ", v2);			// indicate possiible loss or precision in result
+d706 130
+a835 4
+		prtfid(ent->enright);
+        return;
+	}
+}
+d837 1
+a837 9
+void prpipe(SFTAB *sftab)
+{
+	const char *v3;
+	short cmd;
+	
+    if ( sftab )
+    {
+		cmd = sftab->cmd_flags;
+        if ( cmd & 0x0010 )
+d839 2
+a840 18
+			if ( cmd & 0x0040 )				// 0x40 == Pipe flag
+			{
+				switch (cmd & 0xFFAF)		// 1111 1111 1010 1111 
+				{
+				case 1:
+					v3 = "popenin ";
+					break;
+				case 2:
+					v3 = "popenout ";
+					break;
+				case 3:
+					v3 = "popenio ";
+					break;
+				default:
+					v3 = "popen?? ";
+					break;				
+				}
+			}
+d842 6
+d849 1
+a849 1
+				switch (cmd & 0xFFEF)		// 1111 1111 1110 1111
+d851 2
+a852 2
+				case 1:
+					v3 = "openin ";
+d854 5
+a858 5
+				case 2:
+					v3 = "openout ";
+					break;
+				case 4:
+					v3 = "openapp ";
+d860 1
+d862 1
+a862 23
+					v3 = "open?? ";
+					break;
+				}
+			}
+		}
+		else
+        {
+			if ( cmd & 0x0008 )
+            {
+				v3 = "close ";
+			}
+            else
+            {
+				switch (cmd & 0xFFBF)		// 1111 1111 1011 1111
+				{
+				case 1:
+					v3 = "read ";
+					break;
+				case 2:
+					v3 = "write ";
+					break;
+				default:
+					v3 = "r/w????? ";
+d866 2
+d869 3
+d873 8
+a880 7
+		printf(v3);
+        prtfid(sftab->AliasEnt);
+        if ( sftab->FileNameEnt )			// takes precedence over field 2
+			prtfid(sftab->FileNameEnt);
+        else if ( sftab->PRTno )
+			prpf(sftab->PRTno);
+	}
+d1034 270
+@
+
+
+1.7
+log
+@intermediate
+@
+text
+@d242 1
+a242 1
+                prtfid(entab->Dest);	// *** recursion here ***
+d244 1
+a244 1
+                prtfid(entab->Src);		// *** recursion here ***
+d256 1
+a256 1
+	prtfid(entab->Dest);				// *** recursion here ***
+d313 1
+a313 1
+				if ( entab->Src )
+d337 1
+a337 1
+				else if ( entab->Src )
+d348 1
+a348 1
+		printf("~%f~", *(float *)&entab->TTno);		// Float
+d351 1
+a351 1
+		printf("~%ld~", *(int *)&entab->TTno);		// Integer
+d354 1
+a354 1
+		printf("~%s~", (char *)&entab->TTno);		// String
+d375 1
+a375 1
+        else if ( fld->FLDstat & 0x0004 )			// If variable is uninitialised, print var name
+d398 1
+a398 1
+    prtfid(entab->Src);	// *** Many levels of recursion possible!! ***
+d417 1
+a417 1
+void prvars(int ShowTree)
+d419 4
+a422 6
+     FLDdesc *fld; // esi@@3
+     short VarNum; // edi@@3
+     char FLDtype; // eax@@8
+     char v4; // zf@@10
+     char VarName[32]; // [sp+30h] [bp-88h]@@5
+
+a425 1
+        return;
+d427 7
+d435 1
+a435 18
+	VarNum = 0;
+	printf("Var VariableName         Typ Length\n");
+	//      No. of variables = 253
+	//        0 NULL                 [C] 20
+	//        1 ERROR                [I] 2
+
+    while ( (fld = getvars(VarNum),fld) )
+    {
+		if ( fld->FLDelemID )
+			sprintf(VarName, "%s[%d]", fld->FLDname, fld->FLDelemID);// ElemID used as Array Size
+		else
+			sprintf(VarName, "%s", fld->FLDname);
+		
+		FLDtype = fld->FLDtype;
+        printf("%3d %-20s [%c] %d", VarNum, VarName, FLDtype, fld->FLDlen);
+        fflush(stdout);
+        
+		if ( !(fld->FLDstat & fld_ZERO) ) // variable assigned a value at compile time, show it
+d437 9
+a445 1
+			switch (FLDtype)
+d447 16
+a462 13
+			case 'C':
+				printf("\t('%s')", (char*)fld->FLDdata);
+				break;
+	
+			case 'I':
+			case 'N':
+			case 'B':
+				printf("\t(%ld)", (signed int)*(double *)fld->FLDdata);
+				break;
+	
+			default:
+				printf("\t(%f)", *(double *)fld->FLDdata);
+				break;
+d464 2
+a466 2
+		putchar('\n');
+        VarNum++;
+d475 1
+a475 2
+    TYPE24	*v5;
+    char	*v9;
+d480 1
+a480 1
+    short	v6;
+d524 7
+a530 7
+		v5 = bt->TYPE24;
+        v6 = 0;
+        while ( v5 )
+		{
+            printf("scr%d(%d-%d) ", v6, v5->PT_start,v5->PT_end);
+            v6++;
+			v5 = v5->NextT24;
+d546 1
+a546 1
+            if ( TTptr->TDlocked & ttl_LOCK) // 0x0001
+d548 1
+a548 1
+			if ( TTptr->TDlocked & ttl_PUT ) // 0x0002
+d550 1
+a550 1
+			if ( TTptr->TDlocked & ttl_GET ) // 0x0004
+d552 1
+a552 1
+			if ( TTptr->TDlocked & ttl_GETK) // 0x0008
+d554 1
+a554 1
+			if ( TTptr->TDlocked & ttl_HASK) // 0x0010
+d558 1
+a558 1
+			if ( TTptr->TDlocked & ttl_FLOCK) // 0x0040
+d560 1
+a560 1
+			if ( TTptr->TDlocked & ttl_LOCKR) // 0x0080
+d562 1
+a562 1
+			if ( TTptr->TDlocked & ttl_GETNP) // 0x0100
+d564 1
+a564 1
+			if ( TTptr->TDlocked & ttl_CREATE) // 0x0200
+d566 1
+a566 1
+			if ( TTptr->TDlocked & ttl_UNIQUE) // 0x0400
+d651 1
+a651 1
+				v6 = prtab->WIDTH_FLAGS;	// default case
+d683 1
+a683 1
+               prtfid(rdtab->field_2);
+d685 1
+a685 1
+               printf("%s", ttab[rdtab->TTno].TableName);
+d687 1
+a687 1
+          prrd(rdtab->NextRD);              // ** Many levels of recursion possible **
+d693 4
+a696 4
+	char	*v1;
+	char	*v4;
+	const char *v2;
+	int		v3;
+d712 3
+a714 2
+		v3 = a1 & 0x7E00;	// 0111 1110 0000 0000
+		switch (v3)
+d718 1
+a718 1
+			printf(">%d",(a1 & 0x1FF));
+d741 1
+a741 1
+void prxt(XTAB *xtab, int HeadText)
+d749 1
+a749 1
+	int		v14;
+d811 1
+a811 1
+	if ( !HeadText )						// true if this is an accept field. Show the Answer Col/Line values
+d856 1
+a856 1
+	if ( !HeadText )
+d858 1
+a858 3
+		fno = gettf(xtab->VarExpNo, &TTno, (char *)&v14);
+        //if ( fno < 0 )
+		//	__assert_fail("fno >= 0", "prdebug.c", 0x133u, "prxt");
+d883 1
+a883 1
+		if ( fld->FLDstat & 0x0008 )		// ??? 
+d894 1
+a894 1
+		if ( xtab->Flags & 0x0110 )
+d980 1
+a980 1
+	int OpCode; // eax@@3
+d985 1
+a985 1
+		prtfid(ent->Dest);					// 	
+d989 1
+a989 1
+            prtfid(ent->Src);
+d992 3
+a994 3
+        OpCode = ent->TTno & 0xFC00;
+		
+		switch (OpCode)
+d1025 1
+a1025 1
+			printf(" %s RND ", v2);
+d1029 1
+a1029 1
+		prtfid(ent->Src);
+d1037 1
+a1037 4
+	int v1;
+	int v2;
+	int v4;
+	int v5;
+d1041 41
+a1081 2
+		v1 = sftab->cmd_flags;
+        if ( !(v1 & 0x10) )
+d1083 1
+a1083 1
+			if ( sftab->cmd_flags & 0x0008 )
+d1089 3
+a1091 2
+				v5 = sftab->cmd_flags & 0xFFBF;		// 1111 1111 1011 1111
+                if ( v5 == 1 )
+d1093 2
+a1094 1
+				else if ( v5 == 2 )
+d1096 2
+a1097 1
+				else
+d1099 2
+a1102 24
+		else if ( v1 & 0x40 )					// 0x40 == Pipe flag bit?
+        {
+			v2 = v1 & 0xFFAF;					// 1111 1111 1010 1111  
+            if ( v2 == 2 )
+				v3 = "popenout ";
+			else if ( v2 == 3 )
+				v3 = "popenio ";
+            else if ( v2 == 1 )
+				v3 = "popenin ";
+            else
+				v3 = "popen?? ";
+		}
+        else
+        {
+			v4 = sftab->cmd_flags & 0xFFEF;		// 1111 1111 1110 1111
+            if ( v4 == 2 )
+				v3 = "openout ";
+            else if ( v4 == 4 )
+				v3 = "openapp ";
+			else if ( v4 == 1 )
+				v3 = "openin ";
+			else
+				v3 = "open?? ";
+		}
+d1115 4
+a1118 4
+     int OpCode; // esi@@1
+     short Operand; // edi@@1
+
+    OpCode = ptb->OpCode;
+d1168 1
+a1168 1
+					putchar('f');
+d1171 1
+a1171 1
+					putchar('s');
+d1174 1
+a1174 1
+					putchar('u');
+d1177 1
+a1177 1
+					putchar('b');
+d1180 1
+a1180 1
+					putchar('B');
+d1183 1
+a1183 1
+					putchar('r');
+d1186 1
+a1186 1
+					putchar('n');
+@
+
+
+1.6
+log
+@*** empty log message ***
+@
+text
+@d5 1
+d15 1
+a15 1
+		v3 = *a1;
+d21 1
+a21 1
+		a1++;
+d36 2
+a37 1
+			break;					//0x0004 free?
+d64 2
+a65 1
+			break;				//0x1000 free??
+d71 4
+a74 3
+			break;				//0x8000 free??
+		default:	// unknown, just print mask value
+			printf("'-%o-'", ReservedMask);
+d330 1
+a330 1
+			case 0xAC00:
+d448 1
+a448 1
+		if ( !(fld->FLDstat & 0x0004) ) // true if variable is not assigned a value at compile time
+d549 1
+a549 1
+            if ( TTptr->TDlocked & 0x0001 )
+d551 1
+a551 1
+			if ( TTptr->TDlocked & 0x0002 )
+d553 1
+a553 1
+			if ( TTptr->TDlocked & 0x0004 )
+d555 1
+a555 1
+			if ( TTptr->TDlocked & 0x0008 )
+d557 1
+a557 1
+			if ( TTptr->TDlocked & 0x0010 )
+d559 1
+a559 1
+			if ( TTptr->TDlocked & 0x0020 )
+d561 1
+a561 1
+			if ( TTptr->TDlocked & 0x0040 )
+d563 1
+a563 1
+			if ( TTptr->TDlocked & 0x0080)
+d565 1
+a565 1
+			if ( TTptr->TDlocked & 0x0100 )
+d567 1
+a567 1
+			if ( TTptr->TDlocked & 0x0200 )
+d569 1
+a569 1
+			if ( TTptr->TDlocked & 0x0400 )
+d571 3
+a573 1
+			if ( TTptr->TDlocked & 0x4000 )
+d575 1
+a575 1
+			if ( TTptr->TDlocked & 0x8000 )
+d588 1
+a588 1
+    RTAB *v1; // esi@@1
+d590 2
+a591 2
+	v1 = RTARR(RTno);
+	if ( v1 )
+d594 2
+a595 2
+        prtfid(v1->field_E);
+        prrt(v1->NextRT);    // some lovely recursion
+d601 5
+a605 5
+    PRTAB *prtab; // esi@@1
+    int v4; // eax@@20
+    const char *v5; // eax@@27
+    int v6; // [sp+4h] [bp-14h]@@27
+
+d696 5
+a700 5
+	char *v1; // eax@@3
+    const char *v2; // eax@@5
+    int v3; // eax@@6
+    char *v4; // [sp+4h] [bp-14h]@@5
+
+d745 7
+a751 9
+     FLDdesc *fld;
+     const char *v7;
+     RTAB *rtab;
+     //char *v9;
+     RATAB *ratab;
+
+     short VarNum;
+     int TTno;
+     int v14;
+d764 1
+a764 1
+	if ( xtab->Flags & 0x0004 )			// display only
+d766 1
+a766 1
+	else if ( xtab->Flags & 0x0400)     // required
+d860 4
+a863 3
+		VarNum = gettf(xtab->VarExpNo, &TTno, (char *)&v14);
+        if ( VarNum < 0 )
+			__assert_fail("fno >= 0", "prdebug.c", 0x133u, "prxt");
+d866 1
+a866 1
+			fld = &ttab[TTno].TTfields[VarNum];
+d868 1
+a868 1
+			fld = getvars(VarNum);
+d870 1
+a870 1
+		if ( xtab->Flags & 8 )
+d875 2
+a876 3
+			if ( fld->FLDstat >= 0 )
+				goto LABEL_60;
+			v7 = " key";
+d881 2
+a882 3
+            if ( !(xtab->Flags & 0x40) )
+				goto LABEL_60;
+			v7 = " LKF";
+a883 2
+        printf(v7);
+LABEL_60:
+d885 3
+a887 1
+		if ( fld->FLDstat & 0x0008 )
+d889 1
+a889 1
+		if ( xtab->Flags & 0x0200 )
+d891 1
+a891 1
+		if ( xtab->Flags & 0x0001 )
+d893 1
+a893 1
+		if ( xtab->Flags & 0x0002 )
+d895 1
+a895 1
+		if ( xtab->Flags & 0x0800 )
+d897 1
+a900 4
+			//v9 = "no_join";
+            //if ( xtab->Flags & 0x0010 )
+			//	v9 = "join";
+			//printf("\n\t\t%s ", v9);
+d902 1
+a902 1
+            if ( xtab->Flags & 0x0020 )
+d1228 1
+a1228 1
+        case 672:										// debug
+d1231 1
+a1231 1
+        case 674:										// fnum		*** not defined in real clcomp ***
+d1244 1
+a1244 1
+            printf("output,%s", Operand == 1 ? "console": "stdout");            //printf("print,%s", v25);	*** wrong in real clcomp ***
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d80 9
+a88 9
+	char *v5; // edx@@94
+    FLDdesc *fld; // edi@@191
+    TDesc *TTptr; // edx@@201
+    char *Table; // eax@@202
+
+    int OpCode; // eax@@7
+    unsigned int v9; // edi@@131
+    int TTno; // esi@@190
+    ENTAB *entab; // [sp+18h] [bp-10h]@@1
+a393 1
+//LABEL_207:
+d471 6
+a476 2
+	short count;
+    short	v6; // edi@@28
+d478 2
+a479 10
+    void *v0; // esp@@1
+    short v1; // dx@@2
+    PTAB *pt; // eax@@3
+    TYPE24 *v5; // esi@@28
+    TDesc *TTptr; // esi@@32
+    int v8; // [sp+0h] [bp-48h]@@1
+    char *v9; // [sp+4h] [bp-44h]@@17
+    int v13; // [sp+14h] [bp-34h]@@17
+    int *BTCOUNT; // [sp+2Ch] [bp-1Ch]@@1
+    BTAB *bt; // [sp+38h] [bp-10h]@@8
+d739 9
+a747 8
+     short VarNum; // ax@@47
+     FLDdesc *fld; // esi@@50
+     const char *v7; // eax@@56
+     RTAB *rtab; // esi@@72
+     char *v9; // eax@@74
+     RATAB *ratab; // esi@@82
+     int TTno; // [sp+14h] [bp-14h]@@47
+     int v14; // [sp+1Bh] [bp-Dh]@@47
+d897 5
+a901 4
+			v9 = "no_join";
+            if ( xtab->Flags & 0x0010 )
+				v9 = "join";
+			printf("\n\t\t%s ", v9);
+d1040 6
+a1045 6
+	int v1; // eax@@2
+	int v2; // eax@@4
+    const char *v3; // eax@@9
+    int v4; // eax@@13
+    int v5; // eax@@24
+
+d1048 1
+a1048 1
+		v1 = sftab->field_0;
+d1051 1
+a1051 1
+			if ( sftab->field_0 & 0x0008 )
+d1057 1
+a1057 1
+				v5 = sftab->field_0 & 0xFFBF;		// 1111 1111 1011 1111
+d1080 1
+a1080 1
+			v4 = sftab->field_0 & 0xFFEF;		// 1111 1111 1110 1111
+d1092 5
+a1096 5
+        prtfid(sftab->field_4);
+        if ( sftab->field_6 )			// takes precedence over field 2
+			prtfid(sftab->field_6);
+        else if ( sftab->field_2 )
+			prpf(sftab->field_2);
+a1103 1
+     char *v25; // [sp+4h] [bp-14h]@@2
+d1181 1
+a1181 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("abort,%s", v25);
+d1187 1
+a1187 2
+			v25 = Operand == 1 ? "on": "off";
+			printf("E,%s", v25);
+d1190 1
+a1190 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("csv,%s", v25);
+d1193 1
+a1193 2
+			v25 = Operand == 1 ? "on": "off";
+           printf("dos,%s", v25);
+d1196 1
+a1196 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("goback,%s", v25);
+d1199 1
+a1199 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("trim,%s", v25);
+d1202 1
+a1202 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("aauto,%s", v25);
+d1205 1
+a1205 2
+			v25 = Operand == 1 ? "on": "off";
+           printf("rauto,%s", v25);
+d1208 1
+a1208 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("repeat,%s", v25);
+d1211 1
+a1211 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("justify,%s", v25);
+d1214 1
+a1214 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("hangup,%s", v25);
+d1217 1
+a1217 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("convert,%s", v25);
+d1220 1
+a1220 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("rawdisplay,%s", v25);
+d1223 1
+a1223 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("rawprint,%s", v25);
+d1226 1
+a1226 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("null_exit,%s", v25);
+d1229 1
+a1229 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("debug,%s", v25);
+d1232 1
+a1232 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("fnum,%s", v25);
+d1235 1
+a1235 2
+			v25 = Operand == 1 ? "on": "off";
+            printf("xml,%s", v25);
+d1239 1
+a1239 4
+            {
+				v25 = Operand == 1 ? "on": "off";
+				printf("skip,%s", v25);
+			}
+d1244 1
+a1244 3
+			v25 = Operand == 1 ? "console": "stdout";
+            //printf("print,%s", v25);	*** wrong in real clcomp ***
+            printf("output,%s", v25);
+@
+
+
+1.4
+log
+@near complete
+@
+text
+@d4 2
+d10 3
+a12 7
+	char *v1; // esi@@1
+    const unsigned short **v2; // edi@@2
+    int v3; // edx@@3
+
+    v1 = a1;
+    v2 = __ctype_b_loc();
+	while ( *v1 )
+d14 3
+a16 2
+		v3 = *v1;
+		if ( (*v2)[v3] & 2 )
+d19 2
+a20 2
+			_IO_putc(*v1, stdout);
+		v1++;
+d355 1
+a355 1
+	case 0x01:										// Variable
+d394 1
+a394 1
+LABEL_207:
+d905 1
+a905 1
+            if ( xtab->Flags & 0x20 )
+@
+
+
+1.3
+log
+@prior to TableAddr fixes
+@
+text
+@d91 1
+a91 1
+	entab = ENTABno ? &enarr.TableAddr[ENTABno - 1] : 0;
+d169 3
+a171 3
+				case 0x8000:						// unreachable (also error in real CL4)
+					printf(" SETENV ");
+					break;
+d214 3
+d489 1
+a489 1
+    count = 0;					// pointless really, alloca clear memory
+d590 2
+a591 2
+	v1 = RTno ? &rtarr.TableAddr[RTno - 1] : 0;
+    if ( v1 )
+d606 2
+a607 2
+	prtab = PRno ? &prarr.TableAddr[PRno - 1] : 0;
+    if ( prtab )
+d682 2
+a683 2
+     rdtab = RDno ? &rdarr.TableAddr[RDno - 1] : 0;
+     if ( rdtab )
+d771 2
+a772 1
+    if ( xtab->PCol_exp )
+d808 1
+a808 1
+    if ( xtab->PLine_exp )
+d814 1
+a814 1
+	if ( !HeadText )                           // true if this is an accept field. Show the Answer Col/Line values
+d816 1
+a816 1
+		if ( xtab->ACol_exp )
+d864 1
+d901 1
+a901 1
+			rtab = xtab->RangeID ? &rtarr.TableAddr[xtab->RangeID - 1] : 0;
+d929 1
+a929 1
+		ratab = xtab->RangeID ? &raarr.TableAddr[xtab->RangeID - 1] : 0;
+d960 2
+a961 4
+	int *TTcount; // esi@@1
+    short *i; // esi@@3
+    short *j; // esi@@5
+    short *k; // esi@@7
+d963 2
+a964 2
+    printf("[%s] tds: ", kxtab->TableName);
+    for ( TTcount = kxtab->TTlist; *TTcount; ++TTcount )
+d968 2
+a969 2
+    for ( i = kxtab->KeyElemIDs; *i; ++i )
+		printf("%d ", *i);
+d972 2
+a973 2
+    for ( j = kxtab->TkeyTy; *j; ++j )
+		printf("%#o ", *j);
+d976 2
+a977 2
+    for ( k = kxtab->DataElemIDs; *k; ++k )
+		printf("%d ", *k);
+d981 2
+a982 2
+    printf("\t\twhere ");
+    prtfid(kxtab->WhereEXP);
+d1094 1
+a1094 2
+//================================================
+LABEL_29:
+@
+
+
+1.2
+log
+@few tidy-ups
+@
+text
+@d81 1
+a81 5
+	const char *v3; // eax@@60
+    char *v5; // edx@@94
+    const char *v10; // eax@@136
+    const char *v11; // eax@@145
+    const char *v13; // eax@@180
+d83 1
+a83 1
+    TDesc *v17; // edx@@201
+d88 1
+a88 6
+    int v14; // esi@@190
+    int v19; // [sp+0h] [bp-28h]@@122
+    int v20; // [sp+0h] [bp-28h]@@139
+    int v21; // [sp+0h] [bp-28h]@@178
+    int v22; // [sp+4h] [bp-24h]@@145
+    char *v23; // [sp+4h] [bp-24h]@@180
+d98 4
+a101 7
+    if ( entab->entype != 2 )                  // Expression Type
+		goto LABEL_130;
+
+	if ((unsigned int)(OpCode - 1) <= 0x4FFF || OpCode - 0x8C00u <= 0x1400 )
+    {
+		printf("[%d]", ENTABno);
+		switch (OpCode)
+d103 91
+a193 87
+			case 0x3800:
+				printf(" CHR ");
+				break;
+			case 0x5800:
+				printf("(-)");
+				break;
+			case 0x9400:
+				printf(" RADIANS ");
+				break;
+			case 0x9C00:
+				printf(" TRIM ");
+				break;
+			case 0xA000:
+				printf(" GETCGI ");
+				break;
+			case 0x9800:
+				printf(" EXP ");
+				break;
+			case 0x8C00:
+				printf(" GETXML ");
+				break;
+			case 0x9000:
+				printf(" DEGREES ");
+				break;
+			case 0x8000:
+				printf(" SETENV ");
+				break;
+			case 0x4400:
+				printf(" LOG10 ");
+				break;
+			case 0x4C00:
+				printf(" ACOS ");
+				break;
+			case 0x5000:
+				printf(" ATAN ");
+				break;
+			case 0x4800:
+				printf(" ASIN ");
+				break;
+			case 0x3C00:
+				printf(" SRAND ");
+				break;
+			case 0x4000:
+				printf(" GETENV ");
+				break;
+			case 0x1C00:
+				printf(" UCASE ");
+				break;
+			case 0x2800:
+				printf(" DAY ");
+				break;
+			case 0x3000:
+				printf(" ASIZE ");
+				break;
+			case 0x3400:
+				printf(" ASC ");
+				break;
+			case 0x2C00:
+				printf(" GETARG ");
+				break;
+			case 0x2000:
+				printf(" LCASE ");
+				break;
+			case 0x2400:
+				printf(" SLEN ");
+				break;
+			case 0x0C00:
+				printf(" LOG ");
+				break;
+			case 0x1400:
+				printf(" COS ");
+				break;
+			case 0x1800:
+				printf(" TAN ");
+				break;
+			case 0x1000:
+				printf(" SIN ");
+				break;
+			case 0x0400:
+				printf(" NOT ");
+				break;
+			case 0x0800:
+				printf(" SQRT ");
+				break;
+			default:
+				printf(" unop: ?%o? ", entab->TTno);
+				break;
+d195 3
+a197 7
+	}
+
+//-------------
+	if ( entab->entype == 2 )                  // All string functions follow
+	{
+		OpCode = entab->TTno & 0xFC00;
+		if ( OpCode - 0x5001u <= 0x3BFE || OpCode - 0xC801u <= 0xBFF || OpCode - 0xF001u <= 0x7FF )
+d202 5
+a206 2
+				case 0x8400:
+					v5 = "SKEY";
+d208 2
+a209 2
+				case 0xD000:
+					v5 = "SREP";
+d211 2
+a212 2
+				case 0xD400:
+					v5 = "SCONV";
+d214 2
+a215 2
+				case 0xF400:
+					v5 = "SCAT";
+d223 2
+a224 2
+				case 0x7400:
+					v5 = "SDEL";
+d226 2
+a227 2
+				case 0x7800:
+					v5 = "SMULT";
+d229 2
+a230 5
+				case 0x7C00:
+					v5 = "SWORD";
+					break;
+				case 0x6C00:
+					v5 = "MATCH";
+d236 1
+a236 1
+                prtfid(entab->Dest);
+d238 1
+a238 1
+                prtfid(entab->Src);
+d243 1
+a243 1
+		if ( OpCode == 0xB800 )
+d248 1
+d250 47
+a296 9
+//-----------------------
+LABEL_130:
+	prtfid(entab->Dest);	// recursion
+    if ( entab->entype != 2 )
+    {
+		if ( entab->entype == 8 )
+        {
+            printf("~%ld~", *(int *)&entab->TTno);
+            goto LABEL_207;
+d298 37
+a334 5
+        if ( entab->entype == 0x10 )
+        {
+			v23 = (char *)&entab->TTno;
+            printf("~%s~", v23);
+            goto LABEL_207;
+d336 21
+a356 18
+        if ( entab->entype == 0x04 )
+        {
+			printf("~%f~", *(float *)&entab->TTno);
+            goto LABEL_207;
+		}
+        if ( entab->entype == 0x20 )
+        {
+			putchar(',');
+		    goto LABEL_207;
+		}
+
+		if ( entab->entype != 1 )
+			__assert_fail("((tf)->entype == 0x1)", "prdebug.c", 0xAEu, "prtfid");
+
+		// presume  entab->entype == 1
+		v14 = entab->TTno;
+        if ( entab->TTno )
+			fld = &ttab[v14].TTfields[entab->RecNo];
+d360 1
+a360 1
+		if ( v14 )	// This is a filed in a table record
+d362 3
+a364 3
+			v17 = &ttab[v14];
+            if ( v17->TableAlias[0] )
+				Table = v17->TableAlias;
+d366 1
+a366 1
+				Table = v17->TableName;
+d369 1
+a369 1
+        else if ( fld->FLDstat & 0x0004 )
+d375 1
+a375 1
+        else if ( fld->FLDtype == 'C' )
+d382 1
+a382 1
+			prstr(fld->FLDname);
+a384 77
+		goto LABEL_207;
+	}
+//----------------     
+	v9 = ((unsigned int)entab->TTno >> 9) & 1;
+    if ( v9 & 1 )
+		printf(" (");
+	else
+		putchar(' ');
+
+	if ( entab->TTno & 0x3F )
+    {
+		printf("[%d]", ENTABno);
+        switch ( entab->TTno & 0x1FF )
+        {
+		case 0x01:
+			printf("OR");
+			goto LABEL_176;
+		case 0x02:
+			printf("AND");
+			goto LABEL_176;
+		case 0x08:
+			putchar('<');
+			goto LABEL_176;
+		case 0x14:
+			printf("like");
+			goto LABEL_176;
+		case 0x10:
+			putchar('=');
+			goto LABEL_176;
+		case 0x18:
+			printf("<=");
+			goto LABEL_176;
+		case 0x20:
+			putchar('>');
+			goto LABEL_176;
+		case 0x28:
+			printf("<>");
+			goto LABEL_176;
+		case 0x30:
+			printf(">=");
+			goto LABEL_176;
+		default:
+			printf(" relop: ?%o?", entab->TTno);
+			goto LABEL_176;
+		}
+	}
+    
+	printf("[%d]", ENTABno);
+    
+	switch (OpCode)
+	{
+	case 0x6000:
+   		putchar('*');
+		goto LABEL_176;
+		break;
+	case 0xAC00:
+		putchar('[');
+		goto LABEL_176;
+		break;
+	case 0x6400:
+		putchar('/');
+		goto LABEL_176;
+		break;
+	case 0x6800:
+        printf("%%");
+        goto LABEL_176;
+		break;
+	case 0x5800:
+		if ( entab->Src )
+			putchar('-');
+		else
+			printf("(-)");
+		goto LABEL_176;
+		break;
+	case 0x5400:
+		putchar('+');
+        goto LABEL_176;
+d387 2
+a388 3
+	case 0x5C00:
+		printf("**");
+        goto LABEL_176;
+a391 17
+LABEL_171:
+    if ( entab->TTno & 0x0100 )
+    {
+		prresv(entab->RecNo);
+        goto LABEL_176;
+	}
+    if ( entab->Src )
+    {
+		printf(" op: ?%o?", entab->TTno);
+	}
+
+LABEL_176:
+    if ( v9 )
+		printf(") ");
+	else
+		putchar(' ');
+
+d427 4
+a430 4
+printf("Var VariableName         Typ Length\n");
+//      No. of variables = 253
+//        0 NULL                 [C] 20
+//        1 ERROR                [I] 2
+d606 1
+a606 1
+		if ( prtab->field_6 )
+d608 1
+a608 1
+			switch (prtab->field_6)
+d623 1
+a623 1
+				prresv(prtab->field_6);
+d629 1
+a629 1
+			prtfid(prtab->field_0);
+d632 1
+a632 1
+		if ( prtab->field_4 )
+d634 2
+a635 1
+			v4 = prtab->field_4 & 0x7C00;
+a638 1
+				v6 = prtab->field_4 & 0xFFFF83FF;
+a641 1
+				v6 = prtab->field_4 & 0xFFFF83FF;
+a644 1
+				v6 = prtab->field_4 & 0xFFFF83FF;
+a647 1
+				v6 = prtab->field_4 & 0xFFFF83FF;
+d650 2
+a651 2
+			default:
+				v6 = prtab->field_4;	// default case
+d659 1
+a659 1
+			if ( prtab->field_2 )
+d662 1
+a662 1
+                prtfid(prtab->field_2);
+d1001 9
+d1013 3
+a1021 12
+		case 0xE400:
+			v2 = "/=";
+			break;
+		case 0xD800:
+			v2 = "+=";
+			break;
+		case 0xDC00:
+			v2 = "-=";
+			break;
+		case 0xA800:
+			v2 = "=";
+			break;
+d1028 1
+a1028 1
+			printf(" (%s) ", v2);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d100 1
+a100 1
+	entab = ENTABno ? (ENTAB *)&enarr.TableAddr[12 * (ENTABno - 1)] : 0;
+d103 1
+a377 1
+
+d426 1
+a426 1
+    prtfid(entab->Src);
+d428 1
+a428 1
+	if ( entab->entype == 2 && OpCode == 0xAC00 )
+a582 2
+			if ( TTptr->TDlocked & 0x0080)
+				printf("lockr ");
+a586 2
+			if ( TTptr->TDlocked & 0x0100 )
+				printf("getn/p ");
+a588 2
+			if ( TTptr->TDlocked & 0x8000 )
+				printf("del ");
+a590 2
+			if ( TTptr->TDlocked & 0x4000 )
+				printf("hass ");
+d595 4
+d603 5
+a607 1
+			if ( !(TTptr->TDlocked & 0x0800) )
+d620 1
+a620 1
+	v1 = RTno ? (RTAB *)&rtarr.TableAddr[20 * (RTno - 1)] : 0;
+d636 1
+a636 1
+	prtab = PRno ? (PRTAB *)&prarr.TableAddr[10 * (PRno - 1)] : 0;
+d705 1
+a705 1
+		prpf(prtab->NextPR);
+d715 1
+a715 1
+     rdtab = RDno ? (RDTAB *)&rdarr.TableAddr[12 * (RDno - 1)] : 0;
+d723 1
+a723 1
+          prrd(rdtab->NextRD);                  // Recursion here
+d924 2
+a929 2
+		if ( xtab->Flags & 0x0001 )
+			printf(" char");
+d932 1
+a932 1
+			rtab = xtab->RangeID ?(RTAB *)&rtarr.TableAddr[20 * (xtab->RangeID - 1)] : 0;
+d934 1
+a934 1
+            if ( xtab->Flags & 0x10 )
+d960 1
+a960 1
+		ratab = xtab->RangeID ? (RATAB *)&raarr.TableAddr[12 * (xtab->RangeID - 1)] : 0;
+d1026 2
+a1027 2
+		prtfid(ent->Dest);
+        if ( ent->entype != 2 )               // 2 = calculation assignment. Other is string assighnment?
+d1077 5
+a1081 5
+     int v1; // eax@@2
+     int v2; // eax@@4
+     const char *v3; // eax@@9
+     int v4; // eax@@13
+     int v5; // eax@@24
+d1083 45
+a1127 82
+     if ( sftab )
+     {
+          v1 = sftab->field_0;
+          if ( !(v1 & 0x10) )
+          {
+               if ( sftab->field_0 & 0x0008 )
+               {
+                    v3 = "close ";
+               }
+               else
+               {
+                    v5 = sftab->field_0 & 0xFFBF;
+                    if ( v5 == 1 )
+                    {
+                         v3 = "read ";
+                    }
+                    else
+                    {
+                         if ( v5 == 2 )
+                              v3 = "write ";
+                         else
+                              v3 = "r/w????? ";
+                    }
+               }
+               goto LABEL_29;
+          }
+          if ( v1 & 0x40 )
+          {
+               v2 = v1 & 0xFFFFFFAF;
+               if ( v2 == 2 )
+               {
+                    v3 = "popenout ";
+               }
+               else
+               {
+                    if ( v2 > 2 )
+                    {
+                         if ( v2 == 3 )
+                         {
+                              v3 = "popenio ";
+                              goto LABEL_29;
+                         }
+                    }
+                    else
+                    {
+                         if ( v2 == 1 )
+                         {
+                              v3 = "popenin ";
+                              goto LABEL_29;
+                         }
+                    }
+                    v3 = "popen?? ";
+               }
+          }
+          else
+          {
+               v4 = sftab->field_0 & 0xFFEF;
+               if ( v4 == 2 )
+               {
+                    v3 = "openout ";
+               }
+               else
+               {
+                    if ( v4 > 2 )
+                    {
+                         if ( v4 == 4 )
+                         {
+                              v3 = "openapp ";
+                              goto LABEL_29;
+                         }
+                    }
+                    else
+                    {
+                         if ( v4 == 1 )
+                         {
+                              v3 = "openin ";
+                              goto LABEL_29;
+                         }
+                    }
+                    v3 = "open?? ";
+               }
+          }
+d1129 7
+a1135 12
+          printf(v3);
+          prtfid(sftab->field_4);
+          if ( sftab->field_6 )
+          {
+               prtfid(sftab->field_6);
+          }
+          else
+          {
+               if ( sftab->field_2 )
+                    prpf(sftab->field_2);
+          }
+     }
+d1220 1
+a1220 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1227 1
+a1227 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1231 1
+a1231 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1235 2
+a1236 4
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+            printf("dos,%s", v25);
+d1239 1
+a1239 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1243 1
+a1243 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1247 1
+a1247 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1251 2
+a1252 4
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+            printf("rauto,%s", v25);
+d1255 1
+a1255 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1259 1
+a1259 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1263 1
+a1263 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1267 1
+a1267 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1271 1
+a1271 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1275 1
+a1275 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1279 1
+a1279 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1282 2
+a1283 4
+        case 672:
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1286 4
+d1291 1
+a1291 3
+			v25 = "off";
+            if ( Operand == 1 )
+				v25 = "on";
+d1297 1
+a1297 3
+				v25 = "off";
+                if ( Operand == 1 )
+					v25 = "on";
+d1304 3
+a1306 4
+			v25 = "stdout";
+            if ( Operand == 1 )
+				v25 = "console";
+            printf("print,%s", v25);
+@

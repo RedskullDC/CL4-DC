@@ -1,0 +1,202 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2015.07.02.04.26.23;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.01.07.01.35.47;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.07.14.03.59.13;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Move entries from start of right node to end of left node
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef MOVELEFT_C
+#define MOVELEFT_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int moveleft(NODE *NodeDEST, NODE *NodeSRC, short EntriesToMove)
+{
+	int DestLastEntry; // eax@@1
+	short v7; // dx@@1
+	short v11; // dx@@3
+	int result; // eax@@5
+	short SizeMoved; // [sp+10h] [bp-18h]@@1
+
+	NODE_1 *v8;
+	NODE_1 *N1pDest;
+	NODE_1 *N1pSrc;
+	
+	NODE_2 *N2pDest;
+	NODE_2 *v9;
+	NODE_2 *v10;
+	NODE_2 *N2pSrc;
+
+	//printf("moveleft( DEST = x%08X,SRC = x%08X, Num: %d\n",NodeDEST,NodeSRC, EntriesToMove);
+	_chkitems(NodeDEST, EntriesToMove);	// ensure NodeDEST can hold required number of entries.
+	
+	N1pSrc = NodeSRC->NODE1ptr;
+	N2pSrc = NodeSRC->NODE2ptr + 1;
+
+	DestLastEntry = NodeDEST->NumEntries;
+	N1pDest = &NodeDEST->NODE1ptr[DestLastEntry];
+	N2pDest = &NodeDEST->NODE2ptr[DestLastEntry + 1];
+
+	v7 = EntriesToMove;
+	for ( SizeMoved = 0; v7 > 0; --v7 )	// Copy "EntriesToMove" entries from 
+	{									// start of right node to end of left node
+		N1pDest->Data = N1pSrc->Data;
+		N1pDest->Size = N1pSrc->Size;
+		N2pDest->PageNo = N2pSrc->PageNo;
+		++N2pSrc;
+		++N2pDest;
+		SizeMoved += N1pSrc->Size;
+		++N1pSrc;
+		++N1pDest;
+	}
+
+	v8 = NodeSRC->NODE1ptr;
+	v9 = NodeSRC->NODE2ptr;
+	v9->PageNo = N2pSrc[-1].PageNo;
+	v10 = v9 + 1;
+	
+	v11 = NodeSRC->NumEntries - EntriesToMove;	// Shift remaining entries in Right NODE down
+	while ( v11 > 0 )
+	{
+		v8->Data = N1pSrc->Data;
+		v8->Size = N1pSrc->Size;
+		v10->PageNo = N2pSrc->PageNo;
+		++N2pSrc;
+		++v10;
+		++N1pSrc;
+		++v8;
+		--v11;
+	}
+
+	// adjust SRC/DEST node pointers,counters
+	result = (SizeMoved + EntriesToMove * NodeDEST->field_16);
+	NodeDEST->DataEnd		+= result;
+	NodeDEST->NumEntries	+= EntriesToMove;
+	NodeSRC->DataEnd		-= result;
+	NodeSRC->NumEntries		-= EntriesToMove;
+	return result;		// return size of data moved
+}
+
+
+#endif
+
+@
+
+
+1.2
+log
+@temp vers
+@
+text
+@d24 1
+a24 1
+	printf("moveleft( DEST = x%08X,SRC = x%08X, Num: %d\n",NodeDEST,NodeSRC, EntriesToMove);
+d67 4
+a70 4
+	NodeDEST->DataEnd += result;
+	NodeDEST->NumEntries += EntriesToMove;
+	NodeSRC->DataEnd -= result;
+	NodeSRC->NumEntries -= EntriesToMove;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 1
+a7 1
+int moveleft(NODE *NodeDEST, NODE *NodeSRC, short NumEntries)
+d9 1
+a9 1
+	int v4; // eax@@1
+d13 1
+a13 1
+	short i; // [sp+10h] [bp-18h]@@1
+d16 2
+a17 2
+	NODE_1 *v5;
+	NODE_1 *v3;
+d19 1
+a19 1
+	NODE_2 *v6;
+d22 1
+a22 1
+	NODE_2 *v15;
+d24 2
+a25 2
+	//printf("moveleft( DEST = x%08X,SRC = x%08X, Num: %d\n",NodeDEST,NodeSRC, NumEntries);
+	_chkitems(NodeDEST, NumEntries);	// has an error exit, may not return.
+d27 18
+a44 16
+	v3 = NodeSRC->NODE1ptr;
+	v4 = NodeDEST->NumEntries;
+	v5 = &NodeDEST->NODE1ptr[v4];
+	v15 = NodeSRC->NODE2ptr + 1;
+	v6 = &NodeDEST->NODE2ptr[v4 + 1];
+	v7 = NumEntries;
+	for ( i = 0; v7 > 0; --v7 )
+	{
+		v5->Data = v3->Data;
+		v5->Size = v3->Size;
+		v6->PageNo = v15->PageNo;
+		++v15;
+		++v6;
+		i += v3->Size;
+		++v3;
+		++v5;
+d49 1
+a49 1
+	v9->PageNo = v15[-1].PageNo;
+d52 1
+a52 1
+	v11 = NodeSRC->NumEntries - NumEntries;
+d55 4
+a58 4
+		v8->Data = v3->Data;
+		v8->Size = v3->Size;
+		v10->PageNo = v15->PageNo;
+		++v15;
+d60 1
+a60 1
+		++v3;
+d65 2
+a66 1
+	result = (i + NumEntries * NodeDEST->field_16);
+d68 1
+a68 1
+	NodeDEST->NumEntries += NumEntries;
+d70 2
+a71 2
+	NodeSRC->NumEntries -= NumEntries;
+	return result;
+@

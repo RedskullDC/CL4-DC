@@ -1,0 +1,63 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.12.10.10.37.57;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial version
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef GETPG_C
+#define GETPG_C
+
+#include "DBdefs.h"
+
+void cdbfreepg(void)
+{
+	//printf("cdbfreepg()\n");
+	if ( pbuf )
+	{
+		//printf("cdbfreepg: Freeing pbuf = x%08X, psize = %d\n", pbuf, psize);
+		nfree(pbuf, 0);
+		pbuf = 0;
+		psize = 0;
+	}
+}
+
+char* _getpg(DBinfo *DBptr)
+{
+	int RequiredPageSize; // esi@@1
+
+	RequiredPageSize = DBptr->DBpgsize + 16;	// Database pagesize in bytes
+	//printf("RequiredPageSize = %d\n",RequiredPageSize);
+	if ( psize < RequiredPageSize )
+	{
+		if ( pbuf )
+			nfree(pbuf, 0);
+		pbuf = ealloc(RequiredPageSize, 0);
+		//printf("PageSize was %d\n", psize);
+		psize = RequiredPageSize; 
+	}
+	//printf("CurrentPageBufSize now %d\n",RequiredPageSize);
+	return pbuf;
+}
+
+
+#endif
+
+@

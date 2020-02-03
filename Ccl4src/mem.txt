@@ -1,0 +1,5 @@
+
+ulock.c:		v2 = (char*)ltoms((int*)&KeyDefs, PID);		// temp use of Keydefs mem space
+
+zap.c:	return memset(a1, 0, NumBytes);
+zap.c:	return memset(Buff, value, NumBytes);

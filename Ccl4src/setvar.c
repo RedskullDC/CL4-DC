@@ -73,7 +73,7 @@ void setavar(int VarNum, char *Src, int SubScript)
     fld = &ttab->TTfields[VarNum];
     Buffer = &fld->FLDname[SubScript * (fld->FLDlen + 1)];	// Arrays hang off fld->FLDname
     if ( Src )
-        Buffer = (char *)cpybuf(Buffer, Src, fld->FLDlen);
+        cpybuf(Buffer, Src, fld->FLDlen);
     else
         *Buffer = 0;
 }

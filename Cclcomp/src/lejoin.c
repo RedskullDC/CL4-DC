@@ -92,36 +92,36 @@ int lejoin(short PTno, int join)
         
 		v9 = getenmem();
         allenpt(v9, &entb);
-        entb->TTno	  = 2;
-        entb->entype  = 2;
-        entb->enright = rtb->WhereEXP;
-        entb->enleft  = getenmem();
-        rtb->WhereEXP = v9;
+        entb->Enun.Enop.Enoper	= 2;		// AND?
+        entb->entype			= 2;
+        entb->enright			= rtb->WhereEXP;
+        entb->enleft			= getenmem();
+        rtb->WhereEXP			= v9;
         dallenpt(&entb);
 
 		entb = ENARR(rtb->WhereEXP);
 		
 		allenpt(entb->enleft, &entb);
-        entb->TTno = 16;				// relational operator
+        entb->Enun.Enop.Enoper	= 16;				// relational operator
         entb->entype = 2;
 //----------------------------
 		entb->enleft = getenmem();
 		fno = gettf(rtb->enleft, &TDno, &FLDtype);
 		assert(fno >= 0);
 
-		v12			= ENARR(entb->enleft);
-		v12->TTno	= TDno;
-        v12->RecNo	= fno;
-		v12->entype = 1;
+		v12						= ENARR(entb->enleft);
+		v12->Enun.Enref.TTno	= TDno;
+        v12->Enun.Enref.VarNum	= fno;
+		v12->entype				= 1;
 //-----------------------------
 		entb->enright = getenmem();
 		fno = gettf(rtb->enright, &TDno, &FLDtype);
 		assert(fno >= 0);
 
-		v12			= ENARR(entb->enright);
-		v12->TTno	= TDno;
-		v12->RecNo	= fno;
-		v12->entype = 1;
+		v12						= ENARR(entb->enright);
+		v12->Enun.Enref.TTno	= TDno;
+		v12->Enun.Enref.VarNum	= fno;
+		v12->entype				= 1;
 
 		dallenpt(&entb);
 	}

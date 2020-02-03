@@ -47,7 +47,7 @@ void ppause(ENTAB *entab)
         while ( linput(Buffer, 0, 0) )	// wait for a single keypress
 			;
 		v4 = (short)lenstr(s);
-        fillbuf(s, v4, ' ');
+        memset(s, ' ', v4);
         s[v4] = 0;
         prerr(s, 0, 0);					// clear the message line
         return;

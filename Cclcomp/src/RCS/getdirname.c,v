@@ -1,0 +1,248 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.06.21.05.57.19;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.07.14.00.49.53;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.01.07.03.07.05;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@tidy-up, and move to common code
+@
+text
+@#ifndef GETDIRNAME_C
+#define GETDIRNAME_C
+
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <pwd.h>
+#include "DBdefs.h"
+#include "cl4.h"
+
+char	*myuser_0;		// not public in libcl4
+
+char	*getdirname(char *a1)	// a1 = path/filename
+{
+	struct passwd *v3;
+	char *v1;
+	char *v2;
+	char *ptr;
+	char *v8;
+	char *result; // eax@@11
+
+	char v10;
+
+	//eprint("getdirname - a1 = %s\n",a1);
+	if ( *a1 == '~' )						// relative to user's home dir eg: ~/Cclcomp/TESTDB
+	{
+		v1 = a1 + 1;
+		v2 = v1;
+		while ( *v1 && *v1 != '/' )
+			++v1;
+
+		v10 = *v1;		// v10 = '/' or \0 at this point
+		*v1 = 0;
+		if ( !*v2 )		// if non-zero, another user is specified: ~leslie/Cclcomp/TESTDB
+		{
+			if ( !myuser_0 )
+				myuser_0 = gelogin();
+			v2 = myuser_0;
+		}
+		v3 = getpwnam(v2);	// possible that v2 will point to an invalid username
+		if ( v3 )
+		{
+			*v1 = v10;
+			result = mstrcpy(v3->pw_dir, v1, 0);
+		}
+		else
+			result = mstrcpy("", 0);		// invalid user name specified, return blank
+	}
+	else if ( *a1 == '$' )					// start of an environment variable eg. $HOME
+	{
+		ptr = mstrcpy(a1, 0);
+		if ( *ptr == '$' )					// should always be true
+		{
+			while ( 1 )
+			{
+				for ( v1 = ptr + 1; *v1 && *v1 != '/'; v1++ )
+					;
+				v10 = *v1;
+				*v1 = 0;
+				v2 = getevar(ptr + 1);
+				*v1 = v10;
+				result = a1;
+				if ( !v2 )
+					break;
+				v8 = mstrcpy(v2, v1, 0);
+				mfree_0(ptr);
+				ptr = v8;
+				if ( *v8 != '$' )		// multiple system variables allowed.
+					goto LABEL_21;
+			}
+		}
+		else
+		{
+LABEL_21:
+			result = ptr;
+		}
+	}
+	else
+		result = a1;	// just return to caller
+	return result;
+}
+
+
+#endif
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d13 1
+a13 1
+char	*getdirname(char *a1)
+d15 5
+a19 3
+	char *v1; // edi@@2
+	char *v2; // eax@@2
+	struct passwd *v3; // eax@@10
+a20 6
+	char *i; // esi@@15
+	char v6; // ST1B_1@@19
+	char *v7; // edx@@19
+	char *v8; // esi@@20
+	char *ptr; // [sp+14h] [bp-14h]@@14
+	char v10; // [sp+1Bh] [bp-Dh]@@6
+d22 4
+a25 1
+	if ( *a1 == '~' )
+d28 1
+a28 1
+		v2 = a1 + 1;
+d32 1
+a32 1
+		v10 = *v1;
+d34 1
+a34 1
+		if ( !*v2 )
+d40 1
+a40 1
+		v3 = getpwnam(v2);
+d44 1
+a44 1
+			result = mstrcpy(v3->pw_dir, v1);
+d47 1
+a47 1
+			result = mstrcpy("", 0);
+d49 1
+a49 1
+	else if ( *a1 == '$' )
+d52 1
+a52 1
+		if ( *ptr == '$' )
+d56 1
+a56 1
+				for ( i = ptr + 1; *i && *i != '/'; ++i )
+d58 4
+a61 4
+				v6 = *i;
+				*i = 0;
+				v7 = getevar(ptr + 1);
+				*i = v6;
+d63 1
+a63 1
+				if ( !v7 )
+d65 1
+a65 1
+				v8 = mstrcpy(v7, i);
+d68 1
+a68 1
+				if ( *v8 != '$' )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d30 3
+a32 6
+		if ( a1[1] && *v1 != '/' )
+		{
+			do
+				++v1;
+			while ( *v1 && *v1 != '/' );
+		}
+d45 1
+a45 1
+			result = mstrcpy(v3->pw_dir, v1,0);
+a47 1
+		{
+a48 1
+		}
+d50 1
+a50 1
+	else
+d52 2
+a53 1
+		if ( *a1 == '$' )
+d55 1
+a55 2
+			ptr = mstrcpy(a1, 0);
+			if ( *ptr == '$' )
+d57 14
+a70 22
+				while ( 1 )
+				{
+					for ( i = ptr + 1; *i && *i != '/'; ++i )
+						;
+					v6 = *i;
+					*i = 0;
+					v7 = getevar(ptr + 1);
+					*i = v6;
+					result = a1;
+					if ( !v7 )
+						break;
+					v8 = mstrcpy(v7, i,0);
+					mfree_0(ptr);
+					ptr = v8;
+					if ( *v8 != '$' )
+						goto LABEL_21;
+				}
+			}
+			else
+			{
+LABEL_21:
+				result = ptr;
+d75 2
+a76 1
+			result = a1;
+d79 2
+@

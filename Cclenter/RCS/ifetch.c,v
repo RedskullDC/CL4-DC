@@ -1,0 +1,149 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2016.01.14.05.17.23;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.07.16.01.29.39;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Incrementing fetch of next page number
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@#ifndef INDEX_FETCH_C
+#define INDEX_FETCH_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+// Increasing fetch [see also _dfetch()]
+
+short _ifetch(char *Dest, DPOS *dpos, TDinfo *TDptr)
+{
+	NODE *node; // edx@@2	
+	PAGE *page; // esi@@6
+	NODE_1 *N1p; // eax@@12
+	short v9; // [sp+18h] [bp-10h]@@9
+
+	//printf("_ifetch(Dest : x%08X, DPOS : x%08X, TDptr :x%08X)\n",Dest,dpos,TDptr);
+
+	node = TDptr->TDNodePtr;
+	if ( node && node->PageNo != dpos->PageNo  )
+	{
+		relnode(node);
+		TDptr->TDNodePtr = 0;
+	}
+
+	if ( dpos->PageNo )
+		goto LABEL_17;
+
+	if ( dpos->field_8 )
+	{
+		++fcount;	// fetch count? Only ever accessed from here.
+		page = _indexpg(TDptr, dpos->field_8);
+		dpos->PageNo = mstol((int*)&page->DataStart[4 * dpos->NumEntries++]);
+		if ( page->NumEntries < dpos->NumEntries )
+		{
+			dpos->field_8 = mstol((int*)&page->field_16);
+			dpos->NumEntries = 0;
+		}
+	}
+
+//-----------------------------------  
+	if ( dpos->PageNo )
+	{
+LABEL_17:
+		if ( !TDptr->TDNodePtr )
+			TDptr->TDNodePtr = getnode(TDptr, dpos->PageNo, 0);
+		node = TDptr->TDNodePtr;
+
+		//v6 = dpos->field_4;
+		//dpos->field_4 = v6 + 1;
+		//N1p = &node->NODE1ptr[v6];
+		N1p = &node->NODE1ptr[++dpos->field_4];
+		
+		v9 = cpybuf(Dest, N1p->Data, N1p->Size);
+		
+		if ( node->NumEntries <= dpos->field_4 )
+		{
+			relnode(TDptr->TDNodePtr);
+			TDptr->TDNodePtr = 0;
+			dpos->PageNo = 0;
+			dpos->field_4 = 0;
+		}
+	}
+	else
+	{
+		v9 = 0;
+	}
+	return v9;
+}
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 3
+a15 5
+	NODE *Node; // edx@@2	
+	PAGE *v4; // esi@@6
+	NODE *v5; // esi@@12
+	short v6; // ax@@12
+	NODE_1 *node1; // eax@@12
+d18 1
+a18 1
+printf("_ifetch(Dest : x%08X, DPOS : x%08X, TDptr :x%08X)\n",Dest,dpos,TDptr);
+d20 2
+a21 1
+	if ( TDptr->TDNodePtr )
+d23 2
+a24 6
+		Node = TDptr->TDNodePtr;
+		if ( Node->PageNo != dpos->PageNo )
+		{
+			relnode(Node);
+			TDptr->TDNodePtr = 0;
+		}
+d26 1
+d33 3
+a35 3
+		v4 = _indexpg(TDptr, dpos->field_8);
+		dpos->PageNo = mstol(&v4->DataStart[4 * dpos->NumEntries++]);
+		if ( v4->NumEntries < dpos->NumEntries )
+d37 1
+a37 1
+			dpos->field_8 = mstol(&v4->field_16);
+d41 1
+d48 10
+a57 6
+		v5 = TDptr->TDNodePtr;
+		v6 = dpos->field_4;
+		dpos->field_4 = v6 + 1;
+		node1 = &v5->NODE1ptr[v6];
+		v9 = cpybuf(Dest, node1->Data, node1->Size);
+		if ( v5->NumEntries <= dpos->field_4 )
+@

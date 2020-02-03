@@ -27,7 +27,7 @@
 #include <setjmp.h>     /* jmp_buf, setjmp, longjmp */
 #include <dlfcn.h>		// dynamic libs		
 
-//#include "UTIL_FUNCTIONS.h"
+#include "UTIL_FUNCTIONS.h"
 // Test some undocumented CL4 lib routines
 #include "DBdefs.h"
 #include "lvarnames.h"
@@ -42,6 +42,7 @@
 #include "getdirname.c"
 #include "getevar.c"
 #include "getftf.c"
+#include "chkpath.c"		//needs work
 #include "getresv.c"
 #include "pcreate.c"
 #include "rcheck.c"
@@ -138,7 +139,6 @@
 #include "findtd.c"
 #include "seq.c"
 #include "cmpstr.c"
-#include "chkpath.c"		//needs work
 #include "dbglob.c"
 #include "getr.c"
 #include "rtokey.c"
@@ -268,7 +268,7 @@
 #include "negate.c"
 
 
-#include "zap.c"
+//#include "zap.c"
 #include "sutimes.c"
 #include "round.c"		// OK to 7 decimal places, then gets stuffed up!
 #include "print.c"
@@ -352,7 +352,7 @@ int main(int argc, char **argv, char** a3)
 	op			= stdout;
 	fullpname	= *argv;
 	_pname		= clbasename(*argv);		// extract program name from cmd line
-	getcwd(cwd, 128u);
+	getcwd(cwd, PATH_MAX);					// runs twice! see below
 	setupEnv();
 //---------------------------------------------------------------------------------
 //	clcgi stuff
@@ -400,7 +400,9 @@ int main(int argc, char **argv, char** a3)
           0)
     || !argc && !Key_Debug && !isCGI)
 	{
-		eprint("usage: %s (%s) [options] ent_file [var...]\n", _pname, getclver());
+  		printf("build: %s (%s)\n\n", _pname, getclver());
+		eprint("usage: %s [options] ent_file [var...]\n", _pname);
+		
 		eprint("options:\n");
 		eprint("  -c               validate checksums on tables\n");
 		eprint("  -d {secs}        set timeout delay in seconds\n");
@@ -422,7 +424,7 @@ int main(int argc, char **argv, char** a3)
 		exit(1);	// err_exit
 	}
 	//eprint("sizeof(BTAB) = %d\n",sizeof(BTAB));
-	getcwd(cwd, 128u);
+	getcwd(cwd, PATH_MAX);
 	if (!isCGI)
 		arg	= *argv;			// 'program[.ent/.enc]'
 	v28		= getenv("LANG");

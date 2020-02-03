@@ -18,7 +18,6 @@ int _identify(int DBno, char *TableName, int Lock)
 	DBptr = _getattrib(DBno, TableName, &TD0);
 	if ( DBptr && (tdef = _getshape(DBptr, TD0.IndexOff)) != 0 )
 	{
-		//TDptr = (TDinfo *)ealloc((_keysize(tdef) + 76), 0);	// zaps memory to ZERO. lot of what follows is unnecessary
 		TDptr = (TDinfo *)ealloc((_keysize(tdef) + sizeof(TDinfo)), 0);	// zaps memory to ZERO. lot of what follows is unnecessary
 		TDptr->TDDBinfo     = DBptr;
 		TDptr->TDindexOff   = TD0.IndexOff;

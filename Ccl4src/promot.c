@@ -12,7 +12,7 @@ short _promote(char *a1, NODE *Node, NODE *a3, short a4, TDinfo *TDptr)
 
 	if ( Node->PageType & 2 )
 	{
-		cpybuf(&node1.Data, &Node->NODE1ptr[Node->NumEntries - 1].Data, 8u);	// sizeof(NODE_1) == 8
+		cpybuf(&node1.Data, &Node->NODE1ptr[Node->NumEntries - 1].Data, sizeof(NODE_1));	// sizeof(NODE_1) == x86 = 8 / x64 = 16
 		delpage(Node, Node->NumEntries - 1);
 	}
 	else

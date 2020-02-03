@@ -1,0 +1,130 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.08.26.04.57.38;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef SPREAD_C
+#define SPREAD_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+// not public in libcl4
+bool adopt(TDinfo *TDptr, NODE *ND_parent, short N1_2idx, NODE *Node, NODE *Node2, char *RecBuffer)
+{
+	short v6; // ax@@1
+	bool v7; // esi@@1
+
+	printf("adopt(TDptr: x%08X, ND_parent: x%08X, N1_2idx = %d , Node: x%08X, Node2: x%08X, RecBuffer = x%08X)\n",TDptr,ND_parent,N1_2idx,Node, Node2,RecBuffer);
+
+	v6 = _promote(RecBuffer, Node, Node2, ND_parent->PageType & 1, TDptr);
+	modpage(ND_parent, N1_2idx, RecBuffer, v6);
+	
+	v7 = 1;	// default success.
+	if ( Node->DataEnd > TDptr->TDDBinfo->DBpgsize )	// Left node too big for a page?
+		v7 = 0;
+	else
+		ND_parent->NODE2ptr[N1_2idx].PageNo = _repos(TDptr, Node);
+	
+	if ( Node2->DataEnd > TDptr->TDDBinfo->DBpgsize )	// Right node too big for a page?
+		v7 = 0;
+	else
+		ND_parent->NODE2ptr[N1_2idx + 1].PageNo = _repos(TDptr, Node2);
+
+	return v7;
+}
+
+bool _spread(TDinfo *TDptr, NODE *a2, NODE *ND_parent, short N1_2idx, char **a5)
+{
+	bool v5; // edi@@1
+	NODE_1 *v6; // edx@@4
+	NODE *Node; // [sp+28h] [bp-10h]@@3
+	NODE *Nodea; // [sp+28h] [bp-10h]@@14
+
+	printf("_spread(TDptr: x%08X, Node: x%08X, Node2: x%08X, N1_2idx: %d, a5 = x%08X)\n",TDptr,a2,ND_parent,N1_2idx,a5);
+	v5 = 0;
+	if ( N1_2idx && _lockpg(TDptr->TDDBinfo, ND_parent->NODE2ptr[N1_2idx - 1].PageNo, 2) )
+	{
+		Node = getnode(TDptr, ND_parent->NODE2ptr[N1_2idx - 1].PageNo, a2->PageType);
+		if ( a2->PageType & 2 )
+		{
+			v6 = &ND_parent->NODE1ptr[N1_2idx - 1];
+			addpage(Node, Node->NumEntries, v6->Data, v6->Size);
+			Node->NODE2ptr[Node->NumEntries].PageNo = a2->NODE2ptr->PageNo;
+		}
+
+		if ( a2->DataEnd + Node->DataEnd > TDptr->TDDBinfo->DBpgsize )	// Are both nodes bigger than a single page?
+		{
+			if ( _redistrib(Node, a2, TDptr->TDDBinfo->DBpgsize) )
+				v5 = adopt(TDptr, ND_parent, N1_2idx - 1, Node, a2, *a5);
+			else
+				_lockpg(TDptr->TDDBinfo, Node->PageNo, 0);
+		}
+		else		// No, both nodes will fit in one page
+		{
+			moveleft(Node, a2, a2->NumEntries);
+			delpage(ND_parent, N1_2idx - 1);
+			ND_parent->NODE2ptr[N1_2idx - 1].PageNo = _repos(TDptr, Node);
+			_addlist(TDptr->TDDBinfo->PageList2, a2->PageNo);
+			v5 = 1;
+		}
+		relnode(Node);
+	}
+	if ( v5 )
+	{
+		relnode(a2);
+		return v5;
+	}
+	if ( ND_parent->NumEntries != N1_2idx && _lockpg(TDptr->TDDBinfo, ND_parent->NODE2ptr[N1_2idx + 1].PageNo, 2) )
+	{
+		Nodea = getnode(TDptr, ND_parent->NODE2ptr[N1_2idx + 1].PageNo, a2->PageType);
+		if ( a2->PageType & 2 )
+		{
+			addpage(Nodea, 0, ND_parent->NODE1ptr[N1_2idx].Data, ND_parent->NODE1ptr[N1_2idx].Size);
+			Nodea->NODE2ptr->PageNo = a2->NODE2ptr[a2->NumEntries].PageNo;
+		}
+
+		if ( a2->DataEnd + Nodea->DataEnd > TDptr->TDDBinfo->DBpgsize )	// Are both nodes bigger than a single page?
+		{
+			if ( _redistrib(a2, Nodea, TDptr->TDDBinfo->DBpgsize) )
+				v5 = adopt(TDptr, ND_parent, N1_2idx, a2, Nodea, a5[1]);
+			else
+				_lockpg(TDptr->TDDBinfo, Nodea->PageNo, 0);
+		}
+		else		// No, both nodes will fit in one page
+		{
+			moveright(a2, Nodea, a2->NumEntries);
+			delpage(ND_parent, N1_2idx);
+			ND_parent->NODE2ptr[N1_2idx].PageNo = _repos(TDptr, Nodea);
+			_addlist(TDptr->TDDBinfo->PageList2, a2->PageNo);
+			v5 = 1;
+		}
+		relnode(Nodea);
+	}
+	if ( v5 )
+		relnode(a2);
+	return v5;
+}
+
+
+#endif
+@

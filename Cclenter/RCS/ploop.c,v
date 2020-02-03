@@ -1,0 +1,1220 @@
+head	1.7;
+access;
+symbols;
+locks
+	leslie:1.7; strict;
+comment	@ * @;
+
+
+1.7
+date	2016.08.16.07.00.03;	author leslie;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2016.01.25.04.50.08;	author leslie;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2015.08.26.06.49.18;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2015.06.28.11.30.34;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2015.06.13.12.54.00;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.27.05.55.25;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.08.11.15.31;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@inital checkin
+@
+
+
+1.7
+log
+@tidy-up
+@
+text
+@#ifndef PROG_LOOP_C
+#define PROG_LOOP_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+bool tojoin(BTAB *btb, XTAB *xtb)
+{
+    //RTAB *rtb; // eax@@9
+    //RTAB *rtb2; // eax@@13
+    //ENTAB *v5; // eax@@15
+    int TDno; // [sp+10h] [bp-18h]@@17
+    int TTno; // [sp+14h] [bp-14h]@@4
+    char FLDtype; // [sp+1Bh] [bp-Dh]@@4
+
+    gettdfno(ENARR(xtb->VarExpNo), &TTno, &FLDtype, 0);
+
+    //return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (!xtb->RangeID ? (rtb = 0) : (rtb = &rtarr.TableAddr[xtb->RangeID - 1]), !rtb->enleft ? (v5 = 0) : (!xtb->RangeID ? (rtb2 = 0) : (rtb2 = &rtarr.TableAddr[xtb->RangeID - 1]), v5 = &enarr.TableAddr[rtb2->field_C - 1]), gettdfno(v5, &TDno, &FLDtype, 0), TTno != TDno);
+    //return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (rtb = RTARR(xtb->RangeID), v5 = ENARR(rtb->enleft) , gettdfno(v5, &TDno, &FLDtype, 0), TTno != TDno);
+    //return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (rtb = RTARR(xtb->RangeID), gettdfno(ENARR(rtb->enleft), &TDno, &FLDtype, 0), TTno != TDno);
+
+    return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (gettdfno(ENARR(RTARR(xtb->RangeID)->enleft), &TDno, &FLDtype, 0), TTno != TDno);
+
+}
+
+short ploop(BTAB *btb, int ScreenNum, short PT_Start2, short PT_End2, short PT_Start, short PT_End, int a7)
+{
+    //int v7; // eax@@6
+
+//printf("ploop: entry a2 = %d, a7 = %d\n",a2,a7);
+
+    if ( a7 && !ScreenNum )
+    {
+        key_found = 0;
+        key_i = 0;
+    }
+
+	if ( go_back == -22 )		// ** global var **
+        skip = 1;
+    else
+    {
+		skip = (ScreenNum > 0 && a7 && (btb->Curr_Mode == 'c' || btb->Curr_Mode == 'v')) ? 1 : 0;
+    }
+    return _ploop(btb, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, 0, 0);
+}
+
+short sploop(BTAB *bt, int ScreenNum, short PT_Start2, short PT_End2, int PT_Start, int PT_End)
+{
+    int		v7;
+    int		v8;
+    int		v10;
+    short	result;
+    short	v9;
+
+    if ( recur_0 == 1 )
+        result = 128;
+    else
+    {
+        v7			= key_found;
+        v8			= skip;
+        v10			= in_do;
+        v9			= depth;
+        
+		key_found	= 1;
+        skip		= 1;
+        ++recur_0;
+        
+		result = _ploop(bt, ScreenNum, PT_Start2, PT_End2, PT_Start, PT_End, 1, 0);	// no screenout, not indoblock
+        
+		--recur_0;
+        if ( result != 1 )
+            v7 = 0;
+        
+		key_found	= v7;
+        skip		= v8;
+        in_do		= v10;
+        depth		= v9;
+    }
+    return result;
+}
+
+short _ploop(BTAB *bt, int ScreenNum, short PT_Start2, short PT_End2, short PT_Start, short PT_End, bool noScreenOut, bool inDoBlock)
+{
+	PTAB *ptab; // Program statement records
+	XTAB *xtab; // screen display record
+	//RTAB *rtab; // file reference record
+	XFTAB *xftb; // xfer table <- table record
+	RDTAB *rdtab; // redisplay record
+    
+	BTAB *v25;
+	BTAB *btb;
+	
+    ENTAB *v31;
+	ENTAB *v33;
+	
+    FLDdesc *fldREPLY;
+	FLDdesc *fldMREPLY;
+	FLDdesc *fldLREPLY;
+
+	FLDdesc *fld;
+	FLDdesc fld1;
+	
+    int v13; // ecx@@16
+    signed int OpCode; // eax@@80
+    int v44; // edi@@240
+    int v48; // eax@@248
+	int v68; // [sp+6Ch] [bp-86Ch]@@240
+    int v69; // [sp+70h] [bp-868h]@@1
+    int v70; // [sp+74h] [bp-864h]@@240
+    short v15; // esi@@39
+    short v51; // ax@@258
+    short v62; // [sp+54h] [bp-884h]@@240
+    short v63; // [sp+58h] [bp-880h]@@240
+    short v64; // [sp+5Ch] [bp-87Ch]@@240
+    short v65; // [sp+60h] [bp-878h]@@240
+    short v66; // [sp+64h] [bp-874h]@@240
+    bool v67;
+    short CurrPTno; // [sp+7Ch] [bp-85Ch]@@1
+    char v74[32]; // [sp+A0h] [bp-838h]@@222
+    char Dest[32]; // [sp+C0h] [bp-818h]@@222
+    char v76[1008]; // [sp+E0h] [bp-7F8h]@@222
+    char v77[1024]; // [sp+4D0h] [bp-408h]@@213 unsure of real size
+    char v61; // [sp+4Fh] [bp-889h]@@240
+
+	//printf("_ploop: entry PT_Start2 = %d, PT_End2 = %d\n", PT_Start2,PT_End2 );
+
+    fld = 0;
+    v69 = 0;
+    v67 = false;
+    CurrPTno = PT_Start2;
+    while ( CurrPTno <= PT_End2 )
+    {
+		//---- inner while loop ----
+        while ( 1 )
+        {
+            ptab = PTARR(getptabp(CurrPTno));
+            srclineno = ptab->SrcLineNo;
+			//printf("\n_ploop: LineNo = %d, OpCode = %d [x%04X] \n",srclineno,ptab->OpCode,ptab->OpCode);
+
+            if ( (unsigned short)(ptab->OpCode - 1) > 48u ) // Inner loop deals with OpCodes 1 - 50
+                break;
+            
+			xtab = XTARR(ptab->TABno);
+            if ( xtab->VarExpNo )
+                fld = getftf(ENARR(xtab->VarExpNo), 1, &fld1);
+
+			if ( ptab->OpCode == 4 )            // 4 == "text"
+            {
+                dhdtxt(xtab, 0, 0);
+                fflush(stderr);
+                goto LABEL_263;
+            }
+//----------------
+// join checks
+			//if (xtab)
+			//	printf("_ploop: 1777 - xtab->Flags = x%04X, key_found = %d\n",(unsigned short)xtab->Flags, key_found);
+
+			//if ( xtab->Flags & 0x0004 || key_found && xtab->Flags < 0 )
+			if ( xtab->Flags & xtb_DISPLAY || key_found && xtab->Flags & xtb_KEY )
+            {
+                dispfld(xtab, fld, 1, 0, 1, 0);
+                if ( !key_found )				// ** global var **
+                {
+                    if ( tojoin(bt, xtab) )
+                    {
+                        if ( !jcheck(ptab, fld, 0, 1) )
+                            sleep(5u);
+                        goto LABEL_263;
+                    }
+                    if ( !key_found )			// ** global var **. Volatile, may change from test above
+					{
+			            jcheck(ptab, fld, 0, 1);
+		                goto LABEL_263;
+					}
+                }
+                if ( xtab->Flags < 0 )
+                {
+                    if ( !rcheck(xtab, fld, 0) || !jcheck(ptab, fld, 0, 1) )
+                        return 256;
+                }
+                else
+                    jcheck(ptab, fld, 0, 1);
+
+                goto LABEL_263;
+            }
+//--------------
+            if ( ptab->OpCode != 1 )            // accept field
+                goto LABEL_263;
+
+//printf("_ploop: 1809 - CurrPTno = %d, PT_Start = %d, PT_End = %d\n",CurrPTno,PT_Start,PT_End);
+            if ( PT_Start <= CurrPTno && CurrPTno <= PT_End )
+                goto LABEL_33;
+            
+			if ( !xtab->RangeID )
+            {
+                //if ( skipping != 2 && (!(xtab->Flags & 0x0400) || !(fld->FLDstat & 0x0004)) )
+                if ( skipping != 2 && (!(xtab->Flags & xtb_REQUIRED) || !(fld->FLDstat & fld_ZERO)) )
+                {
+                    if ( fld->FLDstat & 8 )
+                        dispfld(xtab, fld, 1, 0, 1, 0);
+                    goto LABEL_263;
+                }
+LABEL_33:
+                if ( !xtab->RangeID )
+                    goto LABEL_37;
+            }
+            if ( CurrPTno < PT_Start || PT_End < CurrPTno )
+            {
+                v69 = skip;		// Current PTno is outside the block range!
+                skip = 1;
+            }
+//----------------
+LABEL_37:
+//printf("_ploop: label_37 - xtab->Flags = x%04X, key_found = %d\n",xtab->Flags,key_found);
+
+            //if ( key_found && xtab->Flags < 0 )
+            if ( key_found && xtab->Flags & xtb_KEY )
+                v15 = 1;
+			else
+            {
+                if ( go_back )
+                {
+                    if ( xtab->FLDnum == back_to )
+                        skip = 0;
+                    else if ( xtab->FLDnum >= lback_to )
+                    {
+						skip = skip_gb;
+                        setcvar(v_LREPLY, lreply_gb);	// "LREPLY"
+                        lback_to = 0;
+                        go_back = 0;
+					}
+                }
+                v15 = (signed short)pedit(xtab, ptab, fld, bt, &skip, inDoBlock, CurrPTno, noScreenOut);
+            }
+
+            if ( xtab->RangeID && (CurrPTno < PT_Start || PT_End < CurrPTno) )
+                skip = v69;
+
+//printf("_ploop: 241 - v15 = %d\n",v15); 
+
+// -- deal with v15 return code --
+
+			switch (v15)
+			{
+			case 0 :					// User entered blank for the key field. return to caller
+                return 0;
+				break;
+
+			case -5:					// <crtl>e
+			case -17:					// <ctrl>a
+                go_back = 0;
+                setcvar(v_LREPLY, "q");	// "LREPLY"
+                return v15;
+				break;
+
+			case -22:					// User typed up-arrow or equivalent
+				if ( !go_back )
+                {
+					go_back = -22;
+                    lback_to = xtab->FLDnum;
+                    skip_gb = skip;
+                    lreply_gb[0] = *(char*)ttab->TTfields[7].FLDdata;
+                    setcvar(v_LREPLY, "m");	//"LREPLY"
+				}
+                back_to = last_fld;
+                return v15;
+				break;
+
+			case 64:
+				//printf("_ploop: 278 - v15 = %d\n",v15); 
+	            if ( bt->Curr_Mode != 'a' )
+	                skip = 1;
+
+	            key_found = 1;
+	            if ( bt->Curr_Mode == 'a' )
+				{
+	                if ( xtab->Flags & xtb_LKF)		//	0x0040u		// LKF Last Key Field
+	                    v67 = true;
+	                goto LABEL_263;
+				}
+	            CurrPTno = PT_Start2;
+				break;
+
+			case 128:
+				key_found = 0;
+				return 128;
+				break;
+
+			default:
+				//printf("_ploop: default 298 - v15 = %d\n",v15); 
+                last_fld = xtab->FLDnum;	// what case is this???		:	1 comes here
+                if ( xtab->Flags & xtb_LKF)		//	0x0040u		// LKF Last Key Field
+                    v67 = true;
+                goto LABEL_263;
+				break;
+			}
+
+        }// end of inner while loop ----
+
+//=================================
+
+        OpCode = ptab->OpCode;
+		switch (OpCode)
+		{
+		case 200:						// 200 = assignment : X=Y
+			//printf("_ploop [200] : ptab->TABno  = %d, x%04X\n",ptab->TABno,ptab->TABno);
+			calculate(ENARR(ptab->TABno));	// do the actual assignment
+
+			if ( debug == 1 )
+            {
+				//v22 = ENARR(ptab->TABno);
+				//v24 = ENARR(v22->enleft);
+				//prdebass(ptab->SrcLineNo, v24, CurrPTno);	// show Debug assignment
+				prdebass(ptab->SrcLineNo, ENARR(ENARR(ptab->TABno)->enleft), CurrPTno);	// show Debug assignment
+			}
+			break;
+		case 250:						// refresh {screen_save_name}
+			pfresh(ptab->TABno ? &strarr.StringTable[ptab->TABno - 1] : 0);
+			break;
+		case 260:						// screen {screen_save_name}
+			pscreen(ptab->TABno ? &strarr.StringTable[ptab->TABno - 1] : 0);
+			break;
+		case 265:
+			if ( ptab->Operand )
+            {
+				_dscreen(bt, CurrPTno, PT_End2, 0);
+				ptab->Operand = 0;
+			}
+			break;
+		case 270 :						// 270 == "message" ?
+            if ( noScreenOut )
+				return 1;
+			
+			v31 = ENARR(ptab->TABno);
+			exptobuf(v77, ENARR(v31->enleft), 0);	// expecting 2 string values
+			exptobuf(v76, ENARR(v31->enright), 0);
+            
+			// variables hang off Table #0
+			fldREPLY  = &ttab->TTfields[v_REPLY];		// "REPLY"
+            fldLREPLY = &ttab->TTfields[v_LREPLY];		// "LREPLY"
+            fldMREPLY = &ttab->TTfields[v_MREPLY];		// "MREPLY"
+
+            cdbcpystr(Dest, (char *)fldLREPLY->FLDdata, 0);
+            cdbcpystr(v74, (char *)fldREPLY->FLDdata, 0);
+            *(char *)fldREPLY->FLDdata = v76[0];
+
+            mreply(v77, v76);
+            
+			cdbcpystr((char *)fldMREPLY->FLDdata, (char *)fldLREPLY->FLDdata, 0);
+            cdbcpystr((char *)fldLREPLY->FLDdata, Dest, 0);
+            cdbcpystr((char *)fldREPLY->FLDdata, v74, 0);
+			break;
+		case 300:
+		case 310:						// 310 = while?
+			//eprint("_ploop [%d] : ptab->TABno  = %d, x%04X, enarr.TableAddr = x%08X, entab x%08X\n",OpCode,ptab->TABno,ptab->TABno,enarr.TableAddr,(ENTAB *)&enarr.TableAddr[12 * (ptab->TABno - 1)]);
+			if ( evaliex(ENARR(ptab->TABno), skip))
+			{	// condition true, continue execution
+			    if ( debug == 1 )
+			        prdebcon(ptab->SrcLineNo, 1, CurrPTno);	// show debug condition
+			}
+			else
+			{	// condition false. continue execution after end of loop
+				if ( debug == 1 )
+				    prdebcon(ptab->SrcLineNo, 0, CurrPTno);	// show debug condition
+				CurrPTno = ptab->Operand - 1;	// condition false, exit loop. CurrPTno is incremented at end of loop
+			}
+			break;
+		case 450:						// 450 = create temp table
+            pcreate(KXARR(ptab->TABno));	// KXTAB*
+			break;
+
+		case 510:		// 510 get, 
+		case 515:		// 515 getprev
+		case 520:		// 520 getnext
+		case 530:		// 530 put/replace
+		case 560:		// 560 select
+		case 570:		// 570 delete
+		case 580:		// 580 clear
+            //rtab = RTARR(ptab->TABno);
+			//printf("_ploop: Calling reffile(x%08X) LineNo = %d, OpCode = %d [x%04X] \n",rtab,srclineno,ptab->OpCode,ptab->OpCode);
+	        //reffile(rtab);
+			reffile(RTARR(ptab->TABno));
+			break;
+		case 730:						// redisplay()
+            rdtab = RDARR(ptab->TABno);
+            redisp(rdtab, rdtab->RDTFlags, CurrPTno);
+			break;
+		case 750:						// fork
+			pfork(ptab);
+			break;
+		case 760:						// rand()
+		    psrand(ENARR(ptab->TABno));
+			break;
+		case 800:						// copy td from td2
+	        xftb = XFARR(ptab->TABno);
+		    tdtotd(xftb->TTno_to, xftb->TTno_from, 0, 2);
+			break;
+		case 850:						// openin, read etc.
+		case 860:
+		    pfile(SFARR(ptab->TABno));	// SFTAB*
+			break;
+		case 870:						// pause
+		    if ( noScreenOut )			// Do nothing if output is piped to a file or ....
+		        return 1;
+		    ppause(ENARR(ptab->TABno));
+			break;
+		case 880:						// sleep ()
+			psleep(ENARR(ptab->TABno));
+			break;
+		case 882:						// exit_block
+			exit_type = 882;
+			return -5;
+			break;
+		case 884:						// exit_do
+			if ( inDoBlock )
+				return 0;
+			break;
+		case 886:						// exit_process
+			exit_type = 886;
+			return -5;
+			break;
+		case 888:						// restart_block
+		    return -17;
+			break;
+		case 900:						// print
+			//printf("pblock: OP=900, calling prfield(%d) \n",(ptab->TABno - 1));
+			prfield(PRARR(ptab->TABno));	// PRTAB*
+			break;
+		case 910:						// unlock record
+			v51 = ulckrec(ptab->Operand);
+			setvar(v_ERROR, v51 == 0);			// "ERROR"
+			break;
+		case 920:
+		    erase_line();
+			break;
+		case 922:
+			at();						// home cursor, and wipe screen
+			erase_page(1);
+			break;
+		case 720:						// 720 = "do {blockname}"
+			v25 = &btab[ptab->Operand];
+			
+			in_do = 1;
+			++depth;	// increase sub-routine count
+			
+			if ( PT_Start == PT_End )
+				v15 = _ploop(bt, ScreenNum, v25->StartLine, v25->EndLine, PT_Start, PT_Start, noScreenOut, true);	// true indicates in a "do" block
+			else
+				v15 = _ploop(bt, ScreenNum, v25->StartLine, v25->EndLine, v25->StartLine, v25->EndLine, noScreenOut, true);	
+			
+			depth--;
+			if ( depth == 0)	// are we still in a sub-routine?, or back at top block
+				in_do = 0;
+			
+			if ( v15 == -17 || v15 == -5 || v15 == -22 )
+			    return v15;
+			break;
+		case 600:					// format {blockname}
+
+			v63			= last_fld;			// save current state variables
+			v68			= skip_gb;
+			v66			= go_back;
+			v65			= back_to;
+			v64			= lback_to;
+			v61			= lreply_gb[0];
+			v62			= depth;
+			v70			= key_found;
+			v44			= in_do;
+			v69			= skip;
+
+			skip_gb		= 0;
+			lback_to	= 0;
+			back_to		= 0;
+			go_back		= 0;
+			in_do		= 0;
+			
+			btb = &btab[ptab->Operand];
+			if ( bt->Scrs & 0x4000 || bt->Curr_Mode == 'r' || ScreenNum != (bt->Scrs & 0xFFFFBFFF) - 1 )
+			    btb->Scrs |= 0x4000;
+			else
+			    btb->Scrs &= 0xBFFF;
+			
+			v48 = pblock(btb, ENARR(ptab->TABno));        // call "format" style block
+			
+			if ( v48 == -5 )
+			    return -5;
+			
+			// restore state
+			depth		 = v62;
+			key_found	 = v70;
+			in_do		 = v44;
+			skip		 = v69;
+			last_fld	 = v63;
+			skip_gb		 = v68;
+			go_back		 = v66;
+			back_to		 = v65;
+			lback_to	 = v64;
+			lreply_gb[0] = v61;
+			break;
+
+		case 320:		// 320 = continue
+		case 330:		// 330 = end_loop
+		case 700:		// 700 = goto
+			if ( noScreenOut && v67 )
+            {
+                if ( ptab->Operand < CurrPTno )
+					return 128;
+			}
+            if ( key_found && key_i < CurrPTno && ptab->Operand < key_i )
+            {
+				key_found = 0;
+                if ( skipping == 2 )
+					return 128;
+			}
+            CurrPTno = ptab->Operand - 1;	// update line counter for next pass
+			break;
+		case 340:
+			endtran();
+			break;
+		
+		default:							// default, fall through to pset(). Break 950 also comes here?
+			//printf("_ploop: fell through to pset()\n");
+		    pset(ptab);
+			break;
+		}
+
+LABEL_263:	
+        CurrPTno++;		// real end of the block. Check if we are past the last line in the block ( auto-return)
+    } //  end while ( CurrPTno <= PT_End2 )
+	return 1;	// exit success
+}
+
+#endif
+
+@
+
+
+1.6
+log
+@intermediate
+@
+text
+@d21 3
+a23 3
+    //return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (!xtb->RangeID ? (rtb = 0) : (rtb = &rtarr.TableAddr[xtb->RangeID - 1]), !rtb->field_C ? (v5 = 0) : (!xtb->RangeID ? (rtb2 = 0) : (rtb2 = &rtarr.TableAddr[xtb->RangeID - 1]), v5 = &enarr.TableAddr[rtb2->field_C - 1]), gettdfno(v5, &TDno, &FLDtype, 0), TTno != TDno);
+    //return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (rtb = RTARR(xtb->RangeID), v5 = ENARR(rtb->field_C) , gettdfno(v5, &TDno, &FLDtype, 0), TTno != TDno);
+    //return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (rtb = RTARR(xtb->RangeID), gettdfno(ENARR(rtb->field_C), &TDno, &FLDtype, 0), TTno != TDno);
+d25 1
+a25 1
+    return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || xtb->Flags & 0x10 && (gettdfno(ENARR(RTARR(xtb->RangeID)->field_C), &TDno, &FLDtype, 0), TTno != TDno);
+d199 2
+a200 1
+                if ( skipping != 2 && (!(xtab->Flags & 0x0400) || !(fld->FLDstat & 0x0004)) )
+d219 2
+a220 1
+            if ( key_found && xtab->Flags < 0 )
+d252 2
+a253 2
+			case -5:
+			case -17:
+d280 1
+a280 1
+	                if ( xtab->Flags & 0x0040 )		// indicates this field is the last in the Key area
+d295 1
+a295 1
+                if ( xtab->Flags & 0x0040 )			// indicates this field is the last in the Key area
+@
+
+
+1.5
+log
+@intermediate
+@
+text
+@d52 5
+a56 5
+    short result;
+    int v7;
+    int v8;
+    int v10;
+    short v9;
+d89 1
+a89 1
+	RTAB *rtab; // file reference record
+d93 9
+a101 2
+	BTAB *v25; // edx@@175
+    BTAB *btb; // ecx@@240
+a102 8
+    ENTAB *v22; // eax@@166
+    ENTAB *v24; // eax@@172
+    ENTAB *v31; // eax@@205
+    ENTAB *v33; // eax@@211
+
+    FLDdesc *v37;
+	FLDdesc *v38;
+	FLDdesc *v39;
+d161 2
+a162 1
+			if ( xtab->Flags & 0x0004 || key_found && xtab->Flags < 0 )
+d283 1
+a283 1
+				break;					// this is the only case that falls through to below
+a303 9
+        if ( (unsigned short)(OpCode - 500) <= 98u )	// 500 - 598 ?    All file related operations
+        {
+			// 510 get, 515 = getprev, 520 = getnext, 530 = put , 560 = select
+            rtab = RTARR(ptab->TABno);
+			//printf("_ploop: Calling reffile(x%08X) LineNo = %d, OpCode = %d [x%04X] \n",rtab,srclineno,ptab->OpCode,ptab->OpCode);
+            reffile(rtab);
+			goto LABEL_263;		// *** integrate this into main switch loop!! ***
+        } //else if....
+	
+d312 4
+a315 3
+				v22 = ENARR(ptab->TABno);
+				v24 = ENARR(v22->enleft);
+				prdebass(ptab->SrcLineNo, v24, CurrPTno);	// show Debug assignment
+a321 1
+			//printf("pblock: ptab->TABno = %d, Name = %s\n",ptab->TABno,&strarr.StringTable[ptab->TABno - 1]);
+d336 1
+a336 1
+			exptobuf(v77, ENARR(v31->enleft), 0);
+d339 9
+a347 7
+			v37 = ttab->TTfields;		// variables hang off Table #0
+            v38 = v37 + 18;	// "MREPLY"
+            v39 = v37 + 7;	// "LREPLY"
+            v37 += 5;		// "REPLY"
+            cdbcpystr(Dest, (char *)v39->FLDdata, 0);
+            cdbcpystr(v74, (char *)v37->FLDdata, 0);
+            *(char *)v37->FLDdata = v76[0];
+d349 4
+a352 3
+            cdbcpystr((char *)v38->FLDdata, (char *)v39->FLDdata, 0);
+            cdbcpystr((char *)v39->FLDdata, Dest, 0);
+            cdbcpystr((char *)v37->FLDdata, v74, 0);
+d372 13
+d387 1
+a387 1
+            redisp(rdtab, rdtab->field_0, CurrPTno);
+d401 1
+a401 2
+		    //pfile(ptab->TABno ? &sfarr.TableAddr[ptab->TABno - 1] : 0);
+		    pfile(SFARR(ptab->TABno));
+d428 1
+a428 1
+			prfield(PRARR(ptab->TABno));					// takes PRTAB*
+@
+
+
+1.4
+log
+@intermediate
+@
+text
+@d29 1
+a29 1
+short ploop(BTAB *btab, int a2, short PT_Start2, short PT_End2, short PT_Start, short PT_End, int a7)
+d35 1
+a35 1
+    if ( a7 && !a2 )
+d45 1
+a45 5
+        //v7 = 0;
+        //if ( a2 > 0 && a7 && (btab->Curr_Mode == 'c' || btab->Curr_Mode == 'v') )	// change or view
+        //    v7 = 1;
+        //skip = v7;
+		skip = (a2 > 0 && a7 && (btab->Curr_Mode == 'c' || btab->Curr_Mode == 'v')) ? 1 : 0;
+d47 1
+a47 1
+    return _ploop(btab, a2, PT_Start2, PT_End2, PT_Start, PT_End, 0, 0);
+d50 1
+a50 1
+short sploop(BTAB *bt, int a2, short PT_Start2, short PT_End2, int PT_Start, int PT_End)
+d71 1
+a71 1
+		result = _ploop(bt, a2, PT_Start2, PT_End2, PT_Start, PT_End, 1, 0);	// no screenout, not indoblock
+d85 1
+a85 1
+short _ploop(BTAB *bt, int a2, short PT_Start2, short PT_End2, short PT_Start, short PT_End, bool noScreenOut, bool inDoBlock)
+d101 6
+a106 6
+    FLDdesc *v37; // esi@@222
+    FLDdesc *v38; // ST50_4@@222
+    FLDdesc *v39; // edi@@222
+    FLDdesc *fld; // [sp+78h] [bp-860h]@@1
+    FLDdesc fld1; // [sp+80h] [bp-858h]@@10
+
+a107 1
+    short v15; // esi@@39
+d111 4
+a115 1
+    char v61; // [sp+4Fh] [bp-889h]@@240
+d121 1
+a121 4
+    int v67; // [sp+68h] [bp-870h]@@1
+    int v68; // [sp+6Ch] [bp-86Ch]@@240
+    int v69; // [sp+70h] [bp-868h]@@1
+    int v70; // [sp+74h] [bp-864h]@@240
+d127 1
+d133 1
+a133 1
+    v67 = 0;
+d279 1
+a279 1
+	                    v67 = 1;
+d294 1
+a294 1
+                    v67 = 1;
+d383 1
+a383 2
+			//pfork(ptab);
+			printf("pfork() not currently implemented!!!\n");
+d394 2
+a395 1
+		    pfile(ptab->TABno ? &sfarr.TableAddr[ptab->TABno - 1] : 0);
+d398 1
+a398 1
+		    if ( noScreenOut )
+d442 1
+a442 1
+				v15 = _ploop(bt, a2, v25->StartLine, v25->EndLine, PT_Start, PT_Start, noScreenOut, true);	// true indicates in a "do" block
+d444 1
+a444 1
+				v15 = _ploop(bt, a2, v25->StartLine, v25->EndLine, v25->StartLine, v25->EndLine, noScreenOut, true);	
+d473 1
+a473 1
+			if ( bt->Scrs & 0x4000 || bt->Curr_Mode == 'r' || a2 != (bt->Scrs & 0xFFFFBFFF) - 1 )
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d255 1
+a260 6
+			case -17:
+				go_back = 0;
+		        setcvar(v_LREPLY, "q");	// "LREPLY"
+	            return v15;
+				break;
+
+d282 1
+a282 1
+	                if ( xtab->Flags & 0x0040 )
+d287 1
+a287 1
+				break;
+d297 1
+a297 1
+                if ( xtab->Flags & 0x0040 )
+d308 1
+a308 1
+        if ( (unsigned short)(OpCode - 500) <= 98u )	// 500 - 598 ?
+d344 1
+a344 1
+		case 270 :															// 270 == "message" ?
+d352 1
+a352 1
+			v37 = ttab->TTfields;
+d379 1
+a379 1
+		case 450:															// 450 = create temp table
+d439 1
+a439 1
+		case 720:															// 720 = "do {blockname}"
+d458 2
+a459 2
+			// save state
+			v63			= last_fld;
+d465 4
+a473 3
+			v62			= depth;
+			v70			= key_found;
+			v44			= in_do;
+a474 1
+			v69			= skip;
+@
+
+
+1.2
+log
+@prior to ENARR() fixes
+@
+text
+@d12 3
+a14 3
+    RTAB *rtb; // eax@@9
+    RTAB *rtb2; // eax@@13
+    ENTAB *v5; // eax@@15
+d19 7
+a25 1
+    gettdfno(xtb->VarExpNo ? &enarr.TableAddr[xtb->VarExpNo - 1] : 0, &TTno, &FLDtype, 0);
+a26 4
+    return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno || 
+			xtb->Flags & 0x10 && (!xtb->RangeID ? (rtb = 0) : (rtb = &rtarr.TableAddr[xtb->RangeID - 1]),
+            !rtb->field_C ? (v5 = 0) : (!xtb->RangeID ? (rtb2 = 0) : (rtb2 = &rtarr.TableAddr[xtb->RangeID - 1]),
+            v5 = &enarr.TableAddr[rtb2->field_C - 1]), gettdfno(v5, &TDno, &FLDtype, 0), TTno != TDno);
+d59 1
+a60 1
+    int v10;
+d151 1
+a151 1
+			xtab = ptab->TABno ? &xtarr.TableAddr[ptab->TABno - 1] : 0;
+d153 1
+a153 1
+                fld = getftf(xtab->VarExpNo ? &enarr.TableAddr[xtab->VarExpNo - 1] : 0, 1, &fld1);
+d316 1
+a316 1
+            rtab = ptab->TABno ? &rtarr.TableAddr[ptab->TABno - 1] : 0;
+d326 1
+a326 1
+			calculate(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);	// do the actual assignment
+d330 2
+a331 2
+				v22 = ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0;
+				v24 = v22->enleft ? &enarr.TableAddr[v22->enleft - 1] : 0;
+d353 3
+a355 3
+			v31 = ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0;
+            exptobuf(v77, v31->enleft ? &enarr.TableAddr[v31->enleft - 1] : 0, 0);
+			exptobuf(v76, v31->enright ? &enarr.TableAddr[v31->enright - 1] : 0, 0);
+d372 1
+a372 1
+			if ( evaliex(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0, skip))
+d385 1
+a385 1
+            pcreate(ptab->TABno ? &kxarr.TableAddr[ptab->TABno - 1] : 0);
+d388 1
+a388 1
+            rdtab = ptab->TABno ? &rdarr.TableAddr[ptab->TABno - 1] : 0;
+d396 1
+a396 1
+		    psrand(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);
+d399 1
+a399 1
+	        xftb = ptab->TABno ? &xfarr.TableAddr[ptab->TABno - 1] : 0;
+d409 1
+a409 1
+		    ppause(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);
+d412 1
+a412 1
+			psleep(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);
+d431 1
+a431 1
+			prfield(ptab->TABno ? &prarr.TableAddr[ptab->TABno - 1] : 0);
+d487 1
+a487 1
+			v48 = pblock(btb, ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);        // call "format" style block
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 2
+a22 2
+    return btb->Curr_Mode != 'a' || xtb->Flags >= 0 || btb->TTno != TTno
+        || xtb->Flags & 0x10 && (!xtb->RangeID ? (rtb = 0) : (rtb = &rtarr.TableAddr[xtb->RangeID - 1]),
+d29 1
+a29 1
+    int v7; // eax@@6
+d31 1
+a31 1
+//printf("ploop: entry \n");
+d39 1
+a39 1
+	if ( go_back == -22 )
+d43 5
+a47 4
+        v7 = 0;
+        if ( a2 > 0 && a7 && (btab->Curr_Mode == 'c' || btab->Curr_Mode == 'v') )	// change or view
+            v7 = 1;
+        skip = v7;
+d54 5
+a58 5
+    short result; // ax@@2
+    int v7; // esi@@3
+    int v8; // edi@@3
+    short v9; // [sp+24h] [bp-14h]@@3
+    int v10; // [sp+28h] [bp-10h]@@3
+d64 7
+a70 6
+        v7 = key_found;
+        v8 = skip;
+        v10 = in_do;
+        v9 = depth;
+        key_found = 1;
+        skip = 1;
+d72 4
+a75 2
+        result = _ploop(bt, a2, PT_Start2, PT_End2, PT_Start, PT_End, 1, 0);
+        --recur_0;
+d78 5
+a82 4
+        key_found = v7;
+        skip = v8;
+        in_do = v10;
+        depth = v9;
+d87 1
+a87 1
+short _ploop(BTAB *bt, int a2, short PT_Start2, short PT_End2, short PT_Start, short PT_End, int a8, int a6)
+a88 1
+    //KXTAB *kxtab; // create table record
+a92 1
+	//PRTAB *prtab; // print item record
+a108 1
+
+d125 1
+a125 1
+    short CurrPTAB; // [sp+7Ch] [bp-85Ch]@@1
+d136 2
+a137 2
+    CurrPTAB = PT_Start2;
+    while ( CurrPTAB <= PT_End2 )
+d142 1
+a142 1
+            ptab = PTARR(getptabp(CurrPTAB));
+d161 2
+a162 2
+			if (xtab)
+				printf("_ploop: 1777 - xtab->Flags = x%04X, key_found = %d\n",(unsigned short)xtab->Flags, key_found);
+d167 1
+a167 1
+                if ( !key_found )	// careful!! global var
+d175 1
+a175 1
+                    if ( !key_found )
+d188 1
+d195 2
+a196 2
+//printf("_ploop: 1809 - CurrPTAB = %d, PT_Start = %d, PT_End = %d\n",CurrPTAB,PT_Start,PT_End);
+            if ( PT_Start <= CurrPTAB && CurrPTAB <= PT_End )
+d211 1
+a211 1
+            if ( CurrPTAB < PT_Start || PT_End < CurrPTAB )
+d213 1
+a213 1
+                v69 = skip;
+a220 1
+            {
+d222 1
+a222 2
+            }
+            else
+a226 1
+                    {
+a227 1
+                    }
+d236 1
+a236 1
+                v15 = (signed short)pedit(xtab, ptab, fld, bt, &skip, a6, CurrPTAB, a8);
+d239 1
+a239 2
+//printf("_ploop: 1855 - v15 = %d\n",v15); 
+            if ( xtab->RangeID && (CurrPTAB < PT_Start || PT_End < CurrPTAB) )
+d242 11
+a252 3
+// -- check the v15 return code --
+            if ( v15 == -5 )
+            {
+d256 10
+a265 4
+            }
+            if ( v15 <= -5 )
+            {
+                if ( v15 == -22 )
+d267 17
+a283 12
+                    if ( !go_back )
+                    {
+                        go_back = -22;
+                        lback_to = xtab->FLDnum;
+                        skip_gb = skip;
+                        lreply_gb[0] = *(char*)ttab->TTfields[7].FLDdata;
+                        setcvar(v_LREPLY, "m");	//"LREPLY"
+                    }
+                    back_to = last_fld;
+                    return v15;
+                }
+                if ( v15 == -17 )
+d285 3
+a287 3
+			        go_back = 0;
+		            setcvar(v_LREPLY, "q");	// "LREPLY"
+	                return v15;
+d289 11
+a299 30
+                last_fld = xtab->FLDnum;	// what case is this??? -5??
+                if ( xtab->Flags & 0x40 )
+                    v67 = 1;
+                goto LABEL_263;
+            }
+            if ( v15 != 64 )
+            {
+                if ( v15 > 64 )
+                {
+                    if ( v15 == 128 )
+                    {
+                        key_found = 0;
+                        return 128;
+                    }
+                }
+                else
+                {
+                    if ( !v15 )
+                        return 0;
+                }
+                last_fld = xtab->FLDnum;
+                if ( xtab->Flags & 0x0040 )
+                    v67 = 1;
+                goto LABEL_263;
+            }
+            if ( bt->Curr_Mode != 'a' )
+                skip = 1;
+            key_found = 1;
+            if ( bt->Curr_Mode == 'a' )
+			{
+d303 1
+d305 1
+a305 1
+            CurrPTAB = PT_Start2;
+d322 10
+a331 3
+		case 730:                    // redisplay()
+            rdtab = ptab->TABno ? &rdarr.TableAddr[ptab->TABno - 1] : 0;
+            redisp(rdtab, rdtab->field_0, CurrPTAB);
+d333 2
+a334 52
+		case 882:					// ???
+			exit_type = 882;
+			return -5;
+			break;
+		case 850:						// openin, read etc.
+		case 860:
+		    pfile(ptab->TABno ? &sfarr.TableAddr[ptab->TABno - 1] : 0);
+			break;
+		case 870:						// pause
+		    if ( a8 )
+		        return 1;
+		    ppause(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);
+			break;
+		case 880:						// sleep ()
+			psleep(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);
+			break;
+		case 760:						// rand()
+		    psrand(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);
+			break;
+		case 800:						// copy td from td2
+	        xftb = ptab->TABno ? &xfarr.TableAddr[ptab->TABno - 1] : 0;
+		    tdtotd(xftb->TTno_to, xftb->TTno_from, 0, 2);
+			break;
+		case 750:						// fork
+			//pfork(ptab);
+			printf("pfork() not currently implemented!!!\n");
+			break;
+		case 900:						// print
+			//printf("pblock: OP=900, calling prfield(%d) \n",(ptab->TABno - 1));
+			prfield(ptab->TABno ? &prarr.TableAddr[ptab->TABno - 1] : 0);
+			break;
+		case 920:
+		    erase_line();
+			break;
+		case 922:
+			at();
+			erase_page(1);
+			break;
+		case 910:						// unlock record
+			v51 = ulckrec(ptab->Operand);
+			setvar(v_ERROR, v51 == 0);			// "ERROR"
+			break;
+		case 886:
+			exit_type = 886;
+			return -5;
+			break;
+		case 888:
+		    return -17;
+			break;
+		case 884:						// ?????
+			if ( a6 )
+				return 0;
+d340 2
+a341 23
+		case 250:						// refresh {screen_save_name}
+			pfresh(ptab->TABno ? &strarr.StringTable[ptab->TABno - 1] : 0);
+			break;
+		case 310:						// 310 = while?
+		case 300:
+			//eprint("_ploop [%d] : ptab->TABno  = %d, x%04X, enarr.TableAddr = x%08X, entab x%08X\n",OpCode,ptab->TABno,ptab->TABno,enarr.TableAddr,(ENTAB *)&enarr.TableAddr[12 * (ptab->TABno - 1)]);
+			if ( evaliex(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0, skip))
+			{	// condition true, continue execution
+			    if ( debug == 1 )
+			        prdebcon(ptab->SrcLineNo, 1, CurrPTAB);	// show debug condition
+			}
+			else
+			{	// condition false. continue execution after end of loop
+				if ( debug == 1 )
+				    prdebcon(ptab->SrcLineNo, 0, CurrPTAB);	// show debug condition
+				CurrPTAB = ptab->Operand - 1;	// condition false, exit loop. CurrPTAB is incremented at end of loop
+			}
+			break;
+		case 200:						// 200 = assignment : X=Y
+			//printf("_ploop [200] : ptab->TABno  = %d, x%04X\n",ptab->TABno,ptab->TABno);
+			calculate(ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0);	// do the actual assignment
+
+			if ( debug == 1 )
+d343 2
+a344 3
+				v22 = ptab->TABno ? &enarr.TableAddr[ptab->TABno - 1] : 0;
+				v24 = v22->Dest ? &enarr.TableAddr[v22->Dest - 1] : 0;
+				prdebass(ptab->SrcLineNo, v24, CurrPTAB);	// show Debug assignment
+d347 2
+a348 2
+		case 270 :
+            if ( a8 )
+d352 2
+a353 2
+            exptobuf(v77, v31->Dest ? &enarr.TableAddr[v31->Dest - 1] : 0, 0);
+			exptobuf(v76, v31->Src ? &enarr.TableAddr[v31->Src - 1] : 0, 0);
+d367 13
+a379 5
+		case 265:
+			if ( ptab->Operand )
+            {
+				_dscreen(bt, CurrPTAB, PT_End2, 0);
+				ptab->Operand = 0;
+d382 29
+a410 3
+		case 450:                    // create table
+			eprint("Create function not currently supported!!\n");
+            //pcreate(ptab->TABno ? &kxarr.TableAddr[ptab->TABno - 1] : 0);
+d412 31
+a442 1
+		case 720:					// 720 = "do {blockname}"
+d449 1
+a449 1
+				v15 = _ploop(bt, a2, v25->StartLine, v25->EndLine, PT_Start, PT_Start, a8, 1);				// call a "do" block
+d451 1
+a451 1
+				v15 = _ploop(bt, a2, v25->StartLine, v25->EndLine, v25->StartLine, v25->EndLine, a8, 1);	// call a "do" block
+d468 1
+d506 1
+a506 1
+			if ( a8 && v67 )
+d508 1
+a508 1
+                if ( ptab->Operand < CurrPTAB )
+d511 1
+a511 1
+            if ( key_found && key_i < CurrPTAB && ptab->Operand < key_i )
+d517 1
+a517 1
+            CurrPTAB = ptab->Operand - 1;	// update line counter for next pass
+d530 2
+a531 2
+        CurrPTAB++;		// real end of the block. Check if we are past the last line in the block ( auto-return)
+    } //  end while ( CurrPTAB <= PT_End2 )
+@

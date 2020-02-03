@@ -8,7 +8,8 @@ Elist *elist_Create(void)
 {
     Elist *result; // eax@1
 
-    result			= (Elist *)mmalloc(16u);    // create a blank elist header item
+//    result			= (Elist *)mmalloc(16u);    // create a blank elist header item
+    result			= (Elist *)mmalloc(sizeof(Elist));    // create a blank elist header item
     result->Next	= (Elist_Elem *)result;     // All items point to itself.
     result->Prev	= (Elist_Elem *)result;
     result->Current = (Elist_Elem *)result;
@@ -22,7 +23,8 @@ void elist_Add(Elist *head, int BeforeCurrent, void *UserElement)
     Elist_Elem *NewEL;
 
     CurrElem = head->Current;
-    NewEL = (Elist_Elem *)mmalloc(16u);
+//    NewEL = (Elist_Elem *)mmalloc(16u);
+    NewEL = (Elist_Elem *)mmalloc(sizeof(Elist_Elem));
     ++head->Size;                               // Bump Number of entries counter
     if ( BeforeCurrent )                        // insert new element before the current element
     {

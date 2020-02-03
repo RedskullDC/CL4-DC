@@ -1,0 +1,34 @@
+chkind.c:		cpybuf((char *)tdef, (char *)def_0[TableIdx], sz_shape[TableIdx]);
+chkite.c:		cpybuf((char *)N1p, (char *)NodeP->NODE1ptr, sizeof(NODE_1) * NodeP->RecsInPage);
+chkite.c:		cpybuf((char *)N2p, (char *)NodeP->NODE2ptr, sizeof(NODE_2) * (NodeP->RecsInPage + 1));
+cpybuf.c:int cpybuf(void *DEST, void *SOURCE, int Size)
+dfetch.c:		v9 = cpybuf(Dest, N1p->Data, N1p->Size);
+domtox.c:			cpybuf(Dest, Src, FLDlen);
+getnod.c:	cpybuf(&NodePtr->DataStart, PageBuff->TabEnd, DataSize);// Copy page data to end of NODE structure
+ifetch.c:		v9 = cpybuf(Dest, N1p->Data, N1p->Size);
+lockr.c:		cpybuf(Dest.KeyBuff, KeyDefs, KeySize);
+newexp.c:	cpybuf(&Expr->ExprData, ExprData, ExprSize);		// Data is copied to Offset 0x0E (14)
+
+nextr.c:						TDptr->Key2Size = cpybuf(TDptr->KeyBuf2, N1p->Data, TDptr->TDKeySize);
+prevr.c:						TDptr->Key1Size = cpybuf(TDptr->KeyBuf1, N1p->Data, TDptr->TDKeySize);
+promot.c:		cpybuf(&node1.Data, &Node->NODE1ptr[Node->NumEntries - 1].Data, sizeof(NODE_1));	// sizeof(NODE_1) == x86 = 8 / x64 = 16
+promot.c:	return cpybuf(a1, node1.Data, MIN(node1.Size,TDptr->TDKeySize));		// return bytes copied == New record size
+putnod.c:		Dest += cpybuf(Dest, v3->Data, v3->Size);
+putnod.c:        //Dest += cpybuf(Dest, refr->Offset, *(_DWORD *)(*((_DWORD *)refr->Data - 1) + 4) - (unsigned int)refr->Offset);
+putnod.c:		Dest += cpybuf(Dest, refr->Offset, ((*(refr->Data - 1))->Offset - refr->Offset));
+restri.c:		dest += cpybuf(dest, &expr->ExprData, MIN(expr->ExprSize,tdef->TDFsize));
+rtokey.c:				Dest += cpybuf(Dest, Src, v6);
+rtotup.c:			buffptr += cpybuf(buffptr, src, v6); // dest buffer is (possibly) packed
+setvar.c:        cpybuf((char *)fld->FLDdata, Src, fld->FLDlen);
+
+setvar.c:        cpybuf(Buffer, Src, fld->FLDlen);
+
+stepba.c:			TDptr->Key2Size = cpybuf(TDptr->KeyBuf2, _itoptr(PagePtr, N1_2idx), v4);
+stepba.c:		TDptr->KeyDefSize = cpybuf(TDptr->TDKeyDefs, TDptr->KeyBuf2, TDptr->Key2Size);
+stepfw.c:			TDptr->Key1Size = cpybuf(TDptr->KeyBuf1, _itoptr(PagePtr, N1_2idx), KSize);
+stepfw.c:		TDptr->KeyDefSize = cpybuf(TDptr->TDKeyDefs, TDptr->KeyBuf1, TDptr->Key1Size);
+tuptor.c:			src += cpybuf(dest, src, v4);	// dest buffer is unpacked!
+uptupl.c:				currptr += cpybuf(currptr, Buffer, NumBytes);
+uptupl.c:				currptr += cpybuf(currptr, a3, v14);
+uptupl.c:				currptr += cpybuf(currptr, Buffer, NumBytes);
+xtodom.c:			cpybuf(Dest, Src, FLDlen);

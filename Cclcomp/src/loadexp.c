@@ -87,14 +87,14 @@ short getorexp(int inCondExp, int chkINT)
 		{
 			 v6 = getenmem();
 			 allenpt(v6, &entab);
-			 entab->enleft	= v2;
-			 entab->TTno	= OpCode;
-			 entab->entype	= 2;
-			 symbol			= getsym();
+			 entab->enleft				= v2;
+			 entab->Enun.Enop.Enoper	= OpCode;
+			 entab->entype				= 2;
+			 symbol						= getsym();
 			 ExpNo = getandexp(inCondExp, chkINT);	// use intermediate var, as getandexp can reposition entab!
 			 entab->enright = ExpNo; 
 			 if ( intexp(entab->enleft) && intexp(entab->enright) )
-				  entab->TTno |= 0x200u;	// integer calc flag
+				  entab->Enun.Enop.Enoper |= 0x200u;	// integer calc flag
 			 v2 = v6;
 			 dallenpt(&entab);
 		}
@@ -121,16 +121,16 @@ short getandexp(int inCondExp, int chkINT)
 			OpCode = 0;
 		if ( OpCode )
 		{
-			 v6				= getenmem();
+			 v6							= getenmem();
 			 allenpt(v6, &entab);
-			 entab->enleft	= v2;
-			 entab->TTno	= OpCode;
-			 entab->entype	= 2;
-			 symbol			= getsym();
-			 ExpNo			= getrelexp(inCondExp, chkINT);	// use intermediate var, as getrelexp can reposition entab!
+			 entab->enleft				= v2;
+			 entab->Enun.Enop.Enoper	= OpCode;
+			 entab->entype				= 2;
+			 symbol						= getsym();
+			 ExpNo						= getrelexp(inCondExp, chkINT);	// use intermediate var, as getrelexp can reposition entab!
 			 entab->enright = ExpNo;
 			 if ( intexp(entab->enleft) && intexp(entab->enright) )
-				  entab->TTno |= 0x200u;	// integer calc flag
+				  entab->Enun.Enop.Enoper |= 0x200u;	// integer calc flag
 			 v2 = v6;
 			 dallenpt(&entab);
 		}
@@ -180,16 +180,16 @@ short getrelexp(int inCondExp, int chkINT)
 		}
 		if ( OpCode )
 		{
-			 v8				= getenmem();
+			 v8							= getenmem();
 			 allenpt(v8, &entab);
-			 entab->enleft	= v2;
-			 entab->TTno	= OpCode;
-			 entab->entype	= 2;
-			 symbol			= getsym();
+			 entab->enleft				= v2;
+			 entab->Enun.Enop.Enoper	= OpCode;
+			 entab->entype				= 2;
+			 symbol						= getsym();
 			 ExpNo	= getaddexp(inCondExp, chkINT);	// use intermediate var, as getaddexp can reposition entab!
 			 entab->enright = ExpNo;
 			 if ( intexp(entab->enleft) && intexp(entab->enright) )
-				  entab->TTno |= 0x200u;	// Integer calcs flag
+				  entab->Enun.Enop.Enoper |= 0x200u;	// Integer calcs flag
 			 v2 = v8;
 			 dallenpt(&entab);
 		}
@@ -224,16 +224,16 @@ short getaddexp(int inCondExp, int chkINT)
 		}
 		if ( OpCode )
 		{
-			 v7				= getenmem();
+			 v7							= getenmem();
 			 allenpt(v7, &entab);
-			 entab->enleft	= v2;
-			 entab->TTno	= OpCode;
-			 entab->entype	= 2;
-			 symbol			= getsym();
+			 entab->enleft				= v2;
+			 entab->Enun.Enop.Enoper	= OpCode;
+			 entab->entype				= 2;
+			 symbol						= getsym();
 			 ExpNo = getmultexp(inCondExp, chkINT);	// use intermediate var, as getmultexp can reposition entab!
 			 entab->enright = ExpNo;
 			 if ( intexp(entab->enleft) && intexp(entab->enright) )
-				  entab->TTno |= 0x200u;	// integer calc flag
+				  entab->Enun.Enop.Enoper |= 0x200u;	// integer calc flag
 			 dallenpt(&entab);
 			 v2 = v7;
 		}
@@ -276,14 +276,14 @@ short getmultexp(int inCondExp, int chkINT)
 		{
 			 v8 = getenmem();
 			 allenpt(v8, &entab);
-			 entab->enleft	= v2;
-			 entab->TTno	= OpCode;
-			 entab->entype	= 2;
-			 symbol			= getsym();
+			 entab->enleft				= v2;
+			 entab->Enun.Enop.Enoper	= OpCode;
+			 entab->entype				= 2;
+			 symbol						= getsym();
 			 ENTno = getidconst(inCondExp, chkINT);
 			 entab->enright = ENTno;
 			 if (chkINT && intexp(entab->enleft) && intexp(entab->enright))
-				  entab->TTno |= 0x200u;	// Flag to indicate clenter should perform integer calcs
+				  entab->Enun.Enop.Enoper |= 0x200u;	// Flag to indicate clenter should perform integer calcs
 			 v2 = v8;
 			 dallenpt(&entab);
 		}
@@ -599,7 +599,7 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 			OpCode = f_SUBSTR;
 			break;
 		case 1580:								// "-"
-			entab->TTno = f_SUB;
+			entab->Enun.Enop.Enoper = f_SUB;
             entab->entype = 2;
             symbol = getsym();
             if ( symbol == 930 )
@@ -628,7 +628,7 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 		case 1860:								// NOT operator
 			if ( inCondExp )
             {
-				entab->TTno		= f_NOT;		// the NOT operator flag
+				entab->Enun.Enop.Enoper		= f_NOT;		// the NOT operator flag
 				entab->entype	= 2;
 				symbol = getsym();
 				if ( symbol == 930 )
@@ -719,12 +719,12 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 			OpCode = f_CHR;
 			break;
 		case 2200:								// integer literal. *AND* withing range limits
-			*(int *)&entab->TTno = strtol(sym, 0, 10);
+			entab->Enun.long8 = strtol(sym, 0, 10);
             entab->entype = 8;
             symbol = getsym();
 			break;
 		case 2240:								// ** DC Extension **  HEX value
-			*(int *)&entab->TTno = strtol(sym, 0, 16);	// interpret as Hexadecimal, base 16
+			entab->Enun.long8 = strtol(sym, 0, 16);	// interpret as Hexadecimal, base 16
             entab->entype = 8;
             symbol = getsym();
 			break;
@@ -750,15 +750,15 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 				}
 				else
 				{
-					entab->RecNo	= v8;
-					entab->TTno		= 0;
+					entab->Enun.Enref.VarNum	= v8;
+					entab->Enun.Enref.TTno		= 0;
 					entab->entype	= 1;		// normal variable
 				}
 			}
 			else								// **** float literal. **real** clcomp doesn't create these!!
 			{									// but clenter knows what to do with them
 				entab->entype = 0x04;			// Indicate ENTAB holds the value directly
-				*(float *)&entab->TTno = f6;	// Store it in the ENTAB
+				entab->Enun.float4 = f6;		// Store it in the ENTAB
 			}
             symbol = getsym();
 			break;
@@ -766,9 +766,9 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 			v4 = loadresv(sym);					// Check the reserved string table
             if ( v4 )
             {
-				entab->RecNo	= v4;			// v4 is a bit mask in this case
-                entab->TTno		|= 0x100u;		// Reserved word/value flag
-                entab->entype	= 2;
+				entab->Enun.Enop.RecNo		= v4;			// v4 is a bit mask in this case
+                entab->Enun.Enop.Enoper		|= 0x100u;		// Reserved word/value flag
+                entab->entype				= 2;
 			}
             else if ( strlen(sym) > 3 )			// String > 3 chars, store in string table
 			{
@@ -780,15 +780,15 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 				}
 				else
 				{
-					entab->RecNo	= v8;
-					entab->TTno		= 0;
-					entab->entype	= 1;		// normal variable
+					entab->Enun.Enref.VarNum	= v8;
+					entab->Enun.Enref.TTno		= 0;
+					entab->entype				= 1;		// normal variable
 				}
 			}
 			else		// If string is 3 chars or less, store it directly in the expression!
 			{
 				entab->entype = 0x10;						// Indicate ENTAB holds the value directly
-				cdbcpystr((char *)&entab->TTno, sym, 0);	// Store it in the ENTAB
+				cdbcpystr(entab->Enun.char16, sym, 0);	// Store it in the ENTAB
 			}
             symbol = getsym();
 			break;
@@ -797,8 +797,8 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 				le_error = 1;
 			break;
 		case 4020:						// 'void' parameter handler. do nothing
-			entab->RecNo	= v_NULL;	// system NULL variable [0]
-			entab->TTno		= 0;		// 
+			entab->Enun.Enref.VarNum	= v_NULL;	// system NULL variable [0]
+			entab->Enun.Enref.TTno		= 0;		// 
 			entab->entype	= 1;		// normal variable
 			symbol = getsym();			// advance
 			break;
@@ -812,8 +812,8 @@ printf("getidconst( inCondExp = %d, chkINT = %d, sym = %s, symbol = %d)\n",inCon
 			dallenpt(&entab);			// error exit, OpCode == 0 not necessarily an error though.
 		else
 		{
-			entab->TTno		= OpCode;
-			entab->entype	= 2;
+			entab->Enun.Enop.Enoper		= OpCode;
+			entab->entype				= 2;
 			symbol = getsym();
 			if ( symbol == 930 )		// return
 			{

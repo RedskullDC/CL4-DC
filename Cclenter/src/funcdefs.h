@@ -248,22 +248,10 @@ int		_mreply;
 int		debuglogging = 1;	// default to true
 bool	lkf_found;
 bool	fdf_found;
-int		__cflg;
 int		inhere_10;
 bool	first_0	= true;		// used by sconv()
 int		bfk_1;				//  "        "
 //int		ospeed;
-
-/*
-char	*__braslist[10];
-char	*__braelist[10];
-int		__bravar[10];
-
-int		*__lptr_;
-int		*__eptr_;
-int		__st[51];	//__lptr_ and __eptr_ point to this array
-char	*__loc1;
-*/
 
 char	TAB = ' ';
 char	lreply_gb[] = "\0";
@@ -343,24 +331,24 @@ jmp_buf	sjbuf;
 
 //-------------------------
 
-char	*_gettext(int arg);
-size_t	getbuf(char *ptr, size_t arg);
-short	getcount(void);
-unsigned short getucount();
-ONESC	*loadoe(void);
-ONESC	*getonesc(void);
-short	getbits();
-short	getstrmem(int a1);
-int		gettable();
-int		getlong();
-short	*getarrcount(unsigned int a1);
-double	*getdouble(short Encoding);
-void	getstrarr(CLStrArray *clst);
-int		*getarrtds(unsigned int count);
-short	getptabp(short a1);
-short	getptmem();
-float	getfloat(short count);
-int		getbool();
+char			*_gettext(int arg);
+size_t			getbuf(char *ptr, size_t arg);
+short			getcount(void);
+unsigned short	getucount();
+ONESC			*loadoe(void);
+ONESC			*getonesc(void);
+unsigned short	getbits();
+short			getstrmem(int a1);
+int				gettable();
+long			getlong();
+short			*getarrcount(unsigned int a1);
+double			*getdouble(short Encoding);
+void			getstrarr(CLStrArray *clst);
+int				*getarrtds(unsigned int count);
+short			getptabp(short a1);
+short			getptmem();
+float			getfloat(short count);
+int				getbool();
 
 FLDdesc *getftabs(int NumVariables);
 PTAB	*getptabs(unsigned int NumPtabs);
@@ -459,7 +447,7 @@ char		*_cgiGetValue(form_entry *fm, const char *s2);
 char		*_cgiGetCookieValue(form_entry *ck_list, const char *ck_name);
 unsigned char dd2c(char, char);
 form_entry	*_cgiGetDataFromString(char *SrcString);
-form_entry	*_cgiGetDataFromStream(int length, _IO_FILE *fp);
+form_entry	*_cgiGetDataFromStream(int length, FILE *fp);
 int			getbuf_0(char *Buffer, int MaxLen);
 form_entry	*_cgiGetMultipartDataFromStream();
 char		*cgiGetValue(char *StrParam, int MaxLen);
@@ -514,7 +502,7 @@ short	ploop(BTAB *btab, int a2, short StartLine, short EndLine, short a5, short 
 short	_ploop(BTAB *bt, int a2, short PT_Start2, short PT_End2, short PT_Start, short PT_End, bool noScreenOut, bool inDoBlock);
 short	sploop(BTAB *bt, int a2, short StartLine, short EndLine, int a5, int a6);
 void	dispfld(XTAB *xtab, FLDdesc *fld, bool show, bool forceUpdate, bool allow_mask, bool use_curr_xy);
-int		getwid(XTAB *xt);
+short	getwid(XTAB *xt);
 void	psleep(ENTAB *entab);
 void	psrand(ENTAB *entab);
 void	_ugetfnum(int TDno, short PTABno, short PTABno2);
@@ -637,9 +625,9 @@ char	*buftott(char *Dest, FLDdesc *fld);
 bool	tojoin(BTAB *btb, XTAB *xtb);
 int		isDoubleWidth(unsigned char a1);
 void	Key_Print(int DispChar, int NumTabs);
-int		Lex(_IO_FILE *stream);
-int		Lex_GetSChar(_IO_FILE *fp, int *Rstart, int *Rend);
-int		Lex_GetChar(_IO_FILE *stream);
+int		Lex(FILE *stream);
+int		Lex_GetSChar(FILE *fp, int *Rstart, int *Rend);
+int		Lex_GetChar(FILE *stream);
 KEY_Elist *KeyF_Construct(char *FileName, int (*ReadFunction)(void), KEYFUNC *KeyFns);		// *************************
 Elist	*ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncArr);
 void	Key_Destruct(void);

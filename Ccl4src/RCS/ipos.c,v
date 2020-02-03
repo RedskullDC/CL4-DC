@@ -1,0 +1,92 @@
+head	1.2;
+access;
+symbols;
+locks
+	leslie:1.2; strict;
+comment	@ * @;
+
+
+1.2
+date	2020.01.29.00.51.11;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.07.16.01.57.33;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Increasing position
+@
+
+
+1.2
+log
+@prior to X64
+@
+text
+@#ifndef INDEX_POS_C
+#define INDEX_POS_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+// increasing pos   [see also _dpos()]
+
+void _ipos(DPOS *dpos, int PageNo, short Depth, TDinfo *TDptr)
+{
+	short v5;
+	PAGE *page;
+
+//printf("_ipos - PageNo = %d\n",PageNo);
+
+	dpos->field_8	 = 0;
+	dpos->NumEntries = 0;
+	
+	v5 = Depth - 1;
+	while ( v5 > 0 )
+	{
+		page = _indexpg(TDptr, PageNo);
+		dpos->field_8 = PageNo;					// Containing Page
+		
+		PageNo = mstol((int*)page->DataStart);	// Set to first entry in page
+		dpos->NumEntries = 1;
+		--v5;
+	}
+	
+	dpos->PageNo  = PageNo;
+	dpos->field_4 = 0;
+}
+
+
+#endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 2
+a14 3
+	int PageNo2; // esi@@1
+	short v5; // di@@1
+	PAGE *page; // eax@@2
+d18 1
+a18 2
+	PageNo2 = PageNo;
+	dpos->field_8 = 0;
+d24 4
+a27 3
+		page = _indexpg(TDptr, PageNo2);
+		dpos->field_8 = PageNo2;
+		PageNo2 = mstol(page->DataStart);
+d32 1
+a32 1
+	dpos->PageNo = PageNo2;
+@

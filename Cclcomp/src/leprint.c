@@ -45,9 +45,9 @@ short leprint(void)
 
 		switch (symbol)
 		{
-		case 2200:					// 2200 = integer literal
-		case 2210:					// 2210 = floating point literal
-		case 2220:					// 2220 = string literal eg. 'Simple String'
+		case 2200:									// 2200 = integer literal
+		case 2210:									// 2210 = floating point literal
+		case 2220:									// 2220 = string literal eg. 'Simple String'
             if ( loadsym(sym) == 1340 )				// 1340 = All reserved system string names are 1340
             {
 				pr->ReservedFlags = loadresv(sym);	// returns a bitmask
@@ -82,7 +82,7 @@ short leprint(void)
 				dallprpt(&pr);	// error_exit
 				return 0;
 			}
-			pr->VAR_ENTno = ExpNo;
+			pr->VAR_ENTno	= ExpNo;
 	        pr->WIDTH_FLAGS = 0x0400u;				// normal variable flag
 	        isVariable = true;						// examine later for Datefield checking
 			break;
@@ -135,15 +135,15 @@ short leprint(void)
 				{
 					switch (sym[0])
 					{
-					case 'c':			// centred
+					case 'c':						// centred
 						symbol = 170;
 						break;
-					case 'l':			// left-aligned
+					case 'l':						// left-aligned
 					case '^':
 						symbol = 780;
 						break;
-					case 'r':			// right-aligned
-					case '$':								// $ = 340, rest are fudged
+					case 'r':						// right-aligned
+					case '$':						// $ = 340, rest are fudged
 						symbol = 340;
 						break;
 					}
@@ -200,11 +200,11 @@ short leprint(void)
             fno = 0;
             while ( fld->FLDelemID )
             {
-				ENTno	= getenmem();				// get new expression to describe this
-				entb	= ENARR(ENTno);
-				entb->TTno		= TDno;				// Tableno
-                entb->RecNo		= fno;				// fieldno
-                entb->entype	= 1;				// variable/field in table.
+				ENTno					= getenmem();				// get new expression to describe this
+				entb					= ENARR(ENTno);
+				entb->Enun.Enref.TTno	= TDno;				// Tableno
+                entb->Enun.Enref.VarNum	= fno;				// fieldno
+                entb->entype			= 1;				// variable/field in table.
 
 				pr->VAR_ENTno = ENTno;
 				pr->WIDTH_FLAGS &= 0x7C00u;			//  0111 1100 0000 0000

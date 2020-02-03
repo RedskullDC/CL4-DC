@@ -1,0 +1,379 @@
+head	1.5;
+access;
+symbols;
+locks
+	leslie:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2020.01.27.15.20.46;	author leslie;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2020.01.25.15.21.05;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.08.31.04.37.18;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2016.07.05.01.41.30;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.11.27.03.26.36;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.5
+log
+@prior to X64 conversion
+@
+text
+@#ifndef EXPTOBUF_C
+#define EXPTOBUF_C
+
+#include <stdio.h>
+#include <stdarg.h>			// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+char *exptobuf(char *buff, ENTAB *entab, unsigned int MaxLen)
+{
+    double	doubVal;
+
+	FLDdesc fld2;
+	char	v39[1008];
+	char	Dest[1008];
+	char	FLDType;
+	
+    if ( entab )
+    {
+		//printf("exptobuf, type = %d, entab->TTno = x%04X\n",entab->entype,(unsigned short)entab->TTno);
+		switch (entab->entype)
+		{
+		case 0x04:							// inline float. Real clcomp doesn't create these!  
+            if ( MaxLen )
+	            sprintf(buff, "%*.*f", MaxLen, typedp('6'), *(float *)&entab->TTno);
+			else
+				sprintf(buff, "%.*f", typedp('6'), *(float *)&entab->TTno);
+			break;
+
+		case 0x08:							// inline long.		**** 4 bytes on x86, 8 bytes on X64!!! ***
+            if ( MaxLen )
+	            sprintf(buff, "%*ld", MaxLen, *(long *)&entab->TTno);
+			else
+				sprintf(buff, "%ld", *(long *)&entab->TTno);
+			break;
+
+		case 0x10:							// inline string. 3 chars or less.   *** 7 on X64??? ***
+			if ( MaxLen )
+				sprintf(buff, "%-*.*s", MaxLen,MaxLen, (char *)&entab->TTno);
+			else
+				cdbcpystr(buff, (char *)&entab->TTno, 0);
+			break;
+
+		case 0x02:							// expression or function call?
+            if (entab->TTno & 0x0200)		// integer calc flag
+			{
+				if ( MaxLen )
+					sprintf(buff, "%*ld", MaxLen, evalint(entab));
+				else
+					sprintf(buff, "%ld", evalint(entab));
+				break;
+			}
+			else
+            {
+                FLDType = getetype(entab);
+				//printf("exptobuf Fieldtype %C\n",FLDType);
+
+                if ( FLDType == 'C' )
+                {
+					memset(v39, 0, 1001u);
+                    evalstr(entab, v39);
+                }
+                else
+					doubVal = clround(evalnum(entab, FLDType), FLDType);
+
+				switch ( FLDType )
+                {
+                    case 'C':
+                        if ( MaxLen )
+						    sprintf(buff, "%-*.*s", MaxLen, MaxLen, v39);
+						else
+							cdbcpystr(buff, v39, 0);
+						break;
+
+					case 'D':
+                    case 'T':
+						if ( doubVal <= 0.0 )
+							cdbcpystr(Dest, " ", 0);
+						else if ( FLDType == 'D' )
+							makedate(Dest, doubVal);
+						else
+							maketime(Dest, doubVal);
+                        
+						if ( MaxLen )
+ 							sprintf(buff, "%-*.*s", MaxLen, MaxLen, Dest);
+ 						else
+							cdbcpystr(buff, Dest, 0);
+						break;
+
+					case 'B':
+                    case 'I':
+						if ( MaxLen )
+                            sprintf(buff, "%*d", MaxLen, (int)doubVal);
+						else
+							sprintf(buff, "%d", (int)doubVal);
+						break;
+
+					case 'N':													//** need to check range on X64 **
+						if ( MaxLen )
+                            sprintf(buff, "%*ld", MaxLen,(long)doubVal);
+                        else
+                            sprintf(buff, "%ld",(long)doubVal);
+						break;
+			
+					case 'X':				// DC extension! 4 byte HEX value
+					case 'P':				// DC extension! 4 byte POINTER value	Shouldn't be reachable?
+						//printf("exptobuf Fieldtype %C, maxlen = %d\n",FLDType,MaxLen);
+						if ( MaxLen )
+							sprintf(buff, "%0*X", MaxLen, (int)doubVal);
+						else
+							sprintf(buff, "%04X", (int)doubVal);
+						break;
+
+					case 'K':		// Key/Sub records have no direct data as such
+                    case 'S':
+                        *buff = 0;
+                        break;
+
+                    default:
+                        if ( MaxLen )
+                            sprintf(buff, "%*.*f", MaxLen, typedp(FLDType), doubVal);
+						else
+ 							sprintf(buff, "%.*f", typedp(FLDType), doubVal);
+				}
+            }
+			break;
+
+		default:	// entab->entype == 1		variable or field in a table
+			return fldtobuf(buff, getftf(entab, 1, &fld2), MaxLen);
+			break;
+		}
+		return buff;
+    }
+    *buff = 0;	// entab == null, return blank string.
+    return buff;
+}
+
+#endif
+@
+
+
+1.4
+log
+@prior to 64 bit
+@
+text
+@d30 1
+a30 1
+		case 0x08:							// inline int.
+d32 1
+a32 1
+	            sprintf(buff, "%*ld", MaxLen, *(int *)&entab->TTno);
+d34 1
+a34 1
+				sprintf(buff, "%ld", *(int *)&entab->TTno);
+d37 1
+a37 1
+		case 0x10:							// inline string. 3 chars or less.
+d98 1
+a98 1
+					case 'N':
+d100 1
+a100 1
+                            sprintf(buff, "%*ld", MaxLen,(int)doubVal);
+d102 1
+a102 1
+                            sprintf(buff, "%ld",(int)doubVal);
+@
+
+
+1.3
+log
+@tidyup
+@
+text
+@d9 1
+a9 1
+char *exptobuf(char *s, ENTAB *entab, unsigned int MaxLen)
+d11 2
+a12 2
+    double	v11;
+	//int		v9;
+d25 1
+a25 1
+	            sprintf(s, "%*.*f", MaxLen, typedp('6'), *(float *)&entab->TTno);
+d27 1
+a27 1
+				sprintf(s, "%.*f", typedp('6'), *(float *)&entab->TTno);
+d32 1
+a32 1
+	            sprintf(s, "%*ld", MaxLen, *(int *)&entab->TTno);
+d34 1
+a34 1
+				sprintf(s, "%ld", *(int *)&entab->TTno);
+d39 1
+a39 1
+				sprintf(s, "%-*.*s", MaxLen,MaxLen, (char *)&entab->TTno);
+d41 1
+a41 1
+				cdbcpystr(s, (char *)&entab->TTno, 0);
+a46 1
+				//v9 = evalint(entab);
+d48 1
+a48 2
+					//sprintf(s, "%*ld", MaxLen, v9);
+					sprintf(s, "%*ld", MaxLen, evalint(entab));
+d50 1
+a50 2
+					//sprintf(s, "%ld", v9);
+					sprintf(s, "%ld", evalint(entab));
+d56 2
+d60 1
+a60 1
+                    zap(v39, 1001u);
+d64 1
+a64 1
+					v11 = clround(evalnum(entab, FLDType), FLDType);
+d70 1
+a70 1
+						    sprintf(s, "%-*.*s", MaxLen, MaxLen, v39);
+d72 1
+a72 1
+							cdbcpystr(s, v39, 0);
+d77 1
+a77 1
+						if ( v11 <= 0.0 )
+d80 1
+a80 1
+							makedate(Dest, v11);
+d82 1
+a82 1
+							maketime(Dest, v11);
+d85 1
+a85 1
+ 							sprintf(s, "%-*.*s", MaxLen, MaxLen, Dest);
+d87 1
+a87 1
+							cdbcpystr(s, Dest, 0);
+d93 1
+a93 1
+                            sprintf(s, "%*d", MaxLen, (int)v11);
+d95 1
+a95 1
+							sprintf(s, "%d", (int)v11);
+d100 1
+a100 1
+                            sprintf(s, "%*ld", MaxLen,(int)v11);
+d102 10
+a111 1
+                            sprintf(s, "%ld",(int)v11);
+d116 1
+a116 1
+                        *s = 0;
+d121 1
+a121 1
+                            sprintf(s, "%*.*f", MaxLen, typedp(FLDType), v11);
+d123 1
+a123 1
+ 							sprintf(s, "%.*f", typedp(FLDType), v11);
+d129 1
+a129 3
+			//fld = getftf(entab, 1, &fld2);
+            //return fldtobuf(s, fld, MaxLen);
+			return fldtobuf(s, getftf(entab, 1, &fld2), MaxLen);
+d132 1
+a132 1
+		return s;
+d134 2
+a135 2
+    *s = 0;	// entab == null, return blank string.
+    return s;
+@
+
+
+1.2
+log
+@tidy-up
+@
+text
+@d12 1
+a12 1
+	int		v9;
+d47 1
+a47 1
+				v9 = evalint(entab);
+d49 2
+a50 1
+					sprintf(s, "%*ld", MaxLen, v9);
+d52 2
+a53 1
+					sprintf(s, "%ld", v9);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 7
+a17 8
+    FLDdesc *fld; // eax@@12
+	int v9; // eax@@14
+    double v11; // ST04_8@@18
+    FLDdesc fld2; // [sp+40h] [bp-448h]@@12
+    char v39[1008]; // [sp+60h] [bp-428h]@@17
+    char Dest[1008]; // [sp+450h] [bp-38h]@@26
+    char FLDType; // [sp+27h] [bp-461h]@@4
+
+d20 1
+d23 1
+a23 1
+		case 4:
+d30 1
+a30 1
+		case 8:
+d37 1
+a37 1
+		case 16:
+d44 2
+a45 2
+		case 2:
+            if (entab->TTno & 0x0200)	// integer calc flag
+d111 1
+a111 1
+                            sprintf(s, "%*.*f", MaxLen, typedp(FLDType), *(float *)&entab->TTno);
+d113 1
+a113 1
+ 							sprintf(s, "%.*f", typedp(FLDType), *(float *)&entab->TTno);
+d118 4
+a121 3
+		default:	// entab->entype == 1
+			fld = getftf(entab, 1, &fld2);
+            return fldtobuf(s, fld, MaxLen);
+@

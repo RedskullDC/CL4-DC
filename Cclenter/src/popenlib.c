@@ -29,22 +29,22 @@ bool popenlib(int ENTno)		// DC extension
 	// entright = LibraryName
 
 	entb = ENARR(ENTno);
-	exptobuf(libname, ENARR(entb->enright), 0);		// Library path/name string variable
+	exptobuf(libname, ENARR(entb->enright), 0);				// Library path/name string variable
 
 	entb = ENARR(entb->enleft);
-	fld_dest = &ttab->TTfields[entb->RecNo];		// library handle variable 'N' type
+	fld_dest = &ttab->TTfields[entb->Enun.Enref.VarNum];	// library handle variable 'N' type
 
-	if (!(fld_dest->FLDstat & fld_LIB))				// ensure library only opened **once** !
+	if (!(fld_dest->FLDstat & fld_LIB))						// ensure library only opened **once** !
 	{
-		handle = dlopen (libname, RTLD_LAZY);		// RTD_LAZY == "resolve undefined symbols as code from the dynamic library is executed"
-		if (!handle)								// RTD_NOW  == "resolve all undefined symbols before dlopen() returns and fail if this cannot be done"
+		handle = dlopen (libname, RTLD_LAZY);				// RTD_LAZY == "resolve undefined symbols as code from the dynamic library is executed"
+		if (!handle)										// RTD_NOW  == "resolve all undefined symbols before dlopen() returns and fail if this cannot be done"
 		{
 			print(dlerror());
 			return false;		// exit_fail
 		}
-		*(void**)fld_dest->FLDdata = handle;		// save library handle for later use
-		fld_dest->FLDstat |= fld_LIB;				// flag this variable for closing the library later 
-		fld_dest->FLDstat &= ~fld_ZERO;				// not-zero flag
+		*(void**)fld_dest->FLDdata = handle;				// save library handle for later use
+		fld_dest->FLDstat |= fld_LIB;						// flag this variable for closing the library later 
+		fld_dest->FLDstat &= ~fld_ZERO;						// not-zero flag
 	}
 
 /*
@@ -53,15 +53,15 @@ bool popenlib(int ENTno)		// DC extension
 	if ((error = dlerror()) != NULL)
 	{
 		printf(error);
-		return true;								// avoid calling null pointers
+		return true;										// avoid calling null pointers
 	}
-	BookHandle = (*bookptr)();						// create bookhandle object
+	BookHandle = (*bookptr)();								// create bookhandle object
 
 	voidptr = dlsym(handle, "xlBookVersionA");
 	if ((error = dlerror()) != NULL)
 	{
 		printf(error);
-		return true;								// avoid calling null pointers
+		return true;										// avoid calling null pointers
 	}
 
 	// call through avcall()

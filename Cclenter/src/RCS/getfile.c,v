@@ -1,0 +1,614 @@
+head	1.4;
+access;
+symbols;
+locks
+	leslie:1.4; strict;
+comment	@ * @;
+
+
+1.4
+date	2016.08.30.06.21.14;	author leslie;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2016.01.14.01.29.01;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2014.11.14.01.10.48;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.10.31.12.44.49;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.4
+log
+@clean up
+@
+text
+@#ifndef GETFILE_C
+#define GETFILE_C
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+#include "lvarnames.h"			// for bit field values
+
+int tgetfile(TDesc *TTptr)
+{
+    char	*v4;
+    int		result;
+    int		v3;
+    short	v2;
+
+    result = rdbget(TTptr->DBnumber);	// Ensure that corresponding DB is already open
+    if ( result >= 0 )
+    {
+        v2 = tdopen(result, TTptr, ((unsigned int)TTptr->TDlocked >> 6) & 1);	// 0100 0000   bit 7 = lock required flag?
+        v3 = v2;
+        if ( v2 < 0 )
+        {
+            v4 = TTptr->TableName;
+            if ( v2 == -10 )     // -10 == LOCKED
+                eprint("table locked - %s\n", v4);
+            else
+            {
+                if ( !cmpbuf(v4, "domains", 6) && !cmpbuf(v4, "elements", 8))	// don't bomb if can't find. At least ONE MUST exist
+					eprint("can't identify - %s (err=%d)\n", v4, v3);
+            }
+        }
+        result = v3;
+    }
+    return result;
+}
+
+int tdopen(int DBno, TDesc *TTptr, int Lock)
+{
+    TDef	*tdef;
+    TDef	*v16;
+    FLDdesc *fld;
+
+    unsigned int result;
+    int		v10;
+    int		ErrCode;
+    int		TDno;
+    int		RecSize;
+    int		NumFields;
+    short	v5;
+    short	CRC;
+    char	FieldName[32];
+    ELEMENTREC elem;
+
+    //if ( TTptr->TTrtd != -1 )
+    //    __assert_fail("tt->runtd == -1", "getfile.c", 0x6Cu, "tdopen");
+	assert(TTptr->TTrtd == -1);
+
+	if ( Lock ) 
+	    result = lidentify(DBno, TTptr->TableName);
+	else
+		result = identify(DBno, TTptr->TableName);
+
+	//printf("tdopen - TTptr->TableName = %s, result = %d\n",TTptr->TableName, result);
+	v5 = result;
+    if ( (result & 0x80000000u) == 0 )	// if result >= 0 ?
+    {
+        v16 = tblrow(result);
+        result = -1;
+        if ( v16 )
+        {
+            TTptr->TTrtd = v5;
+			//================ do Table CRC calcs ======================
+            CRC = 0;
+            tdef = v16;		// save tdef* for later
+            NumFields = 0;
+            for ( RecSize = 0; tdef->TDFentry; tdef++ )
+            {
+                RecSize += tdef->TDFsize;
+                CRC = (unsigned short)pcrc(CRC, tdef, 2, 68u, 3u);
+                NumFields++;
+            }
+            if ( !CRC )
+                CRC = 1;
+            if ( TTptr->TableCRC && TTptr->TableCRC != CRC)
+            {
+				eprint("table definition incompatibility (calc=%u, got=%u) - %s\n", CRC, TTptr->TableCRC, TTptr->TableName);
+				return -1;
+            }
+            else
+            {
+                TTptr->TableCRC = CRC;
+            }
+			//==========================================================
+
+            TTptr->TDworkarea1 = (char *)mmalloc(RecSize + 1);
+            TTptr->TDworkarea2 = (char *)mmalloc(RecSize + 1);
+            TTptr->NumFields = NumFields;
+            TDno = identify(DBno, "elements");		// DB version 4	
+            if ( TDno < 0 )
+                TDno = identify(DBno, "domains");	// DB version 3 or less? 
+
+			TTptr->TTfields = (FLDdesc *)mmalloc(sizeof(FLDdesc) * (NumFields + 1));	// sizeof(FLDdesc) == 24
+            tdef = v16;
+            for ( fld = TTptr->TTfields; tdef->TDFentry; tdef++ )
+            {
+                fld->FLDtype = gettype(tdef->TDFtype, tdef->TDFsize);			// VarType 
+
+				if ( fld->FLDtype == 'C' )			// String
+                {
+                    v10 = tdef->TDFsize + 1;		// allow for \0 terminator
+                }
+                else if ( tdef->TDFsize )			// all other variables default to double
+				{
+					v10 = sizeof(double);			// 8; 
+				}
+				else	// 'K' or 'S' records have no size
+				{
+					v10 = 0;
+					FieldName[0] = 0;
+					if ( TDno > 0 )		// neither elements or domains can be table ZERO
+					{
+						itoms(&elem.TDFentry, tdef->TDFentry);
+						ErrCode = getr(TDno, (char *)&elem, 0);
+						
+						if ( ErrCode < 0 )
+							dberror(ErrCode, 0, TDno);					// error_exit
+						else if (!ErrCode )
+							sprintf(FieldName, "%d", tdef->TDFentry);	// no name rec found, use DOMID instead
+						else
+							cdbcpystr(FieldName, elem.FieldName, 0);		// found record ok, use text name
+						v10 = strlen(FieldName) + 1;
+					}
+                }
+				// printf("FieldName = %s, v10 = %d\n",FieldName,v10);
+				// would be handy if *all* variable names were available at run-time....... :o)
+                
+				fld->FLDdata = mmalloc(2 * v10);	// why twice the size??
+                if ( fld->FLDtype == 'S' || fld->FLDtype == 'K' )
+                    cdbcpystr((char *)fld->FLDdata, FieldName, 0);	// save the name for sub/keys, but no data
+
+				if ( tdef->TDFtype & tdf_KEY )		// Key field
+                    fld->FLDstat |= fld_KEY;
+
+                fld->FLDstat	|= fld_ZERO;		// quick zero flag
+                fld->FLDlen		= tdef->TDFsize;
+                fld->FLDelemID	= tdef->TDFentry;
+                fld->TDFtype	= tdef->TDFtype;
+                fld++;
+            }
+            if ( TDno > 0 )
+            {
+                ErrCode = release(TDno);
+                if ( ErrCode < 0 )
+                    dberror(ErrCode, 0, TDno);
+            }
+            TTptr->TDrecsize = RecSize;
+            result = 0;
+        }
+    }
+    return result;
+}
+
+int rtdget(TDesc *TTptr)
+{
+	//printf("rtdget(x%08X) [%s]", TTptr, TTptr->TableName);
+	assert(ttab <= TTptr && TTptr < &ttab[no_ttabs]);	// Ensure sanity on TTptr, within current bounds
+
+	if ( TTptr->TTrtd == -1 && tgetfile(TTptr) < 0 )	// opens table if necessary
+    {
+        eprint("can't open table '%s'\n", TTptr->TableName);
+        dberror(-98, TTptr->DBnumber, TTptr->TTrtd);
+        mexit(-98);
+    }
+	assert(TTptr->TTrtd >= 0 && TTptr->TTrtd < no_ttabs);	// Ensure sanity on TTptr-TTrtd, within current bounds
+	//printf("rtdget : returning %d\n",TTptr->TTrtd);
+    return TTptr->TTrtd;
+}
+
+int getfile(char *DBname, char *TableName)	// only called from reffile::replace()
+{
+    //DBase **v2; // ecx@@7
+    TDesc *TTptr; // esi@@9
+    char *Alias; // eax@@16
+    short DBno; // [sp+18h] [bp-10h]@@1
+
+//printf("getfile  DBname = %s, TableName = %s\n", DBname, TableName);
+
+	for (DBno = 0; no_dtabs > DBno ; DBno++)
+	{
+		if ( !strcmp(DBname, dtab[DBno].FullDBname))
+			break;
+    }
+	if ( no_dtabs == DBno )	// we got to the end of list with no match. Shouldn't be possible in clenter?
+    {
+        newdtab();
+        //if ( DBno >= no_dtabs)
+        //    __assert_fail("dbii < no_dtabs", "getfile.c", 0xD5u, "getfile");
+		assert(DBno < no_dtabs);
+    }
+    if ( !dtab[DBno].FullDBname )
+    {
+        dtab[DBno].DBno = -1;
+        dtab[DBno].FullDBname = mstrcpy(DBname, 0);
+    }
+    for ( TTptr = ttab + 3; TTptr < &ttab[no_ttabs]; TTptr++ )
+    {
+        if ( !TTptr->TableName[0] )
+            break;
+        if ( !strcmp(TTptr->TableName, TableName) )
+            break;
+    }
+    if ( TTptr == &ttab[no_ttabs] )		// shouldn't be possible in clenter. All tables pre-allocated?
+    {
+        newttab();
+        TTptr = &ttab[no_ttabs - 1];
+    }
+    if ( !TTptr->TableName[0] )
+    {
+        Alias = TableName;
+		while (*Alias)
+		{
+			if ( *Alias == ',' )
+			{
+				*Alias++ = 0;	// terminate TableName, and bump Alias to next char
+				break;
+			}
+			Alias++;
+		}
+        cdbcpystr(TTptr->TableAlias, Alias, 0);		// If there was no Alias specified, Alias points at a \0
+        cdbcpystr(TTptr->TableName, TableName, 0);
+        TTptr->DBnumber = DBno;
+        TTptr->TTrtd = -1;
+    }
+    return rtdget(TTptr);
+}
+
+int rdbget(int DBno)
+{
+    DBase *DTptr;
+    char *v3;
+    int v7;
+    int DBnoa;
+
+    DTptr = &dtab[DBno];
+    if ( DTptr->DBno >= 0 )	// This DB is already open
+        return DTptr->DBno;
+    
+    v3 = mstrcpy(chkpath(DTptr->FullDBname, 0, "CLDPATH", 0, 384), 0);	// Go searching on the path for the DB
+
+	DBnoa = cldbopen(v3, 0);											// v3 is full path to file
+    if ( DBnoa < 0 )
+    {
+        eprint("can't open database - %s\n", DTptr->FullDBname);
+    }
+	else
+	{
+		DTptr->FullDBname	= v3;
+		DTptr->DBno			= DBnoa;
+		v7 = 100 * dbspace(DBnoa) / dbsize(DBnoa);
+		
+		if ( v7 < 10 )	// DBase has less than 10% space remaining, doesn't check if running as cgi
+		{
+			if ( isCGI )
+				eprint("%s is %d%% full\n", DTptr->FullDBname, 100 - v7);	// no BELL for web
+			else
+			{
+				eprint("\a%s is %d%% full\n", DTptr->FullDBname, 100 - v7);	// \a = DING!!
+				sleep(5u);
+			}
+		}
+	}
+	return DBnoa;
+}
+#endif
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@d13 4
+a16 4
+    int result;
+    short v2;
+    int v3;
+    char *v4;
+d41 4
+d46 8
+a53 11
+    short v5;
+    short CRC;
+    FLDdesc *fld;
+    int v10;
+    int ErrCode;
+    TDef *tdef;
+    int TDno;
+    TDef *v16;
+    int RecSize;
+    int NumFields;
+    char FieldName[32];
+a260 1
+
+d262 1
+d265 7
+a271 2
+			eprint("\a%s is %d%% full\n", DTptr->FullDBname, 100 - v7);	// \a = DING!!
+		    sleep(5u);
+@
+
+
+1.2
+log
+@near complete
+@
+text
+@d5 1
+d13 4
+a16 4
+    int result; // eax@@1
+    short v2; // ax@@2
+    int v3; // edi@@2
+    char *v4; // esi@@5
+d18 1
+a18 1
+    result = rdbget(TTptr->DBnumber);
+d25 1
+d27 1
+a27 3
+            {
+                eprint("table locked - %s\n", TTptr->TableName);
+            }
+d30 2
+a31 6
+                v4 = TTptr->TableName;
+                if ( !cmpbuf(v4, "domains", 6))
+                {
+                    if ( !cmpbuf(v4, "elements", 8))
+                        eprint("can't identify - %s (err=%d)\n", v4, v3);
+                }
+d41 17
+a57 16
+    unsigned int result; // eax@@5
+    short v5; // si@@5
+    short CRC; // edx@@7
+    FLDdesc *fld; // esi@@17
+    char VarType; // al@@18
+    int v10; // eax@@19
+    int v11; // eax@@22
+    int v12; // eax@@36
+    TDef *tdef; // [sp+2Ch] [bp-205Ch]@@7
+    TDef *tdefa; // [sp+2Ch] [bp-205Ch]@@17
+    int TDno; // [sp+40h] [bp-2048h]@@15
+    TDef *v16; // [sp+44h] [bp-2044h]@@6
+    int RecSize; // [sp+48h] [bp-2040h]@@7
+    int NumFields; // [sp+4Ch] [bp-203Ch]@@7
+    char v19[32]; // [sp+50h] [bp-2038h]@@21
+    ELEMENTREC elem; // [sp+70h] [bp-2018h]@@22
+d59 1
+a59 5
+    if ( TTptr->TTrtd != -1 )
+        __assert_fail("tt->runtd == -1", "getfile.c", 0x6Cu, "tdopen");
+
+//	printf("tdopen - TTptr->TableName = %s\n",TTptr->TableName);
+	if ( Lock )
+d62 3
+a64 1
+	    result = identify(DBno, TTptr->TableName);
+d66 1
+a66 1
+    if ( (result & 0x80000000u) == 0 )
+d73 1
+d75 1
+a75 1
+            tdef = v16;
+d77 1
+a77 1
+            for ( RecSize = 0; tdef->TDFentry; ++tdef )
+d85 1
+a85 1
+            if ( TTptr->TableCRC )
+d87 2
+a88 5
+                if ( TTptr->TableCRC != CRC )
+                {
+                    eprint("table definition incompatibility (calc=%u, got=%u) - %s\n", CRC, TTptr->TableCRC, TTptr->TableName);
+                    return -1;
+                }
+d94 1
+d99 1
+a99 1
+            TDno = identify(DBno, "elements");
+d101 1
+a101 1
+                TDno = identify(DBno, "domains");
+d103 3
+a105 3
+			TTptr->TTfields = (FLDdesc *)mmalloc(24 * (NumFields + 1));
+            tdefa = v16;
+            for ( fld = TTptr->TTfields; tdefa->TDFentry; ++tdefa )
+d107 3
+a109 3
+                VarType = gettype(tdefa->TDFtype, tdefa->TDFsize);
+                fld->FLDtype = VarType;
+                if ( VarType == 'C' )
+d111 1
+a111 1
+                    v10 = tdefa->TDFsize + 1;
+d113 21
+a133 27
+                else
+                {
+                    if ( tdefa->TDFsize )
+                    {
+                        v10 = 8;
+                    }
+                    else
+                    {
+                        v10 = 0;
+                        v19[0] = 0;
+                        if ( TDno > 0 )
+                        {
+                            itoms(&elem.TDFentry, tdefa->TDFentry);
+                            v11 = getr(TDno, (char *)&elem, 0);
+                            if ( (signed short)v11 <= 0 )
+                            {
+                                if ( v11 < 0 )
+                                    dberror(v11, 0, TDno);	// error_exit
+                                sprintf(v19, "%d", tdefa->TDFentry);	// no name rec found, use DOMID instead
+                            }
+                            else
+                            {
+                                cdbcpystr(v19, elem.FieldName, 0);
+                            }
+                            v10 = strlen(v19) + 1;
+                        }
+                    }
+d135 2
+d140 1
+a140 1
+                    cdbcpystr((char *)fld->FLDdata, v19, 0);	// save the name for sub/keys, but no data
+d142 1
+a142 1
+				if ( tdefa->TDFtype & tdf_KEY )	// Key field
+d146 4
+a149 4
+                fld->FLDlen		= tdefa->TDFsize;
+                fld->FLDelemID	= tdefa->TDFentry;
+                fld->TDFtype	= tdefa->TDFtype;
+                ++fld;
+d153 3
+a155 3
+                v12 = release(TDno);
+                if ( v12 < 0 )
+                    dberror(v12, 0, TDno);
+d166 2
+a167 4
+//printf("rtdget()\n");
+
+    if ( ttab > TTptr || TTptr >= &ttab[no_ttabs] )
+        __assert_fail("ttab <= tt && tt < &ttab[no_ttabs]", "getfile.c", 178, "rtdget");
+d175 1
+a175 3
+    if ( TTptr->TTrtd < 0 || TTptr->TTrtd >= no_ttabs )
+        __assert_fail("tt->runtd >= 0 && tt->runtd < no_ttabs", "getfile.c", 188,  "rtdget");
+
+d180 1
+a180 1
+int getfile(char *DBname, char *TableName)
+d187 1
+a187 1
+printf("getfile  DBname = %s, TableName = %s\n", DBname, TableName);
+d197 3
+a199 2
+        if ( no_dtabs <= DBno )
+            __assert_fail("dbii < no_dtabs", "getfile.c", 0xD5u, "getfile");
+a200 1
+    //v2 = &dtab;
+a203 1
+        //(*v2)[DBno].FullDBname = mstrcpy(DBname, 0);
+d206 1
+a206 1
+    for ( TTptr = ttab + 3; TTptr < &ttab[no_ttabs]; ++TTptr )
+d221 10
+a230 21
+        if ( *TableName )
+        {
+            if ( *TableName == ',' )
+            {
+LABEL_20:
+                if ( *Alias )
+                    *Alias++ = 0;
+            }
+            else
+            {
+                while ( 1 )
+                {
+                    ++Alias;
+                    if ( !*Alias )
+                        break;
+                    if ( *Alias == ',' )
+                        goto LABEL_20;
+                }
+            }
+        }
+        cdbcpystr(TTptr->TableAlias, Alias, 0);
+d240 4
+a243 6
+    DBase *DTptr; // edi@@1
+    char *v3; // esi@@2
+    int v4; // eax@@4
+    unsigned int v6; // ST14_4@@5
+    unsigned int v7; // ecx@@5
+    int DBnoa; // [sp+18h] [bp-10h]@@2
+d246 1
+a246 1
+    if ( DTptr->DBno >= 0 )
+d249 3
+a251 2
+    v3 = mstrcpy(chkpath(DTptr->FullDBname, 0, "CLDPATH", 0, 384), 0);
+    DBnoa = cldbopen(v3, 0);
+a254 1
+        return DBnoa;
+d256 4
+a259 2
+	DTptr->FullDBname	= v3;
+    DTptr->DBno			= DBnoa;
+d261 7
+a267 7
+    v6 = 100 * dbspace(DBnoa);
+    v7 = v6 / dbsize(DBnoa);
+    if ( (signed int)v7 <= 9 )	// DBase has less than 10% space remaining, doesn't check if running as cgi
+    {
+		eprint("\a%s is %d%% full\n", DTptr->FullDBname, 100 - v7);
+        sleep(5u);
+    }
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d93 1
+a93 3
+                    eprint("table definition incompatibility (calc=%u, got=%u) - %s\n", CRC,
+                        TTptr->TableCRC,
+                        TTptr->TableName);
+d196 1
+a196 1
+    DBase **v2; // ecx@@7
+d203 2
+a204 3
+    DBno = 0;
+    while ( no_dtabs > DBno )
+    {
+a206 1
+		DBno++;
+d208 1
+a208 1
+    if ( no_dtabs == DBno )
+d214 1
+a214 1
+    v2 = &dtab;
+d218 2
+a219 1
+        (*v2)[DBno].FullDBname = mstrcpy(DBname, 0);
+d228 1
+a228 1
+    if ( TTptr == &ttab[no_ttabs] )		// shouldn't be possible in clenter. All tables pre-allocated!
+@

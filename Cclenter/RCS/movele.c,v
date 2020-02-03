@@ -1,0 +1,98 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.06.17.22.54.42;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@Equalises Nodes. Moves node entries from start of right, to end of left
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef MOVELEFT_C
+#define MOVELEFT_C
+
+#include "DBdefs.h"
+#include "cl4.h"
+
+int moveleft(NODE *NodeDEST, NODE *NodeSRC, short NumEntries)
+{
+	int v4; // eax@@1
+	short v7; // dx@@1
+	short v11; // dx@@3
+	int result; // eax@@5
+	short i; // [sp+10h] [bp-18h]@@1
+
+	NODE_1 *v8;
+	NODE_1 *v5;
+	NODE_1 *v3;
+	
+	NODE_2 *v6;
+	NODE_2 *v9;
+	NODE_2 *v10;
+	NODE_2 *v15;
+
+	//printf("moveleft( DEST = x%08X,SRC = x%08X, Num: %d\n",NodeDEST,NodeSRC, NumEntries);
+	_chkitems(NodeDEST, NumEntries);	// has an error exit, may not return.
+	
+	v3 = NodeSRC->NODE1ptr;
+	v4 = NodeDEST->NumEntries;
+	v5 = &NodeDEST->NODE1ptr[v4];
+	v15 = NodeSRC->NODE2ptr + 1;
+	v6 = &NodeDEST->NODE2ptr[v4 + 1];
+	v7 = NumEntries;
+	for ( i = 0; v7 > 0; --v7 )
+	{
+		v5->Data = v3->Data;
+		v5->Size = v3->Size;
+		v6->PageNo = v15->PageNo;
+		++v15;
+		++v6;
+		i += v3->Size;
+		++v3;
+		++v5;
+	}
+
+	v8 = NodeSRC->NODE1ptr;
+	v9 = NodeSRC->NODE2ptr;
+	v9->PageNo = v15[-1].PageNo;
+	v10 = v9 + 1;
+	
+	v11 = NodeSRC->NumEntries - NumEntries;
+	while ( v11 > 0 )
+	{
+		v8->Data = v3->Data;
+		v8->Size = v3->Size;
+		v10->PageNo = v15->PageNo;
+		++v15;
+		++v10;
+		++v3;
+		++v8;
+		--v11;
+	}
+
+	result = (i + NumEntries * NodeDEST->field_16);
+	NodeDEST->DataEnd += result;
+	NodeDEST->NumEntries += NumEntries;
+	NodeSRC->DataEnd -= result;
+	NodeSRC->NumEntries -= NumEntries;
+	return result;
+}
+
+
+#endif
+
+@

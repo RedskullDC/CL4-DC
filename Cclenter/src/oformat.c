@@ -68,7 +68,7 @@ char *nfmt(char *a1, const char *format, double a3)
         isNegative = 0.0 > a3;
         if ( DecPlaces && a3 == 0.0)
         {
-            fillbuf(NumBuff, NumLen, ' ');
+            memset(NumBuff, ' ', NumLen);
             NumBuff[NumLen] = 0;
         }
         else
@@ -87,7 +87,7 @@ char *nfmt(char *a1, const char *format, double a3)
         else if ( mask_flg & 4 )	// true if trailing CR/DB is in fmt string
 			++v8;
 
-		fillbuf(a1, v8, '?');
+		memset(a1, '?', v8);
         a1[v8] = 0;
         return a1;
     }

@@ -1,0 +1,2 @@
+
+loadstate.c:				*lt = (LTAB *)getmem(syml + sizeof(LTAB));	// allocate enough to hold labelname , sizeof(LTAB) = 6

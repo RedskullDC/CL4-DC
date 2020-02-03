@@ -13,7 +13,7 @@
 int _lockr(DBinfo *DBptr, short IndexOff, char *KeyDefs, unsigned int KeySize, short UpdateMode)
 {
 	short v6; // ax@3
-	int PID; // eax@7
+	//pid_t PID; // eax@7
 	TDinfo *TD2; // eax@7
 	TD2REC Dest; // [sp+30h] [bp-A8h]@5
 
@@ -26,13 +26,17 @@ int _lockr(DBinfo *DBptr, short IndexOff, char *KeyDefs, unsigned int KeySize, s
 			derror(v6, DBptr, 0);
 		
 		Dest.TableIndex = IndexOff;                 // 1 byte table index offset
-		fill(Dest.KeyBuff, 128u, 0);
-		if ( KeySize > 128 )
-			KeySize = 128;
+		
+		fill(Dest.KeyBuff, sizeof(Dest.KeyBuff), 0);
+		if ( KeySize > sizeof(Dest.KeyBuff) )
+			KeySize = sizeof(Dest.KeyBuff);
+		
 		cpybuf(Dest.KeyBuff, KeyDefs, KeySize);
 		
-		PID = getpid();
-		ltoms(&Dest.PID, PID);
+		//PID = getpid();
+		//ltoms(&Dest.PID, PID);
+		
+		ltoms(&Dest.PID, getpid());
 
 		//DumpBlock((char*)&Dest, sizeof(Dest));
 		

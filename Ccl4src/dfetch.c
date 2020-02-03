@@ -30,14 +30,14 @@ short _dfetch(char *Dest, DPOS *dpos, TDinfo *TDptr)
 	{
 		page = _indexpg(TDptr, dpos->field_8);
 		if ( !dpos->NumEntries )
-			dpos->NumEntries = page->NumEntries + 1;
+			dpos->NumEntries = page->header.NumEntries + 1;
 		
 		--dpos->NumEntries;
 		
-		dpos->PageNo = mstol((int*)&page->DataStart[4 * dpos->NumEntries]);
+		dpos->PageNo = mstol((int*)&page->header.DataStart[4 * dpos->NumEntries]);
 		
 		if ( !dpos->NumEntries )
-			dpos->field_8 = mstol((int*)&page->field_12);
+			dpos->field_8 = mstol((int*)&page->pgData.field_12);
 	}
 
 	if ( dpos->PageNo )

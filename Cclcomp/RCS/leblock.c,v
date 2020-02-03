@@ -1,0 +1,375 @@
+head	1.3;
+access;
+symbols;
+locks
+	leslie:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	2016.06.01.06.39.48;	author leslie;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2015.06.19.06.51.18;	author leslie;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.09.10.04.47.55;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.3
+log
+@intermediate
+@
+text
+@#ifndef LEBLOCK_C
+#define LEBLOCK_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <assert.h>
+#include "DBdefs.h"
+
+void leblock(int *LineNo)
+{
+    BTAB *bt;
+	PTAB *ptab;
+	ONESC *v4;
+	
+	int ErrorCode;
+	short blkno;
+
+	size_t BlkNameLen;
+	char BlockName[32];
+	
+    symbol = getsym();
+	//printf("leblock : 31 symbol = %d\n",symbol);
+    if ( symbol == 2230 )						// Table/Variable name	== blockname
+	{
+		BlkNameLen = fixbname(BlockName, sym);	// Fix maxLen as 21 (20 chars + \0)
+		bt = btab;
+		blkno = 0;
+		while ( bt->BlockName[0] && no_btabs > blkno )
+		{
+			if ( cmpbuf(bt->BlockName, BlockName, BlkNameLen) )	// look for an already defined block with same name
+				break;
+			bt++;
+			blkno++;
+		}
+		cur_block = blkno;
+		if ( blkno == no_btabs )	// good, we didn't find a match on our blockname
+		{
+			newbtab();
+			bt = &btab[blkno];
+		    //if ( no_btabs <= (signed short)blkno )
+			//	__assert_fail("i < no_btabs", "leblock.c", 0x2Cu, "leblock");
+			assert(blkno < no_btabs);
+		}
+		if ( !bt->BlockName[0] )
+			cdbcpystr(bt->BlockName, BlockName, 0);
+		if ( bt->StartLine || bt->EndLine )
+			loaderr(81, sym);                     // "duplicate block name"
+		else
+			bt->StartLine = *(short *)LineNo;
+		symbol = getsym();
+
+		if ( symbol == 1010 )                   // look for on_exit handler
+		{
+			symbol = getsym();
+			if ( symbol == 2230 )               // string literal == {on_exit : block_name}
+			{
+				v4 = (ONESC *)getmem(16);
+			    v4->BlockName = getmem(fixbname(BlockName, sym));
+			    cdbcpystr(v4->BlockName, BlockName, 0);
+			    bt->On_exit = v4;
+			    symbol = getsym();
+			}
+			else
+			{
+				if ( symbol == 930 )			// newline = ERROR. was expecting a blockname to follow the "{"
+					loaderr(2, sym);            // "missing block name"
+				else
+					loaderr(33, sym);           // "unexpected symbol"
+				return;
+			}
+		}
+	}
+	else	// symbol != 2230 )		// table/var name literal
+	{
+		loaderr(2, sym);			// "missing block name"
+	}
+
+//-------------------
+
+	while ( 1 )
+    {
+		while ( symbol == 930 )				// "\n"  end of line
+			symbol = getsym();
+
+		ErrorCode = 0;
+		switch (symbol)
+		{
+		case 570:								// getfile
+			if ( !legetf())
+				ErrorCode = 1;
+			break;
+
+		case 750:								// ldefine = 750, define == 290
+		case 290:
+			if ( !ledefine(symbol == 750) )		// symbol == 750 if local define
+				ErrorCode = 1;
+			break;
+
+		case 830:								// maintain
+			if ( !lemaint(&btab[cur_block]))
+				ErrorCode = 1;
+			break;
+
+		case 630:								// 630 = "head"
+			symbol			= getsym();
+		    allptpt(getptabp((*LineNo)++), &ptab);
+		    ptab->OpCode	= 3;					// 3 = head OpCode
+			ptab->SrcLineNo = lla;
+			ErrorCode		= !(ptab->TABno = lehdtxt());
+			
+			dallptpt(&ptab);
+			break;
+			
+		case 510:									// format
+			if ( !leformat(LineNo, 0))
+				ErrorCode = 1;
+			break;
+
+		case 120:									// "break"    -   force a screen break. 
+			allptpt(getptabp((*LineNo)++), &ptab);
+	        ptab->OpCode	= 950;						// 950 = break OpCode
+	        ptab->SrcLineNo = lla;
+	        dallptpt(&ptab);
+	        symbol			= getsym();
+	        if ( symbol != 930 )
+			{
+				loaderr(33, sym);		// "unexpected symbol" - should be no arguments after break on the line
+				ErrorCode = 1;
+			}
+			break;
+
+		case 1360:											// "}"  end of block terminator
+			btab[cur_block++].EndLine = *(short*)LineNo;
+
+			allptpt(getptabp((*LineNo)++), &ptab);
+            ptab->OpCode	= 950;	// "break"
+            dallptpt(&ptab);
+
+			allptpt(getptabp((*LineNo)++), &ptab);
+            ptab->OpCode	= 999;	// "end"
+            ptab->SrcLineNo = lla;
+            dallptpt(&ptab);
+            return;						// exit_success  **************
+			break;
+			
+		case 0:							// no symbol!!  Error condition
+			loaderr(6, sym);			// "unexpected end of file"
+			return;
+			break;
+
+		default:		// normally call this for all other lines in a block
+			//printf("leblock : 147, calling loadstate()\n"); 
+            if ( !loadstate(LineNo) )
+				ErrorCode = 1;
+			break;
+		}
+		if ( comp_abort )
+			return;			// error_exit
+		
+		if ( ErrorCode )	// We found an error condition. Keep reading till we hit NewLine or EOF
+        {
+			while ( symbol && symbol != 930 )
+				symbol = getsym();
+		}
+	}
+}
+
+#endif
+@
+
+
+1.2
+log
+@intermediate
+@
+text
+@d4 5
+d11 4
+a14 4
+    BTAB *bt; // [sp+18h] [bp-60h]@@2
+    PTAB *ptab; // [sp+1Ch] [bp-5Ch]@@44
+    ONESC *v4; // esi@@22
+
+d16 1
+d18 3
+a20 5
+	short v1;
+    short v18;
+    size_t BlkNameLen; // [sp+14h] [bp-64h]@@2
+    char BlockName[32]; // [21] would do
+
+d27 2
+a28 2
+		v1 = 0;
+		while ( bt->BlockName[0] && no_btabs > v1 )
+d33 1
+a33 1
+			v1++;
+d35 2
+a36 2
+		cur_block = v1;
+		if ( no_btabs == v1 )	// good, we didn't find a match on our blockname
+d39 4
+a42 3
+			bt = &btab[v1];
+		    if ( no_btabs <= (signed short)v1 )
+				__assert_fail("i < no_btabs", "leblock.c", 0x2Cu, "leblock");
+d52 1
+a52 1
+		if ( symbol == 1010 )                      // look for on_exit handler
+a53 1
+			//printf("leblock : 51 symbol = %d\n",symbol);
+d55 1
+a55 1
+			if ( symbol == 2230 )                    // string literal == {on_exit : block_name}
+a94 1
+			//printf("leblock : 118, calling ledefine() symbol = %d\n",symbol);
+d105 1
+a105 1
+			symbol = getsym();
+d107 1
+a107 1
+		    ptab->OpCode = 3;					// 3 = head OpCode
+d109 1
+a109 9
+			//v18 = lehdtxt();
+			//if ( !v18 )
+			//	ErrorCode = 1;
+			//ptab->TABno = v18;
+			
+			//if (!(ptab->TABno = lehdtxt()))
+			//	ErrorCode = 1;
+			
+			ErrorCode = !(ptab->TABno = lehdtxt());
+d115 1
+a115 1
+			if ( !leformat((short *)LineNo, 0))
+d121 1
+a121 1
+	        ptab->OpCode = 950;						// 950 = break OpCode
+d124 1
+a124 1
+	        symbol = getsym();
+d136 1
+a136 1
+            ptab->OpCode = 950;	// "break"
+d140 1
+a140 1
+            ptab->OpCode = 999;	// "end"
+d146 2
+a147 2
+		case 0:												// no symbol!!  Error condition
+			loaderr(6, sym);	// "unexpected end of file"
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 4
+a13 3
+	short v1; // esi@@2
+    int ErrorCode; // esi@@26
+    short v18; // ax@@53
+d19 14
+a32 36
+    if ( symbol != 2230 )         // string literal
+    {
+		loaderr(2, sym);          // "missing block name"
+        goto LABEL_24;	// but continue processing anyway??!?
+    }
+    BlkNameLen = fixbname(BlockName, sym);
+    bt = btab;
+    v1 = 0;
+    while ( bt->BlockName[0] && no_btabs > v1 )
+    {
+		if ( cmpbuf(bt->BlockName, BlockName, BlkNameLen) )	// look for an already defined block with same name
+			break;
+		bt++;
+		v1++;
+    }
+    cur_block = v1;
+	if ( no_btabs == v1 )	// good, we didn't find a match on our blockname
+    {
+		newbtab();
+		bt = &btab[v1];
+        if ( no_btabs <= (signed short)v1 )
+			__assert_fail("i < no_btabs", "leblock.c", 0x2Cu, "leblock");
+    }
+    if ( !bt->BlockName[0] )
+		cdbcpystr(bt->BlockName, BlockName, 0);
+    if ( bt->StartLine || bt->EndLine )
+		loaderr(81, sym);                     // "duplicate block name"
+    else
+		bt->StartLine = *(short *)LineNo;
+	symbol = getsym();
+
+	if ( symbol == 1010 )                      // look for on_exit handler
+    {
+		printf("leblock : 51 symbol = %d\n",symbol);
+		symbol = getsym();
+		if ( symbol == 2230 )                    // string literal == {on_exit : block_name}
+d34 4
+a37 5
+			v4 = (ONESC *)getmem(16);
+		    v4->BlockName = getmem(fixbname(BlockName, sym));
+		    cdbcpystr(v4->BlockName, BlockName, 0);
+		    bt->On_exit = v4;
+		    symbol = getsym();
+d39 4
+d44 4
+d49 10
+a58 2
+			if ( symbol == 930 )			// newline = ERROR. was expecting a blockname to follow the "{"
+				loaderr(2, sym);            // "missing block name"
+d60 7
+a66 2
+				loaderr(33, sym);           // "unexpected symbol"
+			return;
+d69 5
+d75 1
+a77 1
+LABEL_24:
+d106 10
+a115 4
+			v18 = lehdtxt();
+			if ( !v18 )
+				ErrorCode = 1;
+			ptab->TABno = v18;
+d124 1
+a124 1
+		case 120:									// "break"
+d126 1
+a126 1
+	        ptab->OpCode = 950;
+d148 1
+a148 1
+            return;						// exit_success
+@

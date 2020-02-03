@@ -1,0 +1,148 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.11.24.02.18.26;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef PFRESH_C
+#define PFRESH_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include <stdlib.h>		// for drand48(), strtod()
+#include "DBdefs.h"
+#include "cl4.h"
+
+void pscreen(char *ScreenName)
+{
+	STAB **stb; // esi@@2
+	int v2; // edi@@2
+	int v3; // eax@@9
+	short Size; // di@@19
+	STAB *v5; // ST1C_4@@20
+	short columns; // [sp+14h] [bp-24h]@@2
+	short lines; // [sp+16h] [bp-22h]@@2
+	short Length; // [sp+18h] [bp-20h]@@2
+	short size; // [sp+1Ch] [bp-1Ch]@@12
+
+	printf("pscreen(%s)\n",ScreenName);
+
+	if ( ScreenName )
+	{
+		columns = _co;
+		lines = _li;
+		Length = lenstr(ScreenName) + 1;
+		stb = stab;
+		for ( v2 = 0 ; no_stabs > v2; v2++ )
+		{
+			if ( *stb && cmpbuf((*stb)->ScreenName, ScreenName, Length) )
+				break;
+			stb++;
+		}
+    
+		if ( v2 == no_stabs )		// got to end of screen def table with no match
+		{
+			stb = stab;
+			if ( *stab && v2 > 0 )
+			{
+				v3 = 0;
+				while ( 1 )
+				{
+					++v3;
+					++stb;
+					if ( !*stb )
+						break;
+					if ( v3 >= v2 )
+					{
+						size = v3;
+						goto LABEL_15;
+					}
+				}
+				size = v3;
+			}
+			else
+				size = 0;
+
+LABEL_15:
+			if ( size == v2 )
+			{
+				newstab();
+				if ( size >= no_stabs )
+					__assert_fail("i < no_stabs", "pfresh.c", 0x48u, "pscreen");
+				stb = &stab[size];
+			}
+		}
+//-------------------------------------
+		Size = columns * lines + 10;
+		if ( !*stb )
+		{
+			v5 = mmalloc(12);	// sizeof(STAB)
+			*stb = v5;
+			v5->ScreenName = mmalloc(Length + 1);
+			v5->abuf = mmalloc(Size);
+			v5->ccbuf = mmalloc(Size);
+		}
+		cdbcpystr((*stb)->ScreenName, ScreenName, 0);
+		cpybuf((*stb)->abuf, abuf, Size);
+		cpybuf((*stb)->ccbuf, ccbuf, Size);
+	}
+}
+
+void pfresh(char *ScreenName)
+{
+    STAB **stb; // esi@@2
+    signed int v2; // edi@@2
+    int NameLen; // [sp+14h] [bp-14h]@@2
+    int MaxLen; // [sp+18h] [bp-10h]@@2
+
+    if ( !ScreenName )	// no screen name is also legal?
+        goto LABEL_11;
+    MaxLen = _co * _li + 10;
+    NameLen = strlen(ScreenName) + 1;
+    stb = stab;
+    v2 = 0;
+    if ( no_stabs > 0 )
+    {
+        while ( !*stb || !cmpbuf((*stb)->ScreenName, ScreenName, NameLen) )
+        {
+            ++v2;
+            ++stb;
+            if ( v2 >= no_stabs )
+                goto LABEL_7;
+        }
+        cpybuf(ccbuf, (*stb)->ccbuf, MaxLen);
+        cpybuf(abuf, (*stb)->abuf, MaxLen);
+        mfree_0((*stb)->ccbuf);
+        mfree_0((*stb)->abuf);
+        mfree_0((*stb)->ScreenName);
+        mfree_0(*stb);
+        *stb = 0;
+    }
+
+LABEL_7:
+    if ( v2 != no_stabs )
+LABEL_11:
+        clrefresh();
+}
+
+#endif
+
+@

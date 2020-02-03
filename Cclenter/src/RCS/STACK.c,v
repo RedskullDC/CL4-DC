@@ -1,0 +1,452 @@
+head	1.1;
+access;
+symbols;
+locks
+	leslie:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	2014.09.05.11.34.14;	author leslie;	state Exp;
+branches;
+next	;
+
+
+desc
+@initial checkin
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#ifndef STACK_C
+#define STACK_C
+
+#include <stdio.h>
+#include <stdarg.h>		// for var args stuff
+#include "DBdefs.h"
+#include "cl4.h"
+
+int DoSUngetkey()
+{
+    int v1; // edx@@3
+    KEYPTR *v2; // edx@@3
+
+    if ( !AStackPointer )
+    {
+        fwrite("Stack empty\n", 1, 12, stderr);
+        return 1;
+    }
+    v1 = AStackPointer - 1;
+    AStackPointer = v1;
+    v2 = &AStack[v1];
+    if ( v2->stType != 4 )
+    {
+        fwrite("can only push back digits\n", 1, 26, stderr);
+        return 1;
+    }
+    if ( PushBackChar )
+    {
+		fwrite("too many push backs!\n", 1, 21, stderr);
+		return 1;
+    }
+    PushBackChar = v2->stValue;
+    return 0;
+}
+
+int DoSetRetVal()
+{
+    KEYPTR *v1; // eax@@3
+
+    if ( !AStackPointer )
+    {
+        fwrite("Stack empty\n", 1, 12, stderr);
+        return 1;
+    }
+    --AStackPointer;
+    v1 = &AStack[AStackPointer];
+    if ( v1->stType != 4 )
+    {
+        fwrite("can only return digits\n", 1, 23, stderr);
+        return 1;
+    }
+    GlobalReturnValue = v1->stValue;
+    return 0;
+}
+
+int DoPushKeyName()
+{
+    char *v0; // eax@@1
+    char *v1; // esi@@1
+    int result; // eax@@2
+    int v3; // edi@@3
+
+    v0 = Arg_String();
+    v1 = v0;
+    if ( AStackPointer <= 39 )
+    {
+        v3 = KeyToNumber(v0);
+        if ( !v3 )
+            fprintf(stderr, "'%s' is invalid key name\n", v1);
+        AStack[AStackPointer].stType = 4;
+        AStack[AStackPointer++].stValue = v3;
+        result = 0;
+    }
+    else
+    {
+        fwrite("stack full", 1u, 10u, stderr);
+        result = 1;
+    }
+    return result;
+}
+
+int DoFPstack()
+{
+    int i; // esi@@1
+    KEYPTR *v1; // eax@@2
+
+    for ( i = 0; i < AStackPointer; ++i )
+    {
+        v1 = &AStack[i];
+		switch (v1->stType)
+		{
+			case 2:
+		        printf("s - %s\n", (char*)v1->stValue);
+				break;
+
+			case 4:
+		        printf("d - %d\n", v1->stValue);
+				break;
+			
+			default:
+                fprintf(stderr, "Bad Displayf type %d\n", v1->stType);
+                return 1;
+		}
+    }
+    return 0;
+}
+
+int Exit()
+{
+    return 0;
+}
+
+int DoSDisplayf()
+{
+    char *v1; // ecx@@3
+    int v2; // edx@@6
+    KEYPTR *v3; // eax@@6
+    int v4; // edx@@6
+
+    if ( !AStackPointer )
+    {
+        fwrite("Stack empty\n", 1, 12, stderr);
+        return 1;
+    }
+    v1 = Arg_String();
+    if ( !v1 )
+    {
+        fwrite("Displayf needs a formatter string\n", 1, 34, stderr);
+        return 1;
+    }
+    v2 = AStackPointer - 1;
+    AStackPointer = v2;
+    v3 = &AStack[v2];
+    v4 = v3->stType;
+    if ( v4 != 2 && v4 != 4 )
+    {
+        fprintf(stderr, "Bad Displayf type %d\n", v3->stType);
+        return 1;
+    }
+    printf(v1, v3->stValue);	// careful, stValue could be int or string
+    return 0;
+}
+
+
+int DoFClear()
+{
+    AStackPointer = 0;
+    return 0;
+}
+
+int DoFDup()
+{
+	int result; // eax@@2
+
+    if ( AStackPointer <= 38 ) // Must have at least one empty stack slot
+    {
+        AStack[AStackPointer].stValue = AStack[AStackPointer - 1].stValue;
+        *(int *)&AStack[AStackPointer].stType = *(int *)&AStack[AStackPointer - 1].stType;
+        ++AStackPointer;
+        result = 0;
+    }
+    else
+    {
+        fwrite("stack over/under flow\n", 1u, 0x16u, stderr);
+        result = 1;
+    }
+    return result;
+}
+
+int DoFExch()	// swap top two stack entries
+{
+    int result; // eax@@2
+	KEYPTR	save;
+
+    if ( AStackPointer > 1 )
+    {
+		save.stValue = AStack[AStackPointer].stValue;
+        *(int *)&save.stType = *(int *)&AStack[AStackPointer].stType;
+
+        AStack[AStackPointer].stValue = AStack[AStackPointer - 1].stValue;
+        *(int *)&AStack[AStackPointer].stType = *(int *)&AStack[AStackPointer - 1].stType;
+
+        AStack[AStackPointer - 1].stValue = save.stValue;
+        *(int *)&AStack[AStackPointer - 1].stType = *(int *)&save.stType;
+
+		result = 0;
+    }
+    else
+    {
+        fwrite("less than two items on stack\n", 1u, 29u, stderr);
+        result = 1;
+    }
+    return result;
+}
+
+int DoFPush()
+{
+    int result; // eax@@2
+
+    if ( AStackPointer <= 39 )
+    {
+        Arg_Action(&AStack[AStackPointer++]);
+        return 0;
+    }
+    else
+    {
+        fwrite("stack full", 1u, 10u, stderr);
+        return 1;
+    }
+}
+
+int DoFPop()
+{
+
+    if ( AStackPointer )
+    {
+        --AStackPointer;
+        return 0;
+    }
+    else
+    {
+        fwrite("Stack empty\n", 1, 12, stderr);
+        return 1;
+    }
+}
+
+int DoFAdd()
+{
+    KEYPTR *v1; // ecx@@3
+    KEYPTR *v2; // edx@@3
+
+    if ( AStackPointer > 1 )	// at least 2 terms on the stack
+    {
+        v1 = &AStack[AStackPointer - 1];
+        v2 = &AStack[AStackPointer - 2];
+        if ( v1->stType == 4 && v2->stType == 4 )
+        {
+            v2->stValue += v1->stValue;
+            --AStackPointer;
+            return 0;
+        }
+		fwrite("maths only supported on digits\n", 1, 31, stderr);
+    }
+    else
+    {
+		fwrite("less than two items on stack\n", 1, 29, stderr);
+    }
+    return 1;
+}
+
+int DoFMul()
+{
+    KEYPTR *v1; // ecx@@3
+    KEYPTR *v2; // edx@@3
+
+    if ( AStackPointer > 1 )	// at least 2 terms on the stack
+    {
+        v1 = &AStack[AStackPointer - 1];
+        v2 = &AStack[AStackPointer - 2];
+        if ( v1->stType == 4 && v2->stType == 4 )
+        {
+            v2->stValue *= v1->stValue;
+            --AStackPointer;
+            return 0;
+        }
+		fwrite("maths only supported on digits\n", 1, 31, stderr);
+    }
+    else
+    {
+		fwrite("less than two items on stack\n", 1, 29, stderr);
+    }
+    return 1;
+}
+
+int DoFSub()
+{
+    KEYPTR *v1; // ecx@@3
+    KEYPTR *v2; // edx@@3
+
+    if ( AStackPointer > 1 )	// at least 2 terms on the stack
+    {
+        v1 = &AStack[AStackPointer - 1];
+        v2 = &AStack[AStackPointer - 2];
+        if ( v1->stType == 4 && v2->stType == 4 )
+        {
+            v2->stValue -= v1->stValue;
+            --AStackPointer;
+            return 0;
+        }
+		fwrite("maths only supported on digits\n", 1, 31, stderr);
+    }
+    else
+    {
+		fwrite("less than two items on stack\n", 1, 29, stderr);
+    }
+    return 1;
+}
+
+int DoFDiv()
+{
+    KEYPTR *v1; // ecx@@3
+    KEYPTR *v2; // edx@@3
+
+    if ( AStackPointer > 1 )	// at least 2 terms on the stack
+    {
+        v1 = &AStack[AStackPointer - 1];
+        v2 = &AStack[AStackPointer - 2];
+        if ( v1->stType == 4 && v2->stType == 4 )
+        {
+            v2->stValue /= v1->stValue;		// no test for divide / zero error here?
+            --AStackPointer;
+            return 0;
+        }
+		fwrite("maths only supported on digits\n", 1, 31, stderr);
+    }
+    else
+    {
+		fwrite("less than two items on stack\n", 1, 29, stderr);
+    }
+    return 1;
+}
+
+
+int DoFPushK()
+{
+    int result; // eax@@2
+
+    if ( AStackPointer <= 39 )
+    {
+        AStack[AStackPointer].stType = 4;	// indicate digit value
+        AStack[AStackPointer++].stValue = CharRegister;
+        result = 0;	// exit_success
+    }
+    else
+    {
+        fwrite("stack full", 1u, 10u, stderr);
+        result = 1;
+    }
+    return result;
+}
+
+int DisplayMe()
+{
+    char *v0; // edx@@1
+
+    v0 = Arg_String();
+    if ( v0 )
+        printf(v0, CharRegister);
+    else
+        putchar(CharRegister);
+    return 0;
+}
+
+int Display()
+{
+    char *v0; // eax@@1
+
+    v0 = Arg_String();
+    printf("%s", v0);
+    return 0;
+}
+
+int DoStoN()
+{
+    int v0; // edx@@1
+    KEYPTR *v1; // eax@@2
+    int result; // eax@@3
+    char nptr[40]; // [sp+10h] [bp-28h]@@4
+
+    v0 = 0;
+    if ( AStackPointer <= 0 )
+    {
+LABEL_5:
+        nptr[v0] = 0;
+        AStack[0].stType = 4;
+        AStack[0].stValue = __strtol_internal(nptr, 0, 10, 0);
+        AStackPointer = 1;
+        result = 0;
+    }
+    else
+    {
+        while ( 1 )
+        {
+            v1 = &AStack[v0];
+            if ( v1->stType != 4 )
+                break;
+            nptr[v0++] = (char)(v1->stValue & 0xFF);
+            if ( v0 >= AStackPointer )
+                goto LABEL_5;
+        }
+        result = 1;
+    }
+    return result;
+}
+//***********************************
+int DoMacro(int a1)
+{
+    Elist *v1; // edi@@1
+    Elist_Elem *i; // esi@@1
+
+    //v1 = Arg_List();
+    //*(_DWORD *)(*(_DWORD *)(a1 + 4) + 4) = *(_DWORD *)(*(_DWORD *)(a1 + 4) + 8);
+    //for ( i = v1->field_C; (Elist *)i != v1; i = i->Next )
+    //    elist_Add(*(Elist **)(a1 + 4), 0, *((void **)i->UserData + 1));
+    return 1;
+}
+
+int DoMacroAdd(int a1)
+{
+    int v1; // eax@@1
+
+    //*(_DWORD *)(*(_DWORD *)(a1 + 4) + 4) = *(_DWORD *)(*(_DWORD *)(a1 + 4) + 8);
+    //v1 = GetStackDigit();
+    //elist_Add(*(Elist **)(a1 + 4), 0, (void *)v1);
+    return 1;
+}
+
+int DoMacroStr(KEY_Elist *KL)
+{
+    char *i; // esi@@1
+
+    //KL->field_4->Current = KL->field_4->field_8;
+    //for ( i = Arg_String(); *i; ++i )
+    //    elist_Add(KL->field_4, 0, (void *)*i);  // add each character of the string into the buffer
+    return 1;
+}
+#endif
+@

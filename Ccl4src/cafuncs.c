@@ -23,7 +23,7 @@ char **camake(char *a1, char Seperator)
 	while ( *extstr(a3, Seperator, &a3) )
 		Pieces++;
 
-	v6 = (char **)mmalloc(4 * (Pieces + 1));	// space for array of char pointers to the string pieces, null terminated
+	v6 = (char **)mmalloc(sizeof(char*) * (Pieces + 1));	// space for array of char pointers to the string pieces, null terminated x86=4*, x64=8*
 	v3 = v6;
 	a3 = a1;
 	while ( 1 )

@@ -535,40 +535,40 @@ bool loadstate(int *LineNo)
             enta->enleft = ENTno;
 			switch (symbol)
 			{
-			case 40:					// "+="
-				enta->TTno = f_ADDEQ;
+			case 40:								// "+="
+				enta->Enun.Enop.Enoper = f_ADDEQ;
 				break;
-			case 320:					// "/="
-				enta->TTno = f_DIVEQ;
+			case 320:								// "/="
+				enta->Enun.Enop.Enoper = f_DIVEQ;
 				break;
-			case 850:					// "%="
-				enta->TTno = f_MODEQ;
+			case 850:								// "%="
+				enta->Enun.Enop.Enoper = f_MODEQ;
 				break;
-			case 880:					// "*="
-				enta->TTno = f_MULEQ;
+			case 880:								// "*="
+				enta->Enun.Enop.Enoper = f_MULEQ;
 				break;
-			case 1160:					// "**="
-				enta->TTno = f_POWEQ;
+			case 1160:								// "**="
+				enta->Enun.Enop.Enoper = f_POWEQ;
 				break;
-			case 1560:					// "-="
-				enta->TTno = f_SUBEQ;
+			case 1560:								// "-="
+				enta->Enun.Enop.Enoper = f_SUBEQ;
 				break;
-			case 1800:					// "=" or "==" or "eq"
-				enta->TTno = f_ASSIGN;
+			case 1800:								// "=" or "==" or "eq"
+				enta->Enun.Enop.Enoper = f_ASSIGN;
 				break;
 			default:
-				assert(0);// should be unreachable
+				assert(0);							// should be unreachable
 				break;
 			}
-            if ( FLDstat & fld_READ_ONLY ) 	// Only possible for SYSTEM variables. FLDstat not accesible for user vars
+            if ( FLDstat & fld_READ_ONLY ) 			// Only possible for SYSTEM variables. FLDstat not accesible for user vars
 			{
-				loaderr(83, sym);			// "can't assign to read-only variable"
+				loaderr(83, sym);					// "can't assign to read-only variable"
                 AuxError = true;
 			}
 			else
 			{
 				enta->entype = 2;
-				//if ( FieldType == 'C' && isnumop((unsigned short)enta->TTno) )	// *** real CL4 doesn't pass variable correctly, msg not displayed ***
+				//if ( FieldType == 'C' && isnumop((unsigned short)enta->Enun.Enop.Enoper) )	// *** real CL4 doesn't pass variable correctly, msg not displayed ***
 				//	warncexp();				// "+-*%%/ will be unsupported on strings in future releases\n"
 				   
 				symbol = getsym();
@@ -585,10 +585,10 @@ bool loadstate(int *LineNo)
 					{
 						enta->enright = expright;						// rvalue
 						if ( chkINT && intexp(enta->enright) )
-							enta->TTno |= 0x0200;						// integer calcs flag for clenter
+							enta->Enun.Enop.Enoper |= 0x0200;						// integer calcs flag for clenter
 						
 						else if ( FieldType != 'C' && ( dpexp(enta->enleft) < dpexp(enta->enright) )) // LVALUE has less decimal places than RVALUE. Possible rounding issues occur.
-							enta->TTno |= 0x0040u;						// ??? generates 'RND' in prdebug output.  Never read in clenter?
+							enta->Enun.Enop.Enoper |= 0x0040u;						// ??? generates 'RND' in prdebug output.  Never read in clenter?
 
 						if ( symbol == 930 )							// <CR> should be next
 						{

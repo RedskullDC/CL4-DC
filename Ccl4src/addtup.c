@@ -12,7 +12,7 @@ void sum(char *a1, char *a2, short TDFsize)
 	short	v5;
 	short	v6;
 	
-	printf("sum(a1: %S,a2 = %Sd, TDFsize = %03d)" ,a1,a2,TDFsize);
+	printf("sum(a1: %s,a2 = %s, TDFsize = %03d)" ,a1,a2,TDFsize);
 
 	Carry = 0;
 	v6 = TDFsize - 1;
@@ -25,7 +25,7 @@ void sum(char *a1, char *a2, short TDFsize)
 		a1[v6] = v5;
 		--v6;
 	}
-	printf(" after (a1: %S\n",a1); 
+	printf(" after (a1: %s\n",a1); 
 }
 
 void _addtuple(char *Buffer1, char *Buffer2, TDef *TDefPtr)
