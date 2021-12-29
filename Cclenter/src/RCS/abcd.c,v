@@ -1,10 +1,15 @@
-head	1.5;
+head	1.6;
 access;
 symbols;
 locks
-	leslie:1.5; strict;
+	leslie:1.6; strict;
 comment	@ * @;
 
+
+1.6
+date	2020.02.04.06.44.31;	author leslie;	state Exp;
+branches;
+next	1.5;
 
 1.5
 date	2016.07.04.05.46.52;	author leslie;	state Exp;
@@ -37,9 +42,9 @@ desc
 @
 
 
-1.5
+1.6
 log
-@clean up
+@prior to X64 update
 @
 text
 @#ifndef ABCD_C
@@ -67,10 +72,9 @@ bool hasass(int TTno)
 int abcd(BTAB *btb, short num_fields)
 {
     SCR		*scrn;
-	BTAB	*v18;
-	PTAB	*v22;
-	BTAB	*v23;
-	ENTAB	*v25;
+	BTAB	*btb1;
+	PTAB	*ptb1;
+	//ENTAB	*v25;
 	FLDdesc *FLD_reply; 
     FLDdesc *FLD_mode;
     
@@ -79,26 +83,26 @@ int abcd(BTAB *btb, short num_fields)
 	char	*v28;
 	char	*mode_txt;
 	
-    int CurrMODE; // eax@@10
-    int TDno; // [sp+48h] [bp-80h]@@1
-    int a7; // [sp+74h] [bp-54h]@@1
-    int v44; // [sp+78h] [bp-50h]@@147
-
-    short v4; // si@@1
-    signed short v9; // ax@@27
-    short PT_End; // [sp+54h] [bp-74h]@@29
-    short PT_Start; // [sp+58h] [bp-70h]@@29
-    short PT_End2; // [sp+5Ch] [bp-6Ch]@@29
-    short PT_Start2; // [sp+60h] [bp-68h]@@29
-    short ScreenNum; // [sp+64h] [bp-64h]@@1
-    bool v40; // [sp+68h] [bp-60h]@@1
-	bool v41; // [sp+6Ch] [bp-5Ch]@@1
-    bool v42; // [sp+70h] [bp-58h]@@1
-
-    char v45; // [sp+7Eh] [bp-4Ah]@@125
+    int		CurrMODE;
+	int		TDno;
+	int		a7;
+	int		v44;
+	
+    short	v4;
+	signed short v9;
+	short	PT_End;
+	short	PT_Start;
+	short	PT_End2;
+	short	PT_Start2;
+	short	ScreenNum;
+	bool	v40;
+	bool	v41;
+	bool	v42;
+	
+    char	v45;
 	char	SrchChar;
-    char v29; // [sp+3Fh] [bp-89h]@@2
-    char v31; // [sp+47h] [bp-81h]@@1
+    char	v29;
+	char	v31;
 	short	ScreenFields[10];	// should be an array?
 	
     v31 = 0;
@@ -190,7 +194,7 @@ LABEL_25:
             *(char *)FLD_mode->FLDdata = btb->Curr_Mode;
             FLD_mode->FLDstat &= ~fld_ZERO;	// 0xFFFBu;
             
-			scrn = (SCR*)btb->TYPE24;
+			scrn = (SCR*)btb->Screens;
 			for (v9 = 0; v9 < ScreenNum ; v9++)
                 scrn = scrn->NextSCR;
             
@@ -325,8 +329,8 @@ LABEL_48:
 					{
 						if ( !btb->On_delete )
 							goto LABEL_127;
-						v18 = &btab[btb->On_delete->BlockNo];
-						v4 = ploop( v18, 0, v18->StartLine, v18->EndLine, v18->StartLine, v18->EndLine, 0);
+						btb1 = &btab[btb->On_delete->BlockNo];
+						v4 = ploop( btb1, 0, btb1->StartLine, btb1->EndLine, btb1->StartLine, btb1->EndLine, 0);
 						if ( v4 != -5 || exit_type != 886 )
 						{
 							if ( *(char *)ttab->TTfields[5].FLDdata == 'y' )
@@ -369,18 +373,17 @@ LABEL_48:
 	// end delete -------------------------------------------------------
 					else
 					{
-						if ( PTARR(getptabp(PT_Start2))->OpCode == 600 )	// 600 == format block_name
+						if ( (ptb1 = PTARR(getptabp(PT_Start2)))->OpCode == 600 )	// 600 == format block_name
 						{
-							// OpCode 600 handler
-							v22 = PTARR(getptabp(PT_Start2));
-							v23 = &btab[v22->Operand];
+							//ptb1 = PTARR(getptabp(PT_Start2));
+							btb1 = &btab[ptb1->Operand];
 
-							if ( btb->Scrs & 0x4000 || btb->Curr_Mode == 'r' || ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 )
-								v23->Scrs |= 0x4000;
+							if ( btb->Scrs & 0x4000 || btb->Curr_Mode == 'r' || ScreenNum != (btb->Scrs & 0xBFFF) - 1 )
+								btb1->Scrs |= 0x4000;
 							else
-								v23->Scrs &= 0xBFFF;
+								btb1->Scrs &= 0xBFFF;
 
-							v4 = pblock(v23, ENARR(v22->TABno));
+							v4 = pblock(btb1, ENARR(ptb1->TABno));	// call format block with MODE variable specifier
 							if ( v4 != -5 || exit_type != 886 )
 								goto LABEL_154;
 						}
@@ -388,7 +391,7 @@ LABEL_48:
 						{
 							if ( btb->Curr_Mode != 'r' && btb->Curr_Mode != 'v' )
 							{
-								v44 = ScreenNum == (btb->Scrs & 0xFFFFBFFF) - 1;
+								v44 = ScreenNum == (btb->Scrs & 0xBFFF) - 1;
 								if ( recalt || hasass(TDno) )// check for record change, or sub-keys
 								{
 									repkey(TDno, 0);
@@ -409,7 +412,7 @@ LABEL_48:
 								}
 							}
 	LABEL_154:
-							if ( ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 || btb->Curr_Mode == 'r' )
+							if ( ScreenNum != (btb->Scrs & 0xBFFF) - 1 || btb->Curr_Mode == 'r' )
 								v42 = false;
 							else
 							{
@@ -515,6 +518,74 @@ LABEL_38:
 
 
 #endif
+@
+
+
+1.5
+log
+@clean up
+@
+text
+@d26 3
+a28 4
+	BTAB	*v18;
+	PTAB	*v22;
+	BTAB	*v23;
+	ENTAB	*v25;
+d37 17
+a53 17
+    int CurrMODE; // eax@@10
+    int TDno; // [sp+48h] [bp-80h]@@1
+    int a7; // [sp+74h] [bp-54h]@@1
+    int v44; // [sp+78h] [bp-50h]@@147
+
+    short v4; // si@@1
+    signed short v9; // ax@@27
+    short PT_End; // [sp+54h] [bp-74h]@@29
+    short PT_Start; // [sp+58h] [bp-70h]@@29
+    short PT_End2; // [sp+5Ch] [bp-6Ch]@@29
+    short PT_Start2; // [sp+60h] [bp-68h]@@29
+    short ScreenNum; // [sp+64h] [bp-64h]@@1
+    bool v40; // [sp+68h] [bp-60h]@@1
+	bool v41; // [sp+6Ch] [bp-5Ch]@@1
+    bool v42; // [sp+70h] [bp-58h]@@1
+
+    char v45; // [sp+7Eh] [bp-4Ah]@@125
+d55 2
+a56 2
+    char v29; // [sp+3Fh] [bp-89h]@@2
+    char v31; // [sp+47h] [bp-81h]@@1
+d148 1
+a148 1
+			scrn = (SCR*)btb->TYPE24;
+d283 2
+a284 2
+						v18 = &btab[btb->On_delete->BlockNo];
+						v4 = ploop( v18, 0, v18->StartLine, v18->EndLine, v18->StartLine, v18->EndLine, 0);
+d327 1
+a327 1
+						if ( PTARR(getptabp(PT_Start2))->OpCode == 600 )	// 600 == format block_name
+d329 2
+a330 3
+							// OpCode 600 handler
+							v22 = PTARR(getptabp(PT_Start2));
+							v23 = &btab[v22->Operand];
+d332 2
+a333 2
+							if ( btb->Scrs & 0x4000 || btb->Curr_Mode == 'r' || ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 )
+								v23->Scrs |= 0x4000;
+d335 1
+a335 1
+								v23->Scrs &= 0xBFFF;
+d337 1
+a337 1
+							v4 = pblock(v23, ENARR(v22->TABno));
+d345 1
+a345 1
+								v44 = ScreenNum == (btb->Scrs & 0xFFFFBFFF) - 1;
+d366 1
+a366 1
+							if ( ScreenNum != (btb->Scrs & 0xFFFFBFFF) - 1 || btb->Curr_Mode == 'r' )
 @
 
 

@@ -62,8 +62,8 @@ void DumpDataPage(char* Buffer)
 	printf("PageType    = x%02X\n",PageType);
 	printf("NumEntries  = x%04X (%3d)\n",Page->header.NumEntries,Page->header.NumEntries);
 	//printf("DataStart  = x%08X \n",Page->DataStart); // Not used for Data Pages
-	printf("TabStart    = x%08X (TableStart)\n",Page->header.tsrs.TabStart);
-	printf("TabEnd      = x%08X\n",Page->header.TabEnd);
+	printf("TabStart    = x%p (TableStart)\n",Page->header.tsrs.TabStart);
+	printf("TabEnd      = x%p\n",Page->header.TabEnd);
 
 	DumpBlock(Buffer, 64, 0);
 	if ((Page->pgData.PageType & 0xC0) == 0x40) //Normal data, variable record size (contains strings).
@@ -77,7 +77,7 @@ void DumpDataPage(char* Buffer)
 				TabOffset = 0;
 			}
 			Datalen = MSHORT(*(Offset+1)) - TabOffset;
-			printf("(%3d) = %04X (%4d) = x%08X\n",count,TabOffset,TabOffset,(Page->header.TabEnd + TabOffset));
+			printf("(%3d) = %04X (%4d) = x%p\n",count,TabOffset,TabOffset,(Page->header.TabEnd + TabOffset));
 			if (count < Page->header.NumEntries)
 			{	// Last Table offset points past end of Data!
 				DumpBlock((char*)(Page->header.TabEnd + TabOffset), Datalen, 0);
@@ -112,9 +112,9 @@ void DumpIndexPage(char* Buffer)
 	PageType = Page->pgData.PageType; 
 	printf("PageType   = x%X\n",PageType);
 	printf("NumEntries = x%04X (%3d)\n",Page->header.NumEntries+1,Page->header.NumEntries+1);
-	printf("DataStart  = x%08X \n",Page->header.DataStart);
-	printf("TabStart   = x%08X (ptr or KeySize)\n",Page->header.tsrs.TabStart);
-	printf("TabEnd     = x%08X\n",Page->header.TabEnd);
+	printf("DataStart  = x%p \n",Page->header.DataStart);
+	printf("TabStart   = x%p (ptr or KeySize)\n",Page->header.tsrs.TabStart);
+	printf("TabEnd     = x%p\n",Page->header.TabEnd);
 
 	DumpBlock(Buffer, 128,0);
 
@@ -129,7 +129,7 @@ void DumpIndexPage(char* Buffer)
 				TabOffset = 0;
 			}
 			Datalen = MSHORT(*(Offset+1)) - TabOffset;
-			printf("(%3d) = %04X (%4d) = x%08X\n",count,TabOffset,TabOffset,(Page->header.TabEnd + TabOffset));
+			printf("(%3d) = %04X (%4d) = x%p\n",count,TabOffset,TabOffset,(Page->header.TabEnd + TabOffset));
 			if (count < Page->header.NumEntries)
 			{	// Last Table offset points past end of Data!
 				DumpBlock((char*)(Page->header.TabEnd + TabOffset), Datalen, 0);
@@ -151,7 +151,7 @@ void DumpBlock(char* Buffer, int NumBytes, int StructSize)
 	while (temp1 < NumBytes)
 	{
 		remaining = StructSize;
-		printf("%08X = ",(int)Buffer);
+		printf("%p = ",(void*)Buffer);
 		temp2 = 0;
 		while (remaining > 0 && temp1 < NumBytes)
 		{
@@ -171,7 +171,7 @@ void DumpBlock(char* Buffer, int NumBytes, int StructSize)
 				lineAsc[temp2] = '\0';				// display buffer and rest for next line
 				printf(" %s\n",lineAsc);
 				temp2 = 0;
-				printf("%08X = ",(int)Buffer);		// address for next line
+				printf("x%p = ",Buffer);		// address for next line
 				continue;
 			}
 		}
@@ -206,28 +206,26 @@ char* DumpShortBits(short Input, char Output[20])
 
 void DumpDBptr(DBinfo* DB)
 {
-	printf("DB->DBnextDB	    = %08X \n",DB->DBnextDB);
+	printf("DB->DBnextDB	    = %p \n",DB->DBnextDB);
 	printf("DB->DBfilehandle    = %04X \n",DB->DBfilehandle);
 	printf("DB->DBpgsize	    = %04X \t(%4d)\n",DB->DBpgsize,DB->DBpgsize);
-	printf("DB->DBunknown3	    = %08X \n",DB->DBunknown3);
-	printf("DB->DBunknown4	    = %08X \n",DB->DBunknown4);
+	printf("DB->DBunknown3	    = %08lX \n",DB->DBunknown3);
+	printf("DB->DBunknown4	    = %08lX \n",DB->DBunknown4);
 	printf("DB->DBnumtables     = %04X \t(%4d)\n",DB->DBnumtables,DB->DBnumtables);
-	printf("DB->DBunknown5      = %04X \n",DB->DBunknown5);
-	printf("DB->DBtableaddress  = %08X \n",DB->DBtableaddress);
+	printf("DB->DBtableaddress  = %08lX \n",DB->DBtableaddress);
 	printf("DB->DBmaxtables     = %04X \t(%4d)\n",DB->DBmaxtables,DB->DBmaxtables);
 	printf("DB->DBvflag	        = %04X \t(%4d)\n",DB->DBvflag,DB->DBvflag);
 	printf("DB->DBversion	    = %04X \t(%4d)\n",DB->DBversion,DB->DBversion);
-	printf("DB->DBunknown6	    = %04X \t(%4d)\n",DB->DBunknown6,DB->DBunknown6);
-	printf("DB->DBfreeaddress   = %08X \n",DB->DBfreeaddress);
+	printf("DB->DBfreeaddress   = %08lX \n",DB->DBfreeaddress);
 	printf("DB->DBmaxpages      = %08X \t(%8d)\n",DB->DBmaxpages,DB->DBmaxpages);
-	printf("DB->PageList1[0]    = %08X \n",DB->PageList1[0]);
-	printf("DB->PageList2[0]    = %08X \n",DB->PageList2[0]);
-	printf("DB->PageList3[0]    = %08X \n",DB->PageList3[0]);
-	printf("DB->SpareList[0]    = %08X \n",DB->SpareList[0]);
-	printf("DB->DBname          = %08X \t(%s)\n",DB->DBname,DB->DBname);
+	printf("DB->PageList1[0]    = %p \n",&DB->PageList1[0]);
+	printf("DB->PageList2[0]    = %p \n",&DB->PageList2[0]);
+	printf("DB->PageList3[0]    = %p \n",&DB->PageList3[0]);
+	printf("DB->SpareList[0]    = %p \n",&DB->SpareList[0]);
+	printf("DB->DBname          = %p \t(%s)\n",DB->DBname,DB->DBname);
 	printf("DB->DBSemaphore     = %08X \t(%8d)\n\n",DB->DBSemaphore,DB->DBSemaphore);
 
-	DumpBlock((char*) DB, 372, 0);
+	DumpBlock((char*) DB, sizeof(DBinfo), 0);
 
 }
 
@@ -235,9 +233,9 @@ void DumpJUNC(EXPR* Expr)
 {
 	// Dump a Junction record
 
-	printf("\nExpr              = x%08X \n",Expr);
-	printf("Expr->NextEXPR    = %08X \n",Expr->NextEXPR);
-	printf("Expr->PrevEXPR    = %08X \n",Expr->PrevEXPR);
+	printf("\nExpr              = x%p \n",Expr);
+	printf("Expr->NextEXPR    = %p \n",Expr->NextEXPR);
+	printf("Expr->PrevEXPR    = %p \n",Expr->PrevEXPR);
 	printf("Expr->Operator    = %04X (%5d)",Expr->Operator,Expr->Operator);
 	if (Expr->Operator == 1)
 	{
@@ -261,9 +259,9 @@ void DumpEXPR(EXPR* Expr)
 	int		FileOffset;
 	char	BinString[20];
 
-	printf("\nExpr              = x%08X \n",Expr);
-	printf("Expr->NEXT        = %08X \n",Expr->NextEXPR);
-	printf("Expr->PREV        = %08X \n",Expr->PrevEXPR);
+	printf("\nExpr              = x%p \n",Expr);
+	printf("Expr->NEXT        = %p \n",Expr->NextEXPR);
+	printf("Expr->PREV        = %p \n",Expr->PrevEXPR);
 	printf("Expr->Operator    = %04X (%5d)",Expr->Operator,Expr->Operator);
 	// bitfield operator codes:
 	if (Expr->Operator == 0x10)	// equals
@@ -283,7 +281,7 @@ void DumpEXPR(EXPR* Expr)
 
 	printf("Expr->Type        = %04X (%5d)\n",Expr->Type,Expr->Type);	 
 	printf("Expr->ExprSize    = %04X (%5d)\n",Expr->ExprSize,Expr->ExprSize);	 
-	printf("&Expr->ExprData   = %08X \n",&Expr->ExprData);
+	printf("&Expr->ExprData   = %p \n",&Expr->ExprData);
 	if (Expr->ExprSize)
 	{
 		DumpBlock((char*) &Expr->ExprData,Expr->ExprSize + 1, 0);
@@ -298,33 +296,32 @@ void DumpTDptr(TDinfo* TD,bool ShowTDef)
 	char	BinString[20];
 
 	printf("TD->TDFlags     = x%04X (%s)\n",TD->TDFlags,DumpShortBits(TD->TDFlags,BinString));
-	printf("TD->TDDBinfo    = x%08X (%s)\n",TD->TDDBinfo,TD->TDDBinfo->DBname);
+	printf("TD->TDDBinfo    = x%p (%s)\n",TD->TDDBinfo,TD->TDDBinfo->DBname);
 	// Each Index table entry is 12 bytes in length
 	FileOffset = TD->TDDBinfo->DBtableaddress + (12 * TD->TDindexOff);
 	printf("TD->TDindexOff  = x%04X \t(%08X File Offset)\n",TD->TDindexOff,FileOffset);	 
-	printf("TD->DBunknown4  = x%04X \n",TD->DBunknown4);	 
 	printf("TD->HalfPageSize= x%04X \t(%4d)\n",TD->HalfPageSize,TD->HalfPageSize);	 
 	printf("TD->Rec_plus_DB = x%04X \n",TD->Rec_plus_DB);	 
-	printf("TD->TableDefs   = x%08X \n",TD->TableDefs);	 
-	printf("TD->TDSallocBuf = x%08X \n",TD->TDSallocBuf);	 
+	printf("TD->TableDefs   = x%p \n",TD->TableDefs);	 
+	printf("TD->TDSallocBuf = x%p \n",TD->TDSallocBuf);	 
 	printf("TD->TDRecSize   = x%04X \t(%4d)\n",TD->TDRecSize,TD->TDRecSize);	 
 	printf("TD->TDRecMin    = x%04X \t(%4d)\n",TD->TDRecMin,TD->TDRecMin);	 
 	printf("TD->TDKeySize   = x%04X \t(%4d)\n",TD->TDKeySize,TD->TDKeySize);	 
 	printf("TD->TDKeyMin    = x%04X \t(%4d)\n",TD->TDKeyMin,TD->TDKeyMin);	 
-	printf("TD->TDNodePtr   = x%08X \n",TD->TDNodePtr);	
+	printf("TD->TDNodePtr   = x%p \n",TD->TDNodePtr);	
 	if (TD->TDNodePtr)
 	{
 		DumpBlock((char*) TD->TDNodePtr, 32, 0);
 	}
 	
 	printf("TD->N1_2idx     = x%04X \n",TD->N1_2idx);	 
-	printf("TD->KeyBuf1     = x%08X \n",TD->KeyBuf1);	 
+	printf("TD->KeyBuf1     = x%p \n",TD->KeyBuf1);	 
 	printf("TD->Key1Size    = x%04X \n",TD->Key1Size);
 	printf("TD->field_3A    = x%04X \n",TD->field_3A);
-	printf("TD->KeyBuf2     = x%08X \n",TD->KeyBuf2);	 
+	printf("TD->KeyBuf2     = x%p \n",TD->KeyBuf2);	 
 	printf("TD->Key2Size    = x%04X \n",TD->Key2Size);
 	printf("TD->field_42    = x%04X \n",TD->field_42);
-	printf("TD->TDKeyDefs   = x%08X \n",TD->TDKeyDefs);	 
+	printf("TD->TDKeyDefs   = x%p \n",TD->TDKeyDefs);	 
 	printf("TD->KeyDefSize  = x%04X \n",TD->KeyDefSize);	 
 	if (TD->TDKeyDefs)
 	{
@@ -360,27 +357,27 @@ void DumpTTptr(TDesc* TT, bool ShowFields)
 	Qlen	*QL;
 	char	BinString[20];	// For displaying Binary Bitfields
 
-	printf("TT Address      = x%08X\n",(int) TT);
+	printf("TT Address      = x%p\n",(void*)TT);
 	printf("TT->DBcontext   = %04X (%4d)\n",TT->DBcontext,TT->DBcontext);		
 	printf("TT->TDlocked    = %04X \n",TT->TDlocked);		
 	printf("TT->NumFields   = %04X (%4d)\n",TT->NumFields,TT->NumFields);		
 	printf("TT->TTrtd       = %04X (%4d)\n",TT->TTrtd,TT->TTrtd);					
 	printf("TT->TDrecsize   = %04X (%4d)\n",TT->TDrecsize,TT->TDrecsize);		
 	printf("TT->DBnumber    = %04X \n",TT->DBnumber);		
-	printf("TT->TTselect    = %08X \n",TT->TTselect);	
+	printf("TT->TTselect    = %p \n",(void*)TT->TTselect);	
 	if (TT->TTselect)
 	{
 		DumpEXPR(TT->TTselect);
 	}
-	printf("TT->TTfields    = %08X \n",TT->TTfields);	
+	printf("TT->TTfields    = %p \n",(void*)TT->TTfields);	
 	printf("TT->TableName   = %s \n",TT->TableName);	
 	printf("TT->TableAlias  = %s \n",TT->TableAlias);	
-	printf("TT->TDworkarea1 = %08X \n",TT->TDworkarea1);
+	printf("TT->TDworkarea1 = %p \n",(void*)TT->TDworkarea1);
 	if (TT->TDworkarea1)
 	{
 		DumpBlock((char*)TT->TDworkarea1,TT->TDrecsize, 0);
 	}
-	printf("TT->TDworkarea2 = %08X \n\n",TT->TDworkarea2);
+	printf("TT->TDworkarea2 = %p \n\n",(void*)TT->TDworkarea2);
 	if (TT->TDworkarea2)
 	{
 		//DumpBlock((char*)TT->TDworkarea2,TT->TDrecsize, 0);
@@ -409,7 +406,7 @@ void Dump1FLD(FLDdesc *FLD)		// Just dump 1 Field Descriptor
 	printf("\n");
 	printf("FLD->FLDelemID  = %04X (%d)\n",FLD->FLDelemID,FLD->FLDelemID);
 	printf("FLD->FLDlen     = %04X (%d)\n",FLD->FLDlen,FLD->FLDlen);
-	printf("FLD->FLDqlen    = %08X \n",FLD->FLDqlen);
+	printf("FLD->FLDqlen    = %p \n",FLD->FLDqlen);
 	QL = FLD->FLDqlen;
 	if (QL)
 	{
@@ -417,7 +414,7 @@ void Dump1FLD(FLDdesc *FLD)		// Just dump 1 Field Descriptor
 		//printf("     QL->QLunk1   = %d\n",QL->QLunk1);
 		printf("     QL->QfieldHd = %s\n",QL->QfieldHd);
 		printf("     QL->QHdrange = %s\n",(char*)(QL->QfieldHd+32));
-		printf("     QL->Qdata    = %08X",QL->Qdata);
+		printf("     QL->Qdata    = %p",(void*)QL->Qdata);
 		if (FLD->FLDtype == 'C')
 		{
 			printf("\t\"%s\"\n",QL->Qdata);
@@ -435,7 +432,7 @@ void Dump1FLD(FLDdesc *FLD)		// Just dump 1 Field Descriptor
 		printf("     QL->required = %c\n",QL->Qrequired);
 	}
 	printf("FLD->FLDname    = \"%s\" \n",FLD->FLDname);
-	printf("FLD->FLDdata    = %08X ",FLD->FLDdata);
+	printf("FLD->FLDdata    = %p ",(void*)FLD->FLDdata);
 	if (FLD->FLDtype == 'C')
 	{
 		printf("\t\"%s\"\n",FLD->FLDdata);

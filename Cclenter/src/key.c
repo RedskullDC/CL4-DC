@@ -262,12 +262,15 @@ KEY_Elist *KeyF_Construct(char *FileName, int (*ReadFunction)(void), KEYFUNC *Ke
 	Elist		*v6;
 	Elist		*KeyElist;
 	
-    key_el = (KEY_Elist *)mmalloc(20u);
+    //key_el = (KEY_Elist *)mmalloc(20u);
+    key_el = (KEY_Elist *)mmalloc(sizeof(KEY_Elist));
     KeyElist = elist_Create();
 	
 	//DumpBlock(KeyElist, sizeof(Elist));
 
-	KeyElem = (KEY_Elem *)mmalloc(20u);
+	//KeyElem = (KEY_Elem *)mmalloc(20u);
+	KeyElem = (KEY_Elem *)mmalloc(sizeof(KEY_Elem));
+
     KeyElem->lx_CRstart = 0xFFu;
     KeyElem->lx_CRend	= 0xFFu;
     KeyElem->lx_elist	= elist_Create();

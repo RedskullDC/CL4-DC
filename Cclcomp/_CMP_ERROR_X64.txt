@@ -1,0 +1,33 @@
+Breakpoint 1, _cmp (PageBuffer=0x5555557c5ca0, N1_2idx=2, TDptr=0x5555557c3d70, ArgType=9, a5=0x7fffffffdb4c) at ../Ccl4src/scanpg.c:26
+26              printf("_cmp(PAGEptr: x%08X, Index: x%02X (%4d),TDptr: x%08X, ArgType: x%02X,a5: x%08X) : " ,PageBuffer,N1_2idx,N1_2idx,TDptr,ArgType,a5);
+(gdb) x 0x5555557c5ca0
+0x5555557c5ca0: 0x00000006
+
+(gdb) x/128  0x5555557c5ca0
+0x5555557c5ca0: 0x00000006      0x557c5cc6      0x00005555      0x00000002
+0x5555557c5cb0: 0x00005555      0x557c5ce4      0x00005555      0x00000680
+0x5555557c5cc0: 0x00000000      0x00000000      0x00001800      0x00001900
+0x5555557c5cd0: 0x00001400      0x00001d00      0x00001e00      0x00000b00
+0x5555557c5ce0: 0x02001c00      0xbe711271      0x1c737272      0x8c74dd73
+0x5555557c5cf0: 0xffffffff      0xffffffff      0xffffffff      0xffffffff
+
+
+COURDB1: 
+
+0000F000 80 06 00 00 00 00 00 00 00 00 00 00 00 18 00 00 ................
+0000F010 00 19 00 00 00 14 00 00 00 1D 00 00 00 1E 00 00 ................
+0000F020 00 0B 00 00 00 1C 00 02 71 12 71 BE 72 72 73 1C ........q.q.rrs.
+0000F030 73 DD 74 8C FF FF FF FF FF FF FF FF FF FF FF FF s.t.............
+0000F040 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF ................
+
+
+in _cmp:
+
+tdef points to nonsense
+
+	KeyDefs = TDptr->TDKeyDefs;
+	KeySize = TDptr->KeyDefSize;
+	
+	tdef	= TDptr->TableDefs;						// Assume that pointer is valid
+	TDFtype = tdef->TDFtype;
+	*a5 = 0;										// update caller mem directly

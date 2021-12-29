@@ -164,7 +164,8 @@ Elist *ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncAr
                 continue;
             case 4:
 				//printf("ReadKeyList case:4, New element added. Lex_KeyType = %d, Lex_CommRStart = %c, Lex_CommREnd = %c \n", Lex_KeyType, Lex_CommRStart, Lex_CommREnd);
-				lxelem				= (KEY_Elem *)mmalloc(20u);
+				//lxelem				= (KEY_Elem *)mmalloc(20u);
+				lxelem				= (KEY_Elem *)mmalloc(sizeof(KEY_Elem));
                 lxelem->lx_KeyType	= Lex_KeyType;
                 lxelem->lx_CRstart	= Lex_CommRStart;
                 lxelem->lx_CRend	= Lex_CommREnd;
@@ -185,7 +186,7 @@ Elist *ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncAr
                     exit(1);
                 }
 				//printf("ReadKeyList case:5, FN name = %s\n",Lex_CommFunctionName);
-                v5 = (KEYPTR *)mmalloc(8u);
+                v5 = (KEYPTR *)mmalloc(sizeof(KEYPTR));
                 v5->Type = 1;  // signify that first field is a function pointer
                 v6 = Function_Bind(Lex_CommFunctionName, a2);// a2 and KfuncArr are both set to global FTable[] by caller
                 v5->u_Ptr.Func = v6;
@@ -204,7 +205,7 @@ Elist *ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncAr
                 break;
             case 6:                             // Lex returned 5. String Value
 				//printf("ReadKeyList case:6, Lex_CommString = %s\n",Lex_CommString);
-                v5 = (KEYPTR *)mmalloc(8u);
+                v5 = (KEYPTR *)mmalloc(sizeof(KEYPTR));
                 v5->Type = 2;
                 v5->u_Ptr.Name = mstrcpy(Lex_CommString, 0);// string pointer type
 				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist
@@ -212,7 +213,7 @@ Elist *ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncAr
                 break;
             case 7:                             // Lex returned 6. Numeric Value
 				//printf("ReadKeyList case:7, Lex_CommDigit = %d\n",Lex_CommDigit);
-                v5 = (KEYPTR *)mmalloc(8u);
+                v5 = (KEYPTR *)mmalloc(sizeof(KEYPTR));
                 v5->Type = 4;
                 v5->u_Ptr.Count = Lex_CommDigit; // int type
 				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist
@@ -221,7 +222,7 @@ Elist *ReadKeyList(Elist *ListHhead, FILE *stream, KEYFUNC *a2, KEYFUNC *KfuncAr
             case 2:                             // Lex returned 1.  "{" was detected, which means a sub-array of keys.
 				//printf("ReadKeyList case:2, Adding a new sub-list\n");
                 v11 = elist_Create();
-                v5 = (KEYPTR *)mmalloc(8u);
+                v5 = (KEYPTR *)mmalloc(sizeof(KEYPTR));
                 v5->Type = 3;					// Elist* type
                 v5->u_Ptr.List = ReadKeyList(v11, stream, a2, KfuncArr);		// *** recursion here ***
 				v14 = ((KEY_Elem *)ListHhead->Prev->UserData)->lx_elist;		// Add to the sub-elist

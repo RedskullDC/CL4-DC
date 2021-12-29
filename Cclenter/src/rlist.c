@@ -15,7 +15,11 @@ RLARR *_rlist(RLIST *rlist, short count, int RecSize)
 	
     for ( rlarr = 0; count > 0; rlist++ )
     {
-        rlarr = (RLARR *)ealloc(RecSize + 36, rlarr);	// chained structure
+        //rlarr = (RLARR *)ealloc(RecSize + 36, rlarr);	// recsize + sizeof(RLARR)  chained structure
+		// 36 on X86, 40 on X64
+
+        rlarr = (RLARR *)ealloc(RecSize + sizeof(RLARR), rlarr);	// recsize + sizeof(RLARR)  chained structure
+
 		// rlarr->NextRLARR is implicitly set to previous RLARR by ealloc();
         rlarr->PageNo			= rlist->PageNo;
         rlarr->Depth			= rlist->Depth;

@@ -15,7 +15,9 @@ int* ltoms(int* a1, int a2)                 // Long to Micro$oft conversion
 	//printf("ltoms(a2 = x%08X) returns x%08X\n",a2,*(int*)a1);
 	//return a1;
 
-	*a1 = __bswap_constant_32(a2);
+	//*a1 = __bswap_constant_32(a2);
+	*a1 = __builtin_bswap32(a2);
+	
 	//printf("ltoms( a2 = x%08X, swapped == x%08X)\n" , a2, *a1);
 	return a1;
 

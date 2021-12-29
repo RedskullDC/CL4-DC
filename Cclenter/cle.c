@@ -8,6 +8,7 @@
 
 #include <stdio.h>		// printf etc.
 #include <stdlib.h>		// getenv, putenv
+#include <stddef.h>		// offsetof macro etc.
 #include <fcntl.h>
 //#include <curses.h>		// for terminal handling
 #include <unistd.h>
@@ -27,7 +28,7 @@
 #include <setjmp.h>     /* jmp_buf, setjmp, longjmp */
 #include <dlfcn.h>		// dynamic libs		
 
-#include "UTIL_FUNCTIONS.h"
+//#include "UTIL_FUNCTIONS.h"
 // Test some undocumented CL4 lib routines
 #include "DBdefs.h"
 #include "lvarnames.h"
@@ -323,6 +324,7 @@
 // DC extension
 #include "popenlib.c"
 #include "plibcall.c"
+#include "show_structs.c"	// show structure sizes and field offsets for X86/X64 compat.
 
 void setCL_ERROR(int ErrorCode)
 {
@@ -443,6 +445,7 @@ int main(int argc, char **argv, char** a3)
 		if ( !v30 )
 		{
 			dateCheck(0);
+			show_structs();		// Debug code for checking internal structure sizes
 			Key_Debugem();
 		}
 	}

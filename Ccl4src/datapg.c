@@ -70,6 +70,8 @@ PAGE* _datapg(TDinfo *TDptr, unsigned int PageNo)
 	char PageType;
 	unsigned short NumEntries;
 
+	//printf("_datapg(TDptr = x%08X, PageNo = %d)\n" ,TDptr,PageNo);
+
 	DBptr = TDptr->TDDBinfo;
 	if ( DBptr->DBmaxpages <= PageNo )           
 		derror(44, 0, TDptr);

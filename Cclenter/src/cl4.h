@@ -380,7 +380,7 @@ void	oprint(FILE *s, const char *format, ...);
 void	syserror(const char *format, ...);
 void	cgiprint(int ErrorCode);
 void*	mfree_0(void *ptr);
-void*	mrealloc(void *ptr, int a2, size_t size);
+void*	mrealloc(void *ptr, size_t a2, size_t size);
 short*	itoms(short* Targetvar, short a2);
 short	_cmpattrib(char *src, short TDFsize, char *Buffer, short TDFsize2, short TDFtype);
 short	numsz(char *a1, unsigned int a2);

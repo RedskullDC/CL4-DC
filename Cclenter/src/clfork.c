@@ -35,7 +35,8 @@ int _ltransfer(int DBno, int NewPID)				// transfer lock records to new PID afte
         if ( v4 )
             derror(v4, DBptr, 0);
         PID = getpid();
-        v6 = ltoms((int *)&td2.TableIndex, PID);
+        v6 = ltoms((int *)&td2.TableIndex, PID);	// temporary use of TD2 area for Expression Data
+
         for ( expr = newexpr(115, 0x10, (char *)v6, 4); DBptr; DBptr = DBptr->DBnextDB )	// ** see below for locks descrip **
         {
             if ( DBptr->DBvflag > 3 )	// only V4 DBases have a locks table

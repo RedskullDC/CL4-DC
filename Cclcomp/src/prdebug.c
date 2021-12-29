@@ -420,8 +420,8 @@ void prxt(XTAB *xtab, bool isHDTXT)
     prtfid(xtab->VarExpNo);
     putchar(' ');
     
-	if ( xtab->widthEXP )
-		prtfid(xtab->widthEXP);
+	if ( xtab->WidthEXP )
+		prtfid(xtab->WidthEXP);
     else
 		printf("%d", xtab->width);
     
@@ -1239,8 +1239,8 @@ void prdatefield(unsigned short ENTno, unsigned short XTno, PRTAB *pr)
 
 		if ( xtb )
         {
-			if ( xtb->widthEXP )
-				prtfid(xtb->widthEXP);
+			if ( xtb->WidthEXP )
+				prtfid(xtb->WidthEXP);
 			else
 				print("%d.", xtb->width);
             print("\n");

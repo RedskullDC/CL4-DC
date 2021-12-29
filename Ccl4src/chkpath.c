@@ -104,14 +104,16 @@ bool canopen(char *FileName, unsigned short perms)
 	//eprint("canopen(%s, perms = x%02X)\n",FileName,perms);
 	if ( strlen(FileName) <= 127 )
 	{
-		if ( __xstat64(3, FileName, &stat_buf))		// returns 0 to indicate no error?
+		if ( __xstat64(_STAT_VER, FileName, &stat_buf))		// returns 0 to indicate no error?
 			return false;
+		//eprint("canopen 109\n");
 
 		if (!geteuid()||!getuid())	// effectively UMASK 000?
 			return true;
 
 		//eprint("canopen 92 (%s, permsreq = x%02X (%s), fileperms = '%s' )\n",FileName,perms,permbits(Permsreq, perms), permbits(PermBuff, stat_buf.st_mode));
 
+		//eprint("canopen 115\n");
 		if ( stat_buf.st_uid == getuid() )				// st_uid;     /* user ID of owner */	true if current user owns the file
 			v3 = perms;
 		else if (stat_buf.st_gid == getgid())			// st_gid;     /* group ID of owner */	true if current user is in same group
@@ -177,7 +179,8 @@ char *chkpath(char *a1, char *include, char *Name, int a4, unsigned short perms)
 	char *v17;
 
 	bool v18;
-	char Buffer[256];
+	//char Buffer[256];
+	char Buffer[8192];	// should be sizeof(PATH_MAX)?
 
 	//eprint("chkpath(a1 = \"%s\", include %s, Name %s, a4 %d, perms %d)\n",a1,include,Name,a4,perms);
 	Buffer[0] = 0;
@@ -232,6 +235,8 @@ char *chkpath(char *a1, char *include, char *Name, int a4, unsigned short perms)
 					cdbcpystr(file_0, v10, "/", v17, 0);
 				else
 					cdbcpystr(file_0, cwd, "/", v10, "/", v17, 0);
+				
+				//eprint("chkpath(file_0 = \"%s\")\n",file_0);
 
 				rmdots(file_0);
 				if (chkperm(file_0, a4, perms))

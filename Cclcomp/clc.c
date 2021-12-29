@@ -5,6 +5,7 @@
 
 #include <stdio.h>		// printf etc.
 #include <stdlib.h>		// getenv, putenv
+#include <stddef.h>		// offsetof macro etc.
 #include <fcntl.h>
 //#include <curses.h>		// for terminal handling
 #include <termcap.h>
@@ -20,7 +21,7 @@
 #include <sys/times.h>  // for times()
 #include <setjmp.h>     /* jmp_buf, setjmp, longjmp */
 
-//#define DEBUG_DUMP		// allow dump routines to send tables to stdio
+#define DEBUG_DUMP		// allow dump routines to send tables to stdio
 //#define DEBUG_OUTPUT		// allow dump routines to send various stuff stdio
 //#define CL4_STRICT		// Only allow canonical CL4 functionality, no extensions
 //							   ** see also - extendDC command line flag.
@@ -35,6 +36,7 @@
 #ifdef DEBUG_DUMP
 #include "UTIL_FUNCTIONS.h"
 #endif
+#include "show_structs.c"	// show structure sizes and field offsets for X86/X64 compat.
 
 // source files in same order as clcomp
 #include "loadent.c"
@@ -286,6 +288,8 @@ int main(int argc, char **argv)
 	int		NumVars;
 	int		jmp_error;
 	int		Verbose = 0;
+
+	show_structs();		// Debug code for checking internal structure sizes
 
 	//printf("sizeof(reswords) = %d\n",sizeof(reswords)/sizeof(ReservedWord));
 

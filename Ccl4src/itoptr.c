@@ -31,7 +31,7 @@ char * _itoptr(PAGE *pg,short N1_2idx)
 	char	*result;
 	short	*offset;
 
-	//printf("_itoptr(PAGE: x%08X, Index: x%02X (%4d)\n" ,pg,N1_2idx,N1_2idx);
+	//printf("_itoptr(PAGE: x%08X, Index: x%02X (%4d), PT=x%02X \n" ,pg,N1_2idx,N1_2idx, pg->pgData.PageType & 0xc0 );
 
 	if ( pg->pgData.PageType & 0x40 )
 	{
@@ -48,7 +48,7 @@ char * _itoptr(PAGE *pg,short N1_2idx)
 	}
 	else
 	{
-		result = &pg->header.TabEnd[pg->header.tsrs.RecSize * N1_2idx];
+		result = &pg->header.TabEnd[pg->header.tsrs.RecSize * N1_2idx];  /// problem here
 	}
 	//printf("_itoptr: returned x%08X\n",result);
 	return result;

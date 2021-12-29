@@ -1,10 +1,15 @@
-head	1.2;
+head	1.3;
 access;
 symbols;
 locks
-	leslie:1.2; strict;
+	leslie:1.3; strict;
 comment	@ * @;
 
+
+1.3
+date	2021.07.20.10.36.00;	author leslie;	state Exp;
+branches;
+next	1.2;
 
 1.2
 date	2015.01.07.02.54.33;	author leslie;	state Exp;
@@ -22,17 +27,18 @@ desc
 @
 
 
-1.2
+1.3
 log
-@old version
+@prior to splitting common code off to structures.h
 @
 text
 @#ifndef DBDEFS
 #define DBDEFS
 
-#include <pthread.h>	// for pthread specific stuff below
-#include <time.h>       // for struct tm
-#include <sys/times.h>  // for times()
+#include <pthread.h>		// for pthread specific stuff below
+#include <time.h>			// for struct tm
+#include <sys/times.h>		// for times()
+#include "structures.h"		// common file with structure definitions
 
 //*************************************************************
 // comment out to use our own local versions of these variables
@@ -50,20 +56,24 @@ text
 #define M_INT(x) ((unsigned int)(x << 24) | (unsigned int)((x >> 8) & 0x0000FF00 )| (unsigned int)((x << 8)& 0x00FF0000)| (unsigned int)((x >> 24)& 0xFF))
 
 // macros for accessing CL4 tables easily
-//#define PTARR(x) (x ? &ptarr.TableAddr[x - 1] : 0)	// is a *function* in REAL clcomp
-#define ENARR(x) (x ? &enarr.TableAddr[x - 1] : 0)
-#define XTARR(x) (x ? &xtarr.TableAddr[x - 1] : 0)
-#define PRARR(x) (x ? &prarr.TableAddr[x - 1] : 0)
-#define KXARR(x) (x ? &kxarr.TableAddr[x - 1] : 0)
-#define XFARR(x) (x ? &xfarr.TableAddr[x - 1] : 0)
+//#define PTARR(x) (x ? &ptarr.TableAddr[x - 1] : 0)	// PTAB - Program instructions - is a *function* in REAL clcomp
+#define ENARR(x) (x ? &enarr.TableAddr[x - 1] : 0)	// ENATB - Expressions 
+#define XTARR(x) (x ? &xtarr.TableAddr[x - 1] : 0)	// XTAB  - Screen display / accept fields
+#define PRARR(x) (x ? &prarr.TableAddr[x - 1] : 0)	// PRTAB - Print variables/fields
+#define KXARR(x) (x ? &kxarr.TableAddr[x - 1] : 0)	// KXTAB - Create temp tables
+#define XFARR(x) (x ? &xfarr.TableAddr[x - 1] : 0)	// XFTAB - Copy (xfer) from table to table
 #define RDARR(x) (x ? &rdarr.TableAddr[x - 1] : 0)	// RDTAB re-display
 #define RTARR(x) (x ? &rtarr.TableAddr[x - 1] : 0)	// relation specifier (join etc.)
 #define RAARR(x) (x ? &raarr.TableAddr[x - 1] : 0)	// range specifier
 #define SFARR(x) (x ? &sfarr.TableAddr[x - 1] : 0)	// file specifier
 
+#define STRARR(x) (x ? &strarr.StringTable[x - 1] : 0)	// file specifier
+
+#define max_it &itab[no_itabs]
+
 typedef struct 
 {
-	short	field_0;
+	short	KXFlags;
 	short	WhereEXP;
 	short	NumTTs;
 	short	field_6;
@@ -83,6 +93,25 @@ typedef struct
 
 typedef struct 
 {
+	char	*AttrName;
+	short	*AttrData;
+}TCSCRATTR;
+
+typedef struct 
+{
+	char	*AttrName;
+	char	**AttrStrData;
+}TCSTRATTR;
+
+typedef struct 
+{
+	char	*AttrName;
+	int		*AttrBool;
+
+}TCBOOLATTR;
+
+typedef struct 
+{
 	short	RangeType;
 	short	RangeFrom;
 	short	RangeTo;
@@ -93,17 +122,17 @@ typedef struct
 
 typedef struct 
 {
-	short	field_0;
-	short	field_2;
-	short	field_4;
-	short	field_6;
+	short	cmd_flags;		// command flag bits
+	short	PRTno;			// PRTAB no. describing variable to be read/written
+	short	AliasEnt;		// Expression number describing Aliasname
+	short	FileNameEnt;	// Expression number describing filename
 }SFTAB;
 
 typedef struct 
 {
-	short	field_0;
+	short	FCBFlags;
 	short	field_2;
-	int		field_4;
+	int		child_PID;		// child PID for pipes
 	int		field_8;
 	int		field_C;
 	FILE*	RD_FILE;
@@ -123,12 +152,12 @@ typedef struct
 	int		TTno_from;
 }XFTAB;
 
-typedef struct 
+typedef struct				// Label Definitions
 {
-	short	NameLen;
-	short	field_2;
+	short	NameLen;		// Length of LabelName that follows structure
+	short	PTno;			// PTAB#
 	char	LabelName[2];	// Variable size structure
-}LTAB;
+}LTAB;	// sizeof() == 6
 
 typedef struct 
 {
@@ -151,31 +180,66 @@ typedef struct
 
 typedef struct 
 {
-	short	field_0;
-	short	field_2;
+	short	LockType;
+	short	OpType;
 	short	WhereEXP;
 	short	field_6;
+//	int		TTno;
+//	short	field_C;
+//	short	field_E;
+//	short	NextRT;
+//	short	field_12;
 	int		TTno;
-	short	field_C;
-	short	field_E;
-	short	NextRT;
-	short	field_12;
+	short	enleft;			// Pointer to expression.
+	short	enright;		// Pointer to expression. Used by JOIN and REPLACE
+	short	NextRT;			// chain to next RTAB (if required)
+	short	field_12;		// padding
 }RTAB;
+
+//=============================================
+
+// ENTAB defs
+
+typedef struct
+{
+	short Enoper;
+	short RecNo;
+} ENOP;
+
+typedef struct
+{
+	short TTno;
+	short VarNum;
+} ENREF;
+
+typedef union
+{
+
+	ENOP	Enop;
+	ENREF	Enref;
+	float	float4;
+	long	long8;
+	char	char16[4];   
+
+} ENUN;
 
 typedef struct 
 {
 	short	entype;
-	short	field_2;
-	short	TTno;
-	short	RecNo;
-	short	Dest;
-	short	Src;
+	short	extOpCode;		// unused in real CL4 - could be used for extended opcodes??
+	//short	TTno;			// enum which can hold few diff types
+	//short	RecNo;
+	ENUN	Enun;
+	short	enleft;			// LVALUE	Dest	tree structue pointing at other expressions
+	short	enright;		// RVALUE	Src
 }ENTAB;
+
+//=============================================
 
 typedef struct 
 {
-	short	field_0;
-	short	field_2;
+	short	RDTFlags;
+	short	ENTno;			// expression describing single field
 	int		TTno;
 	short	NextRD;
 	short	field_A;
@@ -184,27 +248,26 @@ typedef struct
 typedef struct VARTREE VARTREE;
 struct VARTREE
 {
-	short	field_0;
+	short	VarNo;
 	short	field_2;
 	char	*VarName;
 	VARTREE	*VarPrev;
 	VARTREE	*VarNext;
 };
 
-typedef struct TYPE24 TYPE24;
-
-struct TYPE24
+typedef struct SCR SCR;	// same as type24
+struct SCR
 {
 	short	PT_start;	// LineNo
-	short	PT_end;	// LineNo2
-	TYPE24	*NextT24;
+	short	PT_end;		// LineNo2
+	SCR		*NextSCR;
 };
 
 typedef struct ONESC ONESC;
 
 struct ONESC
 {
-	 short	field_0;
+	 short	OESCFlags;
 	 short	BlockNo;
 	 short	KeyNumber;
 	 short	field_6;
@@ -214,60 +277,62 @@ struct ONESC
 
 typedef struct 
 {
-	short	Flags      ;
-	short	Attr       ;
-	short	ScrAttrib  ;
-	short	FLDnum     ;		// Number displayed on screen when Field Numbering is *on*	short	field_6    ;
-	short	Width      ;
-	short	width      ;
-	short	PCol	    ;
-	short	PLine		;
-	short	ACol		;
-	short	ALine	   ;
-	short	C_X		   ;
-	short	C_Y		   ;
-	ONESC	*onesc      ;
-	short	RangeID    ;
-	short	field_1E   ;
-	int		field_20   ;
-	short	VarExpNo   ;
-	short	widthEXP   ;
-	short	PCol_exp   ;
-	short	PLine_exp  ;
-	short	ACol_exp   ;
-	short	ALine_exp  ;
-	short	Prompt_exp ;
-	short	field_32   ;
-}XTAB;
+	short	Flags      ;		// 0
+	short	Attr       ;		// 2
+	short	ScrAttrib  ;		// 4
+	short	FLDnum     ;		// 6	Number displayed on screen when Field Numbering is *on*	short	field_6    ;
+	short	Width      ;		// 8
+	short	width      ;		// 10
+	short	PCol	    ;		// 12
+	short	PLine		;		// 14
+	short	ACol		;		// 16
+	short	ALine	   ;		// 18
+	short	C_X		   ;		// 20
+	short	C_Y		   ;		// 22
+	ONESC	*onesc      ;		// 24
+	short	RangeID    ;		// 28
+	short	field_1E   ;		// 30
+	char*	field_20   ;		// 32
+	short	VarExpNo   ;		// 36
+	short	widthEXP   ;		// 38
+	short	PCol_exp   ;		// 40
+	short	PLine_exp  ;		// 42
+	short	ACol_exp   ;		// 44
+	short	ALine_exp  ;		// 46
+	short	Prompt_exp ;		// 48
+	short	field_32   ;		// 50
+}XTAB;		// sizeof = 52 (64 on X64)
+
+typedef struct EXPR EXPR;		// forward ref
 
 typedef struct //(sizeof=0x48)
 {
-		int		field_0;		//0
+		int		BTFlags;		//0		not set in clcomp
 		short	EndLine;		//4
 		short	fmts;			//6
 		short	StartLine;		//8
 		short	TTno;			//0A
 		short	Scrs;			//0C
-		short	field_E;		//0E
-		int		field_10;		//10
+		short	field_E;		//0E	padding
+		EXPR	*EXPR;			//10
 		ONESC	*On_delete;		//14
 		ONESC	*On_exit;		//18
 		ONESC	*On_excep;		//1C
 		ONESC	*On_entry;		//20
-		TYPE24	*TYPE24;		//24
+		SCR		*Screens;		//24	screen ptr
 		char	SrchMode;		//28
 		char	Curr_Mode;		//29
 		char	Maintain[7];	//2A
 		char	BlockName[21];	//31
-		short	field_46;		//46
+		short	field_46;		//46	padding
 }BTAB;
 
 typedef struct		//(sizeof=0x8)
 {
 		short	SrcLineNo;
 		short	OpCode;
-		short	Operand;
-		short	TABno;
+		short	Operand;	// multi-purpose field. Mainly used by "set" commands
+		short	TABno;		// reference to another table. depends on OpCode type.
 }PTAB;
 
 typedef struct INCLUDE INCLUDE;
@@ -276,10 +341,10 @@ struct INCLUDE
 {
 		short	LastLine;
 		short	field_2;
-		FILE	*PrevFILE;
+		FILE	*filePTR;
 		char	*FileName;
-		INCLUDE	*field_C;
-		INCLUDE	*field_10;
+		INCLUDE	*parentINC;
+		INCLUDE	*childINC;
 };
 
 typedef struct 
@@ -289,7 +354,6 @@ typedef struct
 	char	*StringTable;
 } CLStrArray;
 
-typedef struct EXPR EXPR;		// forward ref
 
 typedef struct 
 	{
@@ -311,7 +375,7 @@ typedef struct
 	char	*FLDname;	//12	// Ptr to Field Name
 	char	*FLDdata;	//16	// Data area, gets filled when recs read
 	char	FLDtype;	//20	// Field Type
-	char	field_15;	//21
+	char	field_15;	//21	// not set, but clcomp examines!!!
 	char	FLDunk7;	//22
 	char	FLDunk8;	//23	// 3 bytes unused? sizeof() = 24   x18
 	} FLDdesc;
@@ -337,13 +401,8 @@ typedef struct
 	int		DBnumber;		//x0C	12		Associated DBnumber
 	EXPR*	TTselect;		//x10	16		ptr to Select Expression
 	FLDdesc	*TTfields;		//x14	20		Pointer to an Array of FieldDescriptors
-	char	TableName[8];	//x18	24		Limited Table name
-	int		DBunknown6;		//x20	32		Ptr to -> ??
-	int		DBunknown7;		//x24	36		integer
-	int		DBunknown8;		//x28	40		Ptr to -> ??
-	char	DBunknown9;		//x2C	44		??
-	char	TableAlias[4];	//x2D	45		Short Table Alias name
-	char	Unkspace[19];	//x31	49		// unknown space
+	char	TableName[21];	//x18	24		Limited Table name
+	char	TableAlias[23];	//x2D	45		Short Table Alias name
 	char*	TDworkarea1;	//x44	68		Ptr to work area - (RecSize + 1)
 	char*	TDworkarea2;	//x48	72		Ptr to work area - (RecSize + 1)
 	short	TableCRC;		//x4C	76		CRC the data table for accuracy
@@ -373,16 +432,16 @@ struct DBinfo{
 	DBinfo	*DBnextDB;		//x00	0		PTR to next DBinfo structure if linked (Joins?)
 	short	DBfilehandle;	//x04	4		File Handle for DBase file
 	short	DBpgsize;		//x06	6		Short PageSize??
-	int		DBunknown3;		//x08	8
-	int		DBunknown4;		//x0C	12
+	long	DBunknown3;		//x08	8		unused
+	long	DBunknown4;		//x0C	12		unused
 	short	DBnumtables;	//x10	16		Number of tables in DBase
 	short	DBunknown5	;	//x12	18		
-	int		DBtableaddress;//x14	20		00000020 Offset in file of table defs
+	long	DBtableaddress;//x14	20		00000020 Offset in file of table defs
 	short	DBmaxtables;	//x18	24		Maximum number of Tables allowed
 	short	DBvflag;		//x1A	26		VFLAG Volume Bitmap offset ??
 	short	DBversion;		//x1C	28		Version type ($06e6)
 	short	DBunknown6;		//x1E	30
-	int		DBfreeaddress;	//x20	32		FreeAddress - Start of Data??
+	long	DBfreeaddress;	//x20	32		FreeAddress - Start of Data??
 	int		DBmaxpages;		//x24	36		Maximux grow size of DB in # pages
 	int		PageList1[16];	//x28	40		unknown space
 	int		PageList2[14];	//x68	104		unknown space
@@ -391,7 +450,7 @@ struct DBinfo{
 	int		DBopenflg;		//x15C	348		DB open ?
 	int		Unkspac4[3];	//x160	352		unknown space
 	char	*DBname;		//x16C	364		Ptr to full pathname
-	int		DBSemaphore;	//x170	368		Set to ZERO by _rdhdr in V4.4 (not int V4.3)
+	int		DBSemaphore;	//x170	368		Set to ZERO by _rdhdr in V4.4 (not in V4.3)
 	};			// returned by _chkdb(DBno)
 
 // DBinfo structure is (x174) 372 bytes in length (in CL v4.3, v4.4 anyway)
@@ -401,7 +460,7 @@ typedef struct SALLOCBUF SALLOCBUF;	// fwd ref
 
 typedef struct
 	{
-	short		field_0;		//x00	0		int 00000049 ?    Bitfield - 
+	short		TDFlags;		//x00	0		int 00000049 ?    Bitfield - 
 	short		DBunknown2;		//x02	2		?    Bitfield - 
 	DBinfo		*TDDBinfo;		//x04	4		ptr -> Controlling DBinfo structure
 	short		TDindexOff;		//x08	8		short 00000011 (Offset into Index Table)
@@ -490,7 +549,9 @@ typedef struct
 	short	Depth;
 }HDRTABLE;
  
- // Record in "tables" TD0:
+#pragma pack(push, 1)
+
+// Record in "tables" TD0:
 typedef struct
 {
 	char	TableName[22];		//x00	0
@@ -510,6 +571,15 @@ typedef struct
 	short			TDFsize;
 }TD1REC;
 
+//structure for "lock" table entries  TD2 
+// pragmas stop GCC trying to align the PID field to a 4 byte boundary
+typedef struct 
+{		
+	unsigned char	TableIndex;
+	char			KeyBuff[128];
+	int				PID;
+}TD2REC;
+
 //structure for "element" table entries 
 typedef struct 
 {		
@@ -521,7 +591,7 @@ typedef struct
 	char			Required;
 	char			Unused;
 }ELEMENTREC;	// sizeof(76)
-
+#pragma pack(pop)
 
 typedef struct 
 {
@@ -539,146 +609,141 @@ typedef struct
 	time_t	TimeT;
 }TRANSLOG;	//        struc ; (sizeof=0x20) [32 bytes]
 
-// Another structure used to index 'field' entries
-typedef struct FIELD FIELD; //forward ref
-struct FIELD
-{
-	FIELD	*NextFIELD;
-	short	TDFentry;
-	short	TDFsize;
-	short	TDFtype;
-	short	field_A;
-};
-
-//structure for "lock" table entries  TD2 
-// pragmas stop GCC trying to align the PID field to a 4 byte boundary
-#pragma pack(push, 1)
-typedef struct 
-{		
-	unsigned char	TableIndex;
-	char			KeyBuff[128];
-	int				PID;
-}TD2REC;
-#pragma pack(pop)
-
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   PTAB *TableAddr;
 }PTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   64 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   ENTAB *TableAddr;
 }ENTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   65 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   XTAB *TableAddr;
 }XTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   66 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   RTAB *TableAddr;
 }RTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   67 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   RATAB *TableAddr;
 }RATAB_ArrPtr;
-#pragma pack(pop)
 
-/*   68 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   XFTAB *TableAddr;
 }XFTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   69 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   SFTAB *TableAddr;
 }SFTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   70 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   PRTAB *TableAddr;
 }PRTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   71 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   RDTAB *TableAddr;
 }RDTAB_ArrPtr;
-#pragma pack(pop)
 
-/*   72 */
-#pragma pack(push, 1)
 typedef struct 
 {
   short MaxAvail;
   short NextElement;
   KXTAB *TableAddr;
 }KXTAB_ArrPtr;
+
+#pragma pack(push, 1)
+typedef struct
+{
+  int	PageNo;
+  short Depth;
+  short field_6;
+}RLIST;
 #pragma pack(pop)
+
+//===================================================================
+
+//PAGE defs
+#pragma pack(push, 1)
+
+typedef union
+{
+	char*	TabStart;
+	int		RecSize;
+} TSRS;
 
 typedef struct 
 {
-	short	NumEntries;		//Variable length structure. Depends on page size
-	short	field_2;		//first 16bytes are calculated when page is loaded, and depend on PageType value
-	char	*DataStart;			//
-	char	*TabStart_or_RecSize;
-	char	*TabEnd;
-	char	PageType;			// This is first byte stored on a page on disk
-	char	field_11;
-	char	field_12;
-	char	field_13;
+	short	NumEntries; 
+	short	field_2;
+	char*	DataStart;
+	TSRS	tsrs;
+	char*	TabEnd;
+} PAGEHDR;
+
+typedef struct 
+{
+	unsigned short	PageType;			// This is first byte stored on a page on disk
+	unsigned short	field_12;
 	char	field_14;
 	char	field_15;
 	char	field_16;
 	char	field_17;
 	char	field_18;
 	char	field_19;
-	int		field_1A;			// ; Data normally starts here
+	short	field_1A;			// ; Data normally starts here
+} PAGEDATA;
+
+typedef struct 
+{
+	PAGEHDR		header;
+	PAGEDATA	pgData;
 }PAGE;	//(sizeof=0x1E)
+
+// pragmas stop GCC trying to re-align some fields to 4 byte boundaries!!
+typedef struct 
+{
+	short	DBversion;
+	short	DBpgsize;
+	int		DBmaxpages;
+	int		DBfreeaddress;
+	short	DBnumtables;
+	int		DBtableaddress;
+	short	DBvflag;
+	short	DBmaxtables;
+	char	Unused[10];
+
+}DBhdr;		// Database header data
+#pragma pack(pop)
+
+//====================================================================
 
 struct EXPR{
 	EXPR	*NextEXPR;			//struc ; (sizeof=0x10   (16))
@@ -727,34 +792,33 @@ typedef struct
 	int		Rsv;
 } ReservedWord;
 
-typedef struct SA30 SA30; //forward ref
-struct SA30
+#pragma pack(push, 1)
+typedef struct REFR REFR;	// forward ref
+struct REFR
 {
-	SA30	*NextSA30;
-	short	field_4;
-	short	field_6;
+  REFR **Data;
+  char *Offset;
 };
+#pragma pack(pop)
 
 // sallocbuff all a bit of a mystery at moment
-struct SALLOCBUF{
-	SALLOCBUF	*NextSA;
-	int			field_4;
-	//short		field_4;
-	//short		field_6;
-	short		field_8;
-	short		field_A;
-	int			field_C;
-	int			field_10;
-	int			field_14;
-	int			field_18;
-	int			field_1C;
-	int			field_20;
-	int			field_24;
-	int			field_28;
-	int			field_2C;
-	SA30		*field_30;
+struct SALLOCBUF
+{
+  REFR *DataPtr;
+  short field_4;		// is used
+  short MaxRecs2;
+  short MaxRecs1;
+  //short field_A;
+  REFR refr;
+  REFR **BufferEnd;
+  NODE *NodeArr[6];
+  RLIST *RL_Head;
+  char DataStart;
+  //char field_35;
+  //char field_36;
+  //char field_37;
+};
 
-};		// sizeof=0x34)
 
 typedef struct 
 {
@@ -782,6 +846,47 @@ struct RLARR
   char		field_23;
 };
 #pragma pack(pop)
+
+typedef struct 
+{
+	Elist	*field_0;
+	Elist	*field_4;
+	Elist	*field_8;
+	char	*FileName;
+	int		(*RdFunc)(void);
+}KEY_Elist;
+
+typedef struct 
+{
+	int			lx_KeyType;	// x00	0
+	int			lx_CRstart;	// x04	4
+	int			lx_CRend;	// x08	8
+	Elist*		lx_elist;	// x0C	12
+	int			lx_keyno;	// x10	16
+}KEY_Elem;
+
+typedef union
+{
+	int		(*Func)(KEY_Elist*);		// *** Need to check ***
+	char	*Name;
+	int		Count;
+	Elist*	List;
+} KEYPTR_1;
+
+typedef struct 
+{
+	char*	KeyFnName;
+	int		(*Key_Fn)(KEY_Elist*);		// *** Need to check ***
+	char*	KeyFnDesc;
+}KEYFUNC;
+
+typedef struct 
+{
+	KEYPTR_1	u_Ptr;
+	char		Type;
+	//char		pad[3];
+} KEYPTR;
+
 
 // few globals in the cl4lib.
 // change from extern as necessary when replacement functions are done.
@@ -859,9 +964,8 @@ short	_psize = 0x1000;			// default page size for temp files: 0x1000
 int		_fsize = 0x7A120;			// default file size for temp files: 0x7A120  [ 500000 ]
 
 POS		_tpos[] = {107, 0, 0, 106, 0, 22, 108, 0, 28, 109, 0, 24, 110, 0, 26, 0, 0, 0};	// reposition data for "tables" : TD0
-POS		_fpos[] = {106, 0, 0, 101, 0, 2, 102, 0, 4, 103, 0, 6, 104, 0, 8, 0, 0, 0};	// reposition data for "fields" : TD1
+POS		_fpos[] = {106, 0, 0, 101, 0, 2, 102, 0, 4, 103, 0, 6, 104, 0, 8, 0, 0, 0};		// reposition data for "fields" : TD1
 
-char			cwd[80];
 char			pname[80];			// possible name contention here!!!!
 char			*_pname;				// points to "cldblib" [syserror()]
 int				time_stamp;			// used by syserror()
@@ -876,6 +980,9 @@ int				prev_tx[256];
 int				cl_tx;				// transaction count?					
 __pid_t			lpid;				
 int				lfd[256];			// Array of Log file descriptors. Indexed by Context
+
+// used by lefine() and putconst() to determine float var bit flags
+unsigned short FPtypes[] = { 0x0000u, 0x00A4u, 0x0084u, 0x00E4u, 0x00C4u, 0x0124u, 0x0104u, 0x0164u, 0x0144, 0x01A4u};
 
 int		cldblibInit = 0;			// set to "1" when CLinit() finished
 int		exact		= 0;			// Exact match on field names	default = 0
@@ -913,6 +1020,8 @@ double MAX_nos[] = {0.000000,
 //extern POS		_pos[6];    // pos and pos_0 are *NOT* public!
 //extern POS		_pos_0[4];
 
+
+// Remap td_tables (_tshape) to TD0REC structure. (fields re-ordered only) 
 POS My_pos[] = {107, 0 , 0,
 				106, 0, 22,
 				108, 0, 28,
@@ -920,9 +1029,11 @@ POS My_pos[] = {107, 0 , 0,
 				110, 0, 26,
 				0  , 0,  0};
 
-POS My_pos_0[] = {102, 0, 4,
-				  104, 0, 6,
-				  103, 0, 8,
+// Map td_fields shape to "FIELDS" structure.
+// Different size on x86 vs. x64
+POS My_pos_0[] = {102, 0, offsetof(struct FIELD, TDFentry),
+				  104, 0, offsetof(struct FIELD, TDFsize),
+				  103, 0, offsetof(struct FIELD, TDFtype),
 				  0, 0,	0};
 
 // Alternative for _pos_0 which doesn't get all data from "fields"
@@ -969,14 +1080,15 @@ TDinfo	*def_1[] = {&tdef,&fdef,&ldef};
 
 TDinfo	*_tbl[3005]	= {&tdef,&fdef,&ldef};
 
-DBinfo	*_dbase[255];
+#define DB_MAX 255			// max size of open databases array
+DBinfo	*_dbase[DB_MAX];
 
 char	str_0[8192];		// used by getevar() and others?
 
 char	buf_0[3072];		// used by CLdbschema and others?
 char	buf_2[6144];		// used by CLtdschema and others?
 char	buffer_0[120];		// used by _getfldno()
-char*	pbuf = 0;			// PageBuffer pointer used by getpg(), cdbfreepg()
+PAGE*	pbuf = 0;			// PageBuffer pointer used by getpg(), cdbfreepg()
 int		psize = 0;			// current page size in bytes
 
 int		fcount;				// Index fetch count : 
@@ -994,15 +1106,15 @@ char	defcdbtdir[] = "/tmp";
 FILE*	fp_1;				// used by eprint()
 
 // see dates.c
-char	*_YD = "1955-2022:10";		// Default width = 10: dd-mm-yyyy
+char	*_YD = "1990-2050:10";		// Default width = 10: dd-mm-yyyy   old: "1955-2022:10"
 char	*_YL = "\n\n\0";
-int		_DF = 0; 					// Date Format 0,1, or 2   [0 = dd-mm-yy]  
+//int		_DF = 0; 					// Date Format 0,1, or 2   [0 = dd-mm-yy]  
 int		defDateWidth = 10;			// Default date width = 10 (0x0A)
 char	THOU_SEP[10] = ",";			// used by loadMonthArrays
 char	RADIX_CHAR[10] = ".";		// used by loadMonthArrays
 int		dateDone = 0;				// flag to indicate default date settings have been processed
-int		fromYear = 1950;
-int		toYear = 2049;	
+int		fromYear = 1990;
+int		toYear = 2050;	
 char	**wday;
 char	**fmth;
 char	**mth;
@@ -1204,6 +1316,327 @@ key = [20] record = [55]
 
 */
 
+@
+
+
+1.2
+log
+@old version
+@
+text
+@d4 4
+a7 3
+#include <pthread.h>	// for pthread specific stuff below
+#include <time.h>       // for struct tm
+#include <sys/times.h>  // for times()
+d25 6
+a30 6
+//#define PTARR(x) (x ? &ptarr.TableAddr[x - 1] : 0)	// is a *function* in REAL clcomp
+#define ENARR(x) (x ? &enarr.TableAddr[x - 1] : 0)
+#define XTARR(x) (x ? &xtarr.TableAddr[x - 1] : 0)
+#define PRARR(x) (x ? &prarr.TableAddr[x - 1] : 0)
+#define KXARR(x) (x ? &kxarr.TableAddr[x - 1] : 0)
+#define XFARR(x) (x ? &xfarr.TableAddr[x - 1] : 0)
+d36 4
+d42 1
+a42 1
+	short	field_0;
+d62 19
+d91 4
+a94 4
+	short	field_0;
+	short	field_2;
+	short	field_4;
+	short	field_6;
+d99 1
+a99 1
+	short	field_0;
+d101 1
+a101 1
+	int		field_4;
+d121 1
+a121 1
+typedef struct 
+d123 2
+a124 2
+	short	NameLen;
+	short	field_2;
+d126 1
+a126 1
+}LTAB;
+d149 2
+a150 2
+	short	field_0;
+	short	field_2;
+d153 5
+d159 4
+a162 4
+	short	field_C;
+	short	field_E;
+	short	NextRT;
+	short	field_12;
+d165 27
+d195 6
+a200 5
+	short	field_2;
+	short	TTno;
+	short	RecNo;
+	short	Dest;
+	short	Src;
+d203 2
+d207 2
+a208 2
+	short	field_0;
+	short	field_2;
+d217 1
+a217 1
+	short	field_0;
+d224 2
+a225 3
+typedef struct TYPE24 TYPE24;
+
+struct TYPE24
+d228 2
+a229 2
+	short	PT_end;	// LineNo2
+	TYPE24	*NextT24;
+d236 1
+a236 1
+	 short	field_0;
+d246 27
+a272 25
+	short	Flags      ;
+	short	Attr       ;
+	short	ScrAttrib  ;
+	short	FLDnum     ;		// Number displayed on screen when Field Numbering is *on*	short	field_6    ;
+	short	Width      ;
+	short	width      ;
+	short	PCol	    ;
+	short	PLine		;
+	short	ACol		;
+	short	ALine	   ;
+	short	C_X		   ;
+	short	C_Y		   ;
+	ONESC	*onesc      ;
+	short	RangeID    ;
+	short	field_1E   ;
+	int		field_20   ;
+	short	VarExpNo   ;
+	short	widthEXP   ;
+	short	PCol_exp   ;
+	short	PLine_exp  ;
+	short	ACol_exp   ;
+	short	ALine_exp  ;
+	short	Prompt_exp ;
+	short	field_32   ;
+}XTAB;
+d276 1
+a276 1
+		int		field_0;		//0
+d282 2
+a283 2
+		short	field_E;		//0E
+		int		field_10;		//10
+d288 1
+a288 1
+		TYPE24	*TYPE24;		//24
+d293 1
+a293 1
+		short	field_46;		//46
+d300 2
+a301 2
+		short	Operand;
+		short	TABno;
+d310 1
+a310 1
+		FILE	*PrevFILE;
+d312 2
+a313 2
+		INCLUDE	*field_C;
+		INCLUDE	*field_10;
+a322 1
+typedef struct EXPR EXPR;		// forward ref
+d344 1
+a344 1
+	char	field_15;	//21
+d370 2
+a371 7
+	char	TableName[8];	//x18	24		Limited Table name
+	int		DBunknown6;		//x20	32		Ptr to -> ??
+	int		DBunknown7;		//x24	36		integer
+	int		DBunknown8;		//x28	40		Ptr to -> ??
+	char	DBunknown9;		//x2C	44		??
+	char	TableAlias[4];	//x2D	45		Short Table Alias name
+	char	Unkspace[19];	//x31	49		// unknown space
+d401 2
+a402 2
+	int		DBunknown3;		//x08	8
+	int		DBunknown4;		//x0C	12
+d405 1
+a405 1
+	int		DBtableaddress;//x14	20		00000020 Offset in file of table defs
+d410 1
+a410 1
+	int		DBfreeaddress;	//x20	32		FreeAddress - Start of Data??
+d419 1
+a419 1
+	int		DBSemaphore;	//x170	368		Set to ZERO by _rdhdr in V4.4 (not int V4.3)
+d429 1
+a429 1
+	short		field_0;		//x00	0		int 00000049 ?    Bitfield - 
+d518 3
+a520 1
+ // Record in "tables" TD0:
+d540 9
+d560 1
+a560 1
+
+a577 23
+// Another structure used to index 'field' entries
+typedef struct FIELD FIELD; //forward ref
+struct FIELD
+{
+	FIELD	*NextFIELD;
+	short	TDFentry;
+	short	TDFsize;
+	short	TDFtype;
+	short	field_A;
+};
+
+//structure for "lock" table entries  TD2 
+// pragmas stop GCC trying to align the PID field to a 4 byte boundary
+#pragma pack(push, 1)
+typedef struct 
+{		
+	unsigned char	TableIndex;
+	char			KeyBuff[128];
+	int				PID;
+}TD2REC;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+a583 1
+#pragma pack(pop)
+a584 2
+/*   64 */
+#pragma pack(push, 1)
+a590 1
+#pragma pack(pop)
+a591 2
+/*   65 */
+#pragma pack(push, 1)
+a597 1
+#pragma pack(pop)
+a598 2
+/*   66 */
+#pragma pack(push, 1)
+a604 1
+#pragma pack(pop)
+a605 2
+/*   67 */
+#pragma pack(push, 1)
+a611 1
+#pragma pack(pop)
+a612 2
+/*   68 */
+#pragma pack(push, 1)
+a618 1
+#pragma pack(pop)
+a619 2
+/*   69 */
+#pragma pack(push, 1)
+a625 1
+#pragma pack(pop)
+a626 2
+/*   70 */
+#pragma pack(push, 1)
+a632 1
+#pragma pack(pop)
+a633 2
+/*   71 */
+#pragma pack(push, 1)
+a639 1
+#pragma pack(pop)
+a640 2
+/*   72 */
+#pragma pack(push, 1)
+d647 8
+d657 20
+d679 2
+a680 9
+	short	NumEntries;		//Variable length structure. Depends on page size
+	short	field_2;		//first 16bytes are calculated when page is loaded, and depend on PageType value
+	char	*DataStart;			//
+	char	*TabStart_or_RecSize;
+	char	*TabEnd;
+	char	PageType;			// This is first byte stored on a page on disk
+	char	field_11;
+	char	field_12;
+	char	field_13;
+d687 7
+a693 1
+	int		field_1A;			// ; Data normally starts here
+d696 18
+d761 3
+a763 2
+typedef struct SA30 SA30; //forward ref
+struct SA30
+d765 2
+a766 3
+	SA30	*NextSA30;
+	short	field_4;
+	short	field_6;
+d768 1
+d771 16
+a786 17
+struct SALLOCBUF{
+	SALLOCBUF	*NextSA;
+	int			field_4;
+	//short		field_4;
+	//short		field_6;
+	short		field_8;
+	short		field_A;
+	int			field_C;
+	int			field_10;
+	int			field_14;
+	int			field_18;
+	int			field_1C;
+	int			field_20;
+	int			field_24;
+	int			field_28;
+	int			field_2C;
+	SA30		*field_30;
+a787 1
+};		// sizeof=0x34)
+d816 41
+d933 1
+a933 1
+POS		_fpos[] = {106, 0, 0, 101, 0, 2, 102, 0, 4, 103, 0, 6, 104, 0, 8, 0, 0, 0};	// reposition data for "fields" : TD1
+a934 1
+char			cwd[80];
+d950 3
+d989 2
+d998 5
+a1002 3
+POS My_pos_0[] = {102, 0, 4,
+				  104, 0, 6,
+				  103, 0, 8,
+d1049 2
+a1050 1
+DBinfo	*_dbase[255];
+d1057 1
+a1057 1
+char*	pbuf = 0;			// PageBuffer pointer used by getpg(), cdbfreepg()
+d1075 1
+a1075 1
+char	*_YD = "1955-2022:10";		// Default width = 10: dd-mm-yyyy
+d1077 1
+a1077 1
+int		_DF = 0; 					// Date Format 0,1, or 2   [0 = dd-mm-yy]  
+d1082 2
+a1083 2
+int		fromYear = 1950;
+int		toYear = 2049;	
 @
 
 

@@ -1,10 +1,15 @@
-head	1.3;
+head	1.4;
 access;
 symbols;
 locks
-	leslie:1.3; strict;
+	leslie:1.4; strict;
 comment	@ * @;
 
+
+1.4
+date	2020.02.09.12.34.12;	author leslie;	state Exp;
+branches;
+next	1.3;
 
 1.3
 date	2019.04.05.04.31.05;	author leslie;	state Exp;
@@ -27,9 +32,9 @@ desc
 @
 
 
-1.3
+1.4
 log
-@expand and tidy
+@prior to X64 enhancement
 @
 text
 @#ifndef XTODOM_C
@@ -63,11 +68,7 @@ int xtodom(char *Dest, short FLDlen, unsigned short TDFtype, char *Src)
 		v6 = (TDFtype & 0x1C0u) >> 6;
 	else
 	{
-		//v6 = TDFtype & 0xE00;
-		//if ( TDFtype & 0xE00 )
-		//	v6 = (TDFtype & 0xE00u) >> 9;
 		v6 = (TDFtype & 0x0E00) ? ((TDFtype & 0x0E00) >> 9) : 0 ;	// 0000 1110 0000 0000	Numeric type
-
 	}
 
 //-----------------------
@@ -164,6 +165,20 @@ int xtodom(char *Dest, short FLDlen, unsigned short TDFtype, char *Src)
 }
 
 #endif
+@
+
+
+1.3
+log
+@expand and tidy
+@
+text
+@a31 3
+		//v6 = TDFtype & 0xE00;
+		//if ( TDFtype & 0xE00 )
+		//	v6 = (TDFtype & 0xE00u) >> 9;
+a32 1
+
 @
 
 

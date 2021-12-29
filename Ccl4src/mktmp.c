@@ -5,10 +5,10 @@
 #include "DBdefs.h"
 #include "cl4.h"
 
-int _mktmp(int TDno)
+short _mktmp(void)
 {
 	short	v2;
-	char	Dest[128];
+	char	name[128];
 	
 	//print("_mktmp(%d)\n",TDno);
     if ( !cdbtmpdir[0] )
@@ -17,10 +17,10 @@ int _mktmp(int TDno)
         if ( !cdbtmpdir[0] )
             cdbcpystr(cdbtmpdir, defcdbtdir, 0);	// default == "/tmp"
     }
-    cdbcpystr(Dest, cdbtmpdir, "/tXXXXXX", 0);
-	//print("_mktmp(%d) - File = %s\n",TDno,Dest);
-    v2 = mkstemp(Dest);
-    unlink(Dest);				// comment out to leave tmp DBases in /tmp/
+    cdbcpystr(name, cdbtmpdir, "/tXXXXXX", 0);
+	//print("_mktmp(%d) - File = %s\n",TDno,name);
+    v2 = mkstemp(name);
+    unlink(name);				// comment out to leave tmp DBases in /tmp/
     return v2;
 }
 

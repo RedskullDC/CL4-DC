@@ -15,7 +15,9 @@ SALLOCBUF *_salloc(SALLOCBUF *SAp, int LDsize, int avgRecSize)
     short	MaxRecs;
     short	v5;
 
-    MaxRecs = (LDsize - 52) / (unsigned int)(avgRecSize + 12);			// guesstimate how many recs fit in buffer
+    //MaxRecs = (LDsize - 52) / (unsigned int)(avgRecSize + 12);			// guesstimate how many recs fit in buffer
+    MaxRecs = (LDsize - offsetof(struct SALLOCBUF, DataStart)) / (unsigned int)(avgRecSize + 12);			// guesstimate how many recs fit in buffer
+
     SAp->DataPtr	 = (REFR *)&SAp->DataStart;
     SAp->MaxRecs1	 = MaxRecs;
     SAp->field_4	 = 0;

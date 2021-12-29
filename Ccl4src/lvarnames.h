@@ -190,7 +190,7 @@
 #define tdp_KeyVar		0x0080u		// Key has string entries -> Variable Key size (KeyMin != KeySize)
 //#define tdp_???		0x0100u
 //#define tdp_???		0x0200u
-#define tdp_REORDER		0x0400u		// reorder() == duplicates allowed, on-time pass
+#define tdp_REORDER		0x0400u		// reorder() == duplicates allowed, one-time pass
 #define tdp_UNIQUE		0x0800u		// compose() == create unique
 #define tdp_RLARR		0x1000u		// indicates TDptr->TDSallocBuf holds an RLARR structure
 //#define tdp_???		0x2000u

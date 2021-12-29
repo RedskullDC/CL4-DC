@@ -111,7 +111,7 @@ DBinfo *newfdf(int TDno)
 
     DBptr = (DBinfo *)ealloc(sizeof(DBinfo), 0);
     DBptr->DBpgsize = _psize;				// careful!!!   _psize, not psize
-    v1 = _mktmp(TDno);
+    v1 = _mktmp();
     DBptr->DBfilehandle = v1;
     if ( v1 < 0 )
         derror(47, 0, 0);
@@ -122,7 +122,6 @@ DBinfo *newfdf(int TDno)
     DBptr->PageList2[0] = 0;
     DBptr->PageList3[0] = 0;
     DBptr->PageList1[0] = 0;
-    //*(char*)DBptr->DBopenflg = -1;
     DBptr->DBopenflg = -1;
     DBptr->DBtableaddress = 16;
     _whead(DBptr, 0, 0, 0);

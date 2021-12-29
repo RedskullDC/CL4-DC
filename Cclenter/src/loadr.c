@@ -17,7 +17,7 @@ RLIST *addrun(RLIST *rlst, RLIST *rl_src, REFR *refr, TDinfo *TDptr)
     rl_dest = rlst;
     if ( !rlst )
     {
-        rl_dest = (RLIST *)alloc(56, 0);        // 7 x 8 = 56
+        rl_dest = (RLIST *)alloc(56, 0);        // 7 x 8 = 56   ; 64bytes on X64 machine??
         rl_dest->Depth = 0;
     }
     if ( rl_dest->Depth == 6 )
@@ -69,17 +69,16 @@ int _loadr(int TDno, char *WorkArea, POS *pos)
         SAp = _salloc((SALLOCBUF *)ealloc(_ldsize, 0), _ldsize, (unsigned int)(TDptr->TDRecMin + TDptr->TDRecSize) >> 1);		// ldsize defaults to 0x8000 (32768)
         TDptr->TDSallocBuf = SAp;
     }                                           // 
-                                                // 
-    while ( SAp->field_4 == SAp->MaxRecs2 || SAp->refr.Data - 1 < (REFR **)&SAp->refr.Offset[TDptr->TDRecSize] )// While room left in sallocbuf
+
+//============================================================
+
+	while ( SAp->field_4 == SAp->MaxRecs2 || SAp->refr.Data - 1 < (REFR **)&SAp->refr.Offset[TDptr->TDRecSize] )// While room left in sallocbuf
     {
         if ( !SAp->field_4 )                    // initialized to ZERO by salloc()
             derror(17, 0, TDptr);               // 
                                                 // 
         _append(&SAp->refr, SAp->NodeArr, SAp->DataPtr, TDptr);// 
                                                 // 
-        //v8 = SAp->field_4 - 1;
-        //SAp->field_4 = v8;
-        //if ( v8 )
         if ( --SAp->field_4 )
         {
             _mvref(SAp->DataPtr, &SAp->DataPtr[SAp->field_4]);
@@ -93,13 +92,14 @@ int _loadr(int TDno, char *WorkArea, POS *pos)
                                                 // 
             for ( idx = SAp->field_4 / 2; idx >= 0; --idx )
                 _siftdown(SAp->DataPtr, SAp->field_4, idx, TDptr->TableDefs);// 
-                                                // 
-            SAp->RL_Head = addrun(SAp->RL_Head, rlst, &SAp->refr, TDptr);
+
+			SAp->RL_Head = addrun(SAp->RL_Head, rlst, &SAp->refr, TDptr);
         }
-    }                                           // 
-                                                // 
-                                                // 
-    BytesCopied = rtotup(SAp->refr.Offset, WorkArea, pos, TDptr->TableDefs);// Copy data from WorkArea into SAp structure area
+    }
+	
+//============================================================
+
+	BytesCopied = rtotup(SAp->refr.Offset, WorkArea, pos, TDptr->TableDefs);// Copy data from WorkArea into SAp structure area
                                                 // 
     if ( SAp->NodeArr[0] && _cmpkey(SAp->refr.Offset, SAp->DataPtr->Offset, TDptr->TableDefs) < 0 )
     {
@@ -113,17 +113,11 @@ int _loadr(int TDno, char *WorkArea, POS *pos)
         }
         else
         {
-            //v10 = SAp->MaxRecs2 - 1;
-            //SAp->MaxRecs2 = v10;
-            //_mvref(&SAp->DataPtr[v10], &SAp->refr);
             _mvref(&SAp->DataPtr[--SAp->MaxRecs2], &SAp->refr);
         }
     }
     else
     {
-        //v11 = SAp->field_4;
-        //SAp->field_4 = v11 + 1;
-        //_mvref(&SAp->DataPtr[v11], &SAp->refr);
         _mvref(&SAp->DataPtr[SAp->field_4++], &SAp->refr);
 		_siftup(SAp->DataPtr, SAp->field_4, TDptr->TableDefs);
     }                                           // 

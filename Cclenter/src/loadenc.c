@@ -676,7 +676,7 @@ RDTAB *getrdtabs(int NumRDTABs)
             for ( i = 0; i < NumRDTABs; ++rdtb )
             {
                 rdtb->RDTFlags	= getcount();
-                rdtb->field_2	= getucount();
+                rdtb->ENTno		= getucount();
                 rdtb->TTno		= gettable();
                 rdtb->NextRD	= getucount();
                 ++i;

@@ -9,7 +9,8 @@ unsigned short maptype(short a1)
 	unsigned short result;
 
 	result = a1 & 0x0003;			// preserve KEY/STRING flag bits
-	if ( (char)a1 >= 0 )	// **don't think this is correct
+	//if ( (char)a1 >= 0 )	// **don't think this is correct
+	if ((a1 & 0x80u) == 0 )
 	{
 		if ( a1 & 0x0200 )
 			result |= 0x0044u;		// INT + allow signed
@@ -50,7 +51,7 @@ TDef* ldshape(DBinfo *DBptr, short TDno)
 	short	NumFields;
 	short	ExprData;
 
-	TDptr = _chktd(td_fields);					// "fields" TDno
+	TDptr = _chktd(td_fields);					// "fields" TDno #1
 	TDptr->TDDBinfo = DBptr;
 	
 	if ( DBptr->DBvflag == 2 )					// version 2
@@ -68,7 +69,7 @@ TDef* ldshape(DBinfo *DBptr, short TDno)
 	field_head_p = field_p;
 	for ( NumFields = 0; ; NumFields++ )
 	{
-		v6 = nxtr(td_fields, (char *)field_p, My_pos_0, Expr);
+		v6 = nxtr(td_fields, (char *)field_p, My_pos_0, Expr);		// My_pos_0 maps TDno1 to FIELDS struct
 		if ( v6 <= 0 )	// error or no more entries
 			break;
 		field_p->NextFIELD = (FIELD *)alloc(sizeof(FIELD), 0);

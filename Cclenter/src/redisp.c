@@ -28,7 +28,7 @@ void redisp(RDTAB *rdtab, short Start, short End)
             v14 = rdtab->TTno;		// if > 0, redisplay all visible fields of this table
             if ( v14 <= 0 )
             {
-                entb = ENARR(rdtab->field_2);	// Only re-displaying a single field/variable
+                entb = ENARR(rdtab->ENTno);	// Only re-displaying a single field/variable
                 v14 = entb->Enun.Enref.TTno;
             }
             ptabStart	= PTARR(getptabp(Start));			// Look for redisplay records between program Start and End instructions
@@ -47,9 +47,9 @@ void redisp(RDTAB *rdtab, short Start, short End)
                         if ( v9->Enun.Enref.TTno == v14 )
                         {
 							RecNo = v9->Enun.Enref.VarNum;
-                            //if ( rdtab->TTno > 0 || (v11 = ENARR(rdtab->field_2), v11->RecNo == RecNo) )
+                            //if ( rdtab->TTno > 0 || (v11 = ENARR(rdtab->ENTno), v11->RecNo == RecNo) )
 
-                            if ( rdtab->TTno > 0 || ( ENARR(rdtab->field_2)->Enun.Enref.VarNum == RecNo) )
+                            if ( rdtab->TTno > 0 || ( ENARR(rdtab->ENTno)->Enun.Enref.VarNum == RecNo) )
                                 dispfld(xtb, &ttab[v14].TTfields[RecNo], 1, 0, 1, 1);		// Last 1 means use C_X, C_Y values
                         }
                     }

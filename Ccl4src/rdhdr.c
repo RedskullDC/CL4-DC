@@ -5,23 +5,6 @@
 #include "DBdefs.h"
 #include "cl4.h"
 
-// pragmas stop GCC trying to re-align some fields to 4 byte boundaries!!
-#pragma pack(push, 1)
-typedef struct 
-{
-	short	DBversion;
-	short	DBpgsize;
-	int		DBmaxpages;
-	int		DBfreeaddress;
-	short	DBnumtables;
-	int		DBtableaddress;
-	short	DBvflag;
-	short	DBmaxtables;
-	char	Unused[10];
-
-}DBhdr;		// Database header data
-#pragma pack(pop)
-
 // from /usr/include/bits/byteswap.h
 //__bswap_constant_32(x)
 //__bswap_constant_16(x)

@@ -369,7 +369,7 @@ void putxtabs(XTAB_ArrPtr *a1)
                putcount(xt->onesc != 0);        // bool
                putucount(xt->RangeID);
                putucount(xt->VarExpNo);
-               putucount(xt->widthEXP);
+               putucount(xt->WidthEXP);
                putucount(xt->PCol_exp);
                putucount(xt->PLine_exp);
                putucount(xt->ACol_exp);

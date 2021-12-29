@@ -847,7 +847,7 @@ int		cpyseq(char *DEST, char *SOURCE, int MaxLen);
 int		clgetdate(const char *src);
 int		lefork(PTAB *pt);
 signed int _nxtdb(DBinfo *DBptr);
-int		_mktmp(int TDno);
+short	_mktmp(void);
 int		_lockpg(DBinfo *DBptr, int PageNo, int a3);
 short	getdwid(FLDdesc *FLDptr);
 int		getidconst(int inCondExp, int chkINT);

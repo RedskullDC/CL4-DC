@@ -16,7 +16,8 @@ int mstol(int *a1)
 	
 	//return (unsigned int)(*(LUC + 3) | (*(LUC + 2) << 8)) + ((unsigned int)(*(LUC + 1) | (*LUC << 8)) << 16);
 
-	return __bswap_constant_32(*a1);
+	//return __bswap_constant_32(*a1);
+	return __builtin_bswap32(*a1);
 }
 
 

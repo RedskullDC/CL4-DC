@@ -1,10 +1,15 @@
-head	1.1;
+head	1.2;
 access;
 symbols;
 locks
-	leslie:1.1; strict;
+	leslie:1.2; strict;
 comment	@ * @;
 
+
+1.2
+date	2021.07.21.13.01.29;	author leslie;	state Exp;
+branches;
+next	1.1;
 
 1.1
 date	2015.11.05.00.51.36;	author leslie;	state Exp;
@@ -17,9 +22,9 @@ desc
 @
 
 
-1.1
+1.2
 log
-@Initial revision
+@removing old commented out code
 @
 text
 @#ifndef LOADR_C
@@ -35,8 +40,8 @@ text
 
 RLIST *addrun(RLIST *rlst, RLIST *rl_src, REFR *refr, TDinfo *TDptr)
 {
-    RLIST *rl_dest; // edi@@1
-    short Depth; // ax@@5
+    RLIST *rl_dest;
+    short Depth;
 
     rl_dest = rlst;
     if ( !rlst )
@@ -49,30 +54,30 @@ RLIST *addrun(RLIST *rlst, RLIST *rl_src, REFR *refr, TDinfo *TDptr)
         _merge(rl_dest + 1, rl_dest->Depth, refr, TDptr);
 
 		// PageNo either points at another RLIST, or holds an actual PageNo
-        rl_dest->PageNo = (int)addrun((RLIST *)rl_dest->PageNo, rl_dest + 1, refr, TDptr);	// recursive
+        rl_dest->PageNo = (int)addrun((RLIST *)rl_dest->PageNo, rl_dest + 1, refr, TDptr);		// recursive
         rl_dest->Depth = 0;
     }
     Depth = rl_dest->Depth;
     rl_dest->Depth = Depth + 1;
 
-    cpybuf((char *)&rl_dest[Depth + 1], (char *)rl_src, 8);		// 8 = sizeof(RLIST) = 8
+    cpybuf((char *)&rl_dest[Depth + 1], (char *)rl_src, sizeof(RLIST));		// sizeof(RLIST) = 8
     return rl_dest;
 }
 
 int _loadr(int TDno, char *WorkArea, POS *pos)
 {
-    int v4; // eax@@1
-    SALLOCBUF *SAp; // edi@@5
-    SALLOCBUF *v6; // eax@@6
-    short v8; // ax@@13
-    short idx; // si@@14
-    short v10; // ax@@25
-    short v11; // ax@@26
-    REFR **v12; // eax@@27
-    int BytesCopied; // [sp+18h] [bp-20h]@@20
-    TDinfo *TDptr; // [sp+1Ch] [bp-1Ch]@@1
-    RLIST rlst[6]; // [sp+20h] [bp-18h]@@14
-
+    REFR		**v12;
+    SALLOCBUF	*SAp;
+	TDinfo		*TDptr;
+	int			v4;
+	int			BytesCopied;
+	//short		v8;
+	short		idx;
+	//short		v10;
+	//short		v11;
+	RLIST		rlst[6];
+	
+	//printf("_loadr(%d)\n",TDno);
     TDptr = _chktd(TDno);
     v4 = check_bup_sem(TDptr->TDDBinfo);
     if ( v4 )
@@ -90,21 +95,23 @@ int _loadr(int TDno, char *WorkArea, POS *pos)
     }
     else
     {                                           // first time, set up buffers etc.
-        v6 = (SALLOCBUF *)ealloc(_ldsize, 0);
-        SAp = _salloc(v6, _ldsize, (unsigned int)(TDptr->TDRecMin + TDptr->TDRecSize) >> 1);// ldsize defaults to 0x8000 (32768)
+        SAp = _salloc((SALLOCBUF *)ealloc(_ldsize, 0), _ldsize, (unsigned int)(TDptr->TDRecMin + TDptr->TDRecSize) >> 1);		// ldsize defaults to 0x8000 (32768)
         TDptr->TDSallocBuf = SAp;
     }                                           // 
-                                                // 
-    while ( SAp->field_4 == SAp->MaxRecs2 || SAp->refr.Data - 1 < (REFR **)&SAp->refr.Offset[TDptr->TDRecSize] )// While room left in sallocbuf
+
+//============================================================
+
+	while ( SAp->field_4 == SAp->MaxRecs2 || SAp->refr.Data - 1 < (REFR **)&SAp->refr.Offset[TDptr->TDRecSize] )// While room left in sallocbuf
     {
         if ( !SAp->field_4 )                    // initialized to ZERO by salloc()
             derror(17, 0, TDptr);               // 
                                                 // 
         _append(&SAp->refr, SAp->NodeArr, SAp->DataPtr, TDptr);// 
                                                 // 
-        v8 = SAp->field_4 - 1;
-        SAp->field_4 = v8;
-        if ( v8 )
+        //v8 = SAp->field_4 - 1;
+        //SAp->field_4 = v8;
+        //if ( v8 )
+        if ( --SAp->field_4 )
         {
             _mvref(SAp->DataPtr, &SAp->DataPtr[SAp->field_4]);
             _siftdown(SAp->DataPtr, SAp->field_4, 0, TDptr->TableDefs);
@@ -117,13 +124,14 @@ int _loadr(int TDno, char *WorkArea, POS *pos)
                                                 // 
             for ( idx = SAp->field_4 / 2; idx >= 0; --idx )
                 _siftdown(SAp->DataPtr, SAp->field_4, idx, TDptr->TableDefs);// 
-                                                // 
-            SAp->RL_Head = addrun(SAp->RL_Head, rlst, &SAp->refr, TDptr);
+
+			SAp->RL_Head = addrun(SAp->RL_Head, rlst, &SAp->refr, TDptr);
         }
-    }                                           // 
-                                                // 
-                                                // 
-    BytesCopied = rtotup(SAp->refr.Offset, WorkArea, pos, TDptr->TableDefs);// Copy data from WorkArea into SAp structure area
+    }
+	
+//============================================================
+
+	BytesCopied = rtotup(SAp->refr.Offset, WorkArea, pos, TDptr->TableDefs);// Copy data from WorkArea into SAp structure area
                                                 // 
     if ( SAp->NodeArr[0] && _cmpkey(SAp->refr.Offset, SAp->DataPtr->Offset, TDptr->TableDefs) < 0 )
     {
@@ -137,17 +145,19 @@ int _loadr(int TDno, char *WorkArea, POS *pos)
         }
         else
         {
-            v10 = SAp->MaxRecs2 - 1;
-            SAp->MaxRecs2 = v10;
-            _mvref(&SAp->DataPtr[v10], &SAp->refr);
+            //v10 = SAp->MaxRecs2 - 1;
+            //SAp->MaxRecs2 = v10;
+            //_mvref(&SAp->DataPtr[v10], &SAp->refr);
+            _mvref(&SAp->DataPtr[--SAp->MaxRecs2], &SAp->refr);
         }
     }
     else
     {
-        v11 = SAp->field_4;
-        SAp->field_4 = v11 + 1;
-        _mvref(&SAp->DataPtr[v11], &SAp->refr);
-        _siftup(SAp->DataPtr, SAp->field_4, TDptr->TableDefs);
+        //v11 = SAp->field_4;
+        //SAp->field_4 = v11 + 1;
+        //_mvref(&SAp->DataPtr[v11], &SAp->refr);
+        _mvref(&SAp->DataPtr[SAp->field_4++], &SAp->refr);
+		_siftup(SAp->DataPtr, SAp->field_4, TDptr->TableDefs);
     }                                           // 
                                                 // 
                                                 // 
@@ -166,4 +176,70 @@ int loadr(int TDno, char *Buffer, POS *pos)
 
 
 #endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 2
+a15 2
+    RLIST *rl_dest; // edi@@1
+    short Depth; // ax@@5
+d28 1
+a28 1
+        rl_dest->PageNo = (int)addrun((RLIST *)rl_dest->PageNo, rl_dest + 1, refr, TDptr);	// recursive
+d34 1
+a34 1
+    cpybuf((char *)&rl_dest[Depth + 1], (char *)rl_src, 8);		// 8 = sizeof(RLIST) = 8
+d40 12
+a51 12
+    int v4; // eax@@1
+    SALLOCBUF *SAp; // edi@@5
+    SALLOCBUF *v6; // eax@@6
+    short v8; // ax@@13
+    short idx; // si@@14
+    short v10; // ax@@25
+    short v11; // ax@@26
+    REFR **v12; // eax@@27
+    int BytesCopied; // [sp+18h] [bp-20h]@@20
+    TDinfo *TDptr; // [sp+1Ch] [bp-1Ch]@@1
+    RLIST rlst[6]; // [sp+20h] [bp-18h]@@14
+
+d69 1
+a69 2
+        v6 = (SALLOCBUF *)ealloc(_ldsize, 0);
+        SAp = _salloc(v6, _ldsize, (unsigned int)(TDptr->TDRecMin + TDptr->TDRecSize) >> 1);// ldsize defaults to 0x8000 (32768)
+d72 4
+a75 2
+                                                // 
+    while ( SAp->field_4 == SAp->MaxRecs2 || SAp->refr.Data - 1 < (REFR **)&SAp->refr.Offset[TDptr->TDRecSize] )// While room left in sallocbuf
+d82 4
+a85 3
+        v8 = SAp->field_4 - 1;
+        SAp->field_4 = v8;
+        if ( v8 )
+d98 2
+a99 2
+                                                // 
+            SAp->RL_Head = addrun(SAp->RL_Head, rlst, &SAp->refr, TDptr);
+d101 5
+a105 4
+    }                                           // 
+                                                // 
+                                                // 
+    BytesCopied = rtotup(SAp->refr.Offset, WorkArea, pos, TDptr->TableDefs);// Copy data from WorkArea into SAp structure area
+d119 4
+a122 3
+            v10 = SAp->MaxRecs2 - 1;
+            SAp->MaxRecs2 = v10;
+            _mvref(&SAp->DataPtr[v10], &SAp->refr);
+d127 5
+a131 4
+        v11 = SAp->field_4;
+        SAp->field_4 = v11 + 1;
+        _mvref(&SAp->DataPtr[v11], &SAp->refr);
+        _siftup(SAp->DataPtr, SAp->field_4, TDptr->TableDefs);
 @

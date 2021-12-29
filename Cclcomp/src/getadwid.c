@@ -52,7 +52,7 @@ XTAB *getadwid(XTAB *xtab)
 		ExpNo = loadexp(0, 1);
 		if ( ExpNo )
 		{
-			xtab->widthEXP = ExpNo;
+			xtab->WidthEXP = ExpNo;
 			return xtab;
 		}
 	}

@@ -1,0 +1,6 @@
+./clc(/home/leslie/cl4/Cclcomp/cl4_test): tty=/dev/pts/0, uid=1001, pid=7425, Tue Jun 29 00:49:16 2021
+	DBASE err 57 Database: [COURDB2] Table: [fields]
+./clc(/home/leslie/cl4/Cclcomp/cl4_test): tty=/dev/pts/0, uid=1001, pid=7458, Tue Jun 29 00:51:15 2021
+	DBASE err 57 Database: [COURDB2] Table: [fields]
+./clc(/home/leslie/cl4/Cclcomp/cl4_test): tty=/dev/pts/0, uid=1001, pid=7481, Tue Jun 29 00:51:55 2021
+	DBASE err 57 Database: [COURDB2] Table: [fields]
