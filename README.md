@@ -1,2 +1,2 @@
 # CL4-DC
- Reverse engineered version of CL4 by MULTIBASE
+ Open Source implementation of CL4 by MULTIBASE
