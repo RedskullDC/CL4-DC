@@ -952,11 +952,11 @@ int loadenc(char *FileName)
 		printf("enc.st_mtime: x%08X \n" ,EncStat.st_mtime);
 	*/
 //=========================================================
-	xsent = __xstat64(_STAT_VER, EntFileName, &EntStat);		// returns 0 on success, buffer filled
+	xsent = stat64(EntFileName, &EntStat);		// returns 0 on success, buffer filled
 	v59 = true;
     do
     {
-		xsenc = __xstat64(_STAT_VER, EncFileName, &EncStat);	// returns 0 on success, buffer filled
+		xsenc = stat64(EncFileName, &EncStat);	// returns 0 on success, buffer filled
         if ( xsenc || EncVersion != 40404 )						// Enc not found, or Version incorrect. (EncVersion == 40404 on first pass through)
         {
             if ( !isclcomp )			// Initialised to 1 , never changed. Must be used for debugging

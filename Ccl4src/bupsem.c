@@ -14,7 +14,7 @@ int cdbftok(char *FullPathName)
 	int v2;
 	struct stat64 buf;
 
-    v1 = __xstat64(_STAT_VER, FullPathName, &buf);
+    v1 = stat64(FullPathName, &buf);
 	//DumpBlock((char*) &buf, sizeof(struct stat64));
 	//printf("cdbftok: buf.st_ino   = x%08X\n",buf.st_ino);
 

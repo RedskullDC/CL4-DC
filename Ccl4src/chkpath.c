@@ -104,7 +104,7 @@ bool canopen(char *FileName, unsigned short perms)
 	//eprint("canopen(%s, perms = x%02X)\n",FileName,perms);
 	if ( strlen(FileName) <= 127 )
 	{
-		if ( __xstat64(_STAT_VER, FileName, &stat_buf))		// returns 0 to indicate no error?
+		if ( stat64( FileName, &stat_buf))		// returns 0 to indicate no error?
 			return false;
 		//eprint("canopen 109\n");
 

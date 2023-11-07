@@ -35,7 +35,7 @@ unsigned short clgetmode(char *path)
 	unsigned short v2 = 0;
 	struct stat64 v4;
 	
-    if ( __xstat64(_STAT_VER, path, &v4) >= 0 )
+    if ( stat64( path, &v4) >= 0 )
         v2 = procstat(&v4);
 
 	return v2;

@@ -279,7 +279,7 @@ char *cnvstr(char *dest, char *command, const char *OpType, char *src)
 	if (!strncmp(command,"stat",5))
 	{
 		*dest = 0;	// default return blank string
-		if (!__xstat64(3, src, &buf))								// in this case, Src is a pathname
+		if (stat64(src, &buf))								// in this case, Src is a pathname
 		{
 			if (!strncmp(OpType,"mtime",6))
 				sprintf(dest, "%ld", buf.st_mtime);	
