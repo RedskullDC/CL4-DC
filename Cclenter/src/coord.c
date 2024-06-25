@@ -11,8 +11,7 @@
 
 
 // doesn't make a great deal of sense.
-// If _cx or _cy are outside the bounds of the current screen,
-// treat them as if they had wrapped.
+// If _cx or _cy are outside the bounds of the current screen, treat them as if they had wrapped.
 
 // Internally, CL4 allows 512x512 screen area.
 // Whereat() already performs bounds checking 

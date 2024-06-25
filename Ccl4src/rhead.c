@@ -21,7 +21,7 @@ short _rhead( DBinfo *DBptr, short IndexOffset, int *PageNo)
 	*PageNo = mstol(&buf.PageNo);
 	Depth	= MSHORT(buf.Depth);
   
-	if ( Depth > 6u )	// Table tree can only be 6 levels deep
+	if ( Depth > 6u )	// Table tree can only be 6 levels deep. **Should be defined in DB itself**
 		derror(20, DBptr, 0);
   
 	return Depth;

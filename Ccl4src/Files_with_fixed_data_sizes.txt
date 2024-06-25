@@ -1,0 +1,56 @@
+dfetch.c
+ifetch.c
+
+
+balance.c		- size of Depth variables
+match.c			- replace ucase/lcase hack functions
+				//if ( (v4 - 97) <= 25u )	// <- gcc opt creates this
+				if ( v4 >= 'a' && v4 <= 'z')
+				// 'a' == 0x61 (97)  -> 'z' == 0x7A (122)    122 - 97 = 25
+owildm.c		- "	"
+
+
+
+clrtab.c		- _sparetree - nodetype value in getnode() call
+getfmode.c		- procstat() - Use macros for determining values?
+dbspac.c		- fixed number of 17 pages. Should be a #define
+rhead.c/whead.c		- fixed index size of 12 bytes, constant for depth.
+
+picknx.c/pickpr.c	- meaningful names for flag bits
+prevr.c/nextr.c		- meaningful names for flag bits
+
+expressions		- meaningful names for flag bits for operators
+beyond.c		-	"	"	"
+
+ulock.c			- flag bits, fixed size for LOCK table, PID ID constant in newexpr()
+
+derror()		- meaningful constants for error numbers
+
+tblglo.c		- constant for size of _tbl[] , TDno 0 => 3003
+
+newjun.c		- What is the correct size for a junction?
+
+stepba.c/stepfw.c	- constant for size of page numbers in PagePtr
+
+restri.c		- TDF flag bits
+releas.c		- "	"
+
+putr.c			- meaningful names for flag bits
+
+Node->PageType		- meaningful names for flag bits
+
+moveri.c/movele.c	- remove useless comments
+
+getsha.c		- maptype flags, ldshape constants
+getr.c			- flag bits on _scanpg()
+
+getpat.c		- fixed sizes
+
+getevar.c		- fixed buff size values (8192)
+
+------------------------------------------------------------------
+Enhancements?
+
+mktmp.c			- command line option to leave tmp tables in /tmp/ ?
+
+dpos structure		- fix structure names

@@ -54,8 +54,7 @@ typedef struct
 	short	RangeFrom;
 	short	RangeTo;
 	short	StringOffset;
-	short	field_8;
-	short	field_A;
+	long	Spare;				// unused, but packs structure to 12 (x86) and 16 (x64)
 }RATAB;		// Range type records
 
 
@@ -285,8 +284,8 @@ typedef struct
 
 typedef struct 
 {
-	int		StrMaxSize;
-	int		StrTableSize;
+	long	StrMaxSize;
+	long	StrTableSize;
 	char	*StringTable;
 } CLStrArray;
 

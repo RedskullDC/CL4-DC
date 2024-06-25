@@ -30,13 +30,13 @@ int rtokey(char *KeyBuf, char *Src, POS *Pos, TDef *TDefP)
 				v7 = cdbrindex(Pos, tdef->TDFentry);
 				if ( v7 >= 0 )
 				{	
-					if ( tdef->TDFtype & 0x0008 )  //???
+					if ( tdef->TDFtype & tdf_NOCASE )  // Allow case-insensitive matches
 					{
 						if ( tdef->TDFtype & tdf_STRING )
 							v11 = _fwidth(&Src[v7], tdef->TDFsize, tdef->TDFtype);
 						else
 							v11 = tdef->TDFsize;
-						Dest += cpytuc(Dest, &Src[v7], v11);
+						Dest += cpytuc(Dest, &Src[v7], v11);	// force to upper case
 					}
 					else
 						Dest += xtodom(Dest, tdef->TDFsize, tdef->TDFtype, &Src[v7]);

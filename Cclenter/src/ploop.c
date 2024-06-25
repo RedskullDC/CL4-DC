@@ -85,11 +85,9 @@ short _ploop(BTAB *bt, int ScreenNum, short PT_Start2, short PT_End2, short PT_S
 	XFTAB	*xftb;	// xfer table <- table record
 	RDTAB	*rdtab;	// redisplay record
     
-	BTAB	*v25;
 	BTAB	*btb;
 	
     ENTAB	*v31;
-	ENTAB	*v33;
 	
     FLDdesc *fldREPLY;
 	FLDdesc *fldMREPLY;
@@ -98,7 +96,6 @@ short _ploop(BTAB *bt, int ScreenNum, short PT_Start2, short PT_End2, short PT_S
 	FLDdesc *fld;
 	FLDdesc fld1;
 	
-    int		v13;
 	signed int OpCode;
 	int		v44;
 	int		v48;
@@ -247,7 +244,7 @@ LABEL_37:
 					go_back		 = -22;
                     lback_to	 = xtab->FLDnum;
                     skip_gb		 = skip;
-                    lreply_gb[0] = *(char*)ttab->TTfields[7].FLDdata;
+                    lreply_gb[0] = *(char*)ttab->TTfields[v_LREPLY].FLDdata;
                     setcvar(v_LREPLY, "m");				// "LREPLY"
 				}
                 back_to = last_fld;
@@ -370,6 +367,7 @@ LABEL_37:
 		case 580:		// 580 clear
 			reffile(RTARR(ptab->TABno));
 			break;
+		
 		case 730:										// redisplay()
             rdtab = RDARR(ptab->TABno);
             redisp(rdtab, rdtab->RDTFlags, CurrPTno);
@@ -426,15 +424,15 @@ LABEL_37:
 			erase_page(true);							// wipe displayed screen, *AND* internal buffers :o)
 			break;
 		case 720:										// do {blockname}
-			v25 = &btab[ptab->Operand];
+			btb = &btab[ptab->Operand];
 			
 			in_do = 1;
 			++depth;			// increase sub-routine count
 			
 			if ( PT_Start == PT_End )
-				v15 = _ploop(bt, ScreenNum, v25->StartLine, v25->EndLine, PT_Start, PT_Start, noScreenOut, true);	// true indicates in a "do" block
+				v15 = _ploop(bt, ScreenNum, btb->StartLine, btb->EndLine, PT_Start, PT_Start, noScreenOut, true);	// true indicates in a "do" block
 			else
-				v15 = _ploop(bt, ScreenNum, v25->StartLine, v25->EndLine, v25->StartLine, v25->EndLine, noScreenOut, true);	
+				v15 = _ploop(bt, ScreenNum, btb->StartLine, btb->EndLine, btb->StartLine, btb->EndLine, noScreenOut, true);	
 			
 			depth--;
 			if ( depth == 0)	// are we still in a sub-routine?, or back at top block

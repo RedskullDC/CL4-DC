@@ -18,7 +18,7 @@ void showFLD(void)		// Just dump 1 Field Descriptor
 	printf("sizeof(LTAB)           =   %3ld (%04lX)       6 (0006)       6 (0006) \n",sizeof(LTAB),sizeof(LTAB));
 	printf("sizeof(XTAB)           =   %3ld (%04lX)      52 (0034)      64 (0040) \n",sizeof(XTAB),sizeof(XTAB));
 	printf("sizeof(XFTAB)          =   %3ld (%04lX)       8 (0008)       8 (0008) \n",sizeof(XFTAB),sizeof(XFTAB));
-	printf("sizeof(RATAB)          =   %3ld (%04lX)      12 (000C)      12 (000C) \n",sizeof(RATAB),sizeof(RATAB));
+	printf("sizeof(RATAB)          =   %3ld (%04lX)      12 (000C)      16 (0010) \n",sizeof(RATAB),sizeof(RATAB));
 	printf("sizeof(RDTAB)          =   %3ld (%04lX)      12 (000C)      12 (000C) \n",sizeof(RDTAB),sizeof(RDTAB));
 	printf("sizeof(RTAB)           =   %3ld (%04lX)      20 (0014)      20 (0014) \n",sizeof(RTAB),sizeof(RTAB));
 	
@@ -51,6 +51,7 @@ void showFLD(void)		// Just dump 1 Field Descriptor
 	printf("sizeof(KEY_Elist)      =   %3ld (%04lX)      20 (0014)      40 (0028) \n",sizeof(KEY_Elist),sizeof(KEY_Elist));
 	printf("sizeof(KEY_Elem)       =   %3ld (%04lX)      20 (0014)      32 (0020) \n",sizeof(KEY_Elem),sizeof(KEY_Elem));
 	printf("sizeof(PTAB_ArrPtr)    =   %3ld (%04lX)       8 (0008)      16 (0010) \n",sizeof(PTAB_ArrPtr),sizeof(PTAB_ArrPtr));
+	printf("sizeof(CLStrArray)     =   %3ld (%04lX)      12 (000C)      24 (0018) \n",sizeof(CLStrArray),sizeof(CLStrArray));
 	printf("sizeof(POS)            =   %3ld (%04lX)       8 (0008)       8 (0008) \n",sizeof(POS),sizeof(POS));
 	printf("sizeof(DOMAINR)        =   %3ld (%04lX)       8 (0008)       8 (0008) \n",sizeof(DOMAINR),sizeof(DOMAINR));
 	printf("sizeof(ELEMENTREC)     =   %3ld (%04lX)      76 (004C)      76 (004C) \n",sizeof(ELEMENTREC),sizeof(ELEMENTREC));

@@ -204,7 +204,7 @@
 #define tdf_STRING		0x0002
 #define tdf_SIGNED		0x0004		// Allow signed numbers
 #define tdf_NOCASE		0x0008		// Allow case-insensitive match
-//#define tdf_???		0x0010
+//#define tdf_???		0x0010		// allow comparison of numbers stored as strings  , see cmpatt.c
 //#define tdf_???		0x0020
 //#define tdf_???		0x0040
 //#define tdf_???		0x0080
@@ -309,5 +309,25 @@
 #define upd_delete		0	// delete record
 #define	upd_put			1	// put record
 #define	upd_lock		2	// lock record	( create a lock record in TD2 )
+
+
+// reserved string value flags
+
+#define rsv_CWD			0x0001u		// Current Working Directory
+#define rsv_VERSION		0x0002u		// Version String
+//#define rsv_			0x0004u		// Unused?
+#define rsv_DATE		0x0008u		// 'date'	- returns sysdate() 
+#define rsv_TIME		0x0010u		// 'time'	- returns systime() 
+#define rsv_PNAME		0x0020u		// 'pname'	- program name
+#define rsv_UNAME		0x0040u		// 'uname'	- username 
+#define rsv_PID			0x0080u		// 'pid'	- process ID 
+#define rsv_UID			0x0100u		// 'uid'	- User ID
+#define rsv_LOGIN		0x0200u		// 'login'	- 
+#define rsv_TTY			0x0400u		// 'tty'	- 
+#define rsv_NNAME		0x0800u		// 'nname'	- Node Name
+//#define rsv_			0x1000u		// Unused?
+#define rsv_PWD			0x2000u		// 'pwd'	- 
+//#define rsv_CWD		0x4000u		// Unused?
+//#define rsv_CWD		0x8000u		// Unused?
 
 #endif

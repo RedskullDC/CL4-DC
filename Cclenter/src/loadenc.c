@@ -327,8 +327,8 @@ int gettable()
 
 int *getarrtds(unsigned int count)
 {
-    int *v1; // edi@1
-    unsigned int i; // esi@2
+    int *v1;
+    unsigned int i;
 
     v1 = (int *)mmalloc(sizeof(int) * (count + 1));	// +1 ensures null terminated array
     if ( tpenc )
@@ -426,14 +426,15 @@ float getfloat(short TDFtype)
 void getstrarr(CLStrArray *clst)
 {
     char	*ptr;
-	int		StringSpace;
-	int		i;
+	long	StringSpace;
+	long	i;
 	size_t	v4;
 	
-    StringSpace			= getlong();			// 4 bytes of string table size
+    StringSpace			= getlong();			// 4 bytes of string table size, 8 on x64
     clst->StrTableSize	= StringSpace;
     clst->StrMaxSize	= StringSpace;			// shouldn't grow as all string space pre-allocated?
-    ptr = (char *)mmalloc(StringSpace);
+    
+	ptr = (char *)mmalloc(StringSpace);
     clst->StringTable	= ptr;
     for ( i = clst->StrTableSize; i; i -= v4 )
     {
@@ -546,7 +547,7 @@ RATAB *getratabs(int NumRATABs)	// Range specifiers
 	ptr = 0;
 	if ( NumRATABs )
     {
-        ratb = (RATAB *)mmalloc(sizeof(RATAB) * NumRATABs);  // 12
+        ratb = (RATAB *)mmalloc(sizeof(RATAB) * NumRATABs);  // 12 on x86, 16 on x64
         ptr = ratb;
         if ( tpenc )
         {
@@ -561,7 +562,7 @@ RATAB *getratabs(int NumRATABs)	// Range specifiers
         }
         else
         {
-            getbuf((char *)ratb, sizeof(RATAB) * NumRATABs);  // 12
+            getbuf((char *)ratb, sizeof(RATAB) * NumRATABs);  // 12 on x86, 16 on x64
         }
     }
     return ptr;
@@ -569,9 +570,9 @@ RATAB *getratabs(int NumRATABs)	// Range specifiers
 
 XFTAB *getxftabs(int NumXFTABs)
 {
-    XFTAB	*xftb; // esi@2
-    XFTAB	*ptr; // [sp+8h] [bp-10h]@2
-    int		i; // edi@3
+    XFTAB	*xftb;
+    XFTAB	*ptr;
+    int		i;
 
 //printf("getxftabs : sizeof(XFTAB) = %d\n",sizeof(XFTAB));  // 8
     ptr = 0;
@@ -1063,26 +1064,25 @@ int loadenc(char *FileName)
         TTptr->TTrtd	= -1;					// table not loaded from DBase
         TTptr->TableCRC = getcount();			// short CRC of Tabledetails
         
-		Alias = TableName;
-		while (*Alias)
+		for (Alias = TableName; *Alias ; Alias++)
 		{
 			if ( *Alias == ',' )
 			{
 				*Alias++ = 0;	// terminate TableName, and bump Alias to next char
 				break;
 			}
-			Alias++;
 		}
 		//printf("TableName = \"%s\", Alias = \"%s\"\n",TableName,Alias);
-        mstrncpy(TTptr->TableAlias, 21, Alias,0);
+
+		mstrncpy(TTptr->TableAlias, 21, Alias,0);
         mstrncpy(TTptr->TableName, 21, TableName,0);
-        v17 = 0;
-        while ( no_dtabs > v17 )							// See if DBase containing this table is already open
-        {
-			if ( !strcmp(finDBname, dtab[v17].FullDBname) )
+		for (v17 = 0; no_dtabs > v17 ; v17++ )
+		{
+				if ( !strcmp(finDBname, dtab[v17].FullDBname))
 				break;
-			v17++;
 		}
+		//printf("no_dtabs = \"%d\", v17 = \"%d\", finDBname = \"%s\" \n", no_dtabs, v17, finDBname);
+
         if ( no_dtabs == v17 )
         {
 			newdtab();
@@ -1091,8 +1091,11 @@ int loadenc(char *FileName)
             dtab[v17].FullDBname = mstrcpy(finDBname, 0);
 		}
         TTptr->DBnumber = v17;
-        if ( !(TTptr->TDlocked & 0x0200) )
-			TTptr->TDlocked |= 0x800u;
+        if ( !(TTptr->TDlocked & ttl_CREATE) )
+			TTptr->TDlocked |= ttl_OPEN;					// Indicates table has been opened with a getfile statement
+        
+		//if ( !(TTptr->TDlocked & 0x0200) )
+		//	TTptr->TDlocked |= 0x800u;
 		mfree_0(finDBname);
         mfree_0(TableName);
         TDno++;
@@ -1214,12 +1217,6 @@ int loadenc(char *FileName)
     TDnob = 0;
     for ( PTABno = (unsigned short)getptabp(0); pt = PTARR(PTABno), pt->OpCode ; PTABno = (unsigned short)getptabp(TDnob) )
     {
-        //pt = PTABno ? &ptarr.TableAddr[PTABno - 1] : 0;
-		//pt = PTARR(PTABno);
-		//printf("loadenc [305]: PTno = %3d, OpCode = %3d, pt->TABno = %3d\n",PTABno,pt->OpCode,pt->TABno);
-
-		//if ( !pt->OpCode )
-        //    break;
 		if ( (unsigned short)(pt->OpCode - 1) > 48u )
 		{
 			if (pt->TABno)

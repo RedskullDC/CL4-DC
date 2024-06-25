@@ -27,7 +27,7 @@ int _diffkey(char *a1, char *a2, TDef *tdef)
 	{
 		TDFsize = tdef->TDFsize;
 
-		if ( TDFtype & 2 )		// string type, variable length
+		if ( TDFtype & tdf_STRING )		// string type, variable length
 		{
 			v13 = _fwidth(&a1[v14], TDFsize, TDFtype);
 			v7	= _fwidth(&a2[v14], TDFsize, TDFtype);

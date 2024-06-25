@@ -284,7 +284,7 @@ LABEL_48:
 						v4 = ploop( btb1, 0, btb1->StartLine, btb1->EndLine, btb1->StartLine, btb1->EndLine, 0);
 						if ( v4 != -5 || exit_type != 886 )
 						{
-							if ( *(char *)ttab->TTfields[5].FLDdata == 'y' )
+							if ( *(char *)ttab->TTfields[v_REPLY].FLDdata == 'y' )
 							{
 								setcvar(v_REPLY, "");	// "REPLY"
 	LABEL_127:

@@ -6,52 +6,53 @@
 #include <string.h>			// strncmp()
 #include "DBdefs.h"
 #include "cl4.h"
+#include "lvarnames.h"
 
 char *getresv(int VarNum)			// return *string* reserved values
 {
     char *v11;
 	char Dest[32];
-	
+
 	switch (VarNum)                 // VarNum is actually a bitmask
 	{
-		case 0x0001:							// 'path'
+		case rsv_CWD:							// 'path'
             return cwd;
 
-		case 0x0002:							// 'version'
+		case rsv_VERSION:							// 'version'
 			return getclver();
 
 		//case 0x0004:	Unallocated?
 
-		case 0x0008:							// 'date'
+		case rsv_DATE:							// 'date'
 			return sysdate(dstr);
 
-		case 0x0010:							// 'time'
+		case rsv_TIME:							// 'time'
 			return systime(tstr);
 
-		case 0x0020:							// 'pname'
+		case rsv_PNAME:							// 'pname'
             return pname;
 
-		case 0x0040:							// 'uname'
+		case rsv_UNAME:							// 'uname'
 			if ( !uname_0[0] )
 				guname(uname_0);
 			return uname_0;
 		
-		case 0x0080:							// 'pid'
+		case rsv_PID:							// 'pid'
 			if ( !pid[0] )
 				sprintf(pid, "%d", getpid());
             return pid;
 
-		case 0x0100:							// 'uid'
+		case rsv_UID:							// 'uid'
 			if ( !uid[0] )
 				sprintf(uid, "%d", getuid());
             return uid;
 
-		case 0x0200:							// 'login'
+		case rsv_LOGIN:							// 'login'
             if ( !login[0] )
                 glogin(login);
             return login;
 
-		case 0x0400:							// 'tty'
+		case rsv_TTY:							// 'tty'
 			if ( !tty[0] )
             {
                 cdbcpystr(Dest, ttyname(2), 0);
@@ -75,12 +76,12 @@ char *getresv(int VarNum)			// return *string* reserved values
 			}
             return tty;
 
-		case 0x0800:							// 'nname'
+		case rsv_NNAME:							// 'nname'
 			return getnodename();
 
 		//case 0x1000:	Unallocated?
 
-		case 0x2000:							// 'pwd' current directory
+		case rsv_PWD:							// 'pwd' current directory
 			v11 = strrchr(cwd, '/');			// find *last* occurence of '/'
 			return v11 ? v11 + 1 : cwd;
 
@@ -97,18 +98,18 @@ int getnresv(int a1)		// return *numeric* reserved values
 {
 	switch (a1)
 	{
-		case 0x0008:					// 'date'
+		case rsv_DATE:					// 'date'
             sysdate(dstr);
             return clgetdate(dstr);
 
-		case 0x0010:					// 'time'
+		case rsv_TIME:					// 'time'
 			systime(tstr);
 			return (int)gettime(tstr);
 
-		case 0x0080:					// 'pid'
+		case rsv_PID:					// 'pid'
             return getpid();
 
-		case 0x0100:					// 'uid'
+		case rsv_UID:					// 'uid'
             return getuid();
 
 		default:						// rest can't be expessed numerically

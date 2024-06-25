@@ -124,10 +124,10 @@ EXPR *getexpr(ENTAB *entab, int TDno)
 	int		Operator;
 	
 	short	FieldNo;
-	short	v9;
+	short	FLDlen;
 	short	OpCode;
 
-    char	a3[1002];
+    char	ExprData[1002];
 	char	FLDtype;
 
 
@@ -162,14 +162,12 @@ EXPR *getexpr(ENTAB *entab, int TDno)
 
                 fld = &ttab[TTno].TTfields[FieldNo];
                 
-				memset(a3, 0, 1000u);
+				memset(ExprData, 0, 1000u);
                 OpCode = entab->Enun.Enop.Enoper & 0x003C;	// mask all but relative operator bits
-                v9 = getlit(fld, entab, a3, &OpCode);
+                FLDlen = getlit(fld, entab, ExprData, &OpCode);							// Updates ExprData buffer
 
-                return v9 ? newexpr(fld->FLDelemID, OpCode, a3, v9) : 0;
+                return FLDlen ? newexpr(fld->FLDelemID, OpCode, ExprData, FLDlen) : 0;
                 break;
-            //default:			all others fall through
-                //return 0;
         }
     }
     return 0;
