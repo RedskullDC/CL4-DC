@@ -1,0 +1,6 @@
+module CL4 [system] {
+  header "includecl4.h"
+  link "cl4"
+  export *
+}
+
