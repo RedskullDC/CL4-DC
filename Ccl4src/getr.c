@@ -9,7 +9,7 @@
 int _getr(int TDNo, char *WorkArea1, char *WorkArea2, POS *Pos, int Lock)
 {
 	TDinfo *TDptr;
-	PAGE *PageBuff;
+	PAGE_NODE p_pgnode;
 	int v7;
 	short Depth;
 	int PageList[6];
@@ -28,10 +28,10 @@ int _getr(int TDNo, char *WorkArea1, char *WorkArea2, POS *Pos, int Lock)
 		v7 = 0;
 		if ( Depth )
 		{
-			PageBuff = _datapg(TDptr, PageList[Depth - 1]);
-			v7 = _scanpg((void*)PageBuff, TDptr, &N1_2idx, 9);	// updates N1_2idx directly
+			p_pgnode.PAGE = _datapg(TDptr, PageList[Depth - 1]);
+			v7 = _scanpg(p_pgnode, TDptr, &N1_2idx, 9);	// updates N1_2idx directly
 			if ( v7 )
-				tuptor(WorkArea1, Pos, _itoptr(PageBuff, N1_2idx), TDptr->TableDefs);
+				tuptor(WorkArea1, Pos, _itoptr(p_pgnode.PAGE, N1_2idx), TDptr->TableDefs);
 		}
 	}
 	return v7;

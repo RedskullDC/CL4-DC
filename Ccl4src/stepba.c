@@ -7,7 +7,7 @@
 // *not* public
 unsigned int findprev(TDinfo *TDptr)
 {
-	PAGE *PagePtr;
+	PAGE_NODE pgnode;
 	int v2;
 	//char *v3;
 	int v4;
@@ -20,17 +20,17 @@ unsigned int findprev(TDinfo *TDptr)
 	Depth = _rhead(TDptr->TDDBinfo, TDptr->TDindexOff, &PageNo);
 	for ( TDptr->Key2Size = 0; Depth > 1; --Depth )
 	{
-		PagePtr = _indexpg(TDptr, PageNo);
-		_scanpg((PAGE *)PagePtr, TDptr, &N1_2idx, TDptr->field_42 | 8);	// scanpg updates N1_2idx directly. |8 means PAGE* passed
+		pgnode.PAGE = _indexpg(TDptr, PageNo);
+		_scanpg(pgnode, TDptr, &N1_2idx, TDptr->field_42 | 8);	// scanpg updates N1_2idx directly. |8 means PAGE* passed
 		
-		PageNo = mstol((int *)&PagePtr->header.DataStart[4 * N1_2idx--]);
+		PageNo = mstol((int *)&pgnode.PAGE->header.DataStart[4 * N1_2idx--]);
 		if ( N1_2idx >= 0 )
 		{
-			v2 = _itosz(PagePtr, N1_2idx);
+			v2 = _itosz(pgnode.PAGE, N1_2idx);
 			v4 = TDptr->TDKeySize;
 			if ( v4 > (unsigned int)v2 )
 				v4 = v2;
-			TDptr->Key2Size = cpybuf(TDptr->KeyBuf2, _itoptr(PagePtr, N1_2idx), v4);
+			TDptr->Key2Size = cpybuf(TDptr->KeyBuf2, _itoptr(pgnode.PAGE, N1_2idx), v4);
 		}
 	}
 	return PageNo;
@@ -38,7 +38,8 @@ unsigned int findprev(TDinfo *TDptr)
 
 NODE_1* _stepbak(TDinfo *TDptr)
 {
-	int PageNo; // edi@5
+	int PageNo;
+	PAGE_NODE pgnode;
 
 	while ( 1 )
 	{
@@ -51,9 +52,10 @@ NODE_1* _stepbak(TDinfo *TDptr)
 			break;
 
 		relnode(TDptr->TDNodePtr);
-		TDptr->TDNodePtr = getnode(TDptr, PageNo, 0);
+		pgnode.NODE = getnode(TDptr, PageNo, 0);
+		TDptr->TDNodePtr = pgnode.NODE;
 
-		_scanpg((PAGE*)TDptr->TDNodePtr, TDptr, &TDptr->N1_2idx, TDptr->field_42);	// updates N1_2idx directly!
+		_scanpg(pgnode, TDptr, &TDptr->N1_2idx, TDptr->field_42);	// updates N1_2idx directly!
 		TDptr->field_42 = 1;
 	}
 	return 0;	// \0 means we have reached the end of the line. No more data!

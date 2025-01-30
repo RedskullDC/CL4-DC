@@ -182,134 +182,39 @@ int rtdget(TDesc *tt)
     return tt->TTrtd;
 }
 
-// Not called in clcomp!
-/*
-int getfile(char *DBname, char *TableName)			
-{
-    TDesc *TTptr; // esi@9
-    char *Alias; // eax@16
-    short DBno; // [sp+18h] [bp-10h]@1
-
-printf("getfile  DBname = %s, TableName = %s\n", DBname, TableName);
-
-    DBno = 0;
-    while ( no_dtabs > DBno )
-    {
-		if ( !strcmp(DBname, dtab[DBno].FullDBname))	// We found a match!
-			break;
-		DBno++;
-    }
-    if ( no_dtabs == DBno )		// No match. This DBase isn't currently open.
-    {
-        newdtab();				// Create a new DBase slot.
-        if ( no_dtabs <= DBno )
-            __assert_fail("dbii < no_dtabs", "getfile.c", 213u, "getfile");
-    }
-    if ( !dtab[DBno].FullDBname )	// Wasn't a match above, copy DBname incto structure
-    {
-        dtab[DBno].DBno = -1;
-        dtab[DBno].FullDBname = mstrcpy(DBname, 0);
-    }
-
-    for ( TTptr = ttab + 3; TTptr < &ttab[no_ttabs]; ++TTptr )	// TD0 -> TD2 == system tables 
-    {
-        if ( !TTptr->TableName[0] )		// got to end of ttab's with no match on TableName
-            break;
-        if ( !strcmp(TTptr->TableName, TableName) )	// We found a match!
-            break;
-    }
-    if ( TTptr == &ttab[no_ttabs] )		// True if we got to end of ttab's with no match
-    {
-        newttab();						// Create a new ttab
-        TTptr = &ttab[no_ttabs - 1];
-    }
-    if ( !TTptr->TableName[0] )			// true if this is a new ttab
-    {
-//        Alias = TableName;
-//        if ( *TableName )
-//        {
-//			while (*Alias )
-//			{
-//				if (*Alias == ',')
-//				{
-//					*Alias++ = 0;
-//					break;
-//				}
-//			}
-//		}
-//		printf("getfile: %s,%s",TableName, Alias);
-		
-        Alias = TableName;
-        if ( *TableName )
-        {
-
-            if ( *TableName == ',' )
-            {
-LABEL_20:
-                if ( *Alias )
-                    *Alias++ = 0;
-            }
-            else
-            {
-                while ( 1 )
-                {
-                    ++Alias;
-                    if ( !*Alias )
-                        break;
-                    if ( *Alias == ',' )
-                        goto LABEL_20;
-                }
-            }
-        }
-		printf("getfile: %s,%s",TableName, Alias);
-        cdbcpystr(TTptr->TableAlias, Alias, 0);
-        cdbcpystr(TTptr->TableName, TableName, 0);
-        TTptr->DBnumber = DBno;
-        TTptr->TTrtd = -1;
-    }
-    return rtdget(TTptr);
-}
-*/
 int rdbget(int DBno)
 {
-     DBase	*DTptr;
-	 char	*DBname;
-	 int	PctFree;
-	 int	DBnoa;
-	 
-     DTptr = &dtab[DBno];
-     if ( DTptr->DBno >= 0 )	// This DBase already opened?
-          return DTptr->DBno;
-     
-	 DBname = mstrcpy(chkpath(DTptr->FullDBname, 0, "CLDPATH", 0, 0x180), 0);	// 0x180 mode read_write  permission bits '-rw-------'
-     DBnoa = cldbopen(DBname, 0);
-     if ( DBnoa < 0 )
-     {
-          eprint("can't open database - %s\n", DTptr->FullDBname);
-          return DBnoa;
-     }
-     //v4 = checkForDemo(DBnoa, DTptr->FullDBname);
-     //v4 = 1;
-	 //ErrorCode = -1;
-     //if ( v4 )
-     //{
-          DTptr->FullDBname = DBname;
-          DTptr->DBno = DBnoa;
-          PctFree = (dbspace(DBnoa) * 100) / dbsize(DBnoa);
-          if ( PctFree < 10 )	// Less than 10% free space left!!
-          {
-               /*if ( isCGI )
-               {
-                    eprint("%s is %d%% full\n", DTptr->FullDBname, 100 - PctFree);
-               }
-               else
-               {*/
-                    eprint("\a%s is %d%% full\n", DTptr->FullDBname, 100 - PctFree);
-                    sleep(5u);
-               //}
-          }
-          return DBnoa;
-     //}
-     //return ErrorCode;
+	DBase	*DTptr;
+	char	*DBname;
+	int	PctFree;
+	int	DBnoa;
+
+	DTptr = &dtab[DBno];
+	if ( DTptr->DBno >= 0 )	// This DBase already opened?
+	     return DTptr->DBno;
+
+	DBname = mstrcpy(chkpath(DTptr->FullDBname, 0, "CLDPATH", 0, 0x180), 0);	// 0x180 mode read_write  permission bits '-rw-------'
+	DBnoa = cldbopen(DBname, 0);
+	if ( DBnoa < 0 )
+	{
+	     eprint("can't open database - %s\n", DTptr->FullDBname);
+	     return DBnoa;
+	}
+	DTptr->FullDBname = DBname;
+	DTptr->DBno = DBnoa;
+	PctFree = (dbspace(DBnoa) * 100) / dbsize(DBnoa);
+	if ( PctFree < 10 )	// Less than 10% free space left!!
+	{
+		   /*if ( isCGI )
+		   {
+				eprint("%s is %d%% full\n", DTptr->FullDBname, 100 - PctFree);
+		   }
+		   else
+		   {*/
+				eprint("\a%s is %d%% full\n", DTptr->FullDBname, 100 - PctFree);
+				sleep(5u);
+		   //}
+	}
+	return DBnoa;
 }
 #endif

@@ -95,19 +95,19 @@ TDef *newdesc(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *TD
 
 DBinfo *newfdf(int TDno)
 {
-    short v1; // ax@1
-    unsigned int v2; // edi@3
+    short v1;
+    unsigned int v2;
     int i;
-    signed int v4; // edx@4
-    signed int v5; // edx@6
-    char v6; // al@6
-    unsigned int j; // esi@9
-    signed short v8; // ax@10
-    int v9; // edi@12
-    signed int v10; // esi@15
-    unsigned int v12; // [sp+18h] [bp-420h]@3
-    DBinfo *DBptr; // [sp+1Ch] [bp-41Ch]@1
-    char Buffer[1024]; // [sp+20h] [bp-418h]@3
+    signed int v4; 
+    signed int v5;
+    char v6;
+    unsigned int j;
+    signed short v8; 
+    int v9; 
+    signed int v10; 
+    unsigned int v12;
+    DBinfo *DBptr;
+    char Buffer[1024];
 
     DBptr = (DBinfo *)ealloc(sizeof(DBinfo), 0);
     DBptr->DBpgsize = _psize;				// careful!!!   _psize, not psize
@@ -171,14 +171,14 @@ DBinfo *newfdf(int TDno)
 
 int _mktable(int *TTnos, short NumTTs, short *KeyIDs, short *DataIDs, short *a5)
 {
-    TDef *tdef; // edi@1
-    int v6; // ST18_4@1
-    TDinfo *TDptr; // esi@1
-    int v8; // eax@1
-    int v9; // eax@3
-    int TDno; // edi@5
-    int result; // eax@6
-    DBinfo *v12; // eax@7
+    TDef *tdef;
+    int v6;
+    TDinfo *TDptr;
+    int v8;
+    int v9;
+    int TDno;
+    int result;
+    DBinfo *v12;
 
     tdef = newdesc(TTnos, NumTTs, KeyIDs, DataIDs, a5);
     v6 = _keysize(tdef);

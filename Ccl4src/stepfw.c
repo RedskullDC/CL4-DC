@@ -5,7 +5,7 @@
 #include "cl4.h"
 int findnxt( TDinfo *TDptr)
 {
-	PAGE *PagePtr;
+	PAGE_NODE pgnode;
 	int v2;
 	int KSize;
 	short Depth;
@@ -17,18 +17,18 @@ int findnxt( TDinfo *TDptr)
 	Depth	= _rhead(TDptr->TDDBinfo, TDptr->TDindexOff, &PageNo);
 	for ( TDptr->Key1Size = 0; Depth > 1; --Depth )
 	{
-		PagePtr = _indexpg(TDptr, PageNo);
-		if ( _scanpg(PagePtr, TDptr, &N1_2idx, TDptr->field_3A | 8) ) // scanpg updates N1_2idx directly
+		pgnode.PAGE = _indexpg(TDptr, PageNo);
+		if ( _scanpg(pgnode, TDptr, &N1_2idx, TDptr->field_3A | 8) ) // scanpg updates N1_2idx directly
 			++N1_2idx;
 		
-		PageNo = mstol((int *)&PagePtr->header.DataStart[4 * N1_2idx]);
-		if ( N1_2idx != PagePtr->header.NumEntries )
+		PageNo = mstol((int *)&pgnode.PAGE->header.DataStart[4 * N1_2idx]);
+		if ( N1_2idx != pgnode.PAGE->header.NumEntries )
 		{
-			v2 = _itosz(PagePtr, N1_2idx);
+			v2 = _itosz(pgnode.PAGE, N1_2idx);
 			KSize = TDptr->TDKeySize;
 			if ( KSize > (unsigned int)v2 )
 				KSize = v2;
-			TDptr->Key1Size = cpybuf(TDptr->KeyBuf1, _itoptr(PagePtr, N1_2idx), KSize);
+			TDptr->Key1Size = cpybuf(TDptr->KeyBuf1, _itoptr(pgnode.PAGE, N1_2idx), KSize);
 		}
 	}
 	return PageNo;
@@ -37,6 +37,7 @@ int findnxt( TDinfo *TDptr)
 NODE_1*	_stepfwd(TDinfo *TDptr)
 {
 	int PageNo;
+	PAGE_NODE pgnode;
 
 	//printf("_stepfwd(TDptr: x%08X)\n", TDptr);
 	while ( 1 )
@@ -50,9 +51,11 @@ NODE_1*	_stepfwd(TDinfo *TDptr)
 			break;
 		
 		relnode(TDptr->TDNodePtr);
-		TDptr->TDNodePtr = getnode(TDptr, PageNo, 0);
-
-		_scanpg((PAGE *)TDptr->TDNodePtr, TDptr, &TDptr->N1_2idx, TDptr->field_3A);			// updates N1_2idx directly!
+		
+		pgnode.NODE = getnode(TDptr, PageNo, 0);
+		TDptr->TDNodePtr = pgnode.NODE;
+		
+		_scanpg(pgnode, TDptr, &TDptr->N1_2idx, TDptr->field_3A);			// updates N1_2idx directly!
 		TDptr->field_3A = 1;
 	}
 	return 0;     // \0 means we have reached the end of the line. No more data!

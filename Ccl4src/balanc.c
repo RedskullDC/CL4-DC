@@ -44,9 +44,8 @@ void undo(DBinfo *DBptr)
 // *not* public in libcl4
 void putchange(DBinfo *DBptr)
 {
-	int *PageList1; // esi@1
-	int *PageList2; // edi@1
-	//int v3; // ST08_4@1
+	int *PageList1;
+	int *PageList2;
 
 	//printf("putchange( DBptr: x%08X [ %s ])\n", DBptr, DBptr->DBname);
 
@@ -91,7 +90,7 @@ bool _balance(TDinfo *TDptr, NODE *Node, int *PageList, short Depth)
 	int v4;
 	register int v5;
 	int *PagePtr;
-	NODE *Node2; 
+	PAGE_NODE p_pgnode;  
 	char **a5;
 	char *ptr;
 	bool success;
@@ -144,18 +143,18 @@ bool _balance(TDinfo *TDptr, NODE *Node, int *PageList, short Depth)
 
 		if ( PagePtr == PageList )
 		{
-			Node2 = freshnode(TDptr, 2);
+			p_pgnode.NODE = freshnode(TDptr, 2);
 			N1_2idx = 0;
 			goto LABEL_25;
 		}
 		if ( !_lockpg(TDptr->TDDBinfo, *(PagePtr - 1), 2) )
 			break;
 		
-		Node2 = getnode(TDptr, *(PagePtr - 1), 2);
-		if ( _scanpg((void*)Node2, TDptr, &N1_2idx, 1) )		// "1" indicates to _scanpg this is a NODE structure
+		p_pgnode.NODE = getnode(TDptr, *(PagePtr - 1), 2);
+		if ( _scanpg(p_pgnode, TDptr, &N1_2idx, 1) )		// "1" indicates to _scanpg this is a NODE structure
 			++N1_2idx;
 		
-		if ( Node2->NODE2ptr[N1_2idx].PageNo != Node->PageNo )
+		if ( p_pgnode.NODE->NODE2ptr[N1_2idx].PageNo != Node->PageNo )
 			derror(19, 0, TDptr);
 
 LABEL_25:
@@ -164,21 +163,21 @@ LABEL_25:
 			a5 = KeyBuff8;			// go back around to the start
  
 		// if Node wont fit in a page, or couldn't be spread across two nodes?
-		if ( TDptr->Rec_plus_DB < Node->DataEnd || !_spread(TDptr, Node, Node2, N1_2idx, a5) )
+		if ( TDptr->Rec_plus_DB < Node->DataEnd || !_spread(TDptr, Node, p_pgnode.NODE, N1_2idx, a5) )
 		{
 			a5 += 2;
 			if (a5 == &KeyBuff8[8])		// [8] is outside the array!!
 				a5 = KeyBuff8;
 
-			if ( !_split(TDptr, Node, Node2, N1_2idx, a5) )
+			if ( !_split(TDptr, Node, p_pgnode.NODE, N1_2idx, a5) )
 			{
 				_lockpg(TDptr->TDDBinfo, *(PagePtr - 1), 0);
-				Node = Node2;
+				Node = p_pgnode.NODE;
 				goto FINISH;				// exit_success
 			}
 		}
 		a5 += 2;
-		Node = Node2;
+		Node = p_pgnode.NODE;
 	}
 	success = false;		// error_exit, something went wrong!
 

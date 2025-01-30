@@ -6,8 +6,7 @@
 #include "cl4.h"
 #include "lvarnames.h"			// for bit field values
 
-// PageBuffer can be either a NODE* or PAGE* depending on ArgType
-short _cmp(void *PageBuffer, short N1_2idx, TDinfo *TDptr, short ArgType, short *a5)
+short _cmp(PAGE_NODE p_pgnode, short N1_2idx, TDinfo *TDptr, short ArgType, short *a5)
 {
 	TDef	*tdef;
 	char	*KeyDefs;
@@ -27,15 +26,13 @@ short _cmp(void *PageBuffer, short N1_2idx, TDinfo *TDptr, short ArgType, short 
 	
 	if ( ArgType & 8 )								// if (ArgType& 8), PagePtr is a PAGE structure, otherwise it is a NODE !!!
 	{	
-		PagePtr = (PAGE*) PageBuffer;				// PageBuffer was a PAGE here
-		RecBuff	= _itoptr(PagePtr, N1_2idx);            
-		RecSize = _itosz(PagePtr, N1_2idx);
+		RecBuff	= _itoptr(p_pgnode.PAGE, N1_2idx);            // PAGE here
+		RecSize = _itosz(p_pgnode.PAGE, N1_2idx);
 	}
 	else
 	{
-		NodePtr = (NODE*) PageBuffer;				// PageBuff was a NODE structure here :   
-		RecBuff	= NodePtr->NODE1ptr[N1_2idx].Data;
-		RecSize = NodePtr->NODE1ptr[N1_2idx].Size; 
+		RecBuff	= p_pgnode.NODE->NODE1ptr[N1_2idx].Data;	// NODE structure here :   
+		RecSize = p_pgnode.NODE->NODE1ptr[N1_2idx].Size; 
 	}
 
 	KeyDefs = TDptr->TDKeyDefs;
@@ -90,7 +87,7 @@ short _cmp(void *PageBuffer, short N1_2idx, TDinfo *TDptr, short ArgType, short 
 	return 0;	// exact match, or tdef was empty
 }
 
-bool _scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType)
+bool _scanpg(PAGE_NODE p_pgnode, TDinfo *TDptr, short *N2idx, short ArgType)
 {
 	short	IndexLo;
 	short	IndexHi;
@@ -101,12 +98,12 @@ bool _scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType)
 	short	a5;
 
 
-	//printf("_scanpg(PAGEptr: x%08X, TDptr: x%08X, N2idxPtr: x%08X, ArgType: x%02X)\n" ,PagePtr, TDptr,N2idx,ArgType);
+	//printf("_scanpg(p_pgnode: x%08X, TDptr: x%08X, N2idxPtr: x%08X, ArgType: x%02X)\n" ,p_pgnode, TDptr,N2idx,ArgType);
 
 	if ( ArgType & 8 )                      // if (ArgType& 8), PagePtr is a PAGE structure, otherwise it is a NODE
-		NumEntries = PagePtr->header.NumEntries;	// PagePtr was a PAGE here. get PagePtr->NumEntries
+		NumEntries = p_pgnode.PAGE->header.NumEntries;	// PagePtr was a PAGE here. get PagePtr->NumEntries
 	 else
-		NumEntries = ((NODE*)PagePtr)->NumEntries;	// PagePtr was a NODE here. get PagePtr->NumEntries
+		NumEntries = p_pgnode.NODE->NumEntries;	// PagePtr was a NODE here. get PagePtr->NumEntries
 	
 	// Quick search routine.
 	// start in middle (IndexHi+a2)/2, then keep halving till we hit desired record
@@ -116,7 +113,7 @@ bool _scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType)
 	{
 		IndexTest = (IndexHi + IndexLo) / 2;
 		//printf("IndexLo = %3d, IndexHi = %3d , IndexTest = %3d\n",IndexLo, IndexHi, IndexTest);
-		v6 = _cmp(PagePtr, IndexTest, TDptr, ArgType, &a5);
+		v6 = _cmp(p_pgnode, IndexTest, TDptr, ArgType, &a5);
 		if ( v6 < 0 || v6 <= 0 && ArgType & 2 )
 			IndexLo = IndexTest + 1;
 		else
@@ -132,7 +129,7 @@ bool _scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType)
 	{
 		if ( IndexLo < NumEntries )
 		{
-			if ( !_cmp(PagePtr, IndexLo, TDptr, ArgType, &a5) && a5 <= 0 )
+			if ( !_cmp(p_pgnode, IndexLo, TDptr, ArgType, &a5) && a5 <= 0 )
 				v7 = true;
 		}
 	}
@@ -140,3 +137,4 @@ bool _scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType)
 	return v7;
 }
 #endif
+

@@ -6,7 +6,7 @@
 
 void newseq(TDinfo *TDptr)
 {
-	char *v1; // eax@2
+	char *v1;
 
 	//printf("newseq( TDptr: x%08X)\n", TDptr);
 	if ( !TDptr->KeyBuf1 )

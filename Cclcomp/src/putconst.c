@@ -6,7 +6,7 @@
 #include "DBdefs.h"
 #include "cl4.h"
 
-short putconst(char *nptr, char FLDtype)	// We hit a contstant in the program body. Save it as a variable
+short putconst(char *nptr, char FLDtype)	// We hit a constant in the program body. Save it as a variable
 {
     FLDdesc *fld;
 	double	v3;

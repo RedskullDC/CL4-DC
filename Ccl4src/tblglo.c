@@ -16,7 +16,7 @@ TDinfo* _chktd(unsigned int TDno)
 
 signed int _nxttd(TDinfo *TDptr)
 {
-	short TDno; // edx@1
+	short TDno;
 
 	TDno = 3;
 	do
@@ -34,7 +34,7 @@ signed int _nxttd(TDinfo *TDptr)
 
 TDinfo* _rmtd(int TDno)
 {
-	TDinfo *TDptr; // ecx@1
+	TDinfo *TDptr;
 
 	TDptr = 0;
 	if ( (unsigned int)(TDno - 3) <= 3000 )
@@ -103,7 +103,7 @@ int _shuttd(DBinfo *DBptr)
 
 short nr2td(TDinfo *TDptr)
 {
-	short TDno; // eax@1
+	short TDno;
 
 	TDno = 0;
 	while ( _tbl[TDno] != TDptr )

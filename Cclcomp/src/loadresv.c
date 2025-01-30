@@ -18,13 +18,12 @@ short loadresv(char *Symbol)
 	 
 	if ( *Symbol )
     {
-		rw_lo = rvwords;
-        //rw_hi = &rvwords[11];	// *** should be dynamically sized ***
-        rw_hi = &rvwords[(sizeof(rvwords)/ sizeof(ReservedWord)) - 1];	// Pointer to last element in table
+		rw_lo = rvwords;														//rw_hi = &rvwords[11];	// *** should be dynamically sized ***
+        rw_hi = &rvwords[(sizeof(rvwords)/ sizeof(ReservedWord)) - 1];			// Pointer to last element in table
 
         while ( rw_lo <= rw_hi )
         {
-			rw_curr = &rw_lo[(((rw_hi - rw_lo) >> 31) + rw_hi - rw_lo) >> 1];// simple tree search to speed things up
+			rw_curr = &rw_lo[(((rw_hi - rw_lo) >> 31) + rw_hi - rw_lo) >> 1];	// simple tree search to speed things up
 			v3 = strcmp(Symbol, rw_curr->Word);
 
 			if (!v3)	// match!

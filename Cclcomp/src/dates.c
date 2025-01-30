@@ -89,7 +89,7 @@ void loadMonthArrays(bool SetAvars)
 	if ( !*_YL && !_DF )	// ***ERROR*** DF is ignored if no second language set!
 	{
 		v15 = nl_langinfo(D_FMT);	// 131113
-		v16 = -1;
+		v16 = -1;					// default to error
 		while ( *v15 )
 		{
 			switch ( *v15++ )	// Examine the system DateFormat string to see what comes first 

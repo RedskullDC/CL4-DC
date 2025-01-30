@@ -55,7 +55,7 @@ typedef struct
 	short	RangeTo;
 	short	StringOffset;
 	long	Spare;				// unused, but packs structure to 12 (x86) and 16 (x64)
-}RATAB;		// Range type records
+}RATAB;		// Range type records  
 
 
 typedef struct 
@@ -701,6 +701,13 @@ struct NODE{
 	//char	field_26;
 	//char	field_27;
 }; 
+
+typedef union
+{
+  PAGE *PAGE;
+  NODE *NODE;
+}PAGE_NODE;
+
 
 
 //====================================================================

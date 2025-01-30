@@ -1,10 +1,15 @@
-head	1.1;
+head	1.2;
 access;
 symbols;
 locks
-	leslie:1.1; strict;
+	leslie:1.2; strict;
 comment	@ * @;
 
+
+1.2
+date	2024.05.03.12.24.17;	author leslie;	state Exp;
+branches;
+next	1.1;
 
 1.1
 date	2019.04.05.04.11.02;	author leslie;	state Exp;
@@ -17,9 +22,9 @@ desc
 @
 
 
-1.1
+1.2
 log
-@Initial revision
+@update TDFtype flag bits
 @
 text
 @#ifndef RTOKEY_C
@@ -35,7 +40,7 @@ int rtokey(char *KeyBuf, char *Src, POS *Pos, TDef *TDefP)
 	size_t	v6;
 	short	TDFtype;
 	short	v7;
-	short	v10;
+	//short	v10;
 	short	v11;
 
 	int		localsize;
@@ -54,10 +59,9 @@ int rtokey(char *KeyBuf, char *Src, POS *Pos, TDef *TDefP)
 				v7 = cdbrindex(Pos, tdef->TDFentry);
 				if ( v7 >= 0 )
 				{	
-					v10 = tdef->TDFtype;
-					if ( v10 & 0x0008 )  //???
+					if ( tdef->TDFtype & 0x0008 )  //???
 					{
-						if ( v10 & tdf_STRING )
+						if ( tdef->TDFtype & tdf_STRING )
 							v11 = _fwidth(&Src[v7], tdef->TDFsize, tdef->TDFtype);
 						else
 							v11 = tdef->TDFsize;
@@ -89,4 +93,22 @@ int rtokey(char *KeyBuf, char *Src, POS *Pos, TDef *TDefP)
 }
 
 #endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 1
+a14 1
+	short	v10;
+d33 1
+a33 2
+					v10 = tdef->TDFtype;
+					if ( v10 & 0x0008 )  //???
+d35 1
+a35 1
+						if ( v10 & tdf_STRING )
 @

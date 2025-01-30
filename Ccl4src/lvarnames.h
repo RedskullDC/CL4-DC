@@ -91,7 +91,9 @@
 
 #define FN(N) ((N << 10))	//  0001-003F ->  0400-FC00
 
+#define f_RSVWORD   0x0100u	// Reserved Word  flag bit
 #define f_INTRES    0x0200u	// Integer result flag bit
+
 #define f_NOT		FN(1)	// 0400
 #define f_SQRT		FN(2)	// 0800
 #define f_LOG		FN(3)	// 0C00

@@ -27,9 +27,8 @@ int findfno(int TDno, char *FieldName)
 			FieldNo++;
 			fld++;
 		}
-
-		// look for a possible wildcard match on the name, if 'exact' not set to true. exact = global goodness!
-		if ( !exact )
+		
+		if ( !exact )			// look for a possible wildcard match on the name, if 'exact' not set to true. exact = global goodness!
 		{
 			cdbcpystr(WildName, FieldName, "*", 0);	// tack a '*' onto the filename, match all
 			fld = TTptr->TTfields;

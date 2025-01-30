@@ -1,10 +1,15 @@
-head	1.1;
+head	1.2;
 access;
 symbols;
 locks
-	leslie:1.1; strict;
+	leslie:1.2; strict;
 comment	@ * @;
 
+
+1.2
+date	2024.07.01.09.29.32;	author leslie;	state Exp;
+branches;
+next	1.1;
 
 1.1
 date	2020.01.29.00.53.32;	author leslie;	state Exp;
@@ -18,9 +23,9 @@ prior to X64
 @
 
 
-1.1
+1.2
 log
-@Initial revision
+@prior to PAGE_NODE change
 @
 text
 @#ifndef GETPATH_C
@@ -34,24 +39,44 @@ int _getpath(int *PageList, TDinfo *TDptr)
 
 	short i;
 	int Depth; // Depth - Level into the tree structure
-	PAGE *PageBuffer;
+	PAGE *pg;
 	short N1_2idx;
 
 	//printf("_getpath(PagePtr: %08X,TDptr: %08X) Called - ",PageList,TDptr);
 	Depth = _rhead(TDptr->TDDBinfo, TDptr->TDindexOff, PageList);	// Updates PageList[0] with Master index PageNo
 	for ( i = Depth; i > 1; --i )
 	{
-		PageBuffer = _indexpg(TDptr, *PageList);		// Descend down tree till we find target PageNo that matches TDptr->TDKeyDefs data
+		pg = _indexpg(TDptr, *PageList);		// Descend down tree till we find target PageNo that matches TDptr->TDKeyDefs data
 		
-		if ( _scanpg(PageBuffer, TDptr, &N1_2idx, 9))	// 9 indicates PAGE structure being passed (&8)
+		if ( _scanpg(pg, TDptr, &N1_2idx, 9))	// 9 indicates PAGE structure being passed (&8)
 			++N1_2idx;
 
 		PageList++;
-		*PageList = mstol((int *)&PageBuffer->DataStart[4 * N1_2idx]);	// Update rest of PageList array as required.
+		*PageList = mstol((int *)&pg->header.DataStart[4 * N1_2idx]);	// Update rest of PageList array as required.
 		//printf("Pagelist[%d] = x%04X (%4d) \n",i,*PageList2,*PageList2);
 	}
 	//printf("Returning %d\n",Depth);
 	return Depth;
 }
 #endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 1
+a12 1
+	PAGE *PageBuffer;
+d19 1
+a19 1
+		PageBuffer = _indexpg(TDptr, *PageList);		// Descend down tree till we find target PageNo that matches TDptr->TDKeyDefs data
+d21 1
+a21 1
+		if ( _scanpg(PageBuffer, TDptr, &N1_2idx, 9))	// 9 indicates PAGE structure being passed (&8)
+d25 1
+a25 1
+		*PageList = mstol((int *)&PageBuffer->DataStart[4 * N1_2idx]);	// Update rest of PageList array as required.
 @

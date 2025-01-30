@@ -14,12 +14,12 @@ short _cmpattrib(char *src, short TDFsize, char *Buffer, short TDFsize2, short T
 	short	v14;
 	short	v18;
 	
-	unsigned char v9; // esi@17
-	unsigned char v10; // ecx@17
-	unsigned char v11; // eax@19
-	char v12; // edx@21
-	bool isNum; // [sp+18h] [bp-420h]@1
-	char dest[1048]; // [sp+20h] [bp-418h]@12
+	unsigned char v9;
+	unsigned char v10;
+	unsigned char v11;
+	char v12;
+	bool isNum;
+	char dest[1048];
 
 	//printf("_cmpattrib(src = x%08X, TDFsize = %2d, Buffer = x%08X, TDFsize2 = %2d, TDFtype = x%04X)\n",src,TDFsize,Buffer,TDFsize2,TDFtype );
 
@@ -65,7 +65,7 @@ short _cmpattrib(char *src, short TDFsize, char *Buffer, short TDFsize2, short T
 				//printf("cmpattr_1: TDF1 %d , TDF2 %d, v9 = %d [%c], v10 = %d [%c], v18 = %d\n",TDFsize,TDFsize2,v9,v9,v10,v10,v18);
 				if ( v9 != v10 )
 				{
-					if ( !(TDFtype & tdf_NOCASE))		// & x0008 means allow case-insentive match
+					if ( !(TDFtype & tdf_NOCASE))		// allow case-insentive match
 						break;
 					
 					v11 = v9;

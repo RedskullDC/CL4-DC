@@ -18,9 +18,8 @@ short loadsym(char *Symbol)
 	
     if ( *Symbol )
     {
-		rw_lo = reswords;
-        //rw_hi = &reswords[202];	// *** should be dynamically sized ***
-        rw_hi = &reswords[(sizeof(reswords)/ sizeof(ReservedWord)) - 1];	// Pointer to last element in table
+		rw_lo = reswords;														//rw_hi = &reswords[202];	// *** should be dynamically sized ***
+        rw_hi = &reswords[(sizeof(reswords)/ sizeof(ReservedWord)) - 1];		// Pointer to last element in table
 
         while ( rw_lo <= rw_hi )
 		{

@@ -8,7 +8,7 @@ void* _shutlnk;		// not public in libcl4
 
 void* _shutdb(void)
 {
-	int DBno = 0; // esi@1
+	int DBno = 0;
 
 	//printf("_shutdb()\n");
 	do

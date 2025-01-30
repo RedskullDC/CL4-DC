@@ -7,8 +7,8 @@
 // *** not public in libcl4() ***
 void mfree(TDinfo *TDptr, SALLOCBUF *ptr)
 {
-    RLIST *rl; // esi@1
-    short v3; // edi@2
+    RLIST *rl;
+    short v3;
 
     for ( rl = ptr->RL_Head; rl; rl = (RLIST *)nfree(rl, (void *)rl->PageNo) )
     {
@@ -25,7 +25,7 @@ void mfree(TDinfo *TDptr, SALLOCBUF *ptr)
 // *** not public in libcl4() ***
 void sfree(TDinfo *TDptr, RLARR *RL)
 {
-    RLARR *RLa; // esi@1
+    RLARR *RLa;
 
 	for ( RLa = RL; RLa; RLa = (RLARR *)nfree(RLa, RLa->NextRLARR) )
 		_sparetree(TDptr, RLa->PageNo, RLa->Depth);
@@ -33,9 +33,9 @@ void sfree(TDinfo *TDptr, RLARR *RL)
 
 signed int _release(int TDno)
 {
-	TDinfo *TDptr; // esi@1
-	signed int result; // eax@1
-	DBinfo *DBptr; // edi@2
+	TDinfo *TDptr;
+	signed int result;
+	DBinfo *DBptr;
 
 	TDptr = _rmtd(TDno);
 	result = -1;

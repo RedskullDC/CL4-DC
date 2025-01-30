@@ -114,7 +114,6 @@
 #include "round.c"		// OK to 7 decimal places, then gets stuffed up!
 #include "compare.c"
 #include "typedp.c"
-//#include "zap.c"
 #include "getflags.c"
 #include "closedb.c"
 #include "cmpbuf.c"

@@ -1,10 +1,15 @@
-head	1.7;
+head	1.8;
 access;
 symbols;
 locks
-	leslie:1.7; strict;
+	leslie:1.8; strict;
 comment	@ * @;
 
+
+1.8
+date	2024.05.03.13.04.36;	author leslie;	state Exp;
+branches;
+next	1.7;
 
 1.7
 date	2017.01.12.02.28.23;	author leslie;	state Exp;
@@ -47,9 +52,9 @@ desc
 @
 
 
-1.7
+1.8
 log
-@tidy-up
+@Added DC extensions to alltypes
 @
 text
 @#ifndef LEDEFINE_C
@@ -193,8 +198,8 @@ int ledefine(bool local)
 				VarType = '2';
 			else if (VarType == 'F')
 				VarType = '6';
-			
-			v5 = alltypes;					// check for a match on vartype, alltypes[] == "BCDFGILNRT$123456789"
+											// dctypes includes 'X' for 4 digit HEX value
+			v5 = alltypes;					// check for a match on vartype, alltypes[] == "BCDFGILNRTX$123456789"
             while ( *v5 && *v5 != VarType)
 				v5++;
 			if (!*v5)
@@ -245,8 +250,8 @@ int ledefine(bool local)
 
 		fld->FLDname = getmem(VarNameLen + 1);	// variable name
         cdbcpystr(fld->FLDname, VarName, 0);
-        switch ( VarType )						// calculate vartype
-        {
+		switch ( VarType )						// calculate vartype
+		{
 			case 'B':							// Integer types, Byte (8bit), Int (16bit), Long (32bit), LongLong (64bit)
 				fld->FLDlen		= 1;
                 fld->TDFtype	= 0x0044u;
@@ -283,25 +288,17 @@ int ledefine(bool local)
                 fld->FLDlen		= 4;
                 fld->TDFtype	= 0x0800u;		// only allow unsigned values
                 break;
+            case 'X':							// DC extension. 4 byte HEX value. Stored as N internally, but only unsigned!.
+			case 'P':							// Pointer variable for function calls
+                fld->FLDlen		= 4;
+                fld->TDFtype	= 0x0040u;
+                break;
             default:							// Floating point types
                 fld->FLDlen		= 8;
-                //v15 = VarType - 48;			// '0'
-				//fld->TDFtype = FPtypes[v15];
-				fld->TDFtype = FPtypes[(VarType - '0')];
+				fld->TDFtype	= FPtypes[(VarType - '0')];
 				break;
-          }
-		  /*	floating point types, TDFtypes:
-				1 = x00A4
-				2 = x0084
-				3 = x00E4
-				4 = x00C4
-				5 = x0124
-				6 = x0104
-				7 = x0164
-				8 = x0144
-				9 = x01A4
-		*/
-        fld->FLDtype = VarType;
+		}
+		fld->FLDtype = VarType;
 		fld->FLDdata = getmem(VarType == 'C' ? MemSize + 1 : MemSize ); // allow for terminating \0 in String type
 
 // ======  save the init value  ======
@@ -332,6 +329,43 @@ int ledefine(bool local)
 }
 
 #endif
+@
+
+
+1.7
+log
+@tidy-up
+@
+text
+@d142 2
+a143 2
+			
+			v5 = alltypes;					// check for a match on vartype, alltypes[] == "BCDFGILNRT$123456789"
+d194 2
+a195 2
+        switch ( VarType )						// calculate vartype
+        {
+d232 5
+d239 1
+a239 3
+                //v15 = VarType - 48;			// '0'
+				//fld->TDFtype = FPtypes[v15];
+				fld->TDFtype = FPtypes[(VarType - '0')];
+d241 2
+a242 13
+          }
+		  /*	floating point types, TDFtypes:
+				1 = x00A4
+				2 = x0084
+				3 = x00E4
+				4 = x00C4
+				5 = x0124
+				6 = x0104
+				7 = x0164
+				8 = x0144
+				9 = x01A4
+		*/
+        fld->FLDtype = VarType;
 @
 
 

@@ -11,17 +11,17 @@
 
 bool _update(TDinfo *TDptr, char *WorkArea, POS *Pos, short UpdateMode, short *a5)
 {
-	NODE	*NodePtr;
-	char	*RecBuffer; // [sp+2Ch] [bp-5Ch]@1
-	int		PID;
-	int		v10;
-	short	Depth;
-	short	v11;
-	bool	result;
-	bool	TableLocked;
-	bool	RecExists;
-	short	N1_2idx;
-	int		PageList[6];
+	PAGE_NODE	pgnode;
+	char		*RecBuffer; // [sp+2Ch] [bp-5Ch]@1
+	int			PID;
+	int			v10;
+	short		Depth;
+	short		v11;
+	bool		result;
+	bool		TableLocked;
+	bool		RecExists;
+	short		N1_2idx;
+	int			PageList[6];
 
 	//printf("_update(TDptr: x%08X,WorkArea: x%08X,POS: x%08X, UpdateMode: x%02X, a5: x%08X)\n" ,TDptr,WorkArea,Pos,UpdateMode,a5);
 
@@ -60,13 +60,13 @@ LABEL_32:
   
 	if ( Depth )		// Depth != 0 means Table contains entries
 	{
-		NodePtr = getnode(TDptr, PageList[Depth - 1], 0);
-		RecExists = _scanpg((PAGE*)NodePtr, TDptr, &N1_2idx, 1);	// scanpg takes NODE or PAGE structure. [ "1" signifies NODE structure]
+		pgnode.NODE = getnode(TDptr, PageList[Depth - 1], 0);
+		RecExists = _scanpg(pgnode, TDptr, &N1_2idx, 1);	// scanpg takes NODE or PAGE structure. [ "1" signifies NODE structure]
 		//printf("_update : RecExists = %s\n", RecExists ? "true":"false");
 	}
 	else
 	{
-		NodePtr = freshnode(TDptr, 0);	// Skip scanning for where record should be.
+		pgnode.NODE = freshnode(TDptr, 0);	// Skip scanning for where record should be.
 		N1_2idx = 0;					// first record in new Node
 	}
 	
@@ -76,12 +76,12 @@ LABEL_32:
 	{
 		if ( RecExists )
 		{
-			delpage(NodePtr, N1_2idx);		// record deleted, _balance() required below
+			delpage(pgnode.NODE, N1_2idx);		// record deleted, _balance() required below
 		}
 		else
 		{
-			_lockpg(TDptr->TDDBinfo, NodePtr->PageNo, 0);
-			relnode(NodePtr);
+			_lockpg(TDptr->TDDBinfo, pgnode.NODE->PageNo, 0);
+			relnode(pgnode.NODE);
 			goto LABEL_33;					// no _balance() required, as no record deleted
 		}
 	}
@@ -89,34 +89,34 @@ LABEL_32:
 	{
 		if ( RecExists )
 		{
-			PID = mstol((int *)(NodePtr->NODE1ptr[N1_2idx].Data + 129));	// Data points at a TD2REC structure. Get the PID of this lock record
+			PID = mstol((int *)(pgnode.NODE->NODE1ptr[N1_2idx].Data + 129));	// Data points at a TD2REC structure. Get the PID of this lock record
 			if ( PID == getpid() )											// Does the PID in the existing lock record belong to us?
 				RecExists = RecExists == false;								// "flip" value of RecExists. Allows us to mod record if *we* own the lock
-			_lockpg(TDptr->TDDBinfo, NodePtr->PageNo, 0);
-			relnode(NodePtr);
+			_lockpg(TDptr->TDDBinfo, pgnode.NODE->PageNo, 0);
+			relnode(pgnode.NODE);
 			goto LABEL_33;			// no _balance() required, as no record deleted
 		}
 		else
 		{
 			v10 = rtotup(RecBuffer, WorkArea, Pos, TDptr->TableDefs);
-			addpage(NodePtr, N1_2idx,RecBuffer, v10);						// lock record added, _balance() required 
+			addpage(pgnode.NODE, N1_2idx,RecBuffer, v10);						// lock record added, _balance() required 
 		}
 	}
 	else if ( UpdateMode == upd_put )		// upd_put && RecExists == true
 	{
 		if ( RecExists )
 		{
-			v11 = _uptuple(RecBuffer, NodePtr->NODE1ptr[N1_2idx].Data, WorkArea, Pos, TDptr->TableDefs, a5);
-			modpage(NodePtr, N1_2idx, RecBuffer, v11);
+			v11 = _uptuple(RecBuffer, pgnode.NODE->NODE1ptr[N1_2idx].Data, WorkArea, Pos, TDptr->TableDefs, a5);
+			modpage(pgnode.NODE, N1_2idx, RecBuffer, v11);
 		}
 		else								// upd_put && RecExists == false
 		{
 			v10 = rtotup(RecBuffer, WorkArea, Pos, TDptr->TableDefs);
-			addpage(NodePtr, N1_2idx,RecBuffer, v10);
+			addpage(pgnode.NODE, N1_2idx,RecBuffer, v10);
 		}
 	}
 
-	if ( !_balance(TDptr, NodePtr, PageList, Depth) )		// Normally a serious error if this fails......
+	if ( !_balance(TDptr, pgnode.NODE, PageList, Depth) )		// Normally a serious error if this fails......
 		goto LABEL_32;
 
 	if ( TableLocked )

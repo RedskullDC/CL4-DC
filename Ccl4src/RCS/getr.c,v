@@ -1,10 +1,15 @@
-head	1.1;
+head	1.2;
 access;
 symbols;
 locks
-	leslie:1.1; strict;
+	leslie:1.2; strict;
 comment	@ * @;
 
+
+1.2
+date	2024.07.01.09.25.38;	author leslie;	state Exp;
+branches;
+next	1.1;
 
 1.1
 date	2014.11.17.05.47.31;	author leslie;	state Exp;
@@ -17,9 +22,9 @@ desc
 @
 
 
-1.1
+1.2
 log
-@Initial revision
+@prior to PAGE_NODE struct
 @
 text
 @#ifndef GETR_C
@@ -33,7 +38,6 @@ text
 int _getr(int TDNo, char *WorkArea1, char *WorkArea2, POS *Pos, int Lock)
 {
 	TDinfo *TDptr;
-	char *v9;
 	PAGE *PageBuff;
 	int v7;
 	short Depth;
@@ -42,28 +46,21 @@ int _getr(int TDNo, char *WorkArea1, char *WorkArea2, POS *Pos, int Lock)
 
 	//printf("_getr( TDno: x%04X (%3d),WorkArea1 = %s, WorkArea2 = %s, POS = x%08X, Lock: %d)\n", TDNo,TDNo,WorkArea1,WorkArea2,Pos,Lock);
 	TDptr = _chktd(TDNo);
-	if ( !(TDptr->field_0 & 8) )
+	if ( !(TDptr->TDFlags & 8) )
 		derror(36, 0, TDptr);
+
 	TDptr->KeyDefSize = rtokey(TDptr->TDKeyDefs, WorkArea2, Pos, TDptr->TableDefs);
-	//printf("_getr: KeyDefSize = %3d\n",TDptr->KeyDefSize);
+	
 	if ( !Lock || (v7 = -10, _lockr(TDptr->TDDBinfo, TDptr->TDindexOff, TDptr->TDKeyDefs, TDptr->KeyDefSize, 2)) )
 	{
-		Depth = _getpath(PageList, TDptr);
+		Depth = _getpath(PageList, TDptr);	// updates PageList[] directly
 		v7 = 0;
 		if ( Depth )
 		{
 			PageBuff = _datapg(TDptr, PageList[Depth - 1]);
-			v7 = _scanpg((void*)PageBuff, TDptr, &N1_2idx, 9);
+			v7 = _scanpg((void*)PageBuff, TDptr, &N1_2idx, 9);	// updates N1_2idx directly
 			if ( v7 )
-			{
-				//printf("_getr: N1_2idx = %3d\n",N1_2idx);
-				v9 = _itoptr(PageBuff, N1_2idx);
-				//printf("_getr: v9      = x%08X\n",v9);
-				tuptor(WorkArea1, Pos, v9, TDptr->TableDefs);
-				//printf("_getr: RecSize = %d\n",TDptr->TDRecSize);
-				//DumpBlock(WorkArea1, TDptr->TDRecSize);
-
-			}
+				tuptor(WorkArea1, Pos, _itoptr(PageBuff, N1_2idx), TDptr->TableDefs);
 		}
 	}
 	return v7;
@@ -95,4 +92,38 @@ short lretrieve(int TDno, char *WorkArea1, char *WorkArea2)
 
 
 #endif
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a11 1
+	char *v9;
+d20 1
+a20 1
+	if ( !(TDptr->field_0 & 8) )
+d22 1
+d24 1
+a24 1
+	//printf("_getr: KeyDefSize = %3d\n",TDptr->KeyDefSize);
+d27 1
+a27 1
+		Depth = _getpath(PageList, TDptr);
+d32 1
+a32 1
+			v7 = _scanpg((void*)PageBuff, TDptr, &N1_2idx, 9);
+d34 1
+a34 9
+			{
+				//printf("_getr: N1_2idx = %3d\n",N1_2idx);
+				v9 = _itoptr(PageBuff, N1_2idx);
+				//printf("_getr: v9      = x%08X\n",v9);
+				tuptor(WorkArea1, Pos, v9, TDptr->TableDefs);
+				//printf("_getr: RecSize = %d\n",TDptr->TDRecSize);
+				//DumpBlock(WorkArea1, TDptr->TDRecSize);
+
+			}
 @

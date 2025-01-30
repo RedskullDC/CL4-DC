@@ -1,10 +1,15 @@
-head	1.1;
+head	1.2;
 access;
 symbols;
 locks
-	leslie:1.1; strict;
+	leslie:1.2; strict;
 comment	@ * @;
 
+
+1.2
+date	2024.03.26.13.59.37;	author leslie;	state Exp;
+branches;
+next	1.1;
 
 1.1
 date	2019.04.05.03.11.06;	author leslie;	state Exp;
@@ -17,9 +22,9 @@ desc
 @
 
 
-1.1
+1.2
 log
-@Initial revision
+@prior to cleanup
 @
 text
 @#ifndef MATCH_C
@@ -76,7 +81,7 @@ int wildmat(char *s, char *p)
 	int matched;	
 	signed int v17;
 
-	printf("wildmat(%s,%s)",s,p);
+	//printf("wildmat(%s,%s)",s,p);
 
 	if ( !*p )
 		return *s == 0;
@@ -258,10 +263,6 @@ bool _match(char *src, EXPR *Expr, TDef *tdef)
 
 					if ( v8 || Expr->Operator & 0x10 )	// wildmatch or equal to
 					{
-						//v5 = false;
-						//if ( v8 && Expr->Operator & 0x10 )
-						//	v5 = true;
-						//return v5;
 						return ( v8 && Expr->Operator & 0x10 );
 					}
 				}
@@ -285,4 +286,20 @@ bool _match(char *src, EXPR *Expr, TDef *tdef)
 
 
 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d55 1
+a55 1
+	printf("wildmat(%s,%s)",s,p);
+a236 4
+						//v5 = false;
+						//if ( v8 && Expr->Operator & 0x10 )
+						//	v5 = true;
+						//return v5;
 @

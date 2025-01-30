@@ -41,7 +41,7 @@ void glogin(char *Buffer)
 // doesn't exist in libcl4 
 void guname(char *Dest)
 {
-    struct passwd *pwd; // eax@1
+    struct passwd *pwd;
 
     pwd = getpwuid(getuid());
     if ( pwd )
