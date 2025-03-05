@@ -304,7 +304,7 @@ void	tuptor(char *dest,POS *Pos, char *src,TDef *TDefptr);
 short	rtotup(char *dest, char *src, POS *a3, TDef *a4);
 short	_fwidth(char*i, short TDFsize, short TDFtype);
 short	_rhead( DBinfo *DBptr, short IndexOffset, int *PageNo);
-bool	_scanpg(PAGE *PagePtr, TDinfo *TDptr, short *N2idx, short ArgType);
+bool	_scanpg(PAGE_NODE p_pgnode, TDinfo *TDptr, short *N2idx, short ArgType);
 TDef*	_getshape(DBinfo *DBptr,short TDno);
 void	relseq(TDinfo *);
 EXPR*	_bound(EXPR* Expr,short Operator,TDef* TDFp);

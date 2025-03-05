@@ -355,12 +355,12 @@ void locklog(int a1)
 
 void wrlog(TDesc *TTptr, char *WorkArea, int LockLog)
 {
-    char *v4; // eax@2
-    char *v5; // eax@2
-    char *v6; // eax@5
-    char *v7; // eax@5
-    char *v11; // eax@10
-    size_t v12; // esi@12
+    char *v4;
+    char *v5;
+    char *v6;
+    char *v7;
+    char *v11; 
+    size_t v12;
     short v14;
 	
 	char buf[32];

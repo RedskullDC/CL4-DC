@@ -52,8 +52,7 @@ void loadMonthArrays(bool SetAvars)
 	strcpy(THOU_SEP, nl_langinfo(THOUSEP));
 	strcpy(RADIX_CHAR, nl_langinfo(RADIXCHAR));
 
-	//wday = mmalloc(28u);	// 4 * 7
-	wday = mmalloc(sizeof(char*)*7);	// x64 compat
+	wday = mmalloc(sizeof(char*) * 7);	// x64 compat
 
 	for (Day = 0; Day < 7 ; Day++)
 	{
@@ -65,10 +64,8 @@ void loadMonthArrays(bool SetAvars)
 		}
 	}
 
-	//fmth = mmalloc(52u);	// 4 * 13
-	//mth	 = mmalloc(52u);
-	fmth = mmalloc(sizeof(char*)*13);	// 4 * 13
-	mth	 = mmalloc(sizeof(char*)*13);
+	fmth = mmalloc(sizeof(char*) * 13);
+	mth	 = mmalloc(sizeof(char*) * 13);
 
 	for (Month = 0; Month < 12 ; Month++ )
 	{

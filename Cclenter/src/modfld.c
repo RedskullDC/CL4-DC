@@ -60,8 +60,8 @@ LABEL_5:
 
 void dispatt(unsigned short a1)
 {
-  unsigned short v1; // eax@1
-  const char *v2; // eax@2
+  unsigned short v1;
+  const char *v2;
 
   v1 = getattr(a1, 1);
   switch ( v1 )

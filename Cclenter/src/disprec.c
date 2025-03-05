@@ -31,8 +31,7 @@ void _disprec(BTAB *bt, int TDNo, short PT_start, short PT_end, bool show)
 	while( ptb_start <= ptb_end )
     {
         srclineno	= ptb_start->SrcLineNo;			// **global var ** Set in various places, but never read? Debug Code?
-        //OpCode		= ptb_start->OpCode;
-		//switch (OpCode)
+
 		switch (ptb_start->OpCode)
 		{
 		

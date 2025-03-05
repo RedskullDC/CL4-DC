@@ -41,7 +41,7 @@ short count(RLIST *rlst)
 {
     short Count;
 
-    for ( Count = 0 ; rlst ; rlst = (RLIST *)rlst->PageNo )// PageNo and Depth are dual use fields here
+    for ( Count = 0 ; rlst ; rlst = (RLIST *)rlst->PageNo )// PageNo and Depth are dual use fields here  **TODO** not X64 compat
         Count += rlst->Depth;
 
     return Count;
